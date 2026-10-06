@@ -76,10 +76,65 @@ an agency can show it to a client.
 - **Go conventions:** standard library first (`net/http`, `log/slog`,
   `context`). The layering is handler → service → repository. Use
   `sqlc` or plain SQL, not a heavy ORM. Validate every input at the
-  handler. Return errors and never panic for control flow. Run
-  `go test ./...`, `go vet` and `golangci-lint` before every push.
+  handler. Return errors and never panic for control flow. The full check list
+  is in **Code quality** below.
 - **External data:** DataForSEO stays the SEO data provider (BYOK on
   self-host). Isolate it behind one Go client package so it can be swapped.
+
+## Code quality: the most critical rule (mandatory, no exceptions)
+
+Write code like a senior engineer shipping to production. Every line has
+to be correct, needed and readable. Delete any line that doesn't earn its
+place.
+
+**Use what Go already gives you.** Before writing a helper, check the
+standard library (`slices`, `maps`, `strings`, `errors`, `context`,
+`net/http`, `encoding/json`, `log/slog`, `sync`, `time`, `testing`) and
+the dependencies already in `go.mod`. Hand-rolling something the stdlib
+already does counts as a defect.
+
+**Every one of these must pass before any commit or push.** CI runs the
+same list, and a failure blocks the merge:
+
+| Command                                                                                                                                                                                                       | What it catches                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `gofmt -l .` (must print nothing) and `goimports`                                                                                                                                                             | formatting, import order                                                       |
+| `go vet ./...`                                                                                                                                                                                                | suspicious code: bad printf args, copied locks, unreachable code               |
+| `staticcheck ./...`                                                                                                                                                                                           | bugs, deprecated APIs, simplifications                                         |
+| `golangci-lint run` with `errcheck`, `unused`, `ineffassign`, `govet`, `staticcheck`, `gosec`, `bodyclose`, `sqlclosecheck`, `rowserrcheck`, `errorlint`, `nilerr`, `contextcheck`, `noctx`, `revive` enabled | ignored errors, dead and unused code, unclosed bodies and rows, security holes |
+| `go test -race -count=1 ./...`                                                                                                                                                                                | real failures and data races                                                   |
+| `go test -cover ./...`                                                                                                                                                                                        | untested code paths in the packages you changed                                |
+| `govulncheck ./...`                                                                                                                                                                                           | known vulnerabilities in dependencies                                          |
+| `go mod tidy` (`go.mod`/`go.sum` must not change)                                                                                                                                                             | unused or missing modules                                                      |
+| `deadcode ./...`                                                                                                                                                                                              | functions nothing calls                                                        |
+
+**Tests exist to catch bugs, not to turn CI green.**
+
+- Every test must be able to fail. Test the real behavior, the edge
+  cases (empty, nil, max size, unicode, timeouts, concurrent access) and
+  the error paths that can actually happen.
+- Prefer table-driven tests. Use `httptest` for handlers and a real
+  Postgres (testcontainers or a CI service) for repositories. Never mock
+  SQL.
+- When a bug is fixed, add the test that reproduces it first, see it
+  fail, then fix the code.
+- A failing test is a real bug until proven otherwise. Never skip,
+  weaken or delete a test to get green.
+
+**Errors and safety**
+
+- Never ignore an error. Wrap it with context:
+  `fmt.Errorf("load project %s: %w", id, err)`. Check it with
+  `errors.Is` or `errors.As`.
+- Pass `context.Context` through every request path, and set a timeout
+  on every outbound call.
+- No global mutable state. Make concurrency explicit with `sync` or
+  channels, and keep it race-free under `-race`.
+- Validate all untrusted input at the handler boundary.
+
+**The frontend gets the same rigor.** `tsc --noEmit`, `oxlint`, `knip`
+(no unused exports or files), `prettier --check` and the tests must all
+pass.
 
 ## UI and brand rules
 
