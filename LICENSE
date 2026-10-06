@@ -1,21 +1,21 @@
-MIT License
+Copyright (c) 2026 Toufiq Qureshi. All rights reserved.
 
-Copyright (c) 2026 Ben Senescu
+This software and its source code ("Seomarine") are proprietary. No part of
+it may be used, copied, modified, merged, published, distributed,
+sublicensed, sold, hosted as a service, or used to create derivative works,
+in whole or in part, without the prior written permission of the copyright
+holder.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Viewing this repository does not grant any license or right to the software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+THIRD-PARTY CODE
+
+Portions of this software are derived from OpenSEO, Copyright (c) 2026 Ben
+Senescu, which is licensed under the MIT License. Those portions remain
+subject to the MIT License; its full text and copyright notice are in
+LICENSE-OPENSEO-MIT, and nothing in this file restricts the rights the MIT
+License grants for that original code.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
