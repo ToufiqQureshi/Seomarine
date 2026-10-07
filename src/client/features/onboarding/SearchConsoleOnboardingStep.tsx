@@ -48,8 +48,8 @@ export function SearchConsoleOnboardingStep(props: NavigationProps) {
           Connect Google Search Console now?
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Bring your real clicks and queries into OpenSEO and your AI agent. You
-          can also do this later from the dashboard.
+          Bring your real clicks and queries into Seomarine and your AI agent.
+          You can also do this later from the dashboard.
         </p>
       </div>
 

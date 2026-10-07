@@ -9,6 +9,8 @@ import {
 } from "@/client/features/dashboard/DashboardCards";
 import { Ga4Card } from "@/client/features/dashboard/Ga4Card";
 import { WorkspaceMergeBanner } from "@/client/features/dashboard/WorkspaceMergeBanner";
+import { DashboardShortcuts } from "@/client/features/dashboard/DashboardShortcuts";
+import { PageHeader } from "@/client/components/PageHeader";
 import { QueryError } from "@/client/components/QueryState";
 import {
   getDashboardActivation,
@@ -76,7 +78,13 @@ export function DashboardPage({ projectId }: { projectId: string }) {
     return (
       <div className="px-4 py-4 md:px-6 md:py-6" aria-busy>
         <div className="mx-auto flex max-w-7xl flex-col gap-5">
-          <Skeleton className="h-8 w-52" />
+          <Skeleton className="h-14 w-72" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
           <Skeleton className="h-36" />
           <div className="grid gap-5 lg:grid-cols-2">
             <Skeleton className="h-44" />
@@ -139,7 +147,12 @@ export function DashboardPage({ projectId }: { projectId: string }) {
   return (
     <div className="px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <PageHeader
+          title={activation.domain ?? "Dashboard"}
+          description="Your traffic, AI visibility and site health in one place."
+        />
+
+        <DashboardShortcuts projectId={projectId} />
 
         <WorkspaceMergeBanner />
 

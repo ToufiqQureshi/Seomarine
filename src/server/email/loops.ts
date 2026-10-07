@@ -101,7 +101,7 @@ export async function upsertHostedSignupContact({
     payload: {
       email,
       userId,
-      source: "openseo-signup",
+      source: "seomarine-signup",
       userGroup: "app-user",
       ...getContactNameParts(name),
     },
@@ -122,7 +122,7 @@ export async function sendHostedVerificationEmail({
     email,
     transactionalId: config.verificationTemplateId,
     dataVariables: {
-      appName: "OpenSEO",
+      appName: "Seomarine",
       confirmationUrl,
     },
   });
@@ -150,7 +150,7 @@ export async function sendHostedInvitationEmail({
     email,
     transactionalId: templateId,
     dataVariables: {
-      appName: "OpenSEO",
+      appName: "Seomarine",
       inviteUrl,
       organizationName,
       inviterName,
@@ -172,7 +172,7 @@ export async function sendHostedPasswordResetEmail({
     email,
     transactionalId: config.passwordResetTemplateId,
     dataVariables: {
-      appName: "OpenSEO",
+      appName: "Seomarine",
       resetUrl,
     },
   });

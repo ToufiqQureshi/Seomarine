@@ -97,7 +97,7 @@ export function PostSignupOnboarding({
             />
           ) : step === 2 ? (
             <OnboardingChoiceGroup
-              title="How did you find OpenSEO?"
+              title="How did you find Seomarine?"
               options={[...SOURCE_OPTIONS]}
               selectedValues={answers.source ? [answers.source] : []}
               onToggle={(source) => updateAnswers({ source })}

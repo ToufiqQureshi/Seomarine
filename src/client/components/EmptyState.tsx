@@ -55,7 +55,7 @@ export function EmptyState({
             variant="icon"
             className={
               kind === "error"
-                ? "bg-destructive/10 text-destructive"
+                ? "bg-destructive/10 text-destructive ring-destructive/20"
                 : undefined
             }
           >

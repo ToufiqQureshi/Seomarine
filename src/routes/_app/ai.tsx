@@ -16,42 +16,48 @@ import {
   CardTitle,
 } from "@/client/components/ui/card";
 import { PageHeader } from "@/client/components/PageHeader";
-import { ArrowUpRight, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { getAuthMode } from "@/lib/auth-mode";
 import { captureClientEvent } from "@/client/lib/posthog";
-import {
-  agentUpdatePrompt,
-  getAgentSetupPrompt,
-} from "@/client/features/ai-mcp/agentSetupPrompt";
+import { getAgentSetupPrompt } from "@/client/features/ai-mcp/agentSetupPrompt";
 import { CopyButton } from "@/client/components/CopyButton";
 import { AgentList } from "@/client/features/ai-mcp/AgentList";
 
-const DOCS_URL = "https://openseo.so/docs/agent-setup";
-const COACH_DOCS_URL = "https://openseo.so/docs/skills/seo-coach";
-const LINK_CLASS =
-  "text-foreground underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground";
-const MUTED_LINK_CLASS =
-  "inline-flex items-center gap-1 text-sm text-muted-foreground underline decoration-foreground/25 underline-offset-4 hover:text-foreground";
-const SKILLS = [
-  ["seo-coach", "Explains where you stand and picks your next step."],
+const WORKFLOWS = [
   [
-    "seo-project-setup",
-    "Saves your goals, competitors, and key pages as shared context.",
+    "What should I do next for SEO?",
+    "Explains where you stand and picks your next step.",
   ],
   [
-    "seo-audit",
-    "One-page site audit built around a single do-this-week action.",
+    "Save my goals, competitors, and key pages",
+    "Stores shared context your agent and the app both use.",
   ],
-  ["keyword-research", "Finds keyword opportunities from a few seed topics."],
-  ["keyword-clustering", "Groups keywords by intent and maps them to pages."],
-  ["competitive-landscape", "Maps who wins in your market and why."],
   [
-    "competitor-analysis",
-    "Studies one competitor's keywords, content, and backlinks.",
+    "Run an SEO audit of my site",
+    "A one-page audit built around a single do-this-week action.",
   ],
-  ["link-prospecting", "Finds link prospects and drafts outreach."],
-  ["local-seo", "Audits a Google Business Profile and Maps visibility."],
-  ["seo-report", "Saves any of the above as a report on your Reports page."],
+  [
+    "Find keywords worth targeting",
+    "Finds keyword ideas from a few seed topics.",
+  ],
+  ["Group these keywords by intent", "Groups keywords and maps them to pages."],
+  [
+    "Who wins in my market and why?",
+    "Maps your competitors and what they do well.",
+  ],
+  [
+    "Study this competitor",
+    "Looks at one competitor's keywords, content, and backlinks.",
+  ],
+  [
+    "Find sites that might link to me",
+    "Finds link prospects and drafts outreach.",
+  ],
+  [
+    "Check my Google Business Profile",
+    "Reviews your Maps visibility and local competitors.",
+  ],
+  ["Save that as a report", "Puts any of the above on your Reports page."],
 ];
 
 const aiSearchSchema = z.object({
@@ -76,7 +82,7 @@ function AiPage() {
       <div className="mx-auto max-w-7xl">
         <PageHeader
           title="Agent setup"
-          description="The most powerful way to use OpenSEO is through the AI agent you already use. Set it up once, then ask it anything."
+          description="Use Seomarine from the AI agent you already use. Connect it once, then ask it anything in plain words."
         />
 
         <Tabs
@@ -91,7 +97,7 @@ function AiPage() {
         >
           <TabsList variant="line">
             <TabsTrigger value="setup">Set up your agent</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="skills">What to ask</TabsTrigger>
           </TabsList>
           <TabsContent value="setup">
             <div className="mt-6 space-y-5">
@@ -101,14 +107,14 @@ function AiPage() {
                     <h2>Set up your agent</h2>
                   </CardTitle>
                   <CardDescription>
-                    Paste the setup prompt into your agent to connect OpenSEO
-                    and install its SEO skills. It will guide you through any
-                    manual steps.
+                    Paste the setup prompt into your agent to connect Seomarine.
+                    It will walk you through any steps it can&apos;t do on its
+                    own.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <AgentList />
-                  <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                  <div className="mt-5">
                     <CopyButton
                       variant="default"
                       size="lg"
@@ -117,63 +123,14 @@ function AiPage() {
                       successMessage="Setup prompt copied"
                       onCopy={() => captureClientEvent("mcp:setup_prompt_copy")}
                     />
-                    <a
-                      href={`${DOCS_URL}#set-up-your-agent`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={MUTED_LINK_CLASS}
-                    >
-                      Setup instructions
-                      <ArrowUpRight className="size-3.5" />
-                    </a>
                   </div>
                 </CardContent>
                 <CardFooter className="text-muted-foreground">
                   <p>
-                    Once connected, ask your agent to use{" "}
-                    <a
-                      href={COACH_DOCS_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={LINK_CLASS}
-                    >
-                      SEO Coach
-                    </a>{" "}
-                    to help you choose what to do next.
+                    Once connected, ask your agent &ldquo;What should I do next
+                    for SEO?&rdquo; to get started.
                   </p>
                 </CardFooter>
-              </Card>
-
-              <Card size="lg">
-                <CardHeader>
-                  <CardTitle>
-                    <h2>Update your skills</h2>
-                  </CardTitle>
-                  <CardDescription>
-                    Already connected? Paste the update prompt into your agent
-                    to get the latest OpenSEO skills while preserving your
-                    connection settings and personal edits.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <CopyButton
-                    variant="default"
-                    size="lg"
-                    value={agentUpdatePrompt}
-                    label="Copy update prompt"
-                    successMessage="Update prompt copied"
-                    onCopy={() => captureClientEvent("mcp:update_prompt_copy")}
-                  />
-                  <a
-                    href={`${DOCS_URL}#update-your-skills`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={MUTED_LINK_CLASS}
-                  >
-                    Update instructions
-                    <ArrowUpRight className="size-3.5" />
-                  </a>
-                </CardContent>
               </Card>
             </div>
 
@@ -183,15 +140,7 @@ function AiPage() {
                 <AlertDescription>
                   This instance is behind Cloudflare Access. MCP clients cannot
                   connect until Managed OAuth is enabled on your Access
-                  application.{" "}
-                  <a
-                    href="https://openseo.so/docs/self-hosting/cloudflare#connect-the-mcp-server-through-cloudflare-access"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-medium"
-                  >
-                    Setup guide
-                  </a>
+                  application.
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -211,23 +160,18 @@ function AiPage() {
           <TabsContent value="skills">
             <section className="mt-6">
               <p className="text-sm text-muted-foreground">
-                The setup prompt installs these. Run one by name when you want a
-                full report instead of a quick answer.
+                Once your agent is connected, ask for any of these in your own
+                words.
               </p>
               <ul className="mt-5 space-y-3 text-sm sm:space-y-2">
-                {SKILLS.map(([name, blurb]) => (
+                {WORKFLOWS.map(([ask, blurb]) => (
                   <li
-                    key={name}
+                    key={ask}
                     className="flex flex-col gap-0.5 sm:flex-row sm:gap-3"
                   >
-                    <a
-                      href={`https://openseo.so/docs/skills/${name}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`shrink-0 font-mono text-[13px] sm:w-48 ${LINK_CLASS}`}
-                    >
-                      /{name}
-                    </a>
+                    <span className="shrink-0 font-medium text-foreground sm:w-80">
+                      &ldquo;{ask}&rdquo;
+                    </span>
                     <span className="text-muted-foreground">{blurb}</span>
                   </li>
                 ))}

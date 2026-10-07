@@ -15,7 +15,7 @@ function BrandBar({ branding }: { branding: Branding }) {
     'ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
   return (
     <div
-      data-openseo-brand-bar=""
+      data-brand-bar=""
       style={{
         all: "initial",
         display: "flex",

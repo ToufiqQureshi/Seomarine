@@ -70,7 +70,7 @@ function SignUpPage() {
           redirect_to: redirectTo,
         });
         const resolvedName =
-          value.name.trim() || email.split("@")[0] || "OpenSEO User";
+          value.name.trim() || email.split("@")[0] || "Seomarine User";
         const verificationCallbackURL = new URL(
           "/verify-email",
           window.location.origin,
@@ -152,7 +152,7 @@ function SignUpPage() {
               <p className="text-sm leading-relaxed text-muted-foreground">
                 By signing up, you agree to our{" "}
                 <a
-                  href="https://openseo.so/terms-and-conditions"
+                  href="/terms"
                   target="_blank"
                   rel="noreferrer"
                   className="text-foreground underline underline-offset-2 hover:text-foreground/80 transition-colors"
@@ -161,7 +161,7 @@ function SignUpPage() {
                 </a>{" "}
                 and{" "}
                 <a
-                  href="https://openseo.so/privacy"
+                  href="/privacy"
                   target="_blank"
                   rel="noreferrer"
                   className="text-foreground underline underline-offset-2 hover:text-foreground/80 transition-colors"

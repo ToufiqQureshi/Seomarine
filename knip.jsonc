@@ -47,5 +47,7 @@
     // Imported by app.css; shadcn is also the component CLI
     "tw-animate-css",
     "shadcn",
+    // Brand typeface, imported by app.css
+    "@fontsource-variable/plus-jakarta-sans",
   ],
 }

@@ -48,9 +48,7 @@ export function ApiKeySettings() {
   );
 
   const mcpUrl =
-    typeof window === "undefined"
-      ? "https://app.openseo.so/mcp"
-      : `${window.location.origin}/mcp`;
+    typeof window === "undefined" ? "/mcp" : `${window.location.origin}/mcp`;
 
   const apiKeysQuery = useQuery({
     queryKey: ["apiKeys"],
@@ -125,16 +123,6 @@ export function ApiKeySettings() {
           <p className="mt-1 text-sm text-muted-foreground">
             Use this for remote agents like Hermes where the normal login flow
             doesn't work.
-          </p>
-          <p className="mt-1 text-sm">
-            <a
-              className="text-primary underline-offset-4 hover:underline"
-              href="https://openseo.so/docs/mcp"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Setup guide
-            </a>
           </p>
         </div>
         <Button size="sm" onClick={() => setIsCreateOpen(true)}>

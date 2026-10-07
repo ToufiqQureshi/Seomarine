@@ -151,10 +151,10 @@ describe("fetchBacklinksSummary", () => {
     async (hideSpam) => {
       const mode = "as_is";
       vi.mocked(fetch).mockResolvedValue(okResponse([]));
-      const filters = [["domain_from", "=", "openseo.so"]];
+      const filters = [["domain_from", "=", "example.com"]];
 
       await fetchBacklinksRows({
-        target: "openseo.so",
+        target: "example.com",
         mode,
         offset: 50,
         limit: 50,

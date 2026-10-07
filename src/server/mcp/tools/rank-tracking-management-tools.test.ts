@@ -44,7 +44,7 @@ const toolContext = makeToolContext();
 
 const createdConfig = {
   id: trackerId,
-  domain: "openseo.so",
+  domain: "example.com",
   devices: "mobile",
   scheduleInterval: "manual",
 };
@@ -53,7 +53,7 @@ describe("rank tracking management MCP tools", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
       id: projectId,
-      domain: "openseo.so",
+      domain: "example.com",
       locationCode: 2840,
       languageCode: "en",
     });
@@ -70,7 +70,7 @@ describe("rank tracking management MCP tools", () => {
 
     expect(mocks.createConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        domain: "openseo.so",
+        domain: "example.com",
         devices: "mobile",
         serpDepth: 40,
         scheduleInterval: "manual",
@@ -87,7 +87,7 @@ describe("rank tracking management MCP tools", () => {
       organizationId: "org_123",
       properties: {
         project_id: projectId,
-        domain: "openseo.so",
+        domain: "example.com",
         devices: "mobile",
         schedule: "manual",
         source: "mcp",

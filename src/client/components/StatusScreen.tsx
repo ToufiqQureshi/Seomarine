@@ -22,7 +22,7 @@ export function StatusScreen({
   footer,
   size = "md",
 }: {
-  /** Show the OpenSEO logo, for screens outside the app shell. */
+  /** Show the Seomarine logo, for screens outside the app shell. */
   logo?: boolean;
   title?: ReactNode;
   description?: ReactNode;
@@ -45,11 +45,7 @@ export function StatusScreen({
         )}
       >
         {logo ? (
-          <img
-            src="/transparent-logo.png"
-            alt="OpenSEO"
-            className="size-10 rounded-lg"
-          />
+          <img src="/logo.svg" alt="Seomarine" className="size-10 rounded-lg" />
         ) : null}
         {title ? (
           <h1 className="text-center text-xl font-semibold">{title}</h1>

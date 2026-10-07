@@ -31,7 +31,7 @@ export function ReportsList({
       <EmptyState
         icon={FileText}
         title="No reports yet"
-        description="Run an OpenSEO skill such as seo-audit from Claude Code or Codex and the report will appear here."
+        description="Ask your connected AI agent to save its work as a report, for example: “Run an SEO audit of my site and save it as a report.” It will show up here."
       />
     );
   }

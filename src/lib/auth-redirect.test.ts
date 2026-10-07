@@ -15,7 +15,7 @@ const oauthSearch = new URLSearchParams({
   state: "state-123",
   code_challenge: "challenge-123",
   code_challenge_method: "S256",
-  resource: "https://app.openseo.so/mcp",
+  resource: "https://app.example.com/mcp",
   exp: "1778271800",
   sig: "signed-value",
 }).toString();

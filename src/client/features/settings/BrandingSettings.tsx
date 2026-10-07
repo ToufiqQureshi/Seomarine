@@ -43,7 +43,7 @@ export function BrandingSettings() {
       <p className="max-w-2xl text-sm text-muted-foreground">
         White-label the reports you send to clients. Your logo, name and website
         appear at the top of every exported PDF and shared report link, in place
-        of OpenSEO.
+        of Seomarine.
       </p>
       <QueryState
         query={brandingQuery}

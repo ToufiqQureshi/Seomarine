@@ -88,7 +88,7 @@ vi.mock("@cloudflare/workers-oauth-provider", () => {
 });
 
 vi.mock("@/lib/auth", () => ({
-  getHostedBaseUrl: () => "https://app.openseo.so",
+  getHostedBaseUrl: () => "https://app.example.com",
 }));
 
 vi.mock("@/middleware/ensure-user/hosted", () => ({
@@ -136,7 +136,7 @@ function tokenExchangeOptions(
         userId: "user-1",
         userEmail: "user@example.com",
         organizationId: "org-1",
-        baseUrl: "https://app.openseo.so",
+        baseUrl: "https://app.example.com",
         clientId: "client-1",
         scopes: ["offline_access", "mcp"],
       },
@@ -173,7 +173,7 @@ async function invokeDefaultHandler(
   return rawResponse;
 }
 
-describe("OpenSEO OAuth provider configuration", () => {
+describe("Seomarine OAuth provider configuration", () => {
   beforeEach(() => {
     mocks.options.length = 0;
     mocks.requests.length = 0;
@@ -183,18 +183,18 @@ describe("OpenSEO OAuth provider configuration", () => {
   it("binds tokens and protected-resource metadata to the canonical MCP URL", async () => {
     const provider = createOpenSeoOAuthProvider(() => new Response("app"));
 
-    await dispatch(provider, new Request("https://app.openseo.so/health"));
+    await dispatch(provider, new Request("https://app.example.com/health"));
 
     expect(mocks.options).toHaveLength(1);
     expect(mocks.options[0]?.resourceMetadata).toMatchObject({
-      resource: "https://app.openseo.so/mcp",
+      resource: "https://app.example.com/mcp",
     });
   });
 
   it("rejects token exchanges that drop the required MCP scope", async () => {
     const provider = createOpenSeoOAuthProvider(() => new Response("app"));
 
-    await dispatch(provider, new Request("https://app.openseo.so/health"));
+    await dispatch(provider, new Request("https://app.example.com/health"));
 
     const callback = mocks.options[0]?.tokenExchangeCallback;
     if (!callback) throw new Error("Missing token exchange callback");
@@ -207,7 +207,7 @@ describe("OpenSEO OAuth provider configuration", () => {
           userId: "user-1",
           userEmail: "user@example.com",
           organizationId: "org-1",
-          baseUrl: "https://app.openseo.so",
+          baseUrl: "https://app.example.com",
           clientId: "client-1",
           scopes: ["mcp"],
         },
@@ -220,7 +220,7 @@ describe("OpenSEO OAuth provider configuration", () => {
 
     await dispatch(
       provider,
-      new Request("https://app.openseo.so/api/auth/oauth2/register", {
+      new Request("https://app.example.com/api/auth/oauth2/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -237,14 +237,14 @@ describe("OpenSEO OAuth provider configuration", () => {
 
   it("includes the authorization-server issuer when consent is denied", async () => {
     const provider = createOpenSeoOAuthProvider(() => new Response("app"));
-    await dispatch(provider, new Request("https://app.openseo.so/health"));
+    await dispatch(provider, new Request("https://app.example.com/health"));
 
     const response = await invokeDefaultHandler(
-      new Request("https://app.openseo.so/api/oauth/consent", {
+      new Request("https://app.example.com/api/oauth/consent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Origin: "https://app.openseo.so",
+          Origin: "https://app.example.com",
         },
         body: JSON.stringify({ accept: false, query: "state=state-1" }),
       }),
@@ -256,7 +256,7 @@ describe("OpenSEO OAuth provider configuration", () => {
               redirectUri: "https://client.example/callback",
               scope: ["mcp"],
               state: "state-1",
-              issuer: "https://app.openseo.so",
+              issuer: "https://app.example.com",
             }),
         },
       },
@@ -270,16 +270,16 @@ describe("OpenSEO OAuth provider configuration", () => {
     ).toMatchObject({
       error: "access_denied",
       state: "state-1",
-      iss: "https://app.openseo.so",
+      iss: "https://app.example.com",
     });
   });
 
   it("redirects safe authorization errors with state and issuer, rethrowing anything else", async () => {
     const provider = createOpenSeoOAuthProvider(() => new Response("app"));
-    await dispatch(provider, new Request("https://app.openseo.so/health"));
+    await dispatch(provider, new Request("https://app.example.com/health"));
 
     const response = await invokeDefaultHandler(
-      new Request("https://app.openseo.so/api/auth/oauth2/authorize"),
+      new Request("https://app.example.com/api/auth/oauth2/authorize"),
       {
         OAUTH_PROVIDER: {
           parseAuthRequest: () =>
@@ -288,7 +288,7 @@ describe("OpenSEO OAuth provider configuration", () => {
                 description: "Unsupported scope",
                 redirectUri: "https://client.example/callback",
                 state: "state-1",
-                issuer: "https://app.openseo.so",
+                issuer: "https://app.example.com",
               }),
             ),
         },
@@ -302,13 +302,13 @@ describe("OpenSEO OAuth provider configuration", () => {
       error: "invalid_scope",
       error_description: "Unsupported scope",
       state: "state-1",
-      iss: "https://app.openseo.so",
+      iss: "https://app.example.com",
     });
 
     // Anything other than a provider AuthorizationError is not a client error.
     await expect(
       invokeDefaultHandler(
-        new Request("https://app.openseo.so/api/auth/oauth2/authorize"),
+        new Request("https://app.example.com/api/auth/oauth2/authorize"),
         {
           OAUTH_PROVIDER: {
             parseAuthRequest: () =>

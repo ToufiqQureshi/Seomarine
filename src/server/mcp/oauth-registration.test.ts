@@ -4,7 +4,7 @@ import { normalizeClientRegistrationRequest } from "@/server/mcp/oauth-registrat
 describe("normalizeClientRegistrationRequest", () => {
   it("keeps explicit confidential registration methods", async () => {
     const request = new Request(
-      "https://app.openseo.so/api/auth/oauth2/register",
+      "https://app.example.com/api/auth/oauth2/register",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

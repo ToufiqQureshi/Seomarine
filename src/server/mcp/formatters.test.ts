@@ -6,13 +6,13 @@ describe("mcpResponse", () => {
     const result = mcpResponse({
       text: "hi",
       meta: {
-        url: "https://app.openseo.so",
+        url: "https://app.example.com",
         creditsCharged: 0,
         projectId: undefined,
       },
     });
     expect(result._meta).toEqual({
-      url: "https://app.openseo.so",
+      url: "https://app.example.com",
       creditsCharged: 0,
     });
 
@@ -26,7 +26,7 @@ describe("mcpResponse", () => {
   });
 
   it("mirrors metadata into structuredContent for clients that hide _meta", () => {
-    const meta = { url: "https://app.openseo.so/p/1", creditsRemaining: 100 };
+    const meta = { url: "https://app.example.com/p/1", creditsRemaining: 100 };
 
     const withPayload = mcpResponse({
       text: "hi",

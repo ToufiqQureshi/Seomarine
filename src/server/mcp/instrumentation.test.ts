@@ -48,7 +48,7 @@ const authContext: ToolAuthContext = {
   orgScope: "pinned",
   clientId: "client-1",
   scopes: ["mcp"],
-  baseUrl: "https://app.openseo.so",
+  baseUrl: "https://app.example.com",
 };
 
 const toolContext: ToolContext = { auth: authContext };

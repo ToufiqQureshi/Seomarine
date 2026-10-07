@@ -63,11 +63,11 @@ describe("buildStrikingDistanceRows", () => {
   });
 
   it("drops a query whose top page already ranks above the band", () => {
-    // openseo: homepage ranks #2, a secondary page ranks #6. The site already
+    // seomarine: homepage ranks #2, a secondary page ranks #6. The site already
     // ranks near the top, so the query is not a striking-distance opportunity.
     const rows = buildStrikingDistanceRows([
-      pageRow("openseo", "https://x.com/home", 2, 900),
-      pageRow("openseo", "https://x.com/mcp", 6, 300),
+      pageRow("seomarine", "https://x.com/home", 2, 900),
+      pageRow("seomarine", "https://x.com/mcp", 6, 300),
     ]);
     expect(rows).toHaveLength(0);
   });

@@ -99,7 +99,7 @@ export const getReport = createServerFn({ method: "POST" })
 /**
  * Mints (or returns) the report's public link. The token alone comes back —
  * the app builds `<origin>/s/<token>` client-side, so the same server works on
- * app.openseo.so and a self-hosted hostname without knowing either.
+ * app.example.com and a self-hosted hostname without knowing either.
  */
 export const shareReport = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)

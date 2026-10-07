@@ -52,7 +52,7 @@ describe("renderSharePage", () => {
       `<iframe src="/s/${TOKEN}/raw" sandbox="${REPORT_IFRAME_SANDBOX}"`,
     );
     expect(html).toContain(
-      "<title>badseo.dev &lt;SEO&gt; audit · OpenSEO</title>",
+      "<title>badseo.dev &lt;SEO&gt; audit · Seomarine</title>",
     );
     expect(html).toContain(
       '<meta property="og:description" content="Fix the &quot;titles&quot; first."/>',
@@ -66,16 +66,16 @@ describe("renderSharePage", () => {
     expect($('meta[property="og:image"]').attr("content")).toBe(imageUrl);
     expect($('meta[name="twitter:image"]').attr("content")).toBe(imageUrl);
     expect($('meta[property="og:image:alt"]').attr("content")).toBe(
-      `${SHARED_REPORT.title} · OpenSEO`,
+      `${SHARED_REPORT.title} · Seomarine`,
     );
     expect($('meta[name="twitter:image:alt"]').attr("content")).toBe(
-      `${SHARED_REPORT.title} · OpenSEO`,
+      `${SHARED_REPORT.title} · Seomarine`,
     );
     // No app bundle: the reader has never signed in and needs none of it.
     expect(html).not.toContain("/assets/");
   });
 
-  it("names the agency instead of OpenSEO when the organization is white-labelled", async () => {
+  it("names the agency instead of Seomarine when the organization is white-labelled", async () => {
     mocks.getBranding.mockResolvedValue({
       brandName: "Acme Digital",
       accentColor: "#ff0000",
@@ -91,7 +91,7 @@ describe("renderSharePage", () => {
     );
     expect(html).toContain("Prepared by Acme Digital");
     expect(html).toContain('href="https://acme.agency"');
-    expect(html).not.toContain("OpenSEO");
+    expect(html).not.toContain("Seomarine");
   });
 
   // The reader is told the project is archived; the report's own title is

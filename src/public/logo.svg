@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="seomarine-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0c4a6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#seomarine-bg)"/>
+  <path d="M14 33 26 21l8 8 14-14" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 15h9v9" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10 47c4.5 0 6.5-5 11-5s6.5 5 11 5 6.5-5 11-5 6.5 5 11 5" fill="none" stroke="#99f6e4" stroke-width="5" stroke-linecap="round"/>
+</svg>

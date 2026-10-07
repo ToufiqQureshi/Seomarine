@@ -249,10 +249,10 @@ function RenderingOptions({
       {canRenderJavaScript === false && (
         <FieldDescription>
           This deployment has no browser, so rendering needs a Context.dev API
-          key. Set <code>CONTEXT_API_KEY</code>, restart OpenSEO, then reload
+          key. Set <code>CONTEXT_API_KEY</code>, restart Seomarine, then reload
           this page.{" "}
           <a
-            href="https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE_OPERATIONS.md#render-javascript-in-site-audits"
+            href="https://github.com/ToufiqQureshi/seomarine/blob/main/docs/SELF_HOSTING_CLOUDFLARE_OPERATIONS.md#render-javascript-in-site-audits"
             target="_blank"
             rel="noreferrer"
           >
