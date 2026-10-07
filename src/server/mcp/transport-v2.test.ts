@@ -3,10 +3,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createWorkersOAuthMcpProps } from "@/server/mcp/context";
-import { handleAuthenticatedOpenSeoMcpRequest } from "@/server/mcp/transport";
+import { handleAuthenticatedSeomarineMcpRequest } from "@/server/mcp/transport";
 
 vi.mock("@/lib/auth", () => ({
-  getHostedBaseUrl: () => "https://open-seo.test",
+  getHostedBaseUrl: () => "https://seomarine.test",
 }));
 
 // The hosted transport re-checks membership per request; mocking the
@@ -33,7 +33,7 @@ vi.mock("@/server/mcp/server", async () => {
   const { McpServer: ActualMcpServer } =
     await import("@modelcontextprotocol/server");
   return {
-    createOpenSeoMcpServer: () => {
+    createSeomarineMcpServer: () => {
       const server = new ActualMcpServer({ name: "test", version: "1.0.0" });
       server.registerTool("ping", {}, () => ({
         content: [{ type: "text" as const, text: "pong" }],
@@ -54,10 +54,10 @@ function request(
   body?: unknown,
   headers?: Record<string, string>,
 ) {
-  return new Request("https://open-seo.test/mcp", {
+  return new Request("https://seomarine.test/mcp", {
     method,
     headers: {
-      Host: "open-seo.test",
+      Host: "seomarine.test",
       Accept: "application/json, text/event-stream",
       "Content-Type": "application/json",
       ...headers,
@@ -68,7 +68,7 @@ function request(
 
 describe("Agents SDK v2 MCP transport", () => {
   it("passes verified provider identity and application props to tools", async () => {
-    const props = { openSeoAuth: { organizationId: "org-1" } };
+    const props = { seomarineAuth: { organizationId: "org-1" } };
     const oauthContext = {
       ...ctx,
       props,
@@ -77,7 +77,7 @@ describe("Agents SDK v2 MCP transport", () => {
         token: "access-token",
         clientId: "client-1",
         scopes: ["mcp"],
-        resource: "https://open-seo.test/mcp",
+        resource: "https://seomarine.test/mcp",
         props,
       },
     } as ExecutionContext;
@@ -128,7 +128,7 @@ describe("Agents SDK v2 MCP transport", () => {
       userId: "user-1",
       userEmail: "user@example.com",
       organizationId: "org-1",
-      baseUrl: "https://open-seo.test",
+      baseUrl: "https://seomarine.test",
       clientId: "client-1",
       scopes: ["mcp"],
     });
@@ -144,7 +144,7 @@ describe("Agents SDK v2 MCP transport", () => {
       },
     };
     const call = (origin?: string) =>
-      handleAuthenticatedOpenSeoMcpRequest(
+      handleAuthenticatedSeomarineMcpRequest(
         request("POST", modernToolsList, {
           "Mcp-Method": "tools/list",
           ...(origin ? { Origin: origin } : {}),
@@ -157,7 +157,7 @@ describe("Agents SDK v2 MCP transport", () => {
     await expect(
       call("chrome-extension://pghallcbnfabbgfijhbcldaapmgidnaa"),
     ).resolves.toMatchObject({ status: 200 });
-    await expect(call("https://open-seo.test")).resolves.toMatchObject({
+    await expect(call("https://seomarine.test")).resolves.toMatchObject({
       status: 200,
     });
     await expect(call()).resolves.toMatchObject({ status: 200 });

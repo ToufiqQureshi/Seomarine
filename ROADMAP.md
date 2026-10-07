@@ -15,15 +15,15 @@ Product reasoning lives in `CLAUDE.md`.
 | 0.4  | Go server serves the React SPA (Vite build) as static files                                                                     | ⏳     |
 | 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | ⏳     |
 
-## Phase 1: Rebrand + new UI (so nobody can tell it's an OpenSEO fork)
+## Phase 1: Rebrand + new UI
 
-| #   | Task                                                                      | Status |
-| --- | ------------------------------------------------------------------------- | ------ |
-| 1.1 | Brand kit: logo, colors, typography, icon set                             | ✅     |
-| 1.2 | New app shell: sidebar, navigation, dashboard layout                      | ✅     |
-| 1.3 | Remove every user-visible "OpenSEO" string, link, meta tag, email and doc | ✅     |
-| 1.4 | New landing page + INR pricing page (USD pending)                         | ✅     |
-| 1.5 | Plain-language and Hinglish copy pass                                     | ⏳     |
+| #   | Task                                                                    | Status |
+| --- | ----------------------------------------------------------------------- | ------ |
+| 1.1 | Brand kit: logo, colors, typography, icon set                           | ✅     |
+| 1.2 | New app shell: sidebar, navigation, dashboard layout                    | ✅     |
+| 1.3 | Remove every trace of the upstream brand (code, docs, links, telemetry) | ✅     |
+| 1.4 | New landing page + INR pricing page (USD pending)                       | ✅     |
+| 1.5 | Plain-language and Hinglish copy pass                                   | ⏳     |
 
 ## Phase 2: Core differentiators
 

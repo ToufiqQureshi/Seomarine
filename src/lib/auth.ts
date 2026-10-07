@@ -290,10 +290,10 @@ function getTrustedOrigins(baseUrl: string) {
 
   if (process.env.NODE_ENV !== "production") {
     trustedOrigins.push(
-      "http://open-seo.localhost:1355",
-      "http://*.open-seo.localhost:1355",
-      "https://open-seo.localhost:1355",
-      "https://*.open-seo.localhost:1355",
+      "http://seomarine.localhost:1355",
+      "http://*.seomarine.localhost:1355",
+      "https://seomarine.localhost:1355",
+      "https://*.seomarine.localhost:1355",
     );
   }
 

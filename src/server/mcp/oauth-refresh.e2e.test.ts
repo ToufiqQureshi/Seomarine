@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { createOpenSeoOAuthProvider } from "./oauth-provider";
+import { createSeomarineOAuthProvider } from "./oauth-provider";
 
 // End-to-end OAuth lifecycle against the REAL @cloudflare/workers-oauth-provider
 // (only the Workers runtime shims and app session resolution are mocked),
@@ -49,7 +49,7 @@ vi.mock("@/server/lib/posthog", () => ({
 // The API side of the provider: echo the decrypted grant props back so tests
 // can assert what a tool call would actually see after each token exchange.
 vi.mock("@/server/mcp/transport", () => ({
-  handleAuthenticatedOpenSeoMcpRequest: (
+  handleAuthenticatedSeomarineMcpRequest: (
     _request: Request,
     props: unknown,
   ): Promise<Response> => Promise.resolve(Response.json({ props })),
@@ -127,7 +127,7 @@ const ctx: ExecutionContext = {
   props: {},
 };
 
-type Provider = ReturnType<typeof createOpenSeoOAuthProvider>;
+type Provider = ReturnType<typeof createSeomarineOAuthProvider>;
 type Env = Parameters<Provider["fetch"]>[1];
 
 let provider: Provider;
@@ -135,7 +135,7 @@ let env: Env;
 
 beforeEach(() => {
   vi.useRealTimers();
-  provider = createOpenSeoOAuthProvider(() => new Response("app"));
+  provider = createSeomarineOAuthProvider(() => new Response("app"));
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the provider touches only OAUTH_KV
   env = { OAUTH_KV: createKvFake() } as unknown as Env;
 });
@@ -157,7 +157,7 @@ const tokenErrorSchema = z.looseObject({
 
 const propsEchoSchema = z.object({
   props: z.object({
-    openSeoAuth: z.looseObject({
+    seomarineAuth: z.looseObject({
       userId: z.string(),
       organizationId: z.string(),
       clientId: z.string(),
@@ -274,7 +274,7 @@ async function callMcp(accessToken: string) {
     }),
   );
   expect(response.status).toBe(200);
-  return propsEchoSchema.parse(await response.json()).props.openSeoAuth;
+  return propsEchoSchema.parse(await response.json()).props.seomarineAuth;
 }
 
 async function setupSession() {

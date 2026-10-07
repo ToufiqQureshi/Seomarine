@@ -6,7 +6,6 @@ import { recordExternalMcpToolCall } from "@/server/features/activation/mcpActiv
 import { captureServerError, captureServerEvent } from "@/server/lib/posthog";
 import { shouldCaptureAppErrorCode } from "@/shared/error-codes";
 import { type ToolContext } from "@/server/mcp/context";
-import { incrementSelfHostMcpToolCallCount } from "@/server/lib/self-host-telemetry";
 
 type ToolHandler<TArgs> = (
   args: TArgs,
@@ -42,8 +41,6 @@ function captureMcpToolCall(
     quotaRemaining?: number;
   },
 ) {
-  waitUntil(incrementSelfHostMcpToolCallCount());
-
   const auth = context.auth;
   waitUntil(
     captureServerEvent({

@@ -42,14 +42,14 @@ describe("normalizeBacklinksTarget", () => {
       },
     },
     {
-      input: "https://github.com/every-app/open-seo/",
+      input: "https://github.com/ToufiqQureshi/Seomarine/",
       options: undefined,
       expected: {
         apiTarget: "github.com",
-        displayTarget: "github.com/every-app/open-seo",
+        displayTarget: "github.com/ToufiqQureshi/Seomarine",
         scope: "subfolder",
         includeSubdomains: false,
-        path: "/every-app/open-seo",
+        path: "/ToufiqQureshi/Seomarine",
       },
     },
     {

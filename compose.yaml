@@ -1,6 +1,6 @@
 services:
-  open-seo:
-    image: ${OPEN_SEO_IMAGE:-ghcr.io/every-app/open-seo:latest}
+  seomarine:
+    image: ${SEOMARINE_IMAGE:-ghcr.io/toufiqqureshi/seomarine:latest}
     restart: unless-stopped
     # Forward EVERY .env value into the container. The explicit `environment:`
     # list below still wins for the values it names — without this, any .env
@@ -9,15 +9,12 @@ services:
     # `cp .env.example .env` creates it.
     env_file:
       - .env
-    # Anonymous usage heartbeat controls: docs/SELF_HOSTING_DOCKER.md#telemetry
     environment:
       # Required for local Docker self-hosting: exposes Compose env vars to cloudflare:workers bindings.
       - CLOUDFLARE_INCLUDE_PROCESS_ENV=true
       - PORT=${PORT:-3001}
       - ALLOWED_HOST=${ALLOWED_HOST:-}
       - AUTH_MODE=local_noauth
-      - OPENSEO_TELEMETRY_DISABLED=${OPENSEO_TELEMETRY_DISABLED:-}
-      - DO_NOT_TRACK=${DO_NOT_TRACK:-}
       - DATAFORSEO_API_KEY=${DATAFORSEO_API_KEY}
       # Optional: AI features (the SAM agent). Without this the setup
       # gate in the app asks for the key, but nothing here would forward it.
@@ -34,6 +31,6 @@ services:
     ports:
       - "127.0.0.1:${PORT:-3001}:${PORT:-3001}"
     volumes:
-      - open_seo_data:/app/.wrangler
+      - seomarine_data:/app/.wrangler
 volumes:
-  open_seo_data:
+  seomarine_data:

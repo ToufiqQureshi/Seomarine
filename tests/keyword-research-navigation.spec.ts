@@ -83,7 +83,7 @@ test.describe("Keyword Research navigation", () => {
   }) => {
     const projectId = await getProjectId(page);
 
-    for (const keyword of ["ai seo", "backlinks", "open seo"]) {
+    for (const keyword of ["ai seo", "backlinks", "seo tools"]) {
       await page.goto(
         `/p/${projectId}/keywords?q=${encodeURIComponent(keyword)}&loc=2840&kLimit=150&mode=auto`,
       );
@@ -107,11 +107,10 @@ test.describe("Keyword Research navigation", () => {
 
     await expect
       .poll(() => new URL(page.url()).searchParams.get("q"))
-      .toBe("open seo");
-    await expect(page.getByRole("tab", { name: /^open seo/i })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+      .toBe("seo tools");
+    await expect(
+      page.getByRole("tab", { name: /^seo tools/i }),
+    ).toHaveAttribute("aria-selected", "true");
     await expect(
       page.locator(`[data-search-tab-id="${closedTabId}"]`),
     ).toHaveCount(0);

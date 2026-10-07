@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isTelemetryOptOutValue,
-  looksLikeDataForSeoKey,
-  validateTeamDomain,
-} from "./selfhost-checks";
+import { looksLikeDataForSeoKey, validateTeamDomain } from "./selfhost-checks";
 
 describe("validateTeamDomain", () => {
   it("trims whitespace and trailing slashes", () => {
@@ -38,18 +34,4 @@ describe("looksLikeDataForSeoKey", () => {
   it("rejects a raw dashboard API key", () => {
     expect(looksLikeDataForSeoKey("0123456789abcdef0123")).toBe(false);
   });
-});
-
-describe("isTelemetryOptOutValue", () => {
-  it('treats "1" and "true" as opted out', () => {
-    expect(isTelemetryOptOutValue("1")).toBe(true);
-    expect(isTelemetryOptOutValue("true")).toBe(true);
-  });
-
-  it.each([undefined, null, "", "0", "false", "no", "OFF"])(
-    "treats %j as opted in",
-    (value) => {
-      expect(isTelemetryOptOutValue(value)).toBe(false);
-    },
-  );
 });

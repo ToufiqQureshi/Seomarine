@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MCP_AUTH_CONTEXT_PROP } from "@/server/mcp/context";
 import { MCP_OAUTH_SCOPES } from "@/lib/oauth-resource";
-import type { handleAuthenticatedOpenSeoMcpRequest } from "@/server/mcp/transport";
+import type { handleAuthenticatedSeomarineMcpRequest } from "@/server/mcp/transport";
 
 const mocks = vi.hoisted(() => ({
   verifyApiKey: vi.fn(),
   getHostedUser: vi.fn(),
   resolveExistingActiveHostedOrganization: vi.fn(),
   recordMcpAuthorized: vi.fn(),
-  handleAuthenticatedOpenSeoMcpRequest:
-    vi.fn<typeof handleAuthenticatedOpenSeoMcpRequest>(),
+  handleAuthenticatedSeomarineMcpRequest:
+    vi.fn<typeof handleAuthenticatedSeomarineMcpRequest>(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -38,8 +38,8 @@ vi.mock("@/server/features/activation/mcpActivation", () => ({
 }));
 
 vi.mock("@/server/mcp/transport", () => ({
-  handleAuthenticatedOpenSeoMcpRequest:
-    mocks.handleAuthenticatedOpenSeoMcpRequest,
+  handleAuthenticatedSeomarineMcpRequest:
+    mocks.handleAuthenticatedSeomarineMcpRequest,
 }));
 
 import { handleMcpApiKeyRequest } from "@/server/mcp/api-key-auth";
@@ -66,7 +66,7 @@ describe("handleMcpApiKeyRequest", () => {
       role: "owner",
     });
     mocks.recordMcpAuthorized.mockResolvedValue(undefined);
-    mocks.handleAuthenticatedOpenSeoMcpRequest.mockResolvedValue(
+    mocks.handleAuthenticatedSeomarineMcpRequest.mockResolvedValue(
       new Response("mcp response"),
     );
   });
@@ -95,11 +95,11 @@ describe("handleMcpApiKeyRequest", () => {
         mocks.resolveExistingActiveHostedOrganization,
       ).toHaveBeenCalledWith("user-1");
       expect(mocks.recordMcpAuthorized).toHaveBeenCalledWith("org-1");
-      expect(mocks.handleAuthenticatedOpenSeoMcpRequest).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(
+        mocks.handleAuthenticatedSeomarineMcpRequest,
+      ).toHaveBeenCalledTimes(1);
       const [passedRequest, props, passedEnv, passedCtx] =
-        mocks.handleAuthenticatedOpenSeoMcpRequest.mock.calls[0];
+        mocks.handleAuthenticatedSeomarineMcpRequest.mock.calls[0];
       expect(passedRequest).toBe(mcpRequest);
       expect(passedEnv).toBe(env);
       expect(passedCtx).toBe(ctx);
@@ -135,7 +135,7 @@ describe("handleMcpApiKeyRequest", () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: "account_access_revoked",
     });
-    expect(mocks.handleAuthenticatedOpenSeoMcpRequest).not.toHaveBeenCalled();
+    expect(mocks.handleAuthenticatedSeomarineMcpRequest).not.toHaveBeenCalled();
   });
 
   it("returns 401 for an invalid key without invoking the transport", async () => {
@@ -156,7 +156,7 @@ describe("handleMcpApiKeyRequest", () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: "invalid_api_key",
     });
-    expect(mocks.handleAuthenticatedOpenSeoMcpRequest).not.toHaveBeenCalled();
+    expect(mocks.handleAuthenticatedSeomarineMcpRequest).not.toHaveBeenCalled();
   });
 
   it("returns 429 with Retry-After when the MCP_RATE_LIMIT binding denies", async () => {
@@ -179,7 +179,7 @@ describe("handleMcpApiKeyRequest", () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: "rate_limited",
     });
-    expect(mocks.handleAuthenticatedOpenSeoMcpRequest).not.toHaveBeenCalled();
+    expect(mocks.handleAuthenticatedSeomarineMcpRequest).not.toHaveBeenCalled();
   });
 
   it.each([

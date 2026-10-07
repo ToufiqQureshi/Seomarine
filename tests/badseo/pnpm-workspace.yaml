@@ -3,7 +3,6 @@ allowBuilds:
   workerd: set this to true or false
 minimumReleaseAge: 11520
 minimumReleaseAgeExclude:
-  - "@every-app/*"
   # TEMPORARY (remove after 2026-10-08): latest TanStack Start release
   # requested for the security refresh. Exempt only these matching versions.
   - "@tanstack/react-router@1.170.41"

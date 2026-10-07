@@ -1,5 +1,5 @@
 {
-  "name": "open-seo",
+  "name": "seomarine",
   "private": true,
   "sideEffects": false,
   "version": "0.1.10",
@@ -13,7 +13,7 @@
     "lint": "oxlint . --type-aware",
     "lint:fix": "oxlint . --type-aware --fix",
     "preview": "npm run build && vite preview --port 3001",
-    "deploy": "npm run db:migrate:prod && npm run build && wrangler deploy -c dist/open_seo_audit/wrangler.json && wrangler deploy",
+    "deploy": "npm run db:migrate:prod && npm run build && wrangler deploy -c dist/seomarine_audit/wrangler.json && wrangler deploy",
     "deploy:selfhost": "node scripts/selfhost-deploy-preflight.mjs && vite build --mode selfhost && tsc --noEmit && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.selfhost --stage selfhost",
     "deploy:postgres": "npm run db:migrate:pg && npm run build && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.production --stage hosted-prod --adopt",
     "deploy:preview": "vite build --mode preview && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.preview",
@@ -78,7 +78,6 @@
     "@better-auth/api-key": "1.6.22",
     "@cloudflare/think": "0.17.0",
     "@cloudflare/workers-oauth-provider": "^0.10.2",
-    "@every-app/sdk": "^0.1.14",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/sdk": "1.30.0",

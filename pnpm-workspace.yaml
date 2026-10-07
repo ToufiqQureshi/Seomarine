@@ -1,6 +1,5 @@
 minimumReleaseAge: 11520
 minimumReleaseAgeExclude:
-  - "@every-app/*"
   # TEMPORARY (remove after 2026-10-01): DOMPurify security fix, GHSA-p98j-92pf-mc4p.
   - "dompurify@3.4.16"
   # TEMPORARY (remove after 2026-10-08): latest TanStack Start release

@@ -45,9 +45,9 @@ touch .logs/dev-server.log
 pnpm dev:agents
 ```
 
-`pnpm dev:agents` runs through [portless](https://github.com/vercel-labs/portless) at `http://open-seo.localhost:1355` by default.
+`pnpm dev:agents` runs through [portless](https://github.com/vercel-labs/portless) at `http://seomarine.localhost:1355` by default.
 
-When using a git worktree, [portless](https://github.com/vercel-labs/portless) prefixes the branch name, for example `http://feature-name.open-seo.localhost:1355`.
+When using a git worktree, [portless](https://github.com/vercel-labs/portless) prefixes the branch name, for example `http://feature-name.seomarine.localhost:1355`.
 
 ## Report share images
 
@@ -56,7 +56,7 @@ local report, and open its `/s/<token>/og.png` URL. Inspect the share page's
 initial HTML for `og:image` and `twitter:image`, then revoke the share and check
 that the image returns 404. Report saves and changes to the displayed project
 hostname update the image URL's version. If rendering fails for a valid share,
-the image route redirects to the existing OpenSEO marketing card.
+the image route redirects to the existing Seomarine marketing card.
 Social platforms may retain their own previews; our image responses are
 `no-store` and check access on each request. An actual social crawler needs a
 publicly reachable page and image; the Access-protected preview environment

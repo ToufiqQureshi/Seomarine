@@ -99,7 +99,7 @@ type ToolArgs<Input extends ToolSchema> = Input extends z.ZodType
     ? z.infer<z.ZodObject<Input>>
     : never;
 
-type OpenSeoToolDefinition<Input extends ToolSchema> = {
+type SeomarineToolDefinition<Input extends ToolSchema> = {
   name: string;
   config: {
     title?: string;
@@ -114,9 +114,9 @@ type OpenSeoToolDefinition<Input extends ToolSchema> = {
   ) => CallToolResult | Promise<CallToolResult>;
 };
 
-function registerOpenSeoTool<Input extends ToolSchema>(
+function registerSeomarineTool<Input extends ToolSchema>(
   server: McpServer,
-  tool: OpenSeoToolDefinition<Input>,
+  tool: SeomarineToolDefinition<Input>,
   authProps: McpProps,
 ) {
   // Output objects must allow added fields, including nested objects. The
@@ -146,7 +146,7 @@ function registerOpenSeoTool<Input extends ToolSchema>(
   );
 }
 
-export function createOpenSeoMcpServer(authProps: McpProps) {
+export function createSeomarineMcpServer(authProps: McpProps) {
   const server = new McpServer(
     {
       name: "Seomarine MCP",
@@ -167,8 +167,8 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
   );
 
   const register = <Input extends ToolSchema>(
-    tool: OpenSeoToolDefinition<Input>,
-  ) => registerOpenSeoTool(server, tool, authProps);
+    tool: SeomarineToolDefinition<Input>,
+  ) => registerSeomarineTool(server, tool, authProps);
 
   register(whoamiTool);
   register(listProjectsTool);

@@ -173,7 +173,7 @@ export async function runScheduledRankChecks(env: Env) {
           projectId: config.projectId,
           billingCustomer: {
             userId: "system",
-            userEmail: "system@openseo.so",
+            userEmail: "system@seomarine.com",
             organizationId: config.organizationId,
             projectId: config.projectId,
           },

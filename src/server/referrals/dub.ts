@@ -6,8 +6,8 @@ import { captureServerError } from "@/server/lib/posthog";
 import { buildDubSaleRequest } from "./dub-sale";
 
 // Dub referral attribution (hosted only). Flow:
-//  1. links.openseo.so/<partner> redirects to openseo.so/?dub_id=<clickId>;
-//     the marketing site persists it as a `dub_id` cookie on `.openseo.so`.
+//  1. links.seomarine.com/<partner> redirects to seomarine.com/?dub_id=<clickId>;
+//     the marketing site persists it as a `dub_id` cookie on `.seomarine.com`.
 //  2. On signup we send a Dub lead and pin `referred-user:<userId>` in KV.
 //     The lead creates a pseudonymous Dub customer record (random name +
 //     our user id) — GDPR erasure deletes the KV pins here and the Dub-side

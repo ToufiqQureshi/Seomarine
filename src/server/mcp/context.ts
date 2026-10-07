@@ -42,7 +42,7 @@ export type ToolContext = {
   turnId?: string;
 };
 
-export const MCP_AUTH_CONTEXT_PROP = "openSeoAuth";
+export const MCP_AUTH_CONTEXT_PROP = "seomarineAuth";
 export const MCP_ROUTE = "/mcp";
 
 const applicationAuthContextSchema = z.object({
@@ -128,7 +128,7 @@ export function createMcpToolContext(
   }
 
   // Scope enforcement happens once, at the hosted transport boundary
-  // (handleAuthenticatedOpenSeoMcpRequest); this only assembles identity.
+  // (handleAuthenticatedSeomarineMcpRequest); this only assembles identity.
   const applicationAuth = result.data[MCP_AUTH_CONTEXT_PROP];
   const authInfo = context.http?.authInfo;
   const clientId = authInfo?.clientId ?? applicationAuth.clientId ?? null;
