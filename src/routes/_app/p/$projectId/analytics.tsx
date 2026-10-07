@@ -1,27 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChartNoAxesCombined } from "lucide-react";
-import { EmptyState } from "@/client/components/EmptyState";
-import { ProjectPageHeader } from "@/client/features/projects/ProjectPageHeader";
+import { z } from "zod";
+import { AnalyticsPage } from "@/client/features/analytics/AnalyticsPage";
+
+const searchSchema = z.object({
+  days: z.union([z.literal(7), z.literal(30), z.literal(90)]).catch(30),
+});
 
 export const Route = createFileRoute("/_app/p/$projectId/analytics")({
+  validateSearch: searchSchema,
   component: AnalyticsRoute,
 });
 
-// Placeholder until the analytics dashboard (served by the Go API) lands.
 function AnalyticsRoute() {
   const { projectId } = Route.useParams();
+  const { days } = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
-    <div className="h-full overflow-auto px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <ProjectPageHeader projectId={projectId} title="Analytics" />
-        <EmptyState
-          variant="card"
-          size="lg"
-          icon={ChartNoAxesCombined}
-          title="Analytics is on its way"
-          description="Soon you will see who visits your site, which pages they read, and how many people arrive from ChatGPT, Perplexity, Gemini, Claude and Copilot."
-        />
-      </div>
-    </div>
+    <AnalyticsPage
+      projectId={projectId}
+      days={days}
+      onDaysChange={(next) => void navigate({ search: { days: next } })}
+    />
   );
 }
