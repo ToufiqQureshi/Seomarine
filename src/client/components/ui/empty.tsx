@@ -7,7 +7,7 @@ const emptyVariants = cva(
     variants: {
       variant: {
         plain: "",
-        dashed: "border border-dashed border-border",
+        dashed: "border border-dashed border-border bg-muted/40",
         card: "border border-solid border-border bg-card text-card-foreground shadow-sm",
       },
       size: {
@@ -55,7 +55,7 @@ const emptyMediaVariants = cva(
     variants: {
       variant: {
         default: "bg-transparent",
-        icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-foreground/5 text-muted-foreground [&_svg:not([class*='size-'])]:size-5",
+        icon: "flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20 group-data-[size=sm]/empty:size-9 group-data-[size=sm]/empty:rounded-lg [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {
@@ -83,7 +83,10 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-title"
-      className={cn("text-sm font-semibold tracking-tight", className)}
+      className={cn(
+        "text-base font-semibold tracking-tight group-data-[size=sm]/empty:text-sm",
+        className,
+      )}
       {...props}
     />
   );

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { projectsQueryOptions } from "@/client/features/projects/projectQueries";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useMatchRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   MissingSeoSetupModal,
@@ -11,7 +11,12 @@ import { Sidebar } from "@/client/components/Sidebar";
 import { BILLING_ROUTE } from "@/shared/billing";
 import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { getLastProjectId } from "@/client/lib/active-project";
-import { dataforseoHelpLinkOptions } from "@/client/navigation/items";
+import {
+  accountNavGroup,
+  connectNavGroup,
+  dataforseoHelpLinkOptions,
+  getProjectNavGroups,
+} from "@/client/navigation/items";
 import {
   SidebarInset,
   SidebarProvider,
@@ -111,8 +116,8 @@ export function AuthenticatedAppLayout({
         projectPending={sidebarProjectPending}
         ready={ready}
       />
-      <SidebarInset className="min-h-0 overflow-hidden md:!m-0 md:!mt-2 md:!rounded-none md:!rounded-tl-lg md:border-l md:border-t md:border-sidebar-border md:!shadow-none">
-        <MobileTopBar />
+      <SidebarInset className="min-h-0 overflow-hidden">
+        <AppHeader projectId={sidebarProjectId} />
         <SeoApiStatusBanners
           shouldShowSeoApiWarning={shouldShowSeoApiWarning}
           seoApiKeyStatusError={seoApiKeyStatusError}
@@ -137,17 +142,48 @@ export function AuthenticatedAppLayout({
   );
 }
 
-function MobileTopBar() {
+// The bar above every page: the sidebar toggle, the brand on small screens,
+// and where the current page sits in the navigation.
+function AppHeader({ projectId }: { projectId: string | null }) {
+  const matchRoute = useMatchRoute();
+  const groups = [
+    ...(projectId === null
+      ? [connectNavGroup]
+      : getProjectNavGroups(projectId)),
+    accountNavGroup,
+  ];
+  const current = groups
+    .flatMap((group) => group.items.map((item) => ({ group, item })))
+    .find(({ item }) =>
+      matchRoute({
+        ...item.link,
+        fuzzy: !item.link.activeOptions?.exact,
+      }),
+    );
+
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card px-2 py-1.5 md:hidden">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3 md:px-4">
       <SidebarTrigger aria-label="Toggle sidebar" />
       <Link
         to="/"
-        className="ml-1 flex items-center gap-2 font-bold tracking-tight text-foreground"
+        className="flex items-center gap-2 font-bold tracking-tight text-foreground md:hidden"
       >
-        <img src="/logo.svg" alt="" className="size-5" />
+        <img src="/logo.svg" alt="" className="size-6" />
         Seomarine
       </Link>
-    </div>
+      {current ? (
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 md:block">
+          <ol className="flex items-center gap-1.5 text-sm">
+            <li className="text-muted-foreground">{current.group.label}</li>
+            <li aria-hidden className="text-muted-foreground">
+              /
+            </li>
+            <li aria-current="page" className="truncate font-medium">
+              {current.item.label}
+            </li>
+          </ol>
+        </nav>
+      ) : null}
+    </header>
   );
 }

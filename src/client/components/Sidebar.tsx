@@ -1,23 +1,24 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import type { LinkOptions } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeftRight,
   Check,
-  CircleHelp,
+  ChevronsUpDown,
   CreditCard,
   LogOut,
   Settings,
-  User,
 } from "lucide-react";
 import { organizationContextQueryOptions } from "@/client/features/team/organizationQueries";
 import { switchOrganization } from "@/serverFunctions/organization";
 import {
+  accountNavGroup,
   connectNavGroup,
   getProjectNavGroups,
+  type NavItem,
 } from "@/client/navigation/items";
+import { Badge } from "@/client/components/ui/badge";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
 import {
   SamChatListSkeleton,
@@ -51,18 +52,16 @@ import {
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
 
+// The active page is a raised card in the sidebar with its icon in the brand
+// color; other rows stay quiet until hovered.
 const navButtonClass =
-  "relative text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:before:absolute data-active:before:inset-y-1 data-active:before:left-0 data-active:before:w-[3px] data-active:before:rounded-r-full data-active:before:bg-primary";
+  "h-9 rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground [&_svg]:text-sidebar-foreground/55 data-active:bg-card data-active:font-semibold data-active:text-foreground data-active:shadow-sm data-active:ring-1 data-active:ring-sidebar-border data-active:[&_svg]:text-primary";
 
 function SidebarNavLink({
-  icon: Icon,
-  label,
-  linkProps,
+  item: { icon: Icon, label, badge, link },
   placeholder = false,
 }: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  linkProps: LinkOptions;
+  item: NavItem;
   /** Show the row without its link, while its project is still unknown. */
   placeholder?: boolean;
 }) {
@@ -75,7 +74,12 @@ function SidebarNavLink({
       className={navButtonClass}
     >
       <Icon className="size-4" />
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
+      {badge ? (
+        <Badge size="sm" className="ml-auto">
+          {badge}
+        </Badge>
+      ) : null}
     </SidebarMenuButton>
   );
   return (
@@ -84,11 +88,11 @@ function SidebarNavLink({
         row(false)
       ) : (
         <Link
-          {...linkProps}
+          {...link}
           activeOptions={{
             exact: false,
             includeSearch: false,
-            ...linkProps.activeOptions,
+            ...link.activeOptions,
           }}
           onClick={() => setOpenMobile(false)}
         >
@@ -125,15 +129,22 @@ export function Sidebar({
   const onSamRoute = pathname.includes("/sam");
 
   return (
-    <UiSidebar variant="inset" collapsible="offcanvas" className="md:!p-0">
-      <SidebarHeader className="gap-0 px-3 pb-1 pt-3">
+    <UiSidebar collapsible="offcanvas">
+      <SidebarHeader className="gap-3 px-3 pb-2 pt-4">
         <Link
           to="/"
           onClick={() => setOpenMobile(false)}
-          className="flex items-center gap-2 px-1 pb-2 text-base font-bold tracking-tight text-sidebar-foreground"
+          className="flex items-center gap-2.5 rounded-lg px-1 text-sidebar-foreground"
         >
-          <img src="/logo.svg" alt="" className="size-6" />
-          Seomarine
+          <img src="/logo.svg" alt="" className="size-8" />
+          <span className="flex flex-col leading-tight">
+            <span className="text-base font-bold tracking-tight">
+              Seomarine
+            </span>
+            <span className="text-xs text-sidebar-foreground/60">
+              SEO + AI search
+            </span>
+          </span>
         </Link>
         <ProjectSwitcher
           activeProjectId={projectId}
@@ -160,24 +171,19 @@ export function Sidebar({
             aria-busy={navPlaceholder || undefined}
           >
             {navGroups.map((group) => (
-              <SidebarGroup key={group.label} className="py-1">
-                <SidebarGroupLabel className="h-7 uppercase tracking-wider text-sidebar-foreground/40">
+              <SidebarGroup key={group.label} className="px-3 py-1.5">
+                <SidebarGroupLabel className="h-7 px-1 font-semibold text-sidebar-foreground/60">
                   {group.label}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.items.map((item) => {
-                      const { icon, label, ...linkProps } = item;
-                      return (
-                        <SidebarNavLink
-                          key={linkProps.to}
-                          icon={icon}
-                          label={label}
-                          linkProps={linkProps}
-                          placeholder={navPlaceholder}
-                        />
-                      );
-                    })}
+                    {group.items.map((item) => (
+                      <SidebarNavLink
+                        key={item.label}
+                        item={item}
+                        placeholder={navPlaceholder}
+                      />
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -215,28 +221,33 @@ function AccountFooter({ ready }: { ready: boolean }) {
   }
 
   return (
-    <UiSidebarFooter className="gap-0 border-t border-sidebar-border pb-safe">
+    <UiSidebarFooter className="gap-1 border-t border-sidebar-border px-3 pb-safe">
       <SidebarMenu>
-        <SidebarNavLink
-          icon={CircleHelp}
-          label="Help & Community"
-          linkProps={{ to: "/support" }}
-        />
+        {accountNavGroup.items.map((item) => (
+          <SidebarNavLink key={item.label} item={item} />
+        ))}
         {email ? (
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <SidebarMenuButton
-                    className={navButtonClass}
+                    size="lg"
+                    className="mt-1 h-11 rounded-lg hover:bg-sidebar-accent"
                     aria-label="Open account menu"
                   />
                 }
               >
-                <User className="size-4" />
-                <span className="truncate" data-ph-mask>
+                <span
+                  aria-hidden
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold uppercase text-primary-foreground"
+                >
+                  {email.charAt(0)}
+                </span>
+                <span className="min-w-0 flex-1 truncate" data-ph-mask>
                   {email}
                 </span>
+                <ChevronsUpDown className="size-4 text-sidebar-foreground/55" />
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
                 {organizations.length > 1 ? (
@@ -286,7 +297,7 @@ function AccountFooter({ ready }: { ready: boolean }) {
                   }
                 >
                   <CreditCard className="size-4" />
-                  Billing
+                  Usage & credits
                 </DropdownMenuItem>
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Theme</DropdownMenuLabel>
@@ -307,9 +318,11 @@ function AccountFooter({ ready }: { ready: boolean }) {
           </SidebarMenuItem>
         ) : ready ? (
           <SidebarNavLink
-            icon={Settings}
-            label="Settings"
-            linkProps={{ to: "/settings" }}
+            item={{
+              label: "Settings",
+              icon: Settings,
+              link: { to: "/settings" },
+            }}
           />
         ) : (
           // The account row's slot while the session loads.
