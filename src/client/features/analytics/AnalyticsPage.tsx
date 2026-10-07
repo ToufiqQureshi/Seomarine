@@ -24,7 +24,7 @@ import {
   deviceRows,
   TrafficChartCard,
 } from "./AnalyticsCards";
-import { aiShareOfVisitors, formatShare } from "./presentation";
+import { aiShareOfVisitors, displayPath, formatShare } from "./presentation";
 import { TrackingCodeCard } from "./TrackingCodeCard";
 
 const RANGE_ITEMS = RANGE_DAYS.map((days) => ({
@@ -166,7 +166,7 @@ function Dashboard({ summary }: { summary: AnalyticsSummary }) {
           emptyTitle="No pages viewed in this period"
           rows={summary.topPages.map((row) => ({
             key: row.path,
-            label: row.path,
+            label: displayPath(row.path),
             count: row.pageviews,
           }))}
         />

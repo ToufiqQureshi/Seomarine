@@ -17,7 +17,7 @@ import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { getSignInHref, getSignInHrefForLocation } from "@/lib/auth-redirect";
 
 const CLOUDFLARE_SETUP_GUIDE_URL =
-  "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE.md#2-configure-authentication-and-secrets";
+  "https://github.com/ToufiqQureshi/seomarine/blob/main/docs/SELF_HOSTING_CLOUDFLARE.md#3-create-envselfhost";
 
 type CardProps = {
   message: string;

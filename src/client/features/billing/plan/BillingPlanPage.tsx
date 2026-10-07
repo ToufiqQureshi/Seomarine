@@ -108,7 +108,7 @@ function StatusError({
 
 function PlanCard({ status }: { status: BillingStatus }) {
   const isPro = status.plan === "pro";
-  const { label, detail } = describeStatus(status.status);
+  const { label, detail, canUpgrade } = describeStatus(status.status);
   const renews = status.currentPeriodEnd
     ? new Date(status.currentPeriodEnd).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -129,7 +129,7 @@ function PlanCard({ status }: { status: BillingStatus }) {
         <CardDescription>
           {isPro
             ? renews
-              ? `${status.status === "cancelled" ? "Ends" : "Renews"} on ${renews}.`
+              ? `Renews on ${renews}.`
               : "Your Pro plan is set up."
             : `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month, taxes included.`}
         </CardDescription>
@@ -145,7 +145,7 @@ function PlanCard({ status }: { status: BillingStatus }) {
           ))}
         </ul>
       </CardContent>
-      {isPro ? null : (
+      {isPro || !canUpgrade ? null : (
         <CardFooter>
           <UpgradeButton />
         </CardFooter>

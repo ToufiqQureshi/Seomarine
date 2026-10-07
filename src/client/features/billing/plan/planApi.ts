@@ -24,10 +24,12 @@ export function createCheckout(): Promise<CheckoutSession> {
   return apiRequest("/api/v1/billing/checkout", checkoutSchema, "POST");
 }
 
-// Razorpay subscription states (plus "free" for no subscription), in words
-// an owner understands. Anything else shows as sent.
+// Razorpay subscription states (plus "none" for no subscription), in words
+// an owner understands. Anything else shows as sent. The Go API grants Pro
+// only while a subscription is authenticated, active or pending, so every
+// other state arrives with plan "free".
 const STATUS_TEXT: Record<string, { label: string; detail?: string }> = {
-  free: { label: "Free" },
+  none: { label: "Free" },
   created: {
     label: "Awaiting payment",
     detail: "Finish checkout to start your Pro plan.",
@@ -42,21 +44,39 @@ const STATUS_TEXT: Record<string, { label: string; detail?: string }> = {
     detail: "Your last payment didn't go through. Razorpay will try again.",
   },
   halted: {
-    label: "Paused",
+    label: "Payment failed",
     detail:
-      "Payments failed several times. Update your payment method in Razorpay to continue Pro.",
+      "Payments failed several times, so Pro is off. Update your payment method in Razorpay to turn it back on.",
+  },
+  paused: {
+    label: "Paused",
+    detail: "Your subscription is paused, so Pro is off until it resumes.",
   },
   cancelled: {
     label: "Cancelled",
-    detail: "You keep Pro until the end of the current period.",
+    detail: "Your Pro plan was cancelled. You can upgrade again any time.",
   },
   completed: { label: "Ended" },
   expired: { label: "Expired" },
 };
 
+// States of a subscription that can still charge the customer. The Go API
+// refuses a second checkout for these, so the page offers no Upgrade button.
+const LIVE_STATUSES = new Set([
+  "authenticated",
+  "active",
+  "pending",
+  "halted",
+  "paused",
+]);
+
 export function describeStatus(status: string): {
   label: string;
   detail?: string;
+  canUpgrade: boolean;
 } {
-  return STATUS_TEXT[status] ?? { label: status };
+  return {
+    ...(STATUS_TEXT[status] ?? { label: status }),
+    canUpgrade: !LIVE_STATUSES.has(status),
+  };
 }

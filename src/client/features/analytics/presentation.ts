@@ -108,3 +108,15 @@ export function formatShare(share: number): string {
   if (share > 0 && share < 0.005) return "<1%";
   return percent.format(share);
 }
+
+/**
+ * A page path as people read it. The API sends paths percent-encoded, so
+ * "/%E0%A4%B9" shows as "/ह". A malformed escape shows as sent.
+ */
+export function displayPath(path: string): string {
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/seomarineApi";
-import { billingStatusQueryOptions, createCheckout } from "./planApi";
+import {
+  billingStatusQueryOptions,
+  createCheckout,
+  describeStatus,
+} from "./planApi";
 
 function respondWith(body: unknown) {
   return vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json(body));
@@ -8,7 +12,7 @@ function respondWith(body: unknown) {
 
 describe("billing status", () => {
   it.each([
-    { plan: "free", status: "free", currentPeriodEnd: null },
+    { plan: "free", status: "none", currentPeriodEnd: null },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
       plan: "pro",
@@ -40,5 +44,27 @@ describe("createCheckout", () => {
       "/api/v1/billing/checkout",
       { method: "POST" },
     ]);
+  });
+});
+
+describe("describeStatus", () => {
+  // The Go API sends these exact values; a missing mapping shows raw words.
+  it.each([
+    ["none", "Free", true],
+    ["created", "Awaiting payment", true],
+    ["active", "Active", false],
+    ["halted", "Payment failed", false],
+    ["paused", "Paused", false],
+    ["cancelled", "Cancelled", true],
+    ["expired", "Expired", true],
+  ])("%s reads %s, upgrade offered: %s", (status, label, canUpgrade) => {
+    expect(describeStatus(status)).toMatchObject({ label, canUpgrade });
+  });
+
+  it("shows an unknown status as sent", () => {
+    expect(describeStatus("on_hold")).toEqual({
+      label: "on_hold",
+      canUpgrade: true,
+    });
   });
 });

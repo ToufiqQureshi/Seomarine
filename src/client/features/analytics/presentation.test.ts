@@ -3,6 +3,7 @@ import {
   aiShareOfVisitors,
   aiSourceRows,
   channelRows,
+  displayPath,
   formatShare,
 } from "./presentation";
 
@@ -85,5 +86,17 @@ describe("formatShare", () => {
     [1, "100%"],
   ])("%s -> %s", (share, text) => {
     expect(formatShare(share)).toBe(text);
+  });
+});
+
+describe("displayPath", () => {
+  it.each([
+    ["/pricing", "/pricing"],
+    ["/%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80", "/हिंदी"],
+    // An encoded slash stays encoded: decoding it would change the path.
+    ["/a%2Fb", "/a%2Fb"],
+    ["/bad%E0%A4", "/bad%E0%A4"],
+  ])("%s -> %s", (path, shown) => {
+    expect(displayPath(path)).toBe(shown);
   });
 });
