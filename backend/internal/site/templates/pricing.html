@@ -1,0 +1,54 @@
+{{template "head" .}}
+<main id="main">
+<div class="wrap hero">
+<h1>Simple pricing. No surprises.</h1>
+<p class="lead">One price in rupees, AI visibility included and no credits to count. Start free, upgrade when you are ready and cancel in one click.</p>
+</div>
+
+<section class="alt" aria-labelledby="plans">
+<div class="wrap">
+<h2 id="plans" class="center">Plans</h2>
+{{template "plans" .}}
+<p class="note center">Prices are per workspace, per month, in Indian rupees.</p>
+</div>
+</section>
+
+<section aria-labelledby="compare">
+<div class="wrap">
+<div class="section-head">
+<h2 id="compare">How Seomarine compares</h2>
+<p>What you pay for the things people complain about most.</p>
+</div>
+<div class="table-scroll">
+<table>
+<caption class="skip">Seomarine compared with Semrush and Ahrefs</caption>
+<thead><tr><th scope="col"></th><th scope="col">Seomarine Pro</th><th scope="col">Semrush</th><th scope="col">Ahrefs</th></tr></thead>
+<tbody>
+<tr><th scope="row">AI visibility</th><td>Included</td><td>Add-on, about $99 a month per domain</td><td>Sold separately</td></tr>
+<tr><th scope="row">Rows per report</th><td>No cap on our own data</td><td>Capped by plan</td><td>2,500 on the Lite plan</td></tr>
+<tr><th scope="row">Price</th><td>{{inr .ProPriceINR}} a month, flat</td><td>About $140 a month per Pro seat</td><td>Plan plus usage credits</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Semrush and Ahrefs details are from their public pricing pages in 2026. Check their sites for current prices.</p>
+</div>
+</section>
+
+<section class="alt" aria-labelledby="faq">
+<div class="wrap">
+<div class="section-head"><h2 id="faq">Billing questions</h2></div>
+{{template "faq" .}}
+</div>
+</section>
+
+<section aria-labelledby="start">
+<div class="wrap">
+<div class="final">
+<h2 id="start">Try Seomarine free</h2>
+<p>No card needed. Upgrade to Pro only when it pays for itself.</p>
+<a class="btn btn-primary" href="{{.SignUp}}">Create your free account</a>
+</div>
+</div>
+</section>
+</main>
+{{template "footer" .}}

@@ -37,6 +37,8 @@
     // Skill-bundled scripts, run by hand from the skill's instructions
     "!.agents/**",
     "!.claude/**",
+    // The Go server owns backend/ (tracker.js is embedded with go:embed)
+    "!backend/**",
   ],
   "ignore": ["drizzle/remote-d1.config.ts"],
   // Disable Drizzle plugin - it tries to load drizzle/sqlite.config.ts which imports cloudflare:workers

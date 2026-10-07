@@ -15,3 +15,5 @@ drizzle/sqlite/
 drizzle/pg/
 planning/
 src/worker-configuration.d.ts
+# Go backend: gofmt formats Go, and Go templates are not HTML prettier can parse
+backend/

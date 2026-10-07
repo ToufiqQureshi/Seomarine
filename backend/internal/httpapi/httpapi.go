@@ -4,9 +4,17 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"time"
+
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
 // Pinger reports whether a dependency is reachable. *pgxpool.Pool satisfies it.
@@ -14,32 +22,199 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-const readinessTimeout = 2 * time.Second
+// PingFunc adapts a function to Pinger, e.g. a Redis client's ping.
+type PingFunc func(ctx context.Context) error
+
+// Ping calls f.
+func (f PingFunc) Ping(ctx context.Context) error { return f(ctx) }
+
+// Deps are the dependencies of the root handler.
+type Deps struct {
+	Logger    *slog.Logger
+	DB        Pinger
+	Redis     Pinger
+	Auth      *auth.Service
+	Analytics *analytics.Service
+	// Billing is nil when Razorpay is not configured; billing routes then
+	// answer 503.
+	Billing *billing.Service
+	// Site is the public landing and pricing pages.
+	Site *site.Site
+	// Upstream is the legacy app that serves every route not listed here.
+	Upstream *url.URL
+}
+
+const (
+	readinessTimeout = 2 * time.Second
+	// upstreamHeaderTimeout bounds how long the legacy app may take to start
+	// answering; it matches the server's write timeout.
+	upstreamHeaderTimeout = 30 * time.Second
+)
 
 // NewHandler returns the root handler.
 //
 // /healthz is liveness: the process is up and serving. /readyz is readiness:
-// the database answers, so a load balancer can stop routing to an instance
-// that has lost Postgres without restarting it.
-func NewHandler(logger *slog.Logger, db Pinger) http.Handler {
+// Postgres and Redis answer, so a load balancer can stop routing to an
+// instance that has lost one without restarting it.
+//
+// /t.js and /collect are the public analytics tracker and its ingest, and
+// /webhooks/razorpay is authenticated by its signature, not a session.
+//
+// GET /pricing and the landing page are public marketing pages. The landing
+// page lives at GET /, where signed-in users get the app instead.
+//
+// Everything under /api/v1/ needs a session, and everything under
+// /api/v1/projects/{projectId}/ also needs membership of the project's
+// organization, so a route added there cannot forget either check. Every
+// other request goes to the legacy app.
+func NewHandler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, logger, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, d.Logger, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
 		defer cancel()
-		if err := db.Ping(ctx); err != nil {
-			logger.WarnContext(ctx, "readiness check failed", "err", err)
-			writeJSON(w, logger, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
-			return
+		for name, dep := range map[string]Pinger{"postgres": d.DB, "redis": d.Redis} {
+			if err := dep.Ping(ctx); err != nil {
+				d.Logger.WarnContext(ctx, "readiness check failed", "dependency", name, "err", err)
+				writeJSON(w, d.Logger, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+				return
+			}
 		}
-		writeJSON(w, logger, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, d.Logger, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
+	app := newUpstreamProxy(d.Logger, d.Upstream)
+
+	mux.HandleFunc("GET /{$}", landing(d.Logger, d.Auth, d.Site, app))
+	mux.HandleFunc("GET /pricing", d.Site.ServePricing)
+	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
+
+	mux.HandleFunc("GET /t.js", serveTracker())
+	mux.HandleFunc("POST /collect", collect(d.Logger, d.Analytics))
+	mux.HandleFunc("OPTIONS /collect", collectPreflight)
+	mux.HandleFunc("POST /webhooks/razorpay", razorpayWebhook(d.Logger, d.Billing))
+
+	projectRoutes := http.NewServeMux()
+	projectRoutes.HandleFunc("POST /api/v1/projects/{projectId}/analytics/site", ensureSite(d.Logger, d.Analytics))
+	projectRoutes.HandleFunc("GET /api/v1/projects/{projectId}/analytics/summary", summary(d.Logger, d.Analytics))
+	projectRoutes.HandleFunc("/", notFound(d.Logger))
+
+	api := http.NewServeMux()
+	api.HandleFunc("GET /api/v1/billing/status", billingStatus(d.Logger, d.Billing))
+	api.HandleFunc("POST /api/v1/billing/checkout", billingCheckout(d.Logger, d.Billing))
+	api.Handle("/api/v1/projects/{projectId}/", requireProjectAccess(d.Logger, d.Auth, projectRoutes))
+	api.HandleFunc("/", notFound(d.Logger))
+	mux.Handle("/api/v1/", requireSession(d.Logger, d.Auth, api))
+
+	mux.Handle("/", app)
+
 	return mux
+}
+
+type userKey struct{}
+
+// requireSession answers 401 unless the request carries a valid session,
+// and passes the session's user to next in the request context.
+func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, err := authn.Authenticate(r)
+		if errors.Is(err, auth.ErrUnauthenticated) {
+			writeError(w, logger, http.StatusUnauthorized, "unauthenticated", "Sign in to continue.")
+			return
+		}
+		if err != nil {
+			logger.ErrorContext(r.Context(), "authenticate request", "err", err)
+			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userKey{}, user)))
+	})
+}
+
+// requireProjectAccess answers 404 unless the signed-in user is a member of
+// the organization that owns the {projectId} in the path. It runs inside
+// requireSession; without a user in the context it fails closed, because no
+// member row has an empty user id.
+func requireProjectAccess(logger *slog.Logger, authz *auth.Service, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, _ := r.Context().Value(userKey{}).(auth.User)
+		err := authz.AuthorizeProject(r.Context(), user.ID, r.PathValue("projectId"))
+		if errors.Is(err, auth.ErrProjectNotFound) {
+			writeError(w, logger, http.StatusNotFound, "project_not_found", "Project not found.")
+			return
+		}
+		if err != nil {
+			logger.ErrorContext(r.Context(), "authorize project", "err", err)
+			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// landing serves the landing page to visitors without a valid session and
+// the app to everyone else. A session lookup that fails for another reason,
+// such as a database error, comes from a correctly signed cookie, so the
+// visitor is most likely signed in and goes to the app.
+func landing(logger *slog.Logger, authn *auth.Service, pages *site.Site, app http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// The response depends on the session cookie, so caches must key on it.
+		w.Header().Add("Vary", "Cookie")
+		_, err := authn.Authenticate(r)
+		if errors.Is(err, auth.ErrUnauthenticated) {
+			pages.ServeLanding(w, r)
+			return
+		}
+		if err != nil {
+			logger.ErrorContext(r.Context(), "authenticate landing visitor", "err", err)
+		}
+		app.ServeHTTP(w, r)
+	}
+}
+
+func notFound(logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, logger, http.StatusNotFound, "not_found", "No such endpoint.")
+	}
+}
+
+// newUpstreamProxy forwards requests to the legacy app unchanged: same Host
+// (the legacy app builds absolute URLs and cookies from it), cookies, path
+// and query. Railway's edge sets X-Forwarded-For and X-Forwarded-Proto; they
+// are passed through so the legacy app sees the real client and scheme.
+func newUpstreamProxy(logger *slog.Logger, upstream *url.URL) *httputil.ReverseProxy {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = upstreamHeaderTimeout
+	return &httputil.ReverseProxy{
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(upstream)
+			pr.Out.Host = pr.In.Host
+			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
+			pr.SetXForwarded()
+			if proto := pr.In.Header.Get("X-Forwarded-Proto"); proto != "" {
+				pr.Out.Header.Set("X-Forwarded-Proto", proto)
+			}
+		},
+		Transport: transport,
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			logger.ErrorContext(r.Context(), "proxy to legacy app", "err", err)
+			writeError(w, logger, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
+		},
+	}
+}
+
+type apiError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// writeError writes the API's error shape: {"error": {"code", "message"}}.
+func writeError(w http.ResponseWriter, logger *slog.Logger, status int, code, message string) {
+	writeJSON(w, logger, status, map[string]apiError{"error": {Code: code, Message: message}})
 }
 
 func writeJSON(w http.ResponseWriter, logger *slog.Logger, status int, body any) {

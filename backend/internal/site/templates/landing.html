@@ -1,0 +1,73 @@
+{{template "head" .}}
+<main id="main">
+<div class="wrap hero">
+<h1>Rank in Google. Get recommended by AI.</h1>
+<p class="lead">Seomarine shows where you rank, what to fix next, where ChatGPT, Perplexity, Gemini and Claude mention you, and how many visitors they send. One tool, honest rupee pricing.</p>
+<div class="cta-row">
+<a class="btn btn-primary" href="{{.SignUp}}">Start free</a>
+<a class="btn btn-ghost" href="/pricing">See pricing</a>
+</div>
+<p class="note">Free plan, no card needed. Pro cancels in one click.</p>
+</div>
+
+<section class="alt" aria-labelledby="why">
+<div class="wrap">
+<div class="section-head">
+<h2 id="why">Why teams switch from Semrush and Ahrefs</h2>
+<p>We built Seomarine around the complaints we hear most about the big tools.</p>
+</div>
+<div class="grid cols-3">
+<div class="card"><h3>Honest pricing</h3><p>One price in rupees. No credits to count, no row caps on our own data and no surprise increases.</p></div>
+<div class="card"><h3>AI visibility included</h3><p>See your brand in ChatGPT, Perplexity, Gemini, AI Overviews and Claude without paying for a separate add-on.</p></div>
+<div class="card"><h3>Visitors from AI, counted</h3><p>Most AI traffic shows up as "Direct" in ordinary analytics. Seomarine Analytics tells you which assistant sent each visitor.</p></div>
+<div class="card"><h3>Simple by design</h3><p>Every screen has one clear next step, and every finding has a plain-language explanation and a suggested fix.</p></div>
+<div class="card"><h3>Cancel in one click</h3><p>No retention calls and no two-step cancellation. You keep what you paid for until the month ends.</p></div>
+<div class="card"><h3>Ready for clients</h3><p>Agencies send white-label reports with their own logo, name and colours.</p></div>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="features">
+<div class="wrap">
+<div class="section-head">
+<h2 id="features">Everything you need to grow organic and AI traffic</h2>
+<p>Each feature is built so a business owner gets value in minutes and an agency can show it to a client.</p>
+</div>
+<div class="grid cols-2">
+<div class="card"><h3>Seomarine Analytics</h3><p>A lightweight, cookie-free tracker. See visitors, top pages, devices and channels, with ChatGPT, Perplexity, Gemini, Claude and Copilot traffic called out separately.</p></div>
+<div class="card"><h3>AI Visibility</h3><p>Brand mentions, cited sources and competitor share of voice across the major AI assistants. Pair it with Seomarine Analytics to see the visitors they send.</p></div>
+<div class="card"><h3>Rank tracking and keywords</h3><p>Track your keywords in Google and find new ones worth targeting, with search volume and difficulty explained.</p></div>
+<div class="card"><h3>Site audit</h3><p>Crawl your site and get the issues that matter most first, each explained in plain language.</p></div>
+</div>
+</div>
+</section>
+
+<section class="alt" aria-labelledby="pricing">
+<div class="wrap">
+<div class="section-head">
+<h2 id="pricing">Simple pricing in rupees</h2>
+<p>Start free. Upgrade when you need AI visibility and rank tracking.</p>
+</div>
+{{template "plans" .}}
+<p class="note center"><a href="/pricing">Compare plans in detail</a></p>
+</div>
+</section>
+
+<section aria-labelledby="faq">
+<div class="wrap">
+<div class="section-head"><h2 id="faq">Questions</h2></div>
+{{template "faq" .}}
+</div>
+</section>
+
+<section aria-labelledby="start">
+<div class="wrap">
+<div class="final">
+<h2 id="start">See who finds you, in Google and in AI</h2>
+<p>Set up takes under five minutes. No card needed.</p>
+<a class="btn btn-primary" href="{{.SignUp}}">Create your free account</a>
+</div>
+</div>
+</section>
+</main>
+{{template "footer" .}}

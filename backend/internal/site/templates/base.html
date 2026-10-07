@@ -1,0 +1,147 @@
+{{define "head"}}<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Description}}">
+<link rel="canonical" href="{{.Canonical}}">
+<meta name="theme-color" content="#0c4a6e">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Seomarine">
+<meta property="og:locale" content="en_IN">
+<meta property="og:title" content="{{.Title}}">
+<meta property="og:description" content="{{.Description}}">
+<meta property="og:url" content="{{.Canonical}}">
+<meta property="og:image" content="{{.OGImage}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Seomarine: SEO and AI search, made simple">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="{{asset "logo.svg"}}" type="image/svg+xml">
+<link rel="preload" href="{{asset "plus-jakarta-sans.woff2"}}" as="font" type="font/woff2" crossorigin>
+<script type="application/ld+json">{{.JSONLD}}</script>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url("{{asset "plus-jakarta-sans.woff2"}}") format("woff2");font-weight:200 800;font-display:swap}
+:root{
+  --bg:oklch(97.5% .006 200);--fg:oklch(23% .035 235);--muted:oklch(23% .035 235/68%);
+  --card:oklch(100% 0 0);--border:oklch(91% .012 210);--primary:oklch(50% .095 195);
+  --primary-fg:oklch(100% 0 0);--accent:oklch(94% .025 190);--deep:oklch(31% .07 235);
+  --radius:14px;color-scheme:light dark
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:oklch(17% .022 235);--fg:oklch(93% .01 200);--muted:oklch(93% .01 200/65%);
+  --card:oklch(21% .025 232);--border:oklch(30% .025 230);--primary:oklch(74% .12 185);
+  --primary-fg:oklch(19% .03 230);--accent:oklch(28% .035 210);--deep:oklch(21% .025 232)
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:1rem/1.6 "Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif}
+a{color:var(--primary)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
+img,svg{display:block}
+h1,h2,h3{line-height:1.2;letter-spacing:-.02em;margin:0 0 .5em}
+h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:800}
+h2{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:750}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0 0 1em}
+.wrap{max-width:72rem;margin:0 auto;padding:0 1rem}
+.skip{position:absolute;left:-999px}.skip:focus{left:1rem;top:1rem;background:var(--card);padding:.5rem 1rem;z-index:1}
+header.top{border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;gap:1rem;min-height:4rem}
+.brand{display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:1.15rem;color:var(--fg);text-decoration:none;margin-right:auto}
+.nav a.link{color:var(--fg);text-decoration:none;font-weight:600}
+.nav a.link[aria-current=page]{color:var(--primary)}
+.btn{display:inline-block;padding:.7rem 1.2rem;border-radius:10px;font-weight:700;text-decoration:none;text-align:center;border:1px solid var(--primary)}
+.btn-primary{background:var(--primary);color:var(--primary-fg)}
+.btn-ghost{color:var(--primary)}
+.btn-sm{padding:.45rem .9rem}
+.hero{padding:3.5rem 0 3rem;text-align:center}
+.hero p.lead{font-size:1.15rem;color:var(--muted);max-width:42rem;margin:0 auto 1.5rem}
+.cta-row{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center}
+.note{font-size:.9rem;color:var(--muted);margin-top:1rem}
+.center{text-align:center}
+section{padding:3rem 0}
+section.alt{background:var(--accent)}
+.section-head{max-width:44rem;margin:0 auto 2rem;text-align:center}
+.section-head p{color:var(--muted)}
+.grid{display:grid;gap:1rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem}
+.card p{color:var(--muted);margin:0}
+.plans{max-width:52rem;margin:0 auto}
+.plan{display:flex;flex-direction:column}
+.plan.featured{border:2px solid var(--primary)}
+.plan .price{font-size:2.5rem;font-weight:800;margin:.25rem 0}
+.plan .price span{font-size:1rem;font-weight:600;color:var(--muted)}
+.plan ul{padding:0;margin:1rem 0 1.5rem;list-style:none;flex:1}
+.plan li{padding:.35rem 0 .35rem 1.6rem;position:relative}
+.plan li::before{content:"";position:absolute;left:0;top:.75rem;width:.9rem;height:.5rem;border:solid var(--primary);border-width:0 0 3px 3px;transform:rotate(-45deg)}
+.badge{display:inline-block;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary)}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);overflow:hidden}
+th,td{padding:.8rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+thead th{font-size:.9rem}
+.table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+.faq{max-width:46rem;margin:0 auto}
+details{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:.75rem}
+summary{cursor:pointer;font-weight:700}
+details p{margin:.75rem 0 0;color:var(--muted)}
+.final{background:var(--deep);color:oklch(97% .01 200);text-align:center;border-radius:var(--radius);padding:2.5rem 1.25rem}
+.final p{color:oklch(90% .02 200)}
+.final .btn-primary{background:oklch(85% .1 180);border-color:oklch(85% .1 180);color:oklch(23% .035 235)}
+footer{border-top:1px solid var(--border);padding:2rem 0;color:var(--muted);font-size:.9rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between}
+footer a{color:var(--muted)}
+@media (min-width:40rem){.grid.cols-2{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:56rem){.grid.cols-3{grid-template-columns:repeat(3,1fr)}.hero{padding:5rem 0 4rem}section{padding:4.5rem 0}}
+@media (max-width:30rem){.nav a.link.hide-sm{display:none}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+<nav class="wrap nav" aria-label="Main">
+<a class="brand" href="/"><img src="{{asset "logo.svg"}}" alt="" width="32" height="32">Seomarine</a>
+<a class="link hide-sm" href="/pricing"{{if eq .Path "/pricing"}} aria-current="page"{{end}}>Pricing</a>
+<a class="link" href="/sign-in">Sign in</a>
+<a class="btn btn-primary btn-sm" href="{{.SignUp}}">Start free</a>
+</nav>
+</header>
+{{end}}
+
+{{define "plans"}}
+<div class="grid cols-2 plans">
+{{range .Plans}}
+<article class="card plan{{if .Featured}} featured{{end}}" aria-labelledby="plan-{{.Name}}">
+{{if .Featured}}<span class="badge">Most popular</span>{{end}}
+<h3 id="plan-{{.Name}}">{{.Name}}</h3>
+<p class="price">{{inr .PriceINR}} <span>{{.Period}}</span></p>
+<p>{{.Summary}}</p>
+<ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
+<a class="btn {{if .Featured}}btn-primary{{else}}btn-ghost{{end}}" href="{{$.SignUp}}">{{.CTA}}</a>
+</article>
+{{end}}
+</div>
+{{end}}
+
+{{define "faq"}}
+<div class="faq">
+{{range .FAQ}}
+<details>
+<summary>{{.Question}}</summary>
+<p>{{.Answer}}</p>
+</details>
+{{end}}
+</div>
+{{end}}
+
+{{define "footer"}}
+<footer>
+<div class="wrap">
+<p>&copy; Seomarine. SEO and AI search, made simple.</p>
+<nav aria-label="Footer"><a href="/pricing">Pricing</a> · <a href="/sign-in">Sign in</a> · <a href="{{.SignUp}}">Create an account</a></nav>
+</div>
+</footer>
+</body>
+</html>
+{{end}}
