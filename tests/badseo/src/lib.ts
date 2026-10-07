@@ -87,7 +87,7 @@ ${opts.bodyHtml}
 function navHtml(): string {
   return `<nav class="nav">
   <a class="brand" href="/">BADSEO</a>
-  <span class="nav-links"><a href="https://openseo.so">OpenSEO</a><a href="https://github.com/every-app/open-seo">GitHub</a></span>
+  <span class="nav-links"><a href="https://seomarine.com">Seomarine</a><a href="https://github.com/ToufiqQureshi/Seomarine">GitHub</a></span>
 </nav>`;
 }
 
@@ -96,8 +96,8 @@ function footerHtml(): string {
   <a class="foot-brand" href="/">BADSEO</a>
   <span class="foot-links">
     <a href="/#issues">All issues</a>
-    <a href="https://github.com/every-app/open-seo">GitHub</a>
-    <a href="https://openseo.so">OpenSEO</a>
+    <a href="https://github.com/ToufiqQureshi/Seomarine">GitHub</a>
+    <a href="https://seomarine.com">Seomarine</a>
     <a href="/privacy">Privacy</a>
     <button class="footer-button" type="button" data-cookie-settings>Cookie settings</button>
   </span>

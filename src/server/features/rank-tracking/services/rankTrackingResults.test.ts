@@ -28,7 +28,7 @@ describe("getLatestResults", () => {
     mocks.getKeywordsForConfig.mockResolvedValue([
       {
         id: "kw_1",
-        keyword: "open seo",
+        keyword: "seo tools",
         searchVolume: 100,
         keywordDifficulty: 10,
         cpc: 1,

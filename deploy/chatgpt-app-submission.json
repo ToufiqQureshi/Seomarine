@@ -2,7 +2,7 @@
   "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
   "schema_version": 1,
   "app_info": {
-    "display_name": "OpenSEO",
+    "display_name": "Seomarine",
     "subtitle": "SEO made simple.",
     "description": "Without quality data, AI gives generic advice.\n\nIt's approachable for entrepreneurs doing SEO for the first time, but powerful to grow with you as you learn.\n\nYou can do keyword research, competitor research, backlinks, site audits and much more.\n\nConnect with popular integrations like Google Search Console & Analytics.",
     "category": "BUSINESS"
@@ -16,7 +16,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves the connected account email, scopes, server mode, and credit balance when the user asks to confirm their connection.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -27,8 +27,8 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves projects available to the authenticated OpenSEO user.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "read_only_justification": "Only retrieves projects available to the authenticated Seomarine user.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -39,8 +39,8 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Creates a new project record in the user's private OpenSEO workspace.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "read_only_justification": "Creates a new project record in the user's private Seomarine workspace.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Adds a project without deleting or overwriting existing data."
       }
     },
@@ -52,7 +52,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves the selected project's stored context, competitors, key pages, and research log.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -64,7 +64,7 @@
       },
       "justifications": {
         "read_only_justification": "Updates stored project context and can add, replace, or remove selected project records.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Can clear sections or remove saved competitors, key pages, custom sections, and research-log entries when explicitly requested."
       }
     },
@@ -75,8 +75,8 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves keywords already saved in the selected OpenSEO project.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "read_only_justification": "Only retrieves keywords already saved in the selected Seomarine project.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -87,7 +87,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches keyword research and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches keyword research and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -100,7 +100,7 @@
       },
       "justifications": {
         "read_only_justification": "Saves keywords and can create or change their tag associations in the selected project.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Replacement mode removes existing tag associations before applying the user-approved replacement tags."
       }
     },
@@ -135,7 +135,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches backlink summary data and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches backlink summary data and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -147,7 +147,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches a bounded page of backlink rows and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches a bounded page of backlink rows and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -159,7 +159,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches live search results and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches live search results and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -172,7 +172,7 @@
       },
       "justifications": {
         "read_only_justification": "Only reads Google's public location registry to resolve a place name; uses no credits.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -184,7 +184,7 @@
       },
       "justifications": {
         "read_only_justification": "Creates a private rank-tracker configuration without starting a check or spending credits.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Adds a tracker without deleting or overwriting existing data."
       }
     },
@@ -196,7 +196,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves a rank tracker's configuration, keywords, runs, and stored results.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -208,7 +208,7 @@
       },
       "justifications": {
         "read_only_justification": "Adds keywords to a private tracker and can enable future scheduled checks after explicit estimate approval.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "The configuration change is reversible by removing the keywords and this call starts no check or charge."
       }
     },
@@ -220,7 +220,7 @@
       },
       "justifications": {
         "read_only_justification": "Removes selected keywords from the tracker's active configuration.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Deletes the active tracking relationships for the selected keyword IDs, although historical snapshots are preserved."
       }
     },
@@ -232,7 +232,7 @@
       },
       "justifications": {
         "read_only_justification": "Only calculates a cost estimate from the tracker configuration and proposed keyword count.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -244,7 +244,7 @@
       },
       "justifications": {
         "read_only_justification": "Starts a private rank-check job after validating the user's approved credit ceiling.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Uses an approved metered credit amount but does not delete, overwrite, revoke, send, or publish anything."
       }
     },
@@ -255,7 +255,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches ranked-keyword research and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches ranked-keyword research and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -267,7 +267,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches search-competitor research and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches search-competitor research and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -279,7 +279,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches local-business research and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches local-business research and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -291,7 +291,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches a local search-results page and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches a local search-results page and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -303,7 +303,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches public business questions and answers and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches public business questions and answers and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -315,7 +315,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches a public business profile and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches a public business profile and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -375,7 +375,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Fetches metrics for known keywords and records resulting usage against the user's OpenSEO credit balance.",
+        "read_only_justification": "Fetches metrics for known keywords and records resulting usage against the user's Seomarine credit balance.",
         "open_world_justification": "Uses a private SEO research provider and cannot publish or modify publicly visible internet state.",
         "destructive_justification": "May use metered research credits but does not delete, overwrite, revoke access, send, or publish anything."
       }
@@ -544,7 +544,7 @@
       },
       "justifications": {
         "read_only_justification": "Retrieves audit progress and may reconcile a dead workflow by persisting its audit as failed.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Status reconciliation preserves collected results and does not delete or overwrite user-authored data."
       }
     },
@@ -556,7 +556,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves stored issues from a previously started site audit.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
@@ -568,23 +568,23 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves stored page results from a previously started site audit.",
-        "open_world_justification": "Operates only on private OpenSEO state or private provider data and cannot change publicly visible internet state.",
+        "open_world_justification": "Operates only on private Seomarine state or private provider data and cannot change publicly visible internet state.",
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     }
   },
   "test_cases": [
     {
-      "description": "List the reviewer's OpenSEO projects and identify the site associated with each one.",
-      "user_prompt": "Show me my OpenSEO projects and briefly explain which website each project is for.",
+      "description": "List the reviewer's Seomarine projects and identify the site associated with each one.",
+      "user_prompt": "Show me my Seomarine projects and briefly explain which website each project is for.",
       "file_attachment_urls": null,
       "tools_triggered": "list_projects",
-      "expected_output": "Returns the available projects with their names, domains, markets, and direct OpenSEO links.",
+      "expected_output": "Returns the available projects with their names, domains, markets, and direct Seomarine links.",
       "expected_output_url": null
     },
     {
       "description": "Guide an SEO beginner through a focused keyword-research workflow.",
-      "user_prompt": "I'm new to SEO. Use my OpenSEO project context to research five promising keywords for my business and explain why each one matters.",
+      "user_prompt": "I'm new to SEO. Use my Seomarine project context to research five promising keywords for my business and explain why each one matters.",
       "file_attachment_urls": null,
       "tools_triggered": "list_projects, get_project_context, research_keywords",
       "expected_output": "Returns five focused keyword opportunities with useful metrics and short beginner-friendly reasons.",
@@ -592,7 +592,7 @@
     },
     {
       "description": "Compare the review project with its saved primary competitor.",
-      "user_prompt": "Compare my website with the main competitor saved in my OpenSEO project and show me one realistic SEO opportunity.",
+      "user_prompt": "Compare my website with the main competitor saved in my Seomarine project and show me one realistic SEO opportunity.",
       "file_attachment_urls": null,
       "tools_triggered": "list_projects, get_project_context, get_domain_overview, get_ranked_keywords, get_backlinks_overview",
       "expected_output": "Returns a concise comparison grounded in keyword, domain, and backlink evidence with one practical opportunity.",
@@ -608,7 +608,7 @@
     },
     {
       "description": "Run and complete the site-audit lifecycle for the review project.",
-      "user_prompt": "Run a technical audit of my OpenSEO project's website, wait for it to finish, and give me the three issues I should fix first.",
+      "user_prompt": "Run a technical audit of my Seomarine project's website, wait for it to finish, and give me the three issues I should fix first.",
       "file_attachment_urls": null,
       "tools_triggered": "list_projects, run_site_audit, get_audit_status, get_audit_issues",
       "expected_output": "Returns three prioritized technical issues with affected pages and clear remediation steps.",
@@ -617,19 +617,19 @@
   ],
   "negative_test_cases": [
     {
-      "description": "Do not invoke OpenSEO to publish or edit website content.",
+      "description": "Do not invoke Seomarine to publish or edit website content.",
       "user_prompt": "Publish the recommended article and edit my homepage now.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "Explain that OpenSEO cannot publish content or edit a website, and offer a draft or implementation checklist instead.",
+      "expected_output": "Explain that Seomarine cannot publish content or edit a website, and offer a draft or implementation checklist instead.",
       "expected_output_url": null
     },
     {
-      "description": "Do not invoke OpenSEO to perform a financial transaction.",
+      "description": "Do not invoke Seomarine to perform a financial transaction.",
       "user_prompt": "Buy another $100 of credits and charge my card.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "Explain that purchasing credits is unavailable through the plugin and direct the user to OpenSEO billing.",
+      "expected_output": "Explain that purchasing credits is unavailable through the plugin and direct the user to Seomarine billing.",
       "expected_output_url": null
     },
     {

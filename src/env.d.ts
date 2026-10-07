@@ -17,7 +17,7 @@ declare namespace Cloudflare {
     SAM_CHAT: DurableObjectNamespace;
 
     // Durable Object holding per-audit crawl scratch state (frontier, link
-    // edges, page mirror). Bound ONLY in the open-seo-audit aux worker;
+    // edges, page mirror). Bound ONLY in the seomarine-audit aux worker;
     // untyped here — getAuditScratchpad narrows the stub.
     AUDIT_SCRATCHPAD: DurableObjectNamespace;
 

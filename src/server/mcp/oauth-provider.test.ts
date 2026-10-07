@@ -7,7 +7,7 @@ import {
 } from "@cloudflare/workers-oauth-provider";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { createOpenSeoOAuthProvider } from "./oauth-provider";
+import { createSeomarineOAuthProvider } from "./oauth-provider";
 
 const mocks = vi.hoisted(() => ({
   options: [] as OAuthProviderOptions<unknown>[],
@@ -104,7 +104,7 @@ vi.mock("@/server/lib/posthog", () => ({
 }));
 
 vi.mock("@/server/mcp/transport", () => ({
-  handleAuthenticatedOpenSeoMcpRequest: vi.fn(),
+  handleAuthenticatedSeomarineMcpRequest: vi.fn(),
 }));
 
 const executionContext = {
@@ -114,7 +114,7 @@ const executionContext = {
 } as ExecutionContext;
 
 async function dispatch(
-  provider: ReturnType<typeof createOpenSeoOAuthProvider>,
+  provider: ReturnType<typeof createSeomarineOAuthProvider>,
   request: Request,
 ) {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mocked provider does not read its KV-backed environment in these configuration tests
@@ -132,7 +132,7 @@ function tokenExchangeOptions(
     scope: ["offline_access", "mcp"],
     requestedScope,
     props: {
-      openSeoAuth: {
+      seomarineAuth: {
         userId: "user-1",
         userEmail: "user@example.com",
         organizationId: "org-1",
@@ -181,7 +181,7 @@ describe("Seomarine OAuth provider configuration", () => {
   });
 
   it("binds tokens and protected-resource metadata to the canonical MCP URL", async () => {
-    const provider = createOpenSeoOAuthProvider(() => new Response("app"));
+    const provider = createSeomarineOAuthProvider(() => new Response("app"));
 
     await dispatch(provider, new Request("https://app.example.com/health"));
 
@@ -192,7 +192,7 @@ describe("Seomarine OAuth provider configuration", () => {
   });
 
   it("rejects token exchanges that drop the required MCP scope", async () => {
-    const provider = createOpenSeoOAuthProvider(() => new Response("app"));
+    const provider = createSeomarineOAuthProvider(() => new Response("app"));
 
     await dispatch(provider, new Request("https://app.example.com/health"));
 
@@ -203,7 +203,7 @@ describe("Seomarine OAuth provider configuration", () => {
     ).toThrowError(ProviderOAuthError);
     expect(callback(tokenExchangeOptions(["mcp"]))).toEqual({
       accessTokenProps: {
-        openSeoAuth: {
+        seomarineAuth: {
           userId: "user-1",
           userEmail: "user@example.com",
           organizationId: "org-1",
@@ -216,7 +216,7 @@ describe("Seomarine OAuth provider configuration", () => {
   });
 
   it("lets the provider issue Perplexity a real client secret", async () => {
-    const provider = createOpenSeoOAuthProvider(() => new Response("app"));
+    const provider = createSeomarineOAuthProvider(() => new Response("app"));
 
     await dispatch(
       provider,
@@ -236,7 +236,7 @@ describe("Seomarine OAuth provider configuration", () => {
   });
 
   it("includes the authorization-server issuer when consent is denied", async () => {
-    const provider = createOpenSeoOAuthProvider(() => new Response("app"));
+    const provider = createSeomarineOAuthProvider(() => new Response("app"));
     await dispatch(provider, new Request("https://app.example.com/health"));
 
     const response = await invokeDefaultHandler(
@@ -275,7 +275,7 @@ describe("Seomarine OAuth provider configuration", () => {
   });
 
   it("redirects safe authorization errors with state and issuer, rethrowing anything else", async () => {
-    const provider = createOpenSeoOAuthProvider(() => new Response("app"));
+    const provider = createSeomarineOAuthProvider(() => new Response("app"));
     await dispatch(provider, new Request("https://app.example.com/health"));
 
     const response = await invokeDefaultHandler(

@@ -9,7 +9,7 @@ const applicationContext = {
   userId: "user_123",
   userEmail: "alice@example.com",
   organizationId: "org_123",
-  baseUrl: "https://open-seo.test",
+  baseUrl: "https://seomarine.test",
 };
 
 describe("Seomarine tool auth context", () => {

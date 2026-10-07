@@ -1,11 +1,10 @@
 # Cloudflare Self-Hosting
 
-Host OpenSEO on Cloudflare for internet-facing self-hosting across multiple devices or with your team. One deploy command provisions everything, including the Cloudflare Access login gate. Works on Cloudflare's free plan.
+Host Seomarine on Cloudflare for internet-facing self-hosting across multiple devices or with your team. One deploy command provisions everything, including the Cloudflare Access login gate. Works on Cloudflare's free plan.
 
 Related guides:
 
-- [Operations](./SELF_HOSTING_CLOUDFLARE_OPERATIONS.md): connect the MCP server, telemetry.
-- [Legacy deployments](./SELF_HOSTING_CLOUDFLARE_LEGACY.md): maintenance for installs created with the retired Deploy-button or manual Wrangler flows.
+- [Operations](./SELF_HOSTING_CLOUDFLARE_OPERATIONS.md): connect the MCP server.
 
 ## Prerequisites
 
@@ -13,13 +12,13 @@ Related guides:
 - **A Cloudflare account with R2 enabled.** Activating R2 requires a payment method on file, even within its free tier — if you have never used R2, open `R2` in the Cloudflare dashboard once.
 - **A DataForSEO account** — see [`DATAFORSEO_API_KEY.md`](./DATAFORSEO_API_KEY.md).
 
-## 1) Clone your OpenSEO repo
+## 1) Clone your Seomarine repo
 
-Fork `every-app/open-seo` on GitHub if you want a repo you control, then clone it locally:
+Fork `ToufiqQureshi/Seomarine` on GitHub if you want a repo you control, then clone it locally:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/open-seo.git
-cd open-seo
+git clone https://github.com/YOUR_GITHUB_USER/seomarine.git
+cd seomarine
 corepack enable
 pnpm install
 ```
@@ -27,8 +26,8 @@ pnpm install
 If you do not need a fork, clone the upstream repo instead:
 
 ```bash
-git clone https://github.com/every-app/open-seo.git
-cd open-seo
+git clone https://github.com/ToufiqQureshi/Seomarine.git
+cd seomarine
 corepack enable
 pnpm install
 ```
@@ -64,11 +63,11 @@ To manage the Access application yourself instead, set `TEAM_DOMAIN` (`https://y
 
 1. Open the Worker URL printed at the end of the deploy.
 2. Sign in with Cloudflare Access.
-3. OpenSEO should load after login.
+3. Seomarine should load after login.
 
 If it doesn't, see Troubleshooting below.
 
-## Updating to the latest OpenSEO version
+## Updating to the latest Seomarine version
 
 ```bash
 git pull        # or: git fetch upstream && git merge upstream/main, if you forked
@@ -86,7 +85,7 @@ Everyone allowed through Cloudflare Access works in one shared workspace and see
 
 - Login fails: re-check `ACCESS_ALLOWED_EMAILS` in `.env.selfhost` and redeploy.
 - `https://<your-worker-hostname>/api/health` reports runtime configuration checks and database status.
-- For server errors, open the Worker `Logs` or run `pnpm exec wrangler tail`. Site audits run in a separate worker: `pnpm exec wrangler tail open-seo-selfhost-audit`.
+- For server errors, open the Worker `Logs` or run `pnpm exec wrangler tail`. Site audits run in a separate worker: `pnpm exec wrangler tail seomarine-selfhost-audit`.
 
 ## Tearing it down
 
@@ -98,4 +97,4 @@ This deletes the Workers, the stage-suffixed D1/KV/R2 resources (including your 
 
 ## Next steps
 
-See [Operations](./SELF_HOSTING_CLOUDFLARE_OPERATIONS.md) for connecting MCP clients and telemetry.
+See [Operations](./SELF_HOSTING_CLOUDFLARE_OPERATIONS.md) for connecting MCP clients.

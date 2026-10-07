@@ -1,7 +1,7 @@
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { describe, expect, it, vi } from "vitest";
 import { createWorkersOAuthMcpProps } from "./context";
-import { createOpenSeoMcpServer } from "./server";
+import { createSeomarineMcpServer } from "./server";
 
 vi.mock("cloudflare:workers", () => ({
   env: {},
@@ -66,12 +66,12 @@ function closedOutputPaths(schema: unknown, path: string): string[] {
 
 describe("published MCP output schemas", () => {
   it("allows added fields in every registered tool, including nested objects", async () => {
-    const server = createOpenSeoMcpServer(
+    const server = createSeomarineMcpServer(
       createWorkersOAuthMcpProps({
         userId: "user_test",
         userEmail: "test@example.com",
         organizationId: "org_test",
-        baseUrl: "https://open-seo.test",
+        baseUrl: "https://seomarine.test",
         clientId: "client_test",
         scopes: ["mcp"],
       }),

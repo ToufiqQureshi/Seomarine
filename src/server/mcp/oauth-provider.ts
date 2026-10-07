@@ -25,7 +25,7 @@ import {
 } from "@/server/mcp/context";
 import { normalizeClientRegistrationRequest } from "@/server/mcp/oauth-registration";
 import { getPublicOrigin } from "@/server/mcp/public-origin";
-import { handleAuthenticatedOpenSeoMcpRequest } from "@/server/mcp/transport";
+import { handleAuthenticatedSeomarineMcpRequest } from "@/server/mcp/transport";
 import { resolveHostedContext } from "@/middleware/ensure-user/hosted";
 import { handleMcpApiKeyRequest } from "@/server/mcp/api-key-auth";
 
@@ -54,7 +54,7 @@ const MCP_REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 // rolling 30-day refresh tokens already reap inactive clients' sessions.
 const MCP_CLIENT_REGISTRATION_TTL_SECONDS = 60 * 60 * 24 * 365;
 
-export type OpenSeoOAuthEnv = Env & {
+export type SeomarineOAuthEnv = Env & {
   OAUTH_KV: KVNamespace;
   OAUTH_PROVIDER?: OAuthHelpers;
 };
@@ -70,7 +70,7 @@ const consentResponseSchema = z.object({
   query: z.string(),
 });
 
-function getOAuthHelpers(env: OpenSeoOAuthEnv) {
+function getOAuthHelpers(env: SeomarineOAuthEnv) {
   if (!env.OAUTH_PROVIDER) {
     throw new Error("OAuth provider helpers are unavailable");
   }
@@ -250,7 +250,7 @@ function deniedRedirect(authRequest: AuthRequest) {
 
 async function handleOAuthAuthorizeRequest(
   request: Request,
-  env: OpenSeoOAuthEnv,
+  env: SeomarineOAuthEnv,
 ) {
   const oauth = getOAuthHelpers(env);
 
@@ -271,7 +271,7 @@ async function handleOAuthAuthorizeRequest(
 
 async function handleOAuthConsentResponse(
   request: Request,
-  env: OpenSeoOAuthEnv,
+  env: SeomarineOAuthEnv,
 ) {
   if (request.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -375,7 +375,7 @@ async function handleOAuthConsentResponse(
 
 function createDefaultHandler(
   appFetch: AppFetch,
-): ExportedHandlerWithFetch<OpenSeoOAuthEnv> {
+): ExportedHandlerWithFetch<SeomarineOAuthEnv> {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
@@ -393,14 +393,14 @@ function createDefaultHandler(
   };
 }
 
-const mcpApiHandler: ExportedHandlerWithFetch<OpenSeoOAuthEnv> = {
+const mcpApiHandler: ExportedHandlerWithFetch<SeomarineOAuthEnv> = {
   async fetch(request, env, ctx) {
-    return handleAuthenticatedOpenSeoMcpRequest(request, ctx.props, env, ctx);
+    return handleAuthenticatedSeomarineMcpRequest(request, ctx.props, env, ctx);
   },
 };
 
 function createProvider(appFetch: AppFetch, resource: string) {
-  const options: OAuthProviderOptions<OpenSeoOAuthEnv> = {
+  const options: OAuthProviderOptions<SeomarineOAuthEnv> = {
     apiRoute: MCP_ROUTE,
     apiHandler: mcpApiHandler,
     defaultHandler: createDefaultHandler(appFetch),
@@ -438,16 +438,20 @@ function createProvider(appFetch: AppFetch, resource: string) {
   return new OAuthProvider(options);
 }
 
-export function createOpenSeoOAuthProvider(appFetch: AppFetch) {
+export function createSeomarineOAuthProvider(appFetch: AppFetch) {
   // Built lazily because the canonical resource comes from BETTER_AUTH_URL,
   // which is not readable at module-init time. It is the same base URL the
   // consent handler stamps into grant props.
-  let provider: OAuthProvider<OpenSeoOAuthEnv> | undefined;
+  let provider: OAuthProvider<SeomarineOAuthEnv> | undefined;
   const getProvider = () =>
     (provider ??= createProvider(appFetch, getMcpResource(getHostedBaseUrl())));
 
   return {
-    async fetch(request: Request, env: OpenSeoOAuthEnv, ctx: ExecutionContext) {
+    async fetch(
+      request: Request,
+      env: SeomarineOAuthEnv,
+      ctx: ExecutionContext,
+    ) {
       const url = new URL(request.url);
 
       const apiKeyResponse = await handleMcpApiKeyRequest(request, env, ctx);
@@ -469,7 +473,7 @@ export function createOpenSeoOAuthProvider(appFetch: AppFetch) {
     // advances past live records by deleting dead ones, so give it a batch
     // large enough to cover the whole keyspace in one pass while staying
     // within the invocation's subrequest budget.
-    purgeExpiredData(env: OpenSeoOAuthEnv) {
+    purgeExpiredData(env: SeomarineOAuthEnv) {
       return getProvider().purgeExpiredData(env, { batchSize: 200 });
     },
   };

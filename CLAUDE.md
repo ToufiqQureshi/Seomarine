@@ -1,7 +1,7 @@
 # Seomarine: product brief for agents
 
 Read this before any work in this repo. Where this file conflicts with
-`AGENTS.md` (inherited from OpenSEO), **this file wins**.
+`AGENTS.md`, **this file wins**.
 
 ## What Seomarine is
 
@@ -9,9 +9,10 @@ An all-in-one SEO + AI-search platform that has to beat Semrush and Ahrefs
 on the things users actually complain about, and not by cloning their
 feature count.
 
-Seomarine started as a fork of OpenSEO (MIT). The OpenSEO code is a
-**reference and starting point, not the product**. Nothing users can see
-may look or read like OpenSEO.
+Part of the codebase is derived from an MIT-licensed project (see
+`LICENSE-OPENSEO-MIT`). That code is a **starting point, not the
+product**. Nothing in the product, code or docs may carry the upstream
+name, links, look or services.
 
 ## Why people will pick us over Semrush and Ahrefs
 
@@ -141,9 +142,10 @@ pass.
 ## UI and brand rules
 
 - Ship a fresh design system: our own name, logo, palette, typography,
-  icons, layout and copy. Never use OpenSEO's look.
-- Remove every user-visible "OpenSEO" string, link, logo, meta tag,
-  email template and doc reference (except license attribution).
+  icons, layout and copy.
+- Never add the upstream brand (OpenSEO) anywhere: names, identifiers,
+  links, logos, meta tags, emails, docs or third-party keys. The only
+  allowed mention is the license attribution below.
 - Use plain language, and Hinglish where the market is India. Never show
   raw jargon without a one-line explanation.
 
@@ -161,5 +163,6 @@ pass.
 ## Legal
 
 - `LICENSE` is proprietary (all rights reserved) for Seomarine's own work.
-- OpenSEO-derived code stays under MIT. Never delete
-  `LICENSE-OPENSEO-MIT` or the attribution it carries.
+- Upstream-derived code stays under MIT. Never delete
+  `LICENSE-OPENSEO-MIT` or the copyright notice it carries; the MIT
+  license requires it.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-05) by the OpenSEO maintainer under EVE-33.
+Accepted (2026-08-05) by the Seomarine maintainer under EVE-33.
 
 Implementation update (2026-08-06): the EVE-33 branch now implements the
 connection lifecycle, dashboard/settings UI, and the four reports specified
@@ -15,7 +15,7 @@ milestone language.
 
 ## Context
 
-OpenSEO can read a project's Google Search Console (GSC) property, but an agent
+Seomarine can read a project's Google Search Console (GSC) property, but an agent
 cannot see what visitors do after the click. GA4 adds first-party signals such
 as organic sessions, engagement, key events, transactions, and revenue. The
 first release should answer SEO questions without exposing an unrestricted
@@ -28,7 +28,7 @@ from GSC alongside engagement and business value from GA4.
 
 ## Maintainer decision
 
-Accept the design proposed in [PR #106](https://github.com/every-app/open-seo/pull/106)
+Accept the design proposed in [PR #106](https://github.com/ToufiqQureshi/Seomarine/pull/106)
 with these clarifications:
 
 - The GA4 grant and the project-to-property mapping have separate owners and
@@ -60,7 +60,7 @@ subsequently approved tools without rewriting the historical contract.
 Use a dedicated Google OAuth grant with the provider ID `google-analytics`.
 The app's own Google OAuth flow issues it, the same flow as Search Console
 (see spec 0003). It first shipped as a Better Auth `genericOAuth` provider,
-which could not link one Google account to two OpenSEO users. It requests
+which could not link one Google account to two Seomarine users. It requests
 these scopes:
 
 - `openid`, `email`, and `profile` identify the connected Google account.
@@ -72,15 +72,15 @@ keeps GSC access unchanged, allows an agency to use different Google accounts
 for GSC and GA4, and gives GA4 its own reconnect and disconnect lifecycle. No
 Analytics write scope is allowed.
 
-The connecting OpenSEO user owns the grant. The app stores its OAuth access
+The connecting Seomarine user owns the grant. The app stores its OAuth access
 and refresh tokens, encrypted at rest with the Better Auth secret, in the
 `account` table under the `google-analytics` provider ID. The row is keyed by
-OpenSEO user and Google account, so two OpenSEO users can each connect the
+Seomarine user and Google account, so two Seomarine users can each connect the
 same Google account. Feature tables must not copy those
 tokens. Refresh-token rotation preserves the existing encrypted refresh token
 when Google omits a new one.
 
-Hosted OpenSEO reuses its Google OAuth client and registers
+Hosted Seomarine reuses its Google OAuth client and registers
 `/api/ga4/oauth/callback` on it. A self-hosted operator reuses
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `BETTER_AUTH_SECRET`, enables
 the Google Analytics Admin API and Google Analytics Data API, and registers
@@ -93,7 +93,7 @@ calls `properties.get` for the selected property's time zone and currency.
 Only the Integrations UI can select a property. MCP tools accept a `projectId`;
 they cannot list, select, or change properties.
 
-The `ga4_connections` row belongs to the OpenSEO project and organization, not
+The `ga4_connections` row belongs to the Seomarine project and organization, not
 to the connecting user. Any current member who can access the project can read
 through the mapping. The service still executes the Google request through the
 specific connector account that selected the property.
@@ -181,7 +181,7 @@ restricts `purchaseRevenue`, the service returns `purchaseRevenue: null` and
 includes the restriction. It does not turn a restricted value into zero.
 
 Realtime, demographic, interest, audience, user-level, custom-dimension, and
-custom-metric inputs are excluded from v1. These reports do not consume OpenSEO
+custom-metric inputs are excluded from v1. These reports do not consume Seomarine
 credits.
 
 ### Success output
@@ -361,7 +361,7 @@ The service copies these GA4 response metadata fields into the success output:
 `emptyReason`, and `subjectToThresholding`. Tests cover each field alone and in
 combination. Agent-facing text states that limited rows are unknown, not zero.
 
-OpenSEO does not persist report rows in v1. A later cache needs an approved
+Seomarine does not persist report rows in v1. A later cache needs an approved
 retention policy and keys scoped to project, property, normalized request, and
 date range. Instrumentation records tool name, project and organization IDs,
 duration, outcome, row count, and quota/error category. It does not log raw
@@ -485,7 +485,7 @@ values. Tests never call live Google APIs.
 - The combined tool preserves source provenance and exposes the limits of its
   join and score.
 - Acceptance authorizes implementation work. It does not advertise GA4 as an
-  available OpenSEO capability.
+  available Seomarine capability.
 
 ## References
 
@@ -499,4 +499,4 @@ values. Tests never call live Google APIs.
 - [Google Analytics Data API: `getMetadata`](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/getMetadata)
 - [Google Analytics Data API response metadata](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/ResponseMetaData)
 - [Search Console Search Analytics query](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)
-- [OpenSEO GSC integration decision](./0003-google-search-console-integration.md)
+- [Seomarine GSC integration decision](./0003-google-search-console-integration.md)

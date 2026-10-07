@@ -85,7 +85,7 @@ export function buildSamSkillSource(): SkillSource {
   );
 
   return (cachedSource = {
-    id: "openseo-public-skills",
+    id: "seomarine-public-skills",
     fingerprint: fingerprint(skills),
     list: () =>
       Promise.resolve(

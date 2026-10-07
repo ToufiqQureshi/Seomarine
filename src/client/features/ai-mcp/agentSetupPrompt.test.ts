@@ -7,6 +7,6 @@ describe("agent setup prompt", () => {
     expect(prompt).toContain("https://seo.example.com/mcp");
     expect(prompt).toContain("https://seo.example.com/settings");
     expect(prompt).not.toContain("{{ORIGIN}}");
-    expect(prompt).not.toMatch(/openseo/i);
+    expect(prompt).not.toContain("seomarine.com");
   });
 });

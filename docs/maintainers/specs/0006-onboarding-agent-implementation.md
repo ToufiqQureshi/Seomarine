@@ -131,7 +131,7 @@ Real providers, no fixture system:
   for the `BROWSER` binding (`remote: true` in dev).
 - DataForSEO creds you already have; the cache makes repeat runs free.
 - Drive the real onboarding UI with the Playwriter skill, screenshotting each
-  step. **Test domain: `openseo.so`.**
+  step. **Test domain: `seomarine.com`.**
 
 ## Build order (stacked PRs)
 

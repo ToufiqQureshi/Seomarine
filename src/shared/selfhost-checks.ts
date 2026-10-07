@@ -41,13 +41,3 @@ export function looksLikeDataForSeoKey(value: string): boolean {
     return false;
   }
 }
-
-// OPENSEO_TELEMETRY_DISABLED / DO_NOT_TRACK semantics: any value except an
-// explicit "off" string disables telemetry (fail toward privacy), but
-// "0"/"false"/"no"/"off" mean what the operator wrote — telemetry stays on.
-export function isTelemetryOptOutValue(
-  value: string | undefined | null,
-): boolean {
-  if (!value) return false;
-  return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
-}
