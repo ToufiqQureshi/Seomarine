@@ -12,9 +12,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
+	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
+	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
+	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
 const (
@@ -36,6 +42,11 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
+	pages, err := site.New(cfg.PublicURL)
+	if err != nil {
+		return err
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -46,10 +57,39 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer db.Close()
+	if err := database.Migrate(startupCtx, db); err != nil {
+		return err
+	}
+
+	rdb, err := kv.Open(startupCtx, cfg.RedisURL)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			logger.Error("close redis", "err", err)
+		}
+	}()
+
+	var billingSvc *billing.Service
+	if rzp := cfg.Razorpay; rzp != nil {
+		billingSvc = billing.NewService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDPro, rzp.WebhookSecret)
+	} else {
+		logger.Warn("RAZORPAY_* not set; billing endpoints answer 503")
+	}
 
 	srv := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           httpapi.NewHandler(logger, db),
+		Addr: cfg.Addr,
+		Handler: httpapi.NewHandler(httpapi.Deps{
+			Logger:    logger,
+			DB:        db,
+			Redis:     httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
+			Auth:      auth.NewService(db, cfg.BetterAuthSecret),
+			Analytics: analytics.NewService(db, rdb),
+			Billing:   billingSvc,
+			Site:      pages,
+			Upstream:  cfg.UpstreamAppURL,
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
