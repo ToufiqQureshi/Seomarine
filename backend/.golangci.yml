@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  enable:
+    - bodyclose
+    - contextcheck
+    - errorlint
+    - gosec
+    - nilerr
+    - noctx
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+  # errcheck, govet, ineffassign, staticcheck and unused are on by default.
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

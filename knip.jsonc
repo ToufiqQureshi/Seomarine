@@ -1,4 +1,6 @@
 {
+  // Go toolchain binaries used by the backend workflow, not npm dependencies.
+  "ignoreBinaries": ["gofmt"],
   "entry": [
     // Alchemy deploy stack (run by the alchemy CLI, not imported by the app)
     "deploy/alchemy/alchemy.run.ts",

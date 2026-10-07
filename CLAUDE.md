@@ -72,7 +72,9 @@ an agency can show it to a client.
   reused once rebranded.
 - **Data:** Postgres is the primary store. Use a column store
   (ClickHouse) for analytics events once volume needs it. Keep relational
-  data normalized.
+  data normalized. Redis holds rate limits and short-lived keys only.
+- **Hosting:** Railway (Go server, Postgres, Redis). Secrets live in
+  Railway variables, never in the repo.
 - **Go conventions:** standard library first (`net/http`, `log/slog`,
   `context`). The layering is handler → service → repository. Use
   `sqlc` or plain SQL, not a heavy ORM. Validate every input at the
