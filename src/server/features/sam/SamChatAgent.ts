@@ -267,7 +267,7 @@ export class SamChatAgent extends Think {
     return withPgClient(async () => {
       const ctx = await this.loadSamContext();
       if (!ctx) {
-        return "You are SAM, the SEO agent inside OpenSEO. This chat session no longer exists; tell the user to start a new chat.";
+        return "You are SAM, the SEO agent inside Seomarine. This chat session no longer exists; tell the user to start a new chat.";
       }
       const context = await ProjectContextService.getProjectContext(
         ctx.project.id,

@@ -75,7 +75,7 @@ async function fetchFollowingRedirects(
   for (let hop = 0; hop <= MAX_DISCOVERY_REDIRECT_HOPS; hop++) {
     const response = await fetch(current, {
       headers: {
-        "User-Agent": "OpenSEO-Audit/1.0",
+        "User-Agent": "Seomarine-Audit/1.0",
         ...crawlerHeadersFor(current, access),
       },
       redirect: "manual",

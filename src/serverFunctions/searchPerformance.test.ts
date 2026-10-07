@@ -40,7 +40,7 @@ const data = {
   country: "SWE",
   device: "MOBILE" as const,
   pageFilter: { operator: "contains" as const, expression: "/collections/" },
-  queryFilter: { operator: "equals" as const, expression: "OpenSEO" },
+  queryFilter: { operator: "equals" as const, expression: "Seomarine" },
 };
 const filters = [
   { dimension: "device", operator: "equals", expression: "MOBILE" },

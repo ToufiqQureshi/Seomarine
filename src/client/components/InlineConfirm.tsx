@@ -15,7 +15,7 @@ export function InlineConfirm({
   disabled = false,
   onConfirm,
 }: {
-  /** Accessible name of the trash button, for example "Remove openseo.so". */
+  /** Accessible name of the trash button, for example "Remove example.com". */
   label: string;
   /** Show a text button, such as "Archive project", instead of the trash icon. */
   triggerLabel?: string;

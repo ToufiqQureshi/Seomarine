@@ -47,9 +47,7 @@ describe("report social image access", () => {
     mocks.renderReportSocialImage.mockRejectedValueOnce(error);
     const response = await handleReportSocialImage(TOKEN);
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(
-      "https://openseo.so/social-card.jpg",
-    );
+    expect(response.headers.get("Location")).toBe("/social-card.png");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
     expect(log).toHaveBeenCalledWith(

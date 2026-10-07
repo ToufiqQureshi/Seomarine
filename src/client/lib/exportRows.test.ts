@@ -44,12 +44,12 @@ describe("exportRows", () => {
       feature: "domain_overview",
       headers: ["Keyword"],
       rows: [["seo audit"]],
-      filename: "openseo.so-keywords",
+      filename: "example.com-keywords",
     });
 
     expect(downloadFile).toHaveBeenCalledWith(
       '"Keyword"\n"seo audit"',
-      "openseo.so-keywords.xls",
+      "example.com-keywords.xls",
       "text/csv",
     );
     expect(captureClientEvent).toHaveBeenCalledWith("data:export", {

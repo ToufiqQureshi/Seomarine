@@ -15,8 +15,7 @@ import { BILLING_ROUTE } from "@/shared/billing";
 import { QueryError } from "@/client/components/QueryState";
 import { Spinner } from "@/client/components/Spinner";
 import { Button } from "@/client/components/ui/button";
-
-const SUPPORT_EMAIL = "ben@openseo.so";
+import { SUPPORT_EMAIL } from "@/client/lib/support";
 
 // How long the post-portal "checking" screen polls Autumn before telling the
 // user the retry is still pending.

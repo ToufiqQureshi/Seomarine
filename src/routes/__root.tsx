@@ -38,7 +38,16 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        title: "OpenSEO",
+        title: "Seomarine",
+      },
+      {
+        name: "description",
+        content:
+          "Seomarine: SEO and AI search tools that show you what to fix next.",
+      },
+      {
+        name: "theme-color",
+        content: "#0f766e",
       },
       {
         charSet: "utf-8",
@@ -84,6 +93,7 @@ export const Route = createRootRoute({
         sizes: "16x16",
         href: "/favicon-16x16.png",
       },
+      { rel: "icon", type: "image/svg+xml", href: "/logo.svg" },
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
       { rel: "manifest", href: "/site.webmanifest" },
     ],

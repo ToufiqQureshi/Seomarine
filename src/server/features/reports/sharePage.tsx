@@ -13,14 +13,12 @@ import { domainField } from "@/types/schemas/domain";
 // The public face of a shared report, `/s/<token>`: a slim bar and the
 // document in the same sandboxed frame the in-app viewer uses. Rendered to a
 // static string on the server rather than served as a React route, because the
-// reader is usually someone who has never opened OpenSEO: the app's root shell
+// reader is usually someone who has never opened Seomarine: the app's root shell
 // renders only on the client, so a route inside it cost them the whole app
 // bundle (~400 KB gzipped) downloaded, parsed and hydrated before the frame
 // even existed. This page puts the frame in the first response and ships no
 // JavaScript beyond the Share button's clipboard handler. JSX so every value
 // from the row is escaped by React, not by hand.
-
-const MARKETING_URL = "https://openseo.so/?utm_source=shared_report";
 
 const MAX_DESCRIPTION_CHARS = 200;
 
@@ -45,8 +43,8 @@ function shareDescription(summary: string): string {
 // product without loading its stylesheet. Dark follows the OS: an anonymous
 // reader has no stored preference.
 const STYLES = `
-:root{color-scheme:light dark;--bg:oklch(97% 0 0);--surface:oklch(100% 0 0);--border:oklch(92% 0 0);--text:oklch(20% 0 0);--muted:oklch(20% 0 0 / .5);--primary:oklch(50% 0.12 262);--primary-text:oklch(100% 0 0);--ghost-hover:oklch(20% 0 0 / .08)}
-@media (prefers-color-scheme:dark){:root{--bg:oklch(12% 0 0);--surface:oklch(18% 0 0);--border:oklch(27% 0 0);--text:oklch(92% 0 0);--muted:oklch(92% 0 0 / .5);--primary:oklch(66% 0.12 262);--ghost-hover:oklch(92% 0 0 / .1)}}
+:root{color-scheme:light dark;--bg:oklch(97.5% 0.006 200);--surface:oklch(100% 0 0);--border:oklch(91% 0.012 210);--text:oklch(23% 0.035 235);--muted:oklch(23% 0.035 235 / .68);--primary:oklch(50% 0.095 195);--primary-text:oklch(100% 0 0);--ghost-hover:oklch(23% 0.035 235 / .08)}
+@media (prefers-color-scheme:dark){:root{--bg:oklch(17% 0.022 235);--surface:oklch(21% 0.025 232);--border:oklch(30% 0.025 230);--text:oklch(93% 0.01 200);--muted:oklch(93% 0.01 200 / .65);--primary:oklch(74% 0.12 185);--primary-text:oklch(19% 0.03 230);--ghost-hover:oklch(93% 0.01 200 / .1)}}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -83,20 +81,15 @@ document.getElementById("share").addEventListener("click",async function(){
 
 function TryButton() {
   return (
-    <a
-      className="btn primary"
-      href={MARKETING_URL}
-      target="_blank"
-      rel="noreferrer"
-    >
-      Try OpenSEO
+    <a className="btn primary" href="/" target="_blank" rel="noreferrer">
+      Try Seomarine
     </a>
   );
 }
 
 function Document({
   title,
-  siteName = "OpenSEO",
+  siteName = "Seomarine",
   head,
   children,
 }: {
@@ -195,7 +188,7 @@ export async function renderSharePage(
   // A white-labelled report is the agency's deliverable to its client, so the
   // page names the agency and drops the product's own call to action.
   const branding = await BrandingService.getBranding(report.organizationId);
-  const siteName = branding?.brandName ?? "OpenSEO";
+  const siteName = branding?.brandName ?? "Seomarine";
 
   return htmlResponse(
     <Document
@@ -236,7 +229,7 @@ export async function renderSharePage(
           <p className="meta">
             {branding
               ? `Prepared by ${branding.brandName}`
-              : "Made with OpenSEO"}{" "}
+              : "Made with Seomarine"}{" "}
             · Updated {formatRelativeTime(report.updatedAt)}
           </p>
         </div>

@@ -189,7 +189,7 @@ describe("DataForSEO SDK-backed endpoints", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchLlmResponse({
-      userPrompt: "What is OpenSEO?",
+      userPrompt: "What is Seomarine?",
       modelSlug: "perplexity",
       modelName: "sonar",
       webSearch: false,
@@ -207,7 +207,7 @@ describe("DataForSEO SDK-backed endpoints", () => {
     ]);
     expect(parseDataforseoRequestBody(fetchMock.mock.calls[0]?.[1])).toEqual([
       {
-        user_prompt: "What is OpenSEO?",
+        user_prompt: "What is Seomarine?",
         model_name: "sonar",
         web_search: false,
         max_output_tokens: 1024,
@@ -230,7 +230,7 @@ describe("fetchLlmResponse force_web_search", () => {
       .mockResolvedValueOnce(okLlmResponse());
     vi.stubGlobal("fetch", fetchMock);
 
-    const base = { userPrompt: "What is OpenSEO?", webSearch: true } as const;
+    const base = { userPrompt: "What is Seomarine?", webSearch: true } as const;
     const claude = {
       modelSlug: "claude",
       modelName: "claude-sonnet-4-6",
@@ -245,7 +245,7 @@ describe("fetchLlmResponse force_web_search", () => {
 
     expect(parseDataforseoRequestBody(fetchMock.mock.calls[0]?.[1])).toEqual([
       {
-        user_prompt: "What is OpenSEO?",
+        user_prompt: "What is Seomarine?",
         model_name: "claude-sonnet-4-6",
         web_search: true,
         force_web_search: true,
@@ -254,7 +254,7 @@ describe("fetchLlmResponse force_web_search", () => {
     ]);
     expect(parseDataforseoRequestBody(fetchMock.mock.calls[1]?.[1])).toEqual([
       {
-        user_prompt: "What is OpenSEO?",
+        user_prompt: "What is Seomarine?",
         model_name: "gpt-5",
         web_search: true,
         max_output_tokens: 1024,
@@ -271,7 +271,7 @@ describe("fetchLlmResponse model_name validation", () => {
 
     await expect(
       fetchLlmResponse({
-        userPrompt: "What is OpenSEO?",
+        userPrompt: "What is Seomarine?",
         modelSlug: "claude",
         // DataForSEO dropped this from its catalog; it must never be dispatched.
         modelName: "claude-sonnet-4-0",

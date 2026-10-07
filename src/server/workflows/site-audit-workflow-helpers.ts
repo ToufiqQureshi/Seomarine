@@ -8,7 +8,7 @@ import { normalizeUrl } from "@/server/lib/audit/url-utils";
 import type { CrawlThrottle } from "@/server/lib/audit/crawl-throttle";
 import { crawlerHeadersFor, type CrawlerAccess } from "@/shared/crawler-access";
 
-const CRAWL_USER_AGENT = "OpenSEO-Audit/1.0";
+const CRAWL_USER_AGENT = "Seomarine-Audit/1.0";
 
 /** Parse `Link: <url>; rel="canonical"` response headers. */
 function parseLinkHeaderCanonical(

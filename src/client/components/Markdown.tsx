@@ -12,7 +12,7 @@ type Props = {
 /**
  * Shared Markdown renderer with explicit per-element Tailwind classes.
  *
- * OpenSEO doesn't ship `@tailwindcss/typography`, so `prose` classes are
+ * Seomarine doesn't ship `@tailwindcss/typography`, so `prose` classes are
  * no-ops — every block element is styled here instead.
  *
  * Anchor URLs are sanitized to http(s) only — LLMs can be coaxed into

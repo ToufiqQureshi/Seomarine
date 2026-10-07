@@ -1,6 +1,6 @@
 {
-  "name": "OpenSEO",
-  "short_name": "OpenSEO",
+  "name": "Seomarine",
+  "short_name": "Seomarine",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -11,9 +11,14 @@
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ],
-  "theme_color": "#0a0f0d",
-  "background_color": "#0a0f0d",
+  "theme_color": "#0f766e",
+  "background_color": "#0b2533",
   "display": "standalone"
 }

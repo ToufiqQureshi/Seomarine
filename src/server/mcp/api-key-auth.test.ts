@@ -19,7 +19,7 @@ vi.mock("@/lib/auth", () => ({
       createOrganization: vi.fn(),
     },
   }),
-  getHostedBaseUrl: () => "https://app.openseo.so",
+  getHostedBaseUrl: () => "https://app.example.com",
 }));
 
 vi.mock("@/server/auth/repositories/AuthRepository", () => ({
@@ -52,7 +52,7 @@ const ctx: ExecutionContext = {
 };
 
 function request(headers?: HeadersInit, method = "POST") {
-  return new Request("https://app.openseo.so/mcp", { method, headers });
+  return new Request("https://app.example.com/mcp", { method, headers });
 }
 
 describe("handleMcpApiKeyRequest", () => {
@@ -111,7 +111,7 @@ describe("handleMcpApiKeyRequest", () => {
           role: "owner",
           scopes: [...MCP_OAUTH_SCOPES],
           clientId: "api_key",
-          baseUrl: "https://app.openseo.so",
+          baseUrl: "https://app.example.com",
         },
       });
     },
@@ -184,11 +184,11 @@ describe("handleMcpApiKeyRequest", () => {
 
   it.each([
     [
-      "non-OpenSEO bearer tokens",
+      "non-Seomarine bearer tokens",
       request({ Authorization: "Bearer oauth-access-token" }),
     ],
     [
-      "non-OpenSEO x-api-key values",
+      "non-Seomarine x-api-key values",
       request({
         "x-api-key": "some-foreign-key",
         Authorization: "Bearer oauth-access-token",

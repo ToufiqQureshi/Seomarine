@@ -17,7 +17,7 @@ describe("withBrandBar", () => {
       branding,
     );
     expect(html).toMatch(
-      /^<!doctype html><html><body class="r"><div data-openseo-brand-bar/,
+      /^<!doctype html><html><body class="r"><div data-brand-bar/,
     );
     expect(html).toContain("Acme &lt;script&gt;");
     expect(html).not.toContain("<script>");

@@ -48,14 +48,14 @@ function BetaNotice() {
         </Button>
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">
-        For more powerful AI workflows, use the OpenSEO MCP with your own agent
+        For more powerful AI workflows, connect Seomarine to your own agent,
         like Claude Code or Hermes.
       </p>
       <Link
         to="/ai"
         className="mt-1.5 inline-block text-xs text-primary underline-offset-4 hover:underline"
       >
-        Set up the MCP →
+        Connect your agent →
       </Link>
     </div>
   );

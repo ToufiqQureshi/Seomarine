@@ -8,7 +8,7 @@ import { BacklinksTable } from "./BacklinksTable";
 it("distinguishes zero from missing spam scores without changing boundary values", () => {
   const rows = mapBacklinksRows(
     [undefined, null, 0, 39, 40].map((score) => ({
-      url_from: "https://openseo.so/",
+      url_from: "https://example.com/",
       backlink_spam_score: score,
     })),
   );
