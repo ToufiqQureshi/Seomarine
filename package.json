@@ -44,7 +44,6 @@
     "test:e2e:domain:perf": "playwright test -c tests/playwright.config.ts tests/domain-overview-filters.perf.spec.ts",
     "test:e2e:keywords": "playwright test -c tests/playwright.config.ts tests/keyword-research-navigation.spec.ts",
     "billing:backlinks": "tsx scripts/backlinks-cost-profile.ts",
-    "billing:brand-lookup": "tsx scripts/brand-lookup-cost-profile.ts",
     "billing:usage": "tsx scripts/dataforseo-account-usage.ts",
     "cleanup:default-projects:d1": "tsx scripts/d1-default-project-cleanup.ts",
     "gdpr:erase-user": "tsx scripts/erase-user-data.ts",

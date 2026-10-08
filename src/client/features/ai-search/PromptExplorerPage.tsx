@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { identity, sortBy } from "remeda";
 import { Columns3, MessageSquare, SearchCheck, Sparkles } from "lucide-react";
-import { explorePrompt } from "@/serverFunctions/ai-search";
+import { explorePrompt } from "@/client/features/ai-search/aiSearchApi";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
 import { ResearchPageShell } from "@/client/features/ai-search/ResearchPageShell";
 import { PromptExplorerForm } from "@/client/features/ai-search/components/PromptExplorerForm";
@@ -78,20 +78,18 @@ export function PromptExplorerPage({ projectId, urlState, onSubmit }: Props) {
     ],
     queryFn: () =>
       explorePrompt({
-        data: {
-          projectId,
-          prompt: trimmedPrompt,
-          models: urlState.models,
-          highlightBrand: urlState.highlightBrand.trim() || undefined,
-          webSearch: urlState.webSearch,
-          webSearchCountryCode:
-            urlState.webSearchCountryCode === "default"
-              ? undefined
-              : urlState.webSearchCountryCode,
-        },
+        projectId,
+        prompt: trimmedPrompt,
+        models: urlState.models,
+        highlightBrand: urlState.highlightBrand.trim() || undefined,
+        webSearch: urlState.webSearch,
+        webSearchCountryCode:
+          urlState.webSearchCountryCode === "default"
+            ? undefined
+            : urlState.webSearchCountryCode,
       }),
     // Client-side gate is a UX optimization only; the paywall is enforced
-    // server-side (explorePrompt → assertPaidPlan) before any DataForSEO spend,
+    // server-side (the Go API's plan check) before any DataForSEO spend,
     // so a stale free-plan window here just yields a rejected request, not cost.
     enabled: hasActivePrompt && planStatus === "paid",
     staleTime: 5 * 60 * 1000,

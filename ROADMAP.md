@@ -33,7 +33,8 @@ Product reasoning lives in `CLAUDE.md`.
 | 2.2  | **Seomarine Analytics** (Go): tracking script, ingest API, dashboard (visitors, pages, sources, devices)                                                      | ✅     |
 | 2.2b | Analytics: countries breakdown                                                                                                                                | 🔨     |
 | 2.3  | **AI traffic detection**: ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus recovery of AI traffic hiding as "Direct"                              | ✅     |
-| 2.4  | **AI Visibility**: mentions, citations, sentiment and competitor share of voice across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, with drop alerts | ⏳     |
+| 2.4  | **AI Visibility**: mentions, citations, sentiment and competitor share of voice across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, with drop alerts | 🔨     |
+| 2.4a | AI Visibility base in Go: Brand Lookup (mentions, citations, share of voice) and Prompt Explorer, ported from the legacy app                                  | ✅     |
 | 2.5  | Join AI visibility with analytics: "seen in AI" vs "visitors from AI"                                                                                         | ⏳     |
 | 2.6  | **Content SEO Editor** ("RankMath for every site"): live score, keyword/heading/meta/readability checks, AI rewrite                                           | ⏳     |
 | 2.7  | Content editor fix delivery: JS snippet, GitHub PR, copy-paste                                                                                                | ⏳     |

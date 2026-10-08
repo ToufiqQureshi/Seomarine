@@ -2,10 +2,6 @@
 // workflows, MCP tools) and the section fetchers. Keep this module free of
 // section-file imports so both sides can import it without cycles.
 
-// ChatGPT mention/response data is only available for US/en per DataForSEO docs.
-export const CHATGPT_LOCATION_CODE = 2840;
-export const CHATGPT_LANGUAGE_CODE = "en";
-
 export type LlmPlatform = "chat_gpt" | "google";
 
 export { MAX_TASKS_PER_POST } from "@/shared/rank-tracking";
