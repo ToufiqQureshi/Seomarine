@@ -13,7 +13,7 @@ Product reasoning lives in `CLAUDE.md`.
 | 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                   | ✅     |
 | 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                    | ✅     |
 | 0.4  | Go server serves the React SPA (Vite build) as static files                                                                     | ⏳     |
-| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | ⏳     |
+| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | 🔧     |
 
 ## Phase 1: Rebrand + new UI
 

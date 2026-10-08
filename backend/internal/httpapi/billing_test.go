@@ -153,7 +153,7 @@ func TestBillingEndToEnd(t *testing.T) {
 	t.Run("bad webhooks are refused", func(t *testing.T) {
 		assertJSON(t, webhook(handler, `{"event":"payment.captured"}`, hmacHex(`{"event":"payment.captured"}`), "evt_other_"+id), http.StatusOK, `{"status":"ignored"}`)
 		assertError(t, webhook(handler, "not json", hmacHex("not json"), "evt_bad_"+id), http.StatusBadRequest, "invalid_event")
-		huge := strings.Repeat(" ", maxWebhookBody+1)
+		huge := strings.Repeat(" ", (256<<10)+1)
 		assertError(t, webhook(handler, huge, hmacHex(huge), "evt_huge_"+id), http.StatusRequestEntityTooLarge, "payload_too_large")
 	})
 }
