@@ -19,14 +19,15 @@ import (
 // data URL, a name, a color and a website.
 const maxBrandingBody = 350 << 10
 
-// Mount registers branding routes on the root mux. withSession attaches the
-// signed-in user, whose active organization is the row that is read or written.
+// Deps contains the logger, branding service and root router's session middleware.
 type Deps struct {
 	Logger      *slog.Logger
 	Service     *Service
 	WithSession func(http.Handler) http.Handler
 }
 
+// Mount registers branding routes on the root mux. withSession attaches the
+// signed-in user, whose active organization is the row that is read or written.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("GET /api/v1/branding", d.WithSession(GetHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/branding", d.WithSession(SaveHandler(d.Logger, d.Service)))
