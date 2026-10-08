@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 )
 
 // testDatabaseURL returns the Postgres URL for integration tests. CI always
@@ -22,45 +23,6 @@ func testDatabaseURL(t *testing.T) string {
 	}
 	t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	return ""
-}
-
-func TestOpenConnectsToPostgres(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pool, err := Open(ctx, testDatabaseURL(t))
-	if err != nil {
-		t.Fatalf("Open() error = %v", err)
-	}
-	defer pool.Close()
-
-	var one int
-	if err := pool.QueryRow(ctx, "SELECT 1").Scan(&one); err != nil {
-		t.Fatalf("query: %v", err)
-	}
-	if one != 1 {
-		t.Fatalf("SELECT 1 = %d", one)
-	}
-}
-
-func TestOpenFailsFastOnUnreachableDatabase(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Port 1 on localhost refuses connections, so the startup ping must fail.
-	pool, err := Open(ctx, "postgres://seomarine@127.0.0.1:1/seomarine?connect_timeout=2")
-	if err == nil {
-		pool.Close()
-		t.Fatal("Open() succeeded against an unreachable database")
-	}
-}
-
-func TestOpenRejectsMalformedURL(t *testing.T) {
-	pool, err := Open(context.Background(), "postgres://%zz")
-	if err == nil {
-		pool.Close()
-		t.Fatal("Open() accepted a malformed URL")
-	}
 }
 
 // Every instance runs Migrate at startup, and Railway can start several at
@@ -109,7 +71,7 @@ func TestMigrateFailsOnCanceledContext(t *testing.T) {
 
 func openWithLegacySchema(ctx context.Context, t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	pool, err := Open(ctx, testDatabaseURL(t))
+	pool, err := pgdb.Open(ctx, testDatabaseURL(t))
 	if err != nil {
 		t.Fatalf("Open() error = %v", err)
 	}
