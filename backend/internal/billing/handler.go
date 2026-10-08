@@ -22,7 +22,7 @@ func Mount(mux *http.ServeMux, logger *slog.Logger, svc *Service, withSession fu
 // StatusHandler returns the plan of the signed-in user's active organization.
 func StatusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := billingUser(w, r, logger, svc)
+		user, ok := billingUser(w, r, svc)
 		if !ok {
 			return
 		}
@@ -39,7 +39,7 @@ func StatusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 // CheckoutHandler starts a pro subscription for the signed-in user's active organization.
 func CheckoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := billingUser(w, r, logger, svc)
+		user, ok := billingUser(w, r, svc)
 		if !ok {
 			return
 		}
@@ -66,7 +66,7 @@ func CheckoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 }
 
 // billingUser returns the signed-in user when billing is configured and the user has an active organization.
-func billingUser(w http.ResponseWriter, r *http.Request, logger *slog.Logger, svc *Service) (auth.User, bool) {
+func billingUser(w http.ResponseWriter, r *http.Request, svc *Service) (auth.User, bool) {
 	if svc == nil {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Billing is not set up on this server.")
 		return auth.User{}, false

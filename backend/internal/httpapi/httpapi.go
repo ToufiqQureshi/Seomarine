@@ -103,7 +103,7 @@ func NewHandler(d Deps) http.Handler {
 	billing.Mount(mux, d.Logger, d.Billing, withSession)
 
 	api := http.NewServeMux()
-	api.HandleFunc("/", notFound(d.Logger))
+	api.HandleFunc("/", notFound())
 	mux.Handle("/api/v1/", requireSession(d.Logger, d.Auth, api))
 
 	mux.Handle("/", app)
@@ -170,7 +170,7 @@ func landing(logger *slog.Logger, authn *auth.Service, pages *site.Site, app htt
 	}
 }
 
-func notFound(logger *slog.Logger) http.HandlerFunc {
+func notFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such endpoint.")
 	}

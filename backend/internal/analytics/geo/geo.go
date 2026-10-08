@@ -29,7 +29,10 @@ func New() (*Lookup, error) {
 // address is invalid, private, or absent from the database.
 func (l *Lookup) Country(raw string) (string, error) {
 	ip, err := netip.ParseAddr(raw)
-	if err != nil || !ip.IsGlobalUnicast() || ip.IsPrivate() {
+	if err != nil {
+		return "", nil
+	}
+	if !ip.IsGlobalUnicast() || ip.IsPrivate() {
 		return "", nil
 	}
 	var record struct {

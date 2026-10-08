@@ -1,3 +1,4 @@
+// Package httpx provides shared HTTP request and response handling.
 package httpx
 
 import (
@@ -18,8 +19,13 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 )
 
+// ErrPayloadTooLarge means a JSON request exceeded its configured size limit.
 var ErrPayloadTooLarge = errors.New("request body exceeds configured limit")
+
+// ErrInvalidPage means the page query value is outside the supported range.
 var ErrInvalidPage = errors.New("page must be between 1 and 1000")
+
+// ErrInvalidLimit means the limit query value is outside the supported range.
 var ErrInvalidLimit = errors.New("limit must be between 1 and 100")
 
 // userKey is the request-scoped context key for the signed-in user.
@@ -72,7 +78,8 @@ func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 				requestID = newRequestID()
 			}
 			w.Header().Set("X-Request-Id", requestID)
-			r = r.WithContext(WithRequestID(r.Context(), requestID))
+			ctx := WithRequestID(r.Context(), requestID)
+			r = r.WithContext(ctx)
 			log := logger
 			if logger != nil {
 				log = logger.With("request_id", requestID, "method", r.Method, "path", r.URL.Path)
@@ -80,7 +87,7 @@ func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			next.ServeHTTP(w, r)
 			if log != nil {
-				log.InfoContext(r.Context(), "request complete", "duration_ms", time.Since(start).Milliseconds())
+				log.InfoContext(ctx, "request complete", "duration_ms", time.Since(start).Milliseconds())
 			}
 		})
 	}
@@ -91,7 +98,8 @@ func validRequestID(value string) bool {
 		return false
 	}
 	for _, c := range value {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' || c == '.') {
+		valid := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' || c == '.'
+		if !valid {
 			return false
 		}
 	}
