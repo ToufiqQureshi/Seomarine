@@ -98,8 +98,7 @@ func TestDoRetriesOnlyRetrySafeRequests(t *testing.T) {
 				t.Fatalf("retry-safe Do() error = %v", err)
 			}
 			if !retrySafe {
-				var apiErr *HTTPError
-				if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusServiceUnavailable {
+				if apiErr, ok := errors.AsType[*HTTPError](err); !ok || apiErr.StatusCode != http.StatusServiceUnavailable {
 					t.Fatalf("non-retry-safe error = %v", err)
 				}
 			}
@@ -145,8 +144,7 @@ func TestDoDoesNotFollowRedirects(t *testing.T) {
 	defer redirect.Close()
 	client := testClient(t, redirect, &testRecorder{}, 0)
 	_, err := client.Do(context.Background(), "org", http.MethodGet, "/v3/appendix/status", nil, false)
-	var apiErr *HTTPError
-	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusTemporaryRedirect {
+	if apiErr, ok := errors.AsType[*HTTPError](err); !ok || apiErr.StatusCode != http.StatusTemporaryRedirect {
 		t.Fatalf("Do() error = %v, want HTTP 307", err)
 	}
 	if requests != 0 {
@@ -162,8 +160,7 @@ func TestDoReturnsCostRecordingFailureWithReconciliationData(t *testing.T) {
 	recorder := &testRecorder{err: errors.New("ledger unavailable")}
 	client := testClient(t, server, recorder, 0)
 	_, err := client.Do(context.Background(), "org-123", http.MethodPost, "/v3/serp/live", []byte(`[]`), false)
-	var recordingErr *CostRecordingError
-	if !errors.As(err, &recordingErr) || recordingErr.OrganizationID != "org-123" || recordingErr.Cost.USD != 0.01 {
+	if recordingErr, ok := errors.AsType[*CostRecordingError](err); !ok || recordingErr.OrganizationID != "org-123" || recordingErr.Cost.USD != 0.01 {
 		t.Fatalf("Do() error = %#v, want cost recording context", err)
 	}
 }

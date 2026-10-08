@@ -130,7 +130,7 @@ func utf16Len(s string) int {
 // `update` permission. better-auth stores multiple roles as one
 // comma-separated string; unknown names fail closed.
 func canUpdateOrganization(role string) bool {
-	for _, name := range strings.Split(role, ",") {
+	for name := range strings.SplitSeq(role, ",") {
 		switch strings.TrimSpace(name) {
 		case "owner", "admin":
 			return true

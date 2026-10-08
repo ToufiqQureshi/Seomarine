@@ -94,7 +94,7 @@ func webhookHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			return
 		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBody))
-		if maxErr := (*http.MaxBytesError)(nil); errors.As(err, &maxErr) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "payload_too_large", "The webhook is too large.")
 			return
 		}

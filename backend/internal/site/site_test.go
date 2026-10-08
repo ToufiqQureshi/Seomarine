@@ -2,6 +2,7 @@ package site
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -21,9 +22,7 @@ func newSite(t *testing.T, publicURL *url.URL) *Site {
 
 func get(handler http.HandlerFunc, target string, header http.Header) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
-	for k, v := range header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, header)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 	return rec
