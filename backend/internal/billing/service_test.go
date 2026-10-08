@@ -120,8 +120,8 @@ func TestCheckoutReportsRazorpayFailures(t *testing.T) {
 	f.failWith = http.StatusBadRequest
 
 	_, err := f.svc.Checkout(ctx, f.org)
-	var apiErr *razorpay.APIError
-	if !errors.Is(err, ErrPaymentProvider) || !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusBadRequest {
+	apiErr, isAPIErr := errors.AsType[*razorpay.APIError](err)
+	if !errors.Is(err, ErrPaymentProvider) || !isAPIErr || apiErr.StatusCode != http.StatusBadRequest {
 		t.Fatalf("Checkout() error = %v, want ErrPaymentProvider wrapping the 400", err)
 	}
 	f.assertStatus(ctx, t, Status{Plan: PlanFree, Status: "none"})

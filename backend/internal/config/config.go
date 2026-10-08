@@ -83,7 +83,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	var trusted []netip.Prefix
 	if raw := strings.TrimSpace(getenv("TRUSTED_PROXY_CIDRS")); raw != "" {
-		for _, part := range strings.Split(raw, ",") {
+		for part := range strings.SplitSeq(raw, ",") {
 			prefix, err := netip.ParsePrefix(strings.TrimSpace(part))
 			if err != nil {
 				return Config{}, fmt.Errorf("TRUSTED_PROXY_CIDRS contains invalid CIDR %q: %w", part, err)

@@ -47,14 +47,14 @@ func TestQueueEnqueueClaimConcurrencyAndStaleClaims(t *testing.T) {
 	}
 
 	const total, workers = 40, 8
-	for i := 0; i < total; i++ {
+	for i := range total {
 		if _, err := queue.Enqueue(ctx, EnqueueInput{Queue: name, Payload: json.RawMessage(`{}`)}); err != nil {
 			t.Fatalf("enqueue job %d: %v", i, err)
 		}
 	}
 	claimedIDs := make(chan int64, total+workers)
 	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Go(func() {
 			claimed, err := queue.Claim(ctx, name, "worker-"+randomSuffix(t), time.Minute, total)
 			if err != nil {

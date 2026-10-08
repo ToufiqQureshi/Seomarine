@@ -60,8 +60,8 @@ func TestValidateAcceptsTheSettingsFormShape(t *testing.T) {
 			want: Input{
 				BrandName:   "Acme Digital",
 				AccentColor: "#2563eb",
-				LogoDataURL: ptr(validLogo),
-				WebsiteURL:  ptr("https://acme.agency"),
+				LogoDataURL: new(validLogo),
+				WebsiteURL:  new("https://acme.agency"),
 			},
 		},
 		{
@@ -77,7 +77,7 @@ func TestValidateAcceptsTheSettingsFormShape(t *testing.T) {
 		{
 			name:    "every accepted logo mime",
 			payload: fullPayload("Acme", "#abcdef", "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=", nil),
-			want:    Input{BrandName: "Acme", AccentColor: "#abcdef", LogoDataURL: ptr("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=")},
+			want:    Input{BrandName: "Acme", AccentColor: "#abcdef", LogoDataURL: new("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=")},
 		},
 		{
 			name:    "unicode name at the limit counts UTF-16 code units",
@@ -87,7 +87,7 @@ func TestValidateAcceptsTheSettingsFormShape(t *testing.T) {
 		{
 			name:    "http website is allowed",
 			payload: fullPayload("Acme", "#2563eb", nil, "http://localhost:3000"),
-			want:    Input{BrandName: "Acme", AccentColor: "#2563eb", WebsiteURL: ptr("http://localhost:3000")},
+			want:    Input{BrandName: "Acme", AccentColor: "#2563eb", WebsiteURL: new("http://localhost:3000")},
 		},
 	}
 	for _, tt := range tests {
@@ -305,8 +305,6 @@ func TestBrandingIsScopedToOrganization(t *testing.T) {
 		t.Fatalf("resetting org B removed org A's branding: found %v, err %v", found, err)
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func equalInput(a, b Input) bool {
 	if a.BrandName != b.BrandName || a.AccentColor != b.AccentColor {

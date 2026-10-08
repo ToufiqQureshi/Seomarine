@@ -87,8 +87,8 @@ func TestCreateSubscriptionFailures(t *testing.T) {
 			if err == nil {
 				t.Fatalf("CreateSubscription() = %+v, want an error", sub)
 			}
-			var apiErr *APIError
-			if got := errors.As(err, &apiErr); got != (tt.wantAPIErr != nil) {
+			apiErr, got := errors.AsType[*APIError](err)
+			if got != (tt.wantAPIErr != nil) {
 				t.Fatalf("error = %v, is an APIError = %v", err, got)
 			}
 			if tt.wantAPIErr != nil && *apiErr != *tt.wantAPIErr {
