@@ -19,28 +19,35 @@ import (
 )
 
 const (
+	// APIBaseURL is the production DataForSEO API origin.
 	APIBaseURL       = "https://api.dataforseo.com"
 	requestTimeout   = 60 * time.Second
 	maxResponseBytes = 64 << 20
 )
 
+// ErrInvalidRequest marks a request the client refuses to send.
 var ErrInvalidRequest = errors.New("invalid DataForSEO request")
 
+// Cost is the provider-reported price of one DataForSEO task.
 type Cost struct {
 	Path []string
 	USD  float64
 }
 
+// CostRecorder persists the cost of a DataForSEO task against an organization.
 type CostRecorder interface {
 	RecordDataForSEO(ctx context.Context, organizationID string, cost Cost) error
 }
 
+// CostRecorderFunc adapts a function to CostRecorder.
 type CostRecorderFunc func(context.Context, string, Cost) error
 
+// RecordDataForSEO calls f.
 func (f CostRecorderFunc) RecordDataForSEO(ctx context.Context, organizationID string, cost Cost) error {
 	return f(ctx, organizationID, cost)
 }
 
+// Options configures a Client. Zero values select safe defaults.
 type Options struct {
 	BaseURL      string
 	APIKey       string
@@ -51,6 +58,7 @@ type Options struct {
 	RetryBackoff time.Duration
 }
 
+// Client is an authenticated DataForSEO transport that records task costs.
 type Client struct {
 	baseURL    string
 	apiKey     string
@@ -61,6 +69,7 @@ type Client struct {
 	backoff    time.Duration
 }
 
+// CostRecordingError reports that a billed task could not be recorded.
 type CostRecordingError struct {
 	OrganizationID string
 	Cost           Cost
@@ -73,6 +82,7 @@ func (e *CostRecordingError) Error() string {
 
 func (e *CostRecordingError) Unwrap() error { return e.Cause }
 
+// HTTPError is a non-2xx DataForSEO response.
 type HTTPError struct {
 	StatusCode int
 	Body       string
@@ -82,6 +92,7 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("DataForSEO HTTP %d: %s", e.StatusCode, e.Body)
 }
 
+// NewClient validates opts and returns a Client.
 func NewClient(opts Options) (*Client, error) {
 	if opts.APIKey == "" {
 		return nil, errors.New("DataForSEO API key is required")
@@ -246,9 +257,9 @@ func wait(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-func truncate(value string, max int) string {
-	if len(value) > max {
-		return value[:max] + "... [truncated]"
+func truncate(value string, limit int) string {
+	if len(value) > limit {
+		return value[:limit] + "... [truncated]"
 	}
 	return value
 }
