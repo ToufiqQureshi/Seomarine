@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: Seomarine branding
+  version: 1.0.0
+  description: |
+    White-label branding for an organization's client-facing reports. One row
+    per organization; no row means the default Seomarine branding. The logo is
+    a small data URL, because the report sandbox CSP allows `img-src data:`.
+servers:
+  - url: /api/v1
+paths:
+  /branding:
+    get:
+      operationId: getBranding
+      summary: Read the active organization's branding
+      responses:
+        "200":
+          description: The branding, or null when the organization uses the default.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Branding"
+                  - type: "null"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: saveBranding
+      summary: Write the active organization's branding
+      description: Requires the owner or admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandingInput"
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+  /branding/reset:
+    post:
+      operationId: resetBranding
+      summary: Return the active organization to the default branding
+      description: Requires the owner or admin role.
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  schemas:
+    BrandingInput:
+      type: object
+      additionalProperties: false
+      required: [brandName, accentColor, logoDataUrl, websiteUrl]
+      properties:
+        brandName:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Trimmed before it is stored.
+        accentColor:
+          type: string
+          pattern: "^#[0-9a-fA-F]{6}$"
+        logoDataUrl:
+          type: [string, "null"]
+          maxLength: 200000
+          pattern: "^data:image/(png|jpeg|webp|svg\\+xml);base64,[A-Za-z0-9+/]+={0,2}$"
+        websiteUrl:
+          type: [string, "null"]
+          maxLength: 200
+          format: uri
+          pattern: "^https?://"
+    Branding:
+      allOf:
+        - $ref: "#/components/schemas/BrandingInput"
+        - type: object
+          required: [updatedAt]
+          properties:
+            updatedAt:
+              type: string
+              description: ISO-8601 with milliseconds, as the legacy app stored it.
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+  responses:
+    BadRequest:
+      description: The branding is malformed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: No valid session.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: The role cannot change organization settings, or there is no active organization.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    PayloadTooLarge:
+      description: The request body is larger than the endpoint accepts.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

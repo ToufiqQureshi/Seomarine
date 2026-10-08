@@ -38,11 +38,16 @@ export async function apiRequest<T>(
   path: string,
   schema: z.ZodType<T>,
   method: "GET" | "POST" = "GET",
+  jsonBody?: unknown,
 ): Promise<T> {
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    headers: { Accept: "application/json" },
+    headers:
+      jsonBody === undefined
+        ? { Accept: "application/json" }
+        : { Accept: "application/json", "Content-Type": "application/json" },
+    body: jsonBody === undefined ? undefined : JSON.stringify(jsonBody),
   });
   // A proxy error page or an empty body is not JSON: treat it as no body.
   const body: unknown = await response.json().catch(() => undefined);

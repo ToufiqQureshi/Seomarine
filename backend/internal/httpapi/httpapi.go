@@ -14,6 +14,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -39,6 +40,8 @@ type Deps struct {
 	// Billing is nil when Razorpay is not configured; billing routes then
 	// answer 503.
 	Billing *billing.Service
+	// Branding is the active organization's white-label report branding.
+	Branding *branding.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -101,6 +104,7 @@ func NewHandler(d Deps) http.Handler {
 		return requireProjectAccess(d.Logger, d.Auth, next)
 	})
 	billing.Mount(mux, d.Logger, d.Billing, withSession)
+	branding.Mount(mux, d.Logger, d.Branding, withSession)
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())
