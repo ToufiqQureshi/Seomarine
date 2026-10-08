@@ -37,21 +37,22 @@ func (r repository) userBySessionToken(ctx context.Context, token string) (User,
 	return u, nil
 }
 
-// isProjectMember reports whether userID is a member of the organization
-// that owns the unarchived project projectID.
-func (r repository) isProjectMember(ctx context.Context, userID, projectID string) (bool, error) {
-	var ok bool
+// projectOrganization returns the organization that owns the unarchived
+// project projectID when userID is a member of it, and false otherwise.
+func (r repository) projectOrganization(ctx context.Context, userID, projectID string) (string, bool, error) {
+	var orgID string
 	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM projects p
-			JOIN member m ON m.organization_id = p.organization_id
-			WHERE p.id = $1 AND p.archived_at IS NULL AND m.user_id = $2
-		)`,
+		SELECT p.organization_id
+		FROM projects p
+		JOIN member m ON m.organization_id = p.organization_id
+		WHERE p.id = $1 AND p.archived_at IS NULL AND m.user_id = $2`,
 		projectID, userID,
-	).Scan(&ok)
-	if err != nil {
-		return false, fmt.Errorf("check project membership: %w", err)
+	).Scan(&orgID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
 	}
-	return ok, nil
+	if err != nil {
+		return "", false, fmt.Errorf("check project membership: %w", err)
+	}
+	return orgID, true, nil
 }

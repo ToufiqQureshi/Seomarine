@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
@@ -21,6 +22,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
@@ -85,6 +87,17 @@ func run(logger *slog.Logger) error {
 		logger.Warn("RAZORPAY_* not set; billing endpoints answer 503")
 	}
 
+	var aiSearchSvc *aisearch.Service
+	if cfg.DataForSEOAPIKey != "" {
+		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
+		if err != nil {
+			return fmt.Errorf("create DataForSEO client: %w", err)
+		}
+		aiSearchSvc = aisearch.NewService(client, rdb, logger)
+	} else {
+		logger.Warn("DATAFORSEO_API_KEY not set; AI search endpoints answer 503")
+	}
+
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -96,6 +109,7 @@ func run(logger *slog.Logger) error {
 			TrustedProxyCIDRs: cfg.TrustedProxyCIDRs,
 			Billing:           billingSvc,
 			Branding:          branding.NewService(db),
+			AISearch:          aiSearchSvc,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),

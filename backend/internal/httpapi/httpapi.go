@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
@@ -42,6 +43,9 @@ type Deps struct {
 	Billing *billing.Service
 	// Branding is the active organization's white-label report branding.
 	Branding *branding.Service
+	// AISearch is nil when no DataForSEO key is configured; its routes then
+	// answer 503.
+	AISearch *aisearch.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -111,6 +115,20 @@ func NewHandler(d Deps) http.Handler {
 	})
 	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
+	// Without billing the server has no plans to gate on, so AI search is open.
+	var plans aisearch.PaidPlans
+	if d.Billing != nil {
+		plans = d.Billing
+	}
+	aisearch.Mount(mux, aisearch.Deps{
+		Logger:      d.Logger,
+		Service:     d.AISearch,
+		Plans:       plans,
+		WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler {
+			return requireProjectAccess(d.Logger, d.Auth, next)
+		},
+	})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())
@@ -140,13 +158,14 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 }
 
 // requireProjectAccess answers 404 unless the signed-in user is a member of
-// the organization that owns the {projectId} in the path. It runs inside
-// requireSession; without a user in the context it fails closed, because no
-// member row has an empty user id.
+// the organization that owns the {projectId} in the path, and passes that
+// organization to next in the request context. It runs inside requireSession;
+// without a user in the context it fails closed, because no member row has an
+// empty user id.
 func requireProjectAccess(logger *slog.Logger, authz *auth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.UserFromContext(r.Context())
-		err := authz.AuthorizeProject(r.Context(), user.ID, r.PathValue("projectId"))
+		orgID, err := authz.AuthorizeProject(r.Context(), user.ID, r.PathValue("projectId"))
 		if errors.Is(err, auth.ErrProjectNotFound) {
 			httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")
 			return
@@ -156,7 +175,7 @@ func requireProjectAccess(logger *slog.Logger, authz *auth.Service, next http.Ha
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), orgID)))
 	})
 }
 

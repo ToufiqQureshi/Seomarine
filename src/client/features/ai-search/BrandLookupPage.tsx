@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { BarChart3, Quote, Sparkles, TrendingUp } from "lucide-react";
-import { lookupBrand } from "@/serverFunctions/ai-search";
+import { lookupBrand } from "@/client/features/ai-search/aiSearchApi";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
 import { ResearchPageShell } from "@/client/features/ai-search/ResearchPageShell";
 import { BrandLookupResults } from "@/client/features/ai-search/components/BrandLookupResults";
@@ -110,17 +110,15 @@ export function BrandLookupPage({
     ],
     queryFn: () =>
       lookupBrand({
-        data: {
-          projectId,
-          query: trimmedInitialQuery,
-          competitors: initialCompetitors,
-          scope: initialScope,
-          locationCode: 2840,
-          languageCode: "en",
-        },
+        projectId,
+        query: trimmedInitialQuery,
+        competitors: initialCompetitors,
+        scope: initialScope,
+        locationCode: 2840,
+        languageCode: "en",
       }),
     // Client-side gate is a UX optimization only; the paywall is enforced
-    // server-side (lookupBrand → assertPaidPlan) before any DataForSEO spend,
+    // server-side (the Go API's plan check) before any DataForSEO spend,
     // so a stale free-plan window here just yields a rejected request, not cost.
     enabled: hasActiveQuery && planStatus === "paid",
     staleTime: 5 * 60 * 1000,

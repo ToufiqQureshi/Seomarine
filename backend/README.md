@@ -19,6 +19,7 @@ PORT=8080 go run ./cmd/server
 | `UPSTREAM_APP_URL`        | yes      | Absolute `http(s)` URL of the legacy TypeScript app. Every route the Go server does not own is proxied there.   |
 | `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://seomarine.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
 | `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
+| `DATAFORSEO_API_KEY`      | no       | Base64 `login:password` of the DataForSEO account behind AI search. Without it the AI search endpoints answer `503`. |
 | `TRUSTED_PROXY_CIDRS`     | no       | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
 | `RAZORPAY_KEY_ID`         | no       | Razorpay API key id. Set all four `RAZORPAY_*` variables or none; without them billing endpoints answer `503`.  |
 | `RAZORPAY_KEY_SECRET`     | no       | Razorpay API key secret.                                                                                        |
@@ -69,6 +70,10 @@ SIGINT or SIGTERM.
   subscription; `502` when Razorpay fails.
 - `POST /webhooks/razorpay`: Razorpay subscription webhooks, verified by
   `X-Razorpay-Signature` (`401` when it is missing or wrong).
+- `POST /api/v1/projects/{projectId}/ai-search/brand-lookup` and
+  `.../ai-search/prompt-explorer`: AI Visibility lookups, `402` on the free
+  plan when billing is configured, `503` without `DATAFORSEO_API_KEY`. See
+  `internal/aisearch/README.md`.
 - `/api/v1/...`: needs a valid legacy session cookie, otherwise 401.
   `/api/v1/projects/{projectId}/...` also needs membership of the project's
   organization; any other project answers 404. Errors are JSON:

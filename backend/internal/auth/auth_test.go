@@ -139,9 +139,10 @@ func TestAuthorizeProject(t *testing.T) {
 	tests := []struct {
 		name      string
 		projectID string
+		wantOrg   string
 		wantErr   error
 	}{
-		{name: "own organization's project", projectID: f.ownProject},
+		{name: "own organization's project", projectID: f.ownProject, wantOrg: f.ownOrg},
 		{name: "another organization's project", projectID: f.otherProject, wantErr: ErrProjectNotFound},
 		{name: "archived project", projectID: f.archivedProject, wantErr: ErrProjectNotFound},
 		{name: "project that does not exist", projectID: "missing-" + rand.Text(), wantErr: ErrProjectNotFound},
@@ -149,15 +150,16 @@ func TestAuthorizeProject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := f.svc.AuthorizeProject(ctx, f.user.ID, tt.projectID); !errors.Is(err, tt.wantErr) {
-				t.Fatalf("AuthorizeProject() error = %v, want %v", err, tt.wantErr)
+			orgID, err := f.svc.AuthorizeProject(ctx, f.user.ID, tt.projectID)
+			if !errors.Is(err, tt.wantErr) || orgID != tt.wantOrg {
+				t.Fatalf("AuthorizeProject() = (%q, %v), want (%q, %v)", orgID, err, tt.wantOrg, tt.wantErr)
 			}
 		})
 	}
 
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
-	if err := f.svc.AuthorizeProject(canceled, f.user.ID, f.ownProject); err == nil || errors.Is(err, ErrProjectNotFound) {
+	if _, err := f.svc.AuthorizeProject(canceled, f.user.ID, f.ownProject); err == nil || errors.Is(err, ErrProjectNotFound) {
 		t.Fatalf("AuthorizeProject() on a failing database = %v, want a database error", err)
 	}
 }

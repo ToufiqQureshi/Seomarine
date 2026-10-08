@@ -10,13 +10,7 @@ export {
   type KeywordMetricRow,
 } from "@/server/lib/dataforseo/keyword-metrics";
 
-export {
-  buildLlmTarget,
-  CHATGPT_LANGUAGE_CODE,
-  CHATGPT_LOCATION_CODE,
-  MAX_TASKS_PER_POST,
-  type LlmPlatform,
-} from "@/server/lib/dataforseo/shared";
+export { MAX_TASKS_PER_POST } from "@/server/lib/dataforseo/shared";
 
 export { SERP_ANALYSIS_DEPTH } from "@/server/lib/dataforseo/serp";
 
