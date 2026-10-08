@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 )
 
 type repository struct {
@@ -79,29 +80,21 @@ func (r repository) startSubscription(ctx context.Context, orgID, plan, subID, s
 // The state is stored when it is at least as new as the stored state, and
 // is either the same subscription or replaces one that is not in
 // liveStatuses. An organization that no longer exists gets no row.
-func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string) (firstDelivery bool, err error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return false, fmt.Errorf("begin: %w", err)
-	}
-	defer func() {
-		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
-			err = errors.Join(err, fmt.Errorf("rollback: %w", rollbackErr))
-		}
-	}()
-
-	tag, err := tx.Exec(ctx, `
+func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string) (bool, error) {
+	var firstDelivery bool
+	err := pgdb.InTx(ctx, r.db, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
 		INSERT INTO go_billing_webhook_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING`,
-		eventID,
-	)
-	if err != nil {
-		return false, fmt.Errorf("record event: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return false, nil
-	}
+			eventID,
+		)
+		if err != nil {
+			return fmt.Errorf("record event: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return nil
+		}
 
-	_, err = tx.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_subscriptions
 			(organization_id, razorpay_subscription_id, plan, status, current_period_end, event_at)
 		SELECT $1, $2, $3, $4, $5, $6 FROM organization WHERE id = $1
@@ -115,13 +108,16 @@ func (r repository) applyEvent(ctx context.Context, eventID string, s subscripti
 		WHERE go_billing_subscriptions.event_at <= EXCLUDED.event_at
 			AND (go_billing_subscriptions.razorpay_subscription_id = EXCLUDED.razorpay_subscription_id
 				OR go_billing_subscriptions.status <> ALL ($7))`,
-		s.OrganizationID, s.ID, s.Plan, s.Status, s.CurrentPeriodEnd, s.EventAt, liveStatuses,
-	)
+			s.OrganizationID, s.ID, s.Plan, s.Status, s.CurrentPeriodEnd, s.EventAt, liveStatuses,
+		)
+		if err != nil {
+			return fmt.Errorf("store subscription %s: %w", s.ID, err)
+		}
+		firstDelivery = true
+		return nil
+	})
 	if err != nil {
-		return false, fmt.Errorf("store subscription %s: %w", s.ID, err)
+		return false, err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return false, fmt.Errorf("commit: %w", err)
-	}
-	return true, nil
+	return firstDelivery, nil
 }
