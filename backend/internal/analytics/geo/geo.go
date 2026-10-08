@@ -28,11 +28,8 @@ func New() (*Lookup, error) {
 // Country returns an ISO 3166-1 alpha-2 code, or an empty string when the
 // address is invalid, private, or absent from the database.
 func (l *Lookup) Country(raw string) (string, error) {
-	ip, err := netip.ParseAddr(raw)
-	if err != nil {
-		return "", nil
-	}
-	if !ip.IsGlobalUnicast() || ip.IsPrivate() {
+	ip, _ := netip.ParseAddr(raw)
+	if !ip.IsValid() || !ip.IsGlobalUnicast() || ip.IsPrivate() {
 		return "", nil
 	}
 	var record struct {
