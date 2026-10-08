@@ -1,6 +1,6 @@
 # Seomarine: TypeScript -> Go migration status
 
-Source of truth for the migration. Measured on `main` @ `438f6fd` (2026-10-08).
+Source of truth for the migration. Measured on `main` @ `f8cefcd` (2026-10-08).
 
 **Target architecture:** React/TS = frontend UI only (`src/client`). ALL backend = Go (`backend/`). No feature is removed: same behavior, same data, same UI.
 
@@ -13,6 +13,8 @@ Source of truth for the migration. Measured on `main` @ `438f6fd` (2026-10-08).
 - Owners: **Codex** = platform + core features, **Buffy** = growth/data/integration features. Reviewer: Claude. Do not edit rows of the other owner.
 
 ## Summary
+
+> Line counts are TS lines. The Go port is expected to be smaller (standard library and pgx replace TS glue). Progress = TS lines deleted, not Go lines written.
 
 **TS backend left: 296 files, 43,806 lines** (plus test files to port to Go tests, then delete). Measured with the command above; historical per-feature estimates below are not yet recounted. Go today: ~3,000 lines.
 
@@ -61,7 +63,7 @@ Order (biggest wins first, platform before features):
 2. Buffy (starts immediately; needs only `httpx` + `pgdb`, both merged): audit (biggest, 6.8k), billing, ga4, gsc, google, backlinks, ai-search, sam, reports, branding, dashboard, activation, referrals, gdpr, email.
 3. Wave 2 (after all above): mcp, then delete `db-schema` (src/db, only when no TS query is left), Cloudflare/Alchemy/wrangler config, and make Go serve the React build.
 
-Rules for every PR are in `parallel-tasks.md` (COMMON) and `codex-mega-task.md`. Buffy follows the same rules. Features that need `platform/jobs`, `dataforseo` or `entitlements` before Codex has merged them: build a small private helper in the feature and note it in `docs/maintainers/migration/<feature>.md`.
+Rules for every PR are in `TASK-CODEX-2.md`. Features that need `platform/jobs`, `dataforseo` or `entitlements` before Codex has merged them: build a small private helper in the feature and note it in `docs/maintainers/migration/<feature>.md`.
 
 ## Docs that are outdated (must be rewritten for the Go backend)
 

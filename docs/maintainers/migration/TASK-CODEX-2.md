@@ -15,6 +15,14 @@ find src/server src/serverFunctions src/db -name "*.ts" ! -name "*.test.ts" | xa
 Go written without deleting TS does not count. No feature may be removed or
 broken: same behavior, same data, same UI.
 
+## Go will be smaller than the TS it replaces
+
+Go's standard library (`net/http`, `encoding/json`, `slices`, `errors`, `log/slog`) and pgx replace a lot of TS glue: zod schemas, TanStack server-function wrappers, ORM layers, hand-written helpers. Expect each Go port to be noticeably **fewer** lines than its TS. That is correct, not a gap.
+
+- Progress is the **TS line count going down** (the command above), never Go lines written. Do not compare Go and TS line counts to judge completeness.
+- Do not pad Go to match TS, and do not shrink it by dropping behavior. Fewer lines only from using the standard library and removing TS-only layers.
+- Completeness is proven by parity tests and by `FEATURES.md` rows, not by size.
+
 ## Rules (non-negotiable)
 
 1. **Parity tests first.** Port the TS tests to Go (`httptest` for handlers,
