@@ -17,7 +17,6 @@ var (
 	// ErrInvalidJob marks invalid queue input or options.
 	ErrInvalidJob = errors.New("invalid job")
 	// ErrClaimLost means the job lease expired or was taken by another worker.
-	// ErrClaimLost means the job lease expired or was taken by another worker.
 	ErrClaimLost = errors.New("job claim is no longer owned by this worker")
 )
 
