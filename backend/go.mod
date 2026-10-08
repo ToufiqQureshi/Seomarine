@@ -7,7 +7,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/redis/go-redis/v9 v9.22.0
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.55.0
 	golang.org/x/text v0.41.0
 )
 
