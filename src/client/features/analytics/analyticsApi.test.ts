@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/seomarineApi";
-import { analyticsSummaryQueryOptions, rangeForDays } from "./analyticsApi";
+import {
+  analyticsCountriesPage,
+  analyticsSummaryQueryOptions,
+  rangeForDays,
+} from "./analyticsApi";
 
 describe("rangeForDays", () => {
   it.each([
@@ -24,6 +28,21 @@ describe("rangeForDays", () => {
     },
   ])("$name", ({ days, now, range }) => {
     expect(rangeForDays(days, new Date(now))).toEqual(range);
+  });
+});
+
+describe("analytics countries query", () => {
+  it("requests a bounded page and validates country rows", async () => {
+    const rows = [{ code: "IN", name: "India", visitors: 7, pct: 70 }];
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json(rows));
+    await expect(
+      analyticsCountriesPage(12, { from: "2026-10-01", to: "2026-10-07" }, 2),
+    ).resolves.toEqual(rows);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/v1/analytics/12/countries?from=2026-10-01&to=2026-10-07&page=2&limit=10",
+    );
   });
 });
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 )
 
@@ -109,6 +110,20 @@ func TestCollectStoresAPrivateEvent(t *testing.T) {
 	}
 }
 
+func TestCollectStoresCountryWithoutIP(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	site := f.addSite(ctx, t, "example.com")
+	if err := f.svc.Collect(ctx, hit(t, site.key, "https://example.com/", "", "8.8.8.8", desktopUA)); err != nil {
+		t.Fatal(err)
+	}
+	var country string
+	f.queryRow(ctx, t, `SELECT country_code FROM go_analytics_events e JOIN go_analytics_sites s ON s.id = e.site_id WHERE s.project_id = $1`, []any{site.project}, &country)
+	if country != "US" {
+		t.Fatalf("stored country = %q, want US", country)
+	}
+}
+
 // One visitor is one hash within a UTC day, even when concurrent first
 // events race to create the day's salt, and a different hash the next day.
 func TestCollectVisitorHashRotatesDaily(t *testing.T) {
@@ -186,7 +201,7 @@ func TestCollectReportsRedisErrors(t *testing.T) {
 	s := f.addSite(ctx, t, "")
 	broken := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1})
 	t.Cleanup(func() { closeRedis(t, broken) })
-	svc := NewService(f.pool, broken)
+	svc := NewService(f.pool, broken, f.svc.geo)
 
 	err := svc.Collect(ctx, hit(t, s.key, "https://acme.com/", "", "198.51.100.1", desktopUA))
 	if err == nil || errors.Is(err, ErrRateLimited) || errors.Is(err, ErrUnknownSite) {
@@ -298,6 +313,52 @@ func TestSummarizeValidatesTheRange(t *testing.T) {
 	}
 }
 
+func TestCountriesAreScopedAndPaginated(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	own := f.addSite(ctx, t, "")
+	userID := "user-" + rand.Text()
+	f.exec(ctx, t, `INSERT INTO "user" (id, name, email) VALUES ($1, 'Owner', $1 || '@example.com')`, userID)
+	f.exec(ctx, t, `INSERT INTO member (id, organization_id, user_id, created_at) VALUES ($1, $2, $3, now())`, "member-"+rand.Text(), f.org, userID)
+	t.Cleanup(func() { f.exec(context.WithoutCancel(ctx), t, `DELETE FROM "user" WHERE id = $1`, userID) })
+
+	var siteID int64
+	f.queryRow(ctx, t, `SELECT id FROM go_analytics_sites WHERE project_id = $1`, []any{own.project}, &siteID)
+	for _, row := range []struct{ country, visitor string }{
+		{"US", "a"}, {"US", "a"}, {"IN", "b"}, {"", "c"},
+	} {
+		f.exec(ctx, t, `INSERT INTO go_analytics_events
+			(site_id, occurred_at, path, channel, device, visitor_hash, country_code)
+			VALUES ($1, $2, '/', 'direct', 'desktop', $3, nullif($4, ''))`,
+			siteID, day, hash(row.visitor), row.country)
+	}
+	rows, err := f.svc.Countries(ctx, siteID, userID, day, day, 1, 0)
+	if err != nil || len(rows) != 1 || rows[0].Code != "IN" || rows[0].Visitors != 1 || rows[0].Pct < 33 || rows[0].Pct > 34 {
+		t.Fatalf("first country page = %+v, %v", rows, err)
+	}
+	rows, err = f.svc.Countries(ctx, siteID, userID, day, day, 1, 1)
+	if err != nil || len(rows) != 1 || rows[0].Code != "US" || rows[0].Name == "" {
+		t.Fatalf("second country page = %+v, %v", rows, err)
+	}
+	otherOrg, otherProject := "org-"+rand.Text(), "project-"+rand.Text()
+	f.exec(ctx, t, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Other', $1, now())`, otherOrg)
+	t.Cleanup(func() { f.exec(context.WithoutCancel(ctx), t, `DELETE FROM organization WHERE id = $1`, otherOrg) })
+	f.exec(ctx, t, `INSERT INTO projects (id, organization_id, name) VALUES ($1, $2, 'Other')`, otherProject, otherOrg)
+	if _, err := f.svc.EnsureSite(ctx, otherProject); err != nil {
+		t.Fatal(err)
+	}
+	foreignID, err := f.svc.SiteID(ctx, otherProject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Countries(ctx, foreignID, userID, day, day, 10, 0); !errors.Is(err, ErrUnknownSite) {
+		t.Fatalf("foreign read error = %v, want ErrUnknownSite", err)
+	}
+	if _, err := f.svc.Countries(ctx, siteID, userID, day, day.AddDate(0, 0, -1), 10, 0); !errors.Is(err, ErrInvalidRange) {
+		t.Fatalf("invalid range error = %v", err)
+	}
+}
+
 func assertSummary(t *testing.T, got, want Summary) {
 	t.Helper()
 	if got.Visitors != want.Visitors || got.Pageviews != want.Pageviews {
@@ -364,7 +425,11 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 	rdb := redis.NewClient(opts)
 	t.Cleanup(func() { closeRedis(t, rdb) })
 
-	f := &fixture{svc: NewService(pool, rdb), pool: pool, rdb: rdb, org: "org-" + rand.Text()}
+	lookup, err := geo.New()
+	if err != nil {
+		t.Fatalf("load country database: %v", err)
+	}
+	f := &fixture{svc: NewService(pool, rdb, lookup), pool: pool, rdb: rdb, org: "org-" + rand.Text()}
 	f.exec(ctx, t, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Acme', $1, now())`, f.org)
 	t.Cleanup(func() {
 		f.exec(context.WithoutCancel(ctx), t, `DELETE FROM organization WHERE id = $1`, f.org)

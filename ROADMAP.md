@@ -31,7 +31,7 @@ Product reasoning lives in `CLAUDE.md`.
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | 2.1  | White-label PDF/share reports (logo, name, color, website)                                                                                                    | ✅     |
 | 2.2  | **Seomarine Analytics** (Go): tracking script, ingest API, dashboard (visitors, pages, sources, devices)                                                      | ✅     |
-| 2.2b | Analytics: countries breakdown                                                                                                                                | ⏳     |
+| 2.2b | Analytics: countries breakdown                                                                                                                                | 🔨     |
 | 2.3  | **AI traffic detection**: ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus recovery of AI traffic hiding as "Direct"                              | ✅     |
 | 2.4  | **AI Visibility**: mentions, citations, sentiment and competitor share of voice across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, with drop alerts | ⏳     |
 | 2.5  | Join AI visibility with analytics: "seen in AI" vs "visitors from AI"                                                                                         | ⏳     |

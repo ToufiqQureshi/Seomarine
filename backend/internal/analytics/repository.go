@@ -34,6 +34,14 @@ func (r repository) ensureSite(ctx context.Context, projectID, newKey string) (s
 	return key, nil
 }
 
+func (r repository) siteIDByProject(ctx context.Context, projectID string) (int64, error) {
+	var id int64
+	if err := r.db.QueryRow(ctx, `SELECT id FROM go_analytics_sites WHERE project_id = $1`, projectID).Scan(&id); err != nil {
+		return 0, fmt.Errorf("load analytics site id: %w", err)
+	}
+	return id, nil
+}
+
 // site is a tracked site and its project's domain ("" when unset).
 type site struct {
 	ID     int64
@@ -67,14 +75,15 @@ type event struct {
 	Source      source
 	Device      string
 	VisitorHash []byte
+	CountryCode string
 }
 
 func (r repository) insertEvent(ctx context.Context, e event) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO go_analytics_events
-			(site_id, occurred_at, path, referrer_host, channel, ai_source, device, visitor_hash)
-		VALUES ($1, $2, $3, nullif($4, ''), $5, nullif($6, ''), $7, $8)`,
-		e.SiteID, e.OccurredAt, e.Path, e.Source.ReferrerHost, e.Source.Channel, e.Source.AISource, e.Device, e.VisitorHash,
+			(site_id, occurred_at, path, referrer_host, channel, ai_source, device, visitor_hash, country_code)
+		VALUES ($1, $2, $3, nullif($4, ''), $5, nullif($6, ''), $7, $8, nullif($9, ''))`,
+		e.SiteID, e.OccurredAt, e.Path, e.Source.ReferrerHost, e.Source.Channel, e.Source.AISource, e.Device, e.VisitorHash, e.CountryCode,
 	)
 	if err != nil {
 		return fmt.Errorf("insert analytics event: %w", err)
@@ -147,4 +156,54 @@ func collectInto[T any](dst *[]T, fn pgx.RowToFunc[T]) func(pgx.Rows) error {
 		*dst, err = pgx.CollectRows(rows, fn)
 		return err
 	}
+}
+
+// countries returns the first recorded country per daily visitor hash. The
+// membership query keeps a foreign site indistinguishable from a missing one.
+func (r repository) countries(ctx context.Context, siteID int64, userID string, start, end time.Time, limit, offset int) ([]CountryCount, error) {
+	var allowed bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM go_analytics_sites s
+			JOIN projects p ON p.id = s.project_id
+			JOIN member m ON m.organization_id = p.organization_id
+			WHERE s.id = $1 AND p.archived_at IS NULL AND m.user_id = $2
+		)`, siteID, userID).Scan(&allowed)
+	if err != nil {
+		return nil, fmt.Errorf("authorize analytics site: %w", err)
+	}
+	if !allowed {
+		return nil, ErrUnknownSite
+	}
+	rows, err := r.db.Query(ctx, `
+		WITH visits AS (
+			SELECT DISTINCT ON (visitor_hash) visitor_hash, country_code
+			FROM go_analytics_events
+			WHERE site_id = $1 AND occurred_at >= $2 AND occurred_at < $3
+			ORDER BY visitor_hash, occurred_at
+		), counted AS (
+			SELECT country_code, count(*) AS visitors FROM visits
+			WHERE country_code IS NOT NULL GROUP BY country_code
+		)
+		SELECT country_code, visitors, (SELECT count(*) FROM visits) AS total
+		FROM counted ORDER BY visitors DESC, country_code LIMIT $4 OFFSET $5`,
+		siteID, start, end, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("query analytics countries: %w", err)
+	}
+	defer rows.Close()
+	result := make([]CountryCount, 0)
+	for rows.Next() {
+		var row CountryCount
+		var total int64
+		if err := rows.Scan(&row.Code, &row.Visitors, &total); err != nil {
+			return nil, fmt.Errorf("scan analytics country: %w", err)
+		}
+		row.Pct = float64(row.Visitors) * 100 / float64(total)
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read analytics countries: %w", err)
+	}
+	return result, nil
 }

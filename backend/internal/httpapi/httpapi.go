@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"time"
 
@@ -41,7 +42,8 @@ type Deps struct {
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
-	Upstream *url.URL
+	Upstream          *url.URL
+	TrustedProxyCIDRs []netip.Prefix
 }
 
 const (
@@ -94,7 +96,7 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
 
 	mux.HandleFunc("GET /t.js", serveTracker())
-	mux.HandleFunc("POST /collect", collect(d.Logger, d.Analytics))
+	mux.HandleFunc("POST /collect", collect(d.Logger, d.Analytics, d.TrustedProxyCIDRs))
 	mux.HandleFunc("OPTIONS /collect", collectPreflight)
 	mux.HandleFunc("POST /webhooks/razorpay", razorpayWebhook(d.Logger, d.Billing))
 
@@ -106,6 +108,7 @@ func NewHandler(d Deps) http.Handler {
 	api := http.NewServeMux()
 	api.HandleFunc("GET /api/v1/billing/status", billingStatus(d.Logger, d.Billing))
 	api.HandleFunc("POST /api/v1/billing/checkout", billingCheckout(d.Logger, d.Billing))
+	api.HandleFunc("GET /api/v1/analytics/{siteId}/countries", countries(d.Logger, d.Analytics))
 	api.Handle("/api/v1/projects/{projectId}/", requireProjectAccess(d.Logger, d.Auth, projectRoutes))
 	api.HandleFunc("/", notFound(d.Logger))
 	mux.Handle("/api/v1/", requireSession(d.Logger, d.Auth, api))

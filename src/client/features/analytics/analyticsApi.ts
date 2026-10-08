@@ -46,6 +46,7 @@ const summarySchema = z.object({
 export type AnalyticsSummary = z.infer<typeof summarySchema>;
 
 const siteSchema = z.object({
+  id: z.number().int().positive(),
   siteKey: z.string().min(1),
   snippet: z.string().min(1),
 });
@@ -85,4 +86,37 @@ export function analyticsSummaryQueryOptions(
 
 export function createAnalyticsSite(projectId: string): Promise<AnalyticsSite> {
   return apiRequest(`${projectPath(projectId)}/site`, siteSchema, "POST");
+}
+
+const countrySchema = z.object({
+  code: z.string().regex(/^[A-Z]{2}$/),
+  name: z.string().min(1),
+  visitors: count,
+  pct: z.number().min(0).max(100),
+});
+export type Country = z.infer<typeof countrySchema>;
+
+export function analyticsSiteQueryOptions(projectId: string) {
+  return {
+    queryKey: ["goAnalyticsSite", projectId],
+    queryFn: () => createAnalyticsSite(projectId),
+    retry: shouldRetryApiError,
+    staleTime: Infinity,
+  };
+}
+
+export function analyticsCountriesPage(
+  siteId: number,
+  range: { from: string; to: string },
+  page: number,
+): Promise<Country[]> {
+  const query = new URLSearchParams({
+    ...range,
+    page: String(page),
+    limit: "10",
+  });
+  return apiRequest(
+    `/api/v1/analytics/${siteId}/countries?${query}`,
+    z.array(countrySchema),
+  );
 }

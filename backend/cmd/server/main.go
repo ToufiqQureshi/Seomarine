@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
@@ -70,6 +71,10 @@ func run(logger *slog.Logger) error {
 			logger.Error("close redis", "err", err)
 		}
 	}()
+	countryLookup, err := geo.New()
+	if err != nil {
+		return err
+	}
 
 	var billingSvc *billing.Service
 	if rzp := cfg.Razorpay; rzp != nil {
@@ -81,14 +86,15 @@ func run(logger *slog.Logger) error {
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
-			Logger:    logger,
-			DB:        db,
-			Redis:     httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
-			Auth:      auth.NewService(db, cfg.BetterAuthSecret),
-			Analytics: analytics.NewService(db, rdb),
-			Billing:   billingSvc,
-			Site:      pages,
-			Upstream:  cfg.UpstreamAppURL,
+			Logger:            logger,
+			DB:                db,
+			Redis:             httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
+			Auth:              auth.NewService(db, cfg.BetterAuthSecret),
+			Analytics:         analytics.NewService(db, rdb, countryLookup),
+			TrustedProxyCIDRs: cfg.TrustedProxyCIDRs,
+			Billing:           billingSvc,
+			Site:              pages,
+			Upstream:          cfg.UpstreamAppURL,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,

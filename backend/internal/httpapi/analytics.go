@@ -13,10 +13,12 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 )
 
 //go:embed tracker.js
@@ -54,7 +56,7 @@ type collectRequest struct {
 // collect records a tracker event. Any site may post to it, so CORS is open;
 // the tracker sends text/plain, which needs no preflight, and the preflight
 // handler covers other clients.
-func collect(logger *slog.Logger, svc *analytics.Service) http.HandlerFunc {
+func collect(logger *slog.Logger, svc *analytics.Service, trusted []netip.Prefix) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -79,7 +81,7 @@ func collect(logger *slog.Logger, svc *analytics.Service) http.HandlerFunc {
 			Page:        page,
 			Referrer:    req.Referrer,
 			ScreenWidth: req.ScreenWidth,
-			IP:          clientIP(r),
+			IP:          clientIP(r, trusted),
 			UserAgent:   r.UserAgent(),
 		})
 		switch {
@@ -127,25 +129,42 @@ func collectPreflight(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// clientIP returns the address of the client. The server runs behind one
-// trusted proxy (Railway's edge), which appends the address it saw to
-// X-Forwarded-For, so the last entry is the only one a client cannot forge.
-// Without a valid header it falls back to the TCP peer.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Values("X-Forwarded-For"); len(xff) > 0 {
-		entries := strings.Split(xff[len(xff)-1], ",")
-		if ip, err := netip.ParseAddr(strings.TrimSpace(entries[len(entries)-1])); err == nil {
+// clientIP accepts forwarding headers only from an explicitly trusted peer.
+// Trusted proxies must replace CF-Connecting-IP and append X-Forwarded-For.
+func clientIP(r *http.Request, trusted []netip.Prefix) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
+		return host
+	}
+	allowed := false
+	for _, prefix := range trusted {
+		if prefix.Contains(peer) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return peer.String()
+	}
+	if cf, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))); err == nil {
+		return cf.String()
+	}
+	xff := strings.Join(r.Header.Values("X-Forwarded-For"), ",")
+	entries := strings.Split(xff, ",")
+	for i := len(entries) - 1; i >= 0; i-- {
+		if ip, err := netip.ParseAddr(strings.TrimSpace(entries[i])); err == nil {
 			return ip.String()
 		}
 	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+	return peer.String()
 }
 
 type siteResponse struct {
+	ID      int64  `json:"id"`
 	SiteKey string `json:"siteKey"`
 	Snippet string `json:"snippet"`
 }
@@ -160,9 +179,60 @@ func ensureSite(logger *slog.Logger, svc *analytics.Service) http.HandlerFunc {
 			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
+		id, err := svc.SiteID(r.Context(), r.PathValue("projectId"))
+		if err != nil {
+			logger.ErrorContext(r.Context(), "load analytics site id", "err", err)
+			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
 		snippet := fmt.Sprintf(`<script defer data-site="%s" src="%s/t.js"></script>`,
 			html.EscapeString(key), html.EscapeString(publicOrigin(r)))
-		writeJSON(w, logger, http.StatusOK, siteResponse{SiteKey: key, Snippet: snippet})
+		writeJSON(w, logger, http.StatusOK, siteResponse{ID: id, SiteKey: key, Snippet: snippet})
+	}
+}
+
+func countries(logger *slog.Logger, svc *analytics.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("siteId"), 10, 64)
+		if err != nil || id < 1 {
+			writeError(w, logger, http.StatusBadRequest, "invalid_site", "siteId must be a positive number.")
+			return
+		}
+		q := r.URL.Query()
+		from, fromErr := time.Parse(time.DateOnly, q.Get("from"))
+		to, toErr := time.Parse(time.DateOnly, q.Get("to"))
+		if fromErr != nil || toErr != nil {
+			writeError(w, logger, http.StatusBadRequest, "invalid_range", "from and to must be dates like 2026-01-31.")
+			return
+		}
+		page, limit := 1, 10
+		if raw := q.Get("page"); raw != "" {
+			page, err = strconv.Atoi(raw)
+			if err != nil || page < 1 || page > 1000 {
+				writeError(w, logger, http.StatusBadRequest, "invalid_page", "page must be between 1 and 1000.")
+				return
+			}
+		}
+		if raw := q.Get("limit"); raw != "" {
+			limit, err = strconv.Atoi(raw)
+			if err != nil || limit < 1 || limit > 100 {
+				writeError(w, logger, http.StatusBadRequest, "invalid_limit", "limit must be between 1 and 100.")
+				return
+			}
+		}
+		user, _ := r.Context().Value(userKey{}).(auth.User)
+		result, err := svc.Countries(r.Context(), id, user.ID, from, to, limit, (page-1)*limit)
+		switch {
+		case err == nil:
+			writeJSON(w, logger, http.StatusOK, result)
+		case errors.Is(err, analytics.ErrUnknownSite):
+			writeError(w, logger, http.StatusNotFound, "unknown_site", "Site not found.")
+		case errors.Is(err, analytics.ErrInvalidRange):
+			writeError(w, logger, http.StatusBadRequest, "invalid_range", "The date range must end on or after its start and span at most 366 days.")
+		default:
+			logger.ErrorContext(r.Context(), "analytics countries", "err", err)
+			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+		}
 	}
 }
 
