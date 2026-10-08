@@ -35,7 +35,7 @@ func TestCollectRejectsInvalidEvents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			Collect(nil, nil, nil)(rec, httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(tt.body)))
+			collect(nil, nil, nil)(rec, httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(tt.body)))
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d (body %s)", rec.Code, tt.wantStatus, rec.Body)
 			}
@@ -59,7 +59,7 @@ func TestCollectRejectsInvalidEvents(t *testing.T) {
 
 func TestCollectPreflight(t *testing.T) {
 	rec := httptest.NewRecorder()
-	CollectPreflight(rec, httptest.NewRequest(http.MethodOptions, "/collect", nil))
+	collectPreflight(rec, httptest.NewRequest(http.MethodOptions, "/collect", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
 	}

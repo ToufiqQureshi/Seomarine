@@ -97,10 +97,16 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
-	analytics.Mount(mux, d.Logger, d.Analytics, d.TrustedProxyCIDRs, withSession, func(next http.Handler) http.Handler {
-		return requireProjectAccess(d.Logger, d.Auth, next)
+	analytics.Mount(mux, analytics.Deps{
+		Logger:            d.Logger,
+		Service:           d.Analytics,
+		TrustedProxyCIDRs: d.TrustedProxyCIDRs,
+		WithSession:       withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler {
+			return requireProjectAccess(d.Logger, d.Auth, next)
+		},
 	})
-	billing.Mount(mux, d.Logger, d.Billing, withSession)
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())
@@ -108,7 +114,7 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.Handle("/", app)
 
-	return httpx.RequestLogging(d.Logger)(mux)
+	return httpx.RequestLogging(d.Logger)(httpx.Recover(d.Logger)(mux))
 }
 
 // requireSession answers 401 unless the request carries a valid session,
@@ -125,7 +131,7 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(httpx.WithUser(r.Context(), user)))
+		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))
 	})
 }
 
@@ -135,7 +141,7 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 // member row has an empty user id.
 func requireProjectAccess(logger *slog.Logger, authz *auth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, _ := httpx.UserFromContext(r.Context())
+		user, _ := auth.UserFromContext(r.Context())
 		err := authz.AuthorizeProject(r.Context(), user.ID, r.PathValue("projectId"))
 		if errors.Is(err, auth.ErrProjectNotFound) {
 			httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")

@@ -2,7 +2,6 @@
 package httpx
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -12,11 +11,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 )
 
 // ErrPayloadTooLarge means a JSON request exceeded its configured size limit.
@@ -28,9 +26,6 @@ var ErrInvalidPage = errors.New("page must be between 1 and 1000")
 // ErrInvalidLimit means the limit query value is outside the supported range.
 var ErrInvalidLimit = errors.New("limit must be between 1 and 100")
 
-// userKey is the request-scoped context key for the signed-in user.
-type userKey struct{}
-
 // Error is the common API error envelope body.
 type Error struct {
 	Code    string `json:"code"`
@@ -40,17 +35,6 @@ type Error struct {
 // Envelope is the common JSON error shape used throughout the API.
 type Envelope struct {
 	Error Error `json:"error"`
-}
-
-// WithUser attaches the authenticated user to the request context.
-func WithUser(ctx context.Context, user auth.User) context.Context {
-	return context.WithValue(ctx, userKey{}, user)
-}
-
-// UserFromContext returns the user stored on the request context.
-func UserFromContext(ctx context.Context) (auth.User, bool) {
-	user, ok := ctx.Value(userKey{}).(auth.User)
-	return user, ok
 }
 
 // RequestLogging wraps the next handler with request-scoped logging metadata.
@@ -69,12 +53,67 @@ func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 				log = logger.With("request_id", requestID, "method", r.Method, "path", r.URL.Path)
 			}
 			start := time.Now()
-			next.ServeHTTP(w, r)
+			response := &statusRecorder{ResponseWriter: w}
+			next.ServeHTTP(response, r)
 			if log != nil {
-				log.InfoContext(r.Context(), "request complete", "duration_ms", time.Since(start).Milliseconds())
+				log.InfoContext(r.Context(), "request complete", "status", response.statusCode(), "duration_ms", time.Since(start).Milliseconds())
 			}
 		})
 	}
+}
+
+// Recover turns panics from a handler into a generic API error when the
+// response has not started, and logs the panic with its stack for diagnosis.
+func Recover(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			response := &statusRecorder{ResponseWriter: w}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					if logger != nil {
+						logger.ErrorContext(r.Context(), "panic serving request", "panic_type", fmt.Sprintf("%T", recovered), "stack", string(debug.Stack()))
+					}
+					if !response.wroteHeader {
+						WriteError(response, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+					}
+				}
+			}()
+			next.ServeHTTP(response, r)
+		})
+	}
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (w *statusRecorder) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.ResponseWriter.WriteHeader(status)
+	if status < 100 || status >= 200 || status == http.StatusSwitchingProtocols {
+		w.status = status
+		w.wroteHeader = true
+	}
+}
+
+func (w *statusRecorder) Write(body []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
+}
+
+func (w *statusRecorder) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+func (w *statusRecorder) statusCode() int {
+	if !w.wroteHeader {
+		return http.StatusOK
+	}
+	return w.status
 }
 
 func validRequestID(value string) bool {

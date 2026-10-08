@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,5 +123,65 @@ func TestRequestLoggingSetsSafeRequestID(t *testing.T) {
 				t.Errorf("response request ID %q is not safe", got)
 			}
 		})
+	}
+}
+
+func TestRequestLoggingRecordsResponseStatus(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	handler := RequestLogging(logger)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte("accepted"))
+	}))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusAccepted)
+	}
+	if !strings.Contains(logs.String(), `"status":202`) {
+		t.Fatalf("request log %q does not contain response status 202", logs.String())
+	}
+}
+
+func TestStatusRecorderTracksFinalStatusAfterInformationalResponse(t *testing.T) {
+	response := &statusRecorder{ResponseWriter: httptest.NewRecorder()}
+	response.WriteHeader(http.StatusEarlyHints)
+	response.WriteHeader(http.StatusAccepted)
+	if got := response.statusCode(); got != http.StatusAccepted {
+		t.Fatalf("statusCode() = %d, want %d", got, http.StatusAccepted)
+	}
+}
+
+func TestRecoverReturnsInternalErrorAndLogsPanic(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	handler := RequestLogging(logger)(Recover(logger)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic("unexpected")
+	})))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/panic", nil))
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusInternalServerError)
+	}
+	if !strings.Contains(recorder.Body.String(), `"code":"internal"`) {
+		t.Fatalf("response body %q does not contain generic internal error", recorder.Body.String())
+	}
+	if !strings.Contains(logs.String(), `"msg":"panic serving request"`) || !strings.Contains(logs.String(), `"status":500`) {
+		t.Fatalf("logs %q do not contain panic and response status", logs.String())
+	}
+}
+
+func TestRecoverDoesNotWriteAfterResponseStarted(t *testing.T) {
+	handler := Recover(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+		panic("after response")
+	}))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/panic", nil))
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusAccepted)
+	}
+	if recorder.Body.Len() != 0 {
+		t.Fatalf("response body = %q, want empty after committed response", recorder.Body.String())
 	}
 }

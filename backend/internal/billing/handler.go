@@ -12,15 +12,22 @@ import (
 
 const maxWebhookBody = 256 << 10
 
-// Mount registers billing routes on the root mux.
-func Mount(mux *http.ServeMux, logger *slog.Logger, svc *Service, withSession func(http.Handler) http.Handler) {
-	mux.Handle("POST /webhooks/razorpay", WebhookHandler(logger, svc))
-	mux.Handle("GET /api/v1/billing/status", withSession(StatusHandler(logger, svc)))
-	mux.Handle("POST /api/v1/billing/checkout", withSession(CheckoutHandler(logger, svc)))
+// Deps contains billing services and the root router's authentication middleware.
+type Deps struct {
+	Logger      *slog.Logger
+	Service     *Service
+	WithSession func(http.Handler) http.Handler
 }
 
-// StatusHandler returns the plan of the signed-in user's active organization.
-func StatusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// Mount registers billing routes on mux.
+func Mount(mux *http.ServeMux, d Deps) {
+	mux.Handle("POST /webhooks/razorpay", webhookHandler(d.Logger, d.Service))
+	mux.Handle("GET /api/v1/billing/status", d.WithSession(statusHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/billing/checkout", d.WithSession(checkoutHandler(d.Logger, d.Service)))
+}
+
+// statusHandler returns the plan of the signed-in user's active organization.
+func statusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := billingUser(w, r, svc)
 		if !ok {
@@ -36,8 +43,8 @@ func StatusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	}
 }
 
-// CheckoutHandler starts a pro subscription for the signed-in user's active organization.
-func CheckoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// checkoutHandler starts a pro subscription for the signed-in user's active organization.
+func checkoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := billingUser(w, r, svc)
 		if !ok {
@@ -71,7 +78,7 @@ func billingUser(w http.ResponseWriter, r *http.Request, svc *Service) (auth.Use
 		httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Billing is not set up on this server.")
 		return auth.User{}, false
 	}
-	user, ok := httpx.UserFromContext(r.Context())
+	user, ok := auth.UserFromContext(r.Context())
 	if !ok || user.OrganizationID == "" {
 		httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
 		return auth.User{}, false
@@ -79,8 +86,8 @@ func billingUser(w http.ResponseWriter, r *http.Request, svc *Service) (auth.Use
 	return user, true
 }
 
-// WebhookHandler applies Razorpay's subscription webhooks.
-func WebhookHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// webhookHandler applies Razorpay's subscription webhooks.
+func webhookHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if svc == nil {
 			httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Billing is not set up on this server.")

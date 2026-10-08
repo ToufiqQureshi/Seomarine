@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 )
 
@@ -23,18 +24,25 @@ const (
 	maxScreenWidth = 100_000
 )
 
-// Mount registers analytics routes. Middleware arguments enforce the root
-// router's session and project membership checks on private endpoints.
-func Mount(mux *http.ServeMux, logger *slog.Logger, svc *Service, trusted []netip.Prefix, withSession, withProjectAccess func(http.Handler) http.Handler) {
-	mux.HandleFunc("POST /collect", Collect(logger, svc, trusted))
-	mux.HandleFunc("OPTIONS /collect", CollectPreflight)
-	mux.Handle("POST /api/v1/projects/{projectId}/analytics/site", withSession(withProjectAccess(EnsureSiteHandler(logger, svc))))
-	mux.Handle("GET /api/v1/projects/{projectId}/analytics/summary", withSession(withProjectAccess(SummaryHandler(logger, svc))))
-	mux.Handle("GET /api/v1/analytics/{siteId}/countries", withSession(CountriesHandler(logger, svc)))
+// Deps contains analytics services and the root router's authorization middleware.
+type Deps struct {
+	Logger            *slog.Logger
+	Service           *Service
+	TrustedProxyCIDRs []netip.Prefix
+	WithSession       func(http.Handler) http.Handler
+	WithProjectAccess func(http.Handler) http.Handler
 }
 
-// CollectPreflight answers browser CORS preflight requests for event ingest.
-func CollectPreflight(w http.ResponseWriter, _ *http.Request) {
+// Mount registers analytics routes on mux.
+func Mount(mux *http.ServeMux, d Deps) {
+	mux.HandleFunc("POST /collect", collect(d.Logger, d.Service, d.TrustedProxyCIDRs))
+	mux.HandleFunc("OPTIONS /collect", collectPreflight)
+	mux.Handle("POST /api/v1/projects/{projectId}/analytics/site", d.WithSession(d.WithProjectAccess(ensureSiteHandler(d.Logger, d.Service))))
+	mux.Handle("GET /api/v1/projects/{projectId}/analytics/summary", d.WithSession(d.WithProjectAccess(summaryHandler(d.Logger, d.Service))))
+	mux.Handle("GET /api/v1/analytics/{siteId}/countries", d.WithSession(countriesHandler(d.Logger, d.Service)))
+}
+
+func collectPreflight(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -48,8 +56,8 @@ type siteResponse struct {
 	Snippet string `json:"snippet"`
 }
 
-// Collect records a tracker event. Any site may post to it, so CORS is open.
-func Collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.HandlerFunc {
+// collect records a tracker event. Any site may post to it, so CORS is open.
+func collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -154,8 +162,8 @@ func clientIP(r *http.Request, trusted []netip.Prefix) string {
 	return peer.String()
 }
 
-// EnsureSiteHandler returns the project's site key and tracker snippet.
-func EnsureSiteHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// ensureSiteHandler returns the project's site key and tracker snippet.
+func ensureSiteHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := svc.EnsureSite(r.Context(), r.PathValue("projectId"))
 		if err != nil {
@@ -175,8 +183,8 @@ func EnsureSiteHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	}
 }
 
-// CountriesHandler returns the countries breakdown for a site.
-func CountriesHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// countriesHandler returns the countries breakdown for a site.
+func countriesHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("siteId"), 10, 64)
 		if err != nil || id < 1 {
@@ -199,7 +207,7 @@ func CountriesHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_limit", "limit must be between 1 and 100.")
 			return
 		}
-		user, _ := httpx.UserFromContext(r.Context())
+		user, _ := auth.UserFromContext(r.Context())
 		result, err := svc.Countries(r.Context(), id, user.ID, from, to, limit, (page-1)*limit)
 		switch {
 		case err == nil:
@@ -227,8 +235,8 @@ func publicOrigin(r *http.Request) string {
 	return scheme + "://" + r.Host
 }
 
-// SummaryHandler returns the project's traffic summary for a date range.
-func SummaryHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+// summaryHandler returns the project's traffic summary for a date range.
+func summaryHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		from, fromErr := time.Parse(time.DateOnly, r.URL.Query().Get("from"))
 		to, toErr := time.Parse(time.DateOnly, r.URL.Query().Get("to"))
