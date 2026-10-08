@@ -16,6 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 )
 
 const desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
@@ -403,7 +404,7 @@ type testSite struct {
 // the test's projects belong to; deleting it cascades to everything else.
 func newFixture(ctx context.Context, t *testing.T) *fixture {
 	t.Helper()
-	pool, err := database.Open(ctx, testEnv(t, "TEST_DATABASE_URL"))
+	pool, err := pgdb.Open(ctx, testEnv(t, "TEST_DATABASE_URL"))
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}

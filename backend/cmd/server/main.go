@@ -20,6 +20,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -53,7 +54,7 @@ func run(logger *slog.Logger) error {
 
 	startupCtx, cancel := context.WithTimeout(ctx, startupTimeout)
 	defer cancel()
-	db, err := database.Open(startupCtx, cfg.DatabaseURL)
+	db, err := pgdb.Open(startupCtx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}

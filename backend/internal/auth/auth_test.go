@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 )
 
 // goldenCookie was produced by better-call 1.3.7's own signCookieValue
@@ -241,7 +242,7 @@ func openTestDB(ctx context.Context, t *testing.T) *pgxpool.Pool {
 		}
 		t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	}
-	pool, err := pgxpool.New(ctx, url)
+	pool, err := pgdb.Open(ctx, url)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
