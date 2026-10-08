@@ -11,8 +11,10 @@ import (
 
 const defaultLease = 30 * time.Second
 
+// Handler processes one claimed job. A non-nil error schedules a retry.
 type Handler func(context.Context, Job) error
 
+// Worker polls a queue and runs Handle for each claimed job.
 type Worker struct {
 	Queue        *Queue
 	QueueName    string

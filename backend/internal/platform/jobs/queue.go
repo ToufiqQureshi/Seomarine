@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	// ErrInvalidJob marks invalid queue input or options.
 	ErrInvalidJob = errors.New("invalid job")
 	ErrClaimLost  = errors.New("job claim is no longer owned by this worker")
 )
@@ -24,8 +25,10 @@ const (
 	maxBackoff      = time.Hour
 )
 
+// Queue is a PostgreSQL-backed job queue.
 type Queue struct{ db *pgxpool.Pool }
 
+// EnqueueInput describes a job to enqueue. Zero MaxAttempts and Timeout select defaults.
 type EnqueueInput struct {
 	Queue          string
 	IdempotencyKey string
@@ -34,6 +37,7 @@ type EnqueueInput struct {
 	Timeout        time.Duration
 }
 
+// Job is a claimed or enqueued job.
 type Job struct {
 	ID             int64
 	Queue          string
@@ -45,6 +49,7 @@ type Job struct {
 	ClaimVersion   int64
 }
 
+// New returns a Queue backed by db.
 func New(db *pgxpool.Pool) (*Queue, error) {
 	if db == nil {
 		return nil, errors.New("jobs: database pool is required")
@@ -127,6 +132,7 @@ func (q *Queue) Claim(ctx context.Context, queue, workerID string, lease time.Du
 	return jobs, nil
 }
 
+// Complete marks a claimed job succeeded. It returns ErrClaimLost if the lease was lost.
 func (q *Queue) Complete(ctx context.Context, job Job) error {
 	tag, err := q.db.Exec(ctx, `UPDATE go_jobs SET state = 'succeeded', lease_until = NULL,
 		worker_id = NULL, finished_at = now(), last_error = NULL
@@ -140,6 +146,7 @@ func (q *Queue) Complete(ctx context.Context, job Job) error {
 	return nil
 }
 
+// Extend renews the lease of a claimed job. It returns ErrClaimLost if the lease was lost.
 func (q *Queue) Extend(ctx context.Context, job Job, workerID string, lease time.Duration) error {
 	if workerID == "" || len(workerID) > 128 || lease < time.Second || lease > 24*time.Hour {
 		return fmt.Errorf("%w: invalid lease extension", ErrInvalidJob)
