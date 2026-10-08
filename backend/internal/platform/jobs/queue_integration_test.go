@@ -114,6 +114,79 @@ func TestQueueEnqueueClaimConcurrencyAndStaleClaims(t *testing.T) {
 	}
 }
 
+func TestWorkerProcessesAndCompletesJob(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pool := jobsTestPool(ctx, t)
+	if err := database.Migrate(ctx, pool); err != nil {
+		t.Fatalf("migrate test database: %v", err)
+	}
+	queue, err := New(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "worker-test-" + randomSuffix(t)
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), "DELETE FROM go_jobs WHERE queue = $1", name); err != nil {
+			t.Errorf("clean test jobs: %v", err)
+		}
+	})
+	job, err := queue.Enqueue(ctx, EnqueueInput{Queue: name, Payload: json.RawMessage(`{}`)})
+	if err != nil {
+		t.Fatalf("enqueue worker job: %v", err)
+	}
+
+	workerCtx, stopWorker := context.WithCancel(ctx)
+	defer stopWorker()
+	processed := make(chan int64, 1)
+	worker := Worker{
+		Queue:        queue,
+		QueueName:    name,
+		PollInterval: 10 * time.Millisecond,
+		Handle: func(_ context.Context, claimed Job) error {
+			processed <- claimed.ID
+			return nil
+		},
+	}
+	workerDone := make(chan error, 1)
+	go func() { workerDone <- worker.Run(workerCtx) }()
+
+	select {
+	case got := <-processed:
+		if got != job.ID {
+			t.Fatalf("worker processed job %d, want %d", got, job.ID)
+		}
+	case <-ctx.Done():
+		t.Fatal("worker did not process the queued job before timeout")
+	}
+
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	poll := time.NewTicker(10 * time.Millisecond)
+	defer poll.Stop()
+	for {
+		var state string
+		if err := pool.QueryRow(ctx, "SELECT state FROM go_jobs WHERE id = $1", job.ID).Scan(&state); err != nil {
+			t.Fatalf("read worker job state: %v", err)
+		}
+		if state == "succeeded" {
+			break
+		}
+		select {
+		case <-deadline.C:
+			t.Fatalf("worker job state = %q, want succeeded", state)
+		case <-poll.C:
+		case <-ctx.Done():
+			t.Fatalf("wait for worker completion: %v", ctx.Err())
+		}
+	}
+
+	stopWorker()
+	if err := <-workerDone; !errors.Is(err, context.Canceled) {
+		t.Fatalf("worker shutdown error = %v, want context.Canceled", err)
+	}
+}
+
 func jobsTestPool(ctx context.Context, t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv("TEST_DATABASE_URL")
