@@ -82,6 +82,7 @@ Codex file-level progress is kept in the feature notes below. Do not mark a feat
 - [domain](domain.md) — 7 files, 850 lines; TODO
 - [projects](projects.md) — 4 files, 554 lines; TODO
 - [workflows](workflows.md) — 1 files, 29 lines; TODO
+
 ## Files: Buffy
 
 ### audit (40 files, 6,781 lines) -> `backend/internal/audit`
