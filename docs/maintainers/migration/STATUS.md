@@ -14,6 +14,8 @@ Source of truth for the migration. Measured on `main` @ `700e408` (2026-10-08).
 
 ## Summary
 
+> Line counts are TS lines. The Go port is expected to be smaller (standard library and pgx replace TS glue). Progress = TS lines deleted, not Go lines written.
+
 **TS backend left: 300 files, 47,706 lines** (plus 137 test files to port to Go tests, then delete). Go today: ~3,000 lines.
 
 | Feature             | TS files |   TS lines | Test files | Go package                                         | Owner | Wave | Status |
