@@ -14,6 +14,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
+	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 )
 
 var (
@@ -99,12 +102,13 @@ type Service struct {
 	repo  repository
 	redis *redis.Client
 	now   func() time.Time
+	geo   *geo.Lookup
 }
 
 // NewService returns a Service that stores events in db and keeps the daily
 // salt and rate-limit counters in rdb.
-func NewService(db *pgxpool.Pool, rdb *redis.Client) *Service {
-	return &Service{repo: repository{db: db}, redis: rdb, now: time.Now}
+func NewService(db *pgxpool.Pool, rdb *redis.Client, lookup *geo.Lookup) *Service {
+	return &Service{repo: repository{db: db}, redis: rdb, now: time.Now, geo: lookup}
 }
 
 // EnsureSite returns projectID's site key, creating the site on first use.
@@ -152,6 +156,13 @@ func (s *Service) Collect(ctx context.Context, h Hit) error {
 	if path == "" {
 		path = "/"
 	}
+	var country string
+	if s.geo != nil {
+		country, err = s.geo.Country(h.IP)
+		if err != nil {
+			return fmt.Errorf("resolve event country: %w", err)
+		}
+	}
 	return s.repo.insertEvent(ctx, event{
 		SiteID:      st.ID,
 		OccurredAt:  now,
@@ -159,6 +170,7 @@ func (s *Service) Collect(ctx context.Context, h Hit) error {
 		Source:      classify(h.Page, h.Referrer, st.Domain),
 		Device:      deviceOf(h.UserAgent, h.ScreenWidth),
 		VisitorHash: hash(salt, h.SiteKey, h.IP, h.UserAgent),
+		CountryCode: country,
 	})
 }
 
@@ -227,4 +239,41 @@ func (s *Service) Summarize(ctx context.Context, projectID string, from, to time
 		return Summary{}, fmt.Errorf("summarize project %s: %w", projectID, err)
 	}
 	return sum, nil
+}
+
+// CountryCount is a site's visitor count from one ISO country.
+type CountryCount struct {
+	Code     string  `json:"code"`
+	Name     string  `json:"name"`
+	Visitors int64   `json:"visitors"`
+	Pct      float64 `json:"pct"`
+}
+
+// SiteID resolves a project identifier to its internal site ID.
+func (s *Service) SiteID(ctx context.Context, projectID string) (int64, error) {
+	return s.repo.siteIDByProject(ctx, projectID)
+}
+
+// Countries returns one page of a site's country breakdown for a signed-in
+// member. Unknown countries stay out of the list but remain in the percent
+// denominator, so the percentages never imply complete geolocation coverage.
+func (s *Service) Countries(ctx context.Context, siteID int64, userID string, from, to time.Time, limit, offset int) ([]CountryCount, error) {
+	start := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+	end := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
+	if !end.After(start) || end.Sub(start) > maxRangeDays*24*time.Hour {
+		return nil, ErrInvalidRange
+	}
+	rows, err := s.repo.countries(ctx, siteID, userID, start, end, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		region, err := language.ParseRegion(rows[i].Code)
+		if err != nil {
+			rows[i].Name = rows[i].Code
+		} else {
+			rows[i].Name = display.English.Regions().Name(region)
+		}
+	}
+	return rows, nil
 }

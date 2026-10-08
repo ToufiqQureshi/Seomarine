@@ -19,6 +19,7 @@ PORT=8080 go run ./cmd/server
 | `UPSTREAM_APP_URL`        | yes      | Absolute `http(s)` URL of the legacy TypeScript app. Every route the Go server does not own is proxied there.   |
 | `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://seomarine.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
 | `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
+| `TRUSTED_PROXY_CIDRS`     | no       | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
 | `RAZORPAY_KEY_ID`         | no       | Razorpay API key id. Set all four `RAZORPAY_*` variables or none; without them billing endpoints answer `503`.  |
 | `RAZORPAY_KEY_SECRET`     | no       | Razorpay API key secret.                                                                                        |
 | `RAZORPAY_WEBHOOK_SECRET` | no       | Secret of the Razorpay webhook pointed at `/webhooks/razorpay`.                                                 |
@@ -76,6 +77,16 @@ SIGINT or SIGTERM.
   `Host`, cookies, path and query.
 
 ## Analytics
+
+**Countries.** The server embeds DB-IP Country Lite (October 2026, CC BY 4.0;
+attribution in `internal/analytics/geo/ATTRIBUTION.md`). The IP is used only
+in memory for lookup and the existing rotating visitor hash. Events store an
+ISO country code or NULL, never the IP. The Lite data has reduced accuracy
+and must be refreshed monthly. `GET /api/v1/analytics/{siteId}/countries`
+accepts `from`, `to`, `page` (default 1), and `limit` (default 10, maximum
+100). It returns country rows with visitor counts and percentages of all
+visitors, including those whose country could not be found. The `siteId` is
+returned by the analytics site endpoint.
 
 **Privacy.** No cookies and no stored IP. A visitor is
 `SHA-256(daily salt, site key, IP, user agent)`. The salt is random per UTC

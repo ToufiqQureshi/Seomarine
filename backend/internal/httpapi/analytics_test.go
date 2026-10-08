@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"os"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 )
@@ -103,16 +105,22 @@ func TestCollectPreflight(t *testing.T) {
 
 func TestClientIP(t *testing.T) {
 	tests := []struct {
-		name   string
-		remote string
-		xff    []string
-		want   string
+		name    string
+		remote  string
+		xff     []string
+		cf      string
+		trusted []netip.Prefix
+		want    string
 	}{
 		{name: "no proxy header", remote: "198.51.100.1:443", want: "198.51.100.1"},
-		{name: "proxy-appended entry wins over a forged one", remote: "10.0.0.2:80", xff: []string{"1.2.3.4, 203.0.113.5"}, want: "203.0.113.5"},
-		{name: "last of several headers", remote: "10.0.0.2:80", xff: []string{"1.2.3.4", "203.0.113.5"}, want: "203.0.113.5"},
-		{name: "ipv6", remote: "10.0.0.2:80", xff: []string{" 2001:db8::1 "}, want: "2001:db8::1"},
-		{name: "garbage header falls back to the peer", remote: "[2001:db8::2]:443", xff: []string{"unknown"}, want: "2001:db8::2"},
+		{name: "untrusted peer cannot set forwarded ip", remote: "10.0.0.2:80", xff: []string{"1.2.3.4"}, want: "10.0.0.2"},
+		{name: "proxy-appended entry wins over a forged one", remote: "10.0.0.2:80", xff: []string{"1.2.3.4, 203.0.113.5"}, trusted: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, want: "203.0.113.5"},
+		{name: "last of several headers", remote: "10.0.0.2:80", xff: []string{"1.2.3.4", "203.0.113.5"}, trusted: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, want: "203.0.113.5"},
+		{name: "ipv6", remote: "10.0.0.2:80", xff: []string{" 2001:db8::1 "}, trusted: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, want: "2001:db8::1"},
+		{name: "trusted cloudflare header", remote: "10.0.0.2:80", cf: "8.8.8.8", trusted: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, want: "8.8.8.8"},
+		{name: "bad cloudflare header uses forwarded peer", remote: "10.0.0.2:80", cf: "not-an-ip", xff: []string{"1.1.1.1"}, trusted: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, want: "1.1.1.1"},
+		{name: "untrusted cloudflare header", remote: "10.0.0.2:80", cf: "8.8.8.8", want: "10.0.0.2"},
+		{name: "garbage header falls back to the peer", remote: "[2001:db8::2]:443", xff: []string{"unknown"}, trusted: []netip.Prefix{netip.MustParsePrefix("2001:db8::/32")}, want: "2001:db8::2"},
 		{name: "peer without a port", remote: "198.51.100.3", want: "198.51.100.3"},
 	}
 	for _, tt := range tests {
@@ -122,7 +130,10 @@ func TestClientIP(t *testing.T) {
 			for _, v := range tt.xff {
 				req.Header.Add("X-Forwarded-For", v)
 			}
-			if got := clientIP(req); got != tt.want {
+			if tt.cf != "" {
+				req.Header.Set("CF-Connecting-IP", tt.cf)
+			}
+			if got := clientIP(req, tt.trusted); got != tt.want {
 				t.Errorf("clientIP() = %q, want %q", got, tt.want)
 			}
 		})
@@ -145,12 +156,16 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 			t.Errorf("close redis: %v", err)
 		}
 	})
+	lookup, err := geo.New()
+	if err != nil {
+		t.Fatal(err)
+	}
 	handler := NewHandler(Deps{
 		Logger:    discardLogger,
 		DB:        healthy,
 		Redis:     healthy,
 		Auth:      auth.NewService(pool, testSecret),
-		Analytics: analytics.NewService(pool, rdb),
+		Analytics: analytics.NewService(pool, rdb, lookup),
 		Upstream:  &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
 	})
 
@@ -212,6 +227,13 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 	if sum.Visitors != 1 || sum.Pageviews != 1 || len(sum.AISources) != 1 || sum.AISources[0].Source != "chatgpt" {
 		t.Errorf("summary = %+v, want one ChatGPT visit", sum)
 	}
+	var countryRows []analytics.CountryCount
+	decode(t, api(http.MethodGet, fmt.Sprintf("/api/v1/analytics/%d/countries?from=%s&to=%s", site.ID, today, today)), http.StatusOK, &countryRows)
+	if len(countryRows) != 0 {
+		t.Errorf("unlocated test visitor has countries = %+v", countryRows)
+	}
+	assertError(t, api(http.MethodGet, fmt.Sprintf("/api/v1/analytics/%d/countries?from=%s&to=%s&page=0", site.ID, today, today)), http.StatusBadRequest, "invalid_page")
+	assertError(t, api(http.MethodGet, fmt.Sprintf("/api/v1/analytics/%d/countries?from=%s&to=%s", site.ID+9999, today, today)), http.StatusNotFound, "unknown_site")
 
 	for _, query := range []string{
 		"",

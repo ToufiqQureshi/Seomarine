@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ type Config struct {
 	PublicURL *url.URL
 	// Razorpay is the payment configuration, nil when billing is off.
 	Razorpay *Razorpay
+	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
+	TrustedProxyCIDRs []netip.Prefix
 }
 
 // Razorpay holds the Razorpay credentials and the plan that is sold.
@@ -78,6 +81,19 @@ func Load(getenv func(string) string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	var trusted []netip.Prefix
+	if raw := strings.TrimSpace(getenv("TRUSTED_PROXY_CIDRS")); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			prefix, err := netip.ParsePrefix(strings.TrimSpace(part))
+			if err != nil {
+				return Config{}, fmt.Errorf("TRUSTED_PROXY_CIDRS contains invalid CIDR %q: %w", part, err)
+			}
+			if prefix.Bits() == 0 {
+				return Config{}, errors.New("TRUSTED_PROXY_CIDRS cannot trust every address")
+			}
+			trusted = append(trusted, prefix.Masked())
+		}
+	}
 
 	port := defaultPort
 	if raw := getenv("PORT"); raw != "" {
@@ -89,13 +105,14 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		Addr:             fmt.Sprintf(":%d", port),
-		DatabaseURL:      databaseURL,
-		RedisURL:         redisURL,
-		BetterAuthSecret: secret,
-		UpstreamAppURL:   upstream,
-		PublicURL:        public,
-		Razorpay:         rzp,
+		Addr:              fmt.Sprintf(":%d", port),
+		DatabaseURL:       databaseURL,
+		RedisURL:          redisURL,
+		BetterAuthSecret:  secret,
+		UpstreamAppURL:    upstream,
+		PublicURL:         public,
+		Razorpay:          rzp,
+		TrustedProxyCIDRs: trusted,
 	}, nil
 }
 

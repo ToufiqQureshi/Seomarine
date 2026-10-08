@@ -26,6 +26,7 @@ import {
 } from "./AnalyticsCards";
 import { aiShareOfVisitors, displayPath, formatShare } from "./presentation";
 import { TrackingCodeCard } from "./TrackingCodeCard";
+import { CountriesCard } from "./CountriesCard";
 
 const RANGE_ITEMS = RANGE_DAYS.map((days) => ({
   value: `${days}` as const,
@@ -100,7 +101,11 @@ export function AnalyticsPage({
         ) : (
           <>
             {showCode ? <TrackingCodeCard projectId={projectId} /> : null}
-            <Dashboard summary={summary} />
+            <Dashboard
+              summary={summary}
+              projectId={projectId}
+              range={rangeForDays(days, new Date())}
+            />
           </>
         )}
       </div>
@@ -134,7 +139,15 @@ function SetupState({
   );
 }
 
-function Dashboard({ summary }: { summary: AnalyticsSummary }) {
+function Dashboard({
+  summary,
+  projectId,
+  range,
+}: {
+  summary: AnalyticsSummary;
+  projectId: string;
+  range: { from: string; to: string };
+}) {
   const aiShare = aiShareOfVisitors(summary.channels);
   return (
     <div className="space-y-6">
@@ -160,6 +173,7 @@ function Dashboard({ summary }: { summary: AnalyticsSummary }) {
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <ChannelsCard channels={summary.channels} />
+        <CountriesCard projectId={projectId} range={range} />
         <CountListCard
           title="Top pages"
           unit="Pageviews"
