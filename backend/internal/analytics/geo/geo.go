@@ -16,6 +16,7 @@ var database []byte
 // Lookup is safe for concurrent use after construction.
 type Lookup struct{ reader *maxminddb.Reader }
 
+// New opens the embedded country database for lookups.
 func New() (*Lookup, error) {
 	reader, err := maxminddb.FromBytes(database)
 	if err != nil {

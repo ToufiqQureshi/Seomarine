@@ -249,6 +249,7 @@ type CountryCount struct {
 	Pct      float64 `json:"pct"`
 }
 
+// SiteID resolves a project identifier to its internal site ID.
 func (s *Service) SiteID(ctx context.Context, projectID string) (int64, error) {
 	return s.repo.siteIDByProject(ctx, projectID)
 }
