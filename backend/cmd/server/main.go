@@ -16,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
@@ -94,6 +95,7 @@ func run(logger *slog.Logger) error {
 			Analytics:         analytics.NewService(db, rdb, countryLookup),
 			TrustedProxyCIDRs: cfg.TrustedProxyCIDRs,
 			Billing:           billingSvc,
+			Branding:          branding.NewService(db),
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),

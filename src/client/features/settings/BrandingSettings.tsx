@@ -9,10 +9,10 @@ import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
 import {
-  getBranding,
+  brandingQueryOptions,
   resetBranding,
   saveBranding,
-} from "@/serverFunctions/branding";
+} from "@/client/features/branding/brandingApi";
 import {
   BRANDING_DEFAULT_ACCENT,
   BRANDING_MAX_LOGO_CHARS,
@@ -21,7 +21,7 @@ import {
   type Branding,
 } from "@/types/schemas/branding";
 
-const brandingQueryKey = ["branding"] as const;
+const brandingQueryKey = brandingQueryOptions.queryKey;
 
 // The form edits the website as text, where "" means none.
 const formSchema = brandingInputSchema.extend({
@@ -32,10 +32,7 @@ const formSchema = brandingInputSchema.extend({
 });
 
 export function BrandingSettings() {
-  const brandingQuery = useQuery({
-    queryKey: brandingQueryKey,
-    queryFn: () => getBranding(),
-  });
+  const brandingQuery = useQuery(brandingQueryOptions);
 
   return (
     <section className="space-y-3">
@@ -62,8 +59,8 @@ function BrandingForm({ branding }: { branding: Branding | null }) {
     queryClient.invalidateQueries({ queryKey: brandingQueryKey });
 
   const saveMutation = useMutation({
-    mutationFn: (data: Parameters<typeof saveBranding>[0]["data"]) =>
-      saveBranding({ data }),
+    mutationFn: (input: Parameters<typeof saveBranding>[0]) =>
+      saveBranding(input),
     onSuccess: async () => {
       await invalidate();
       toast.success("Branding saved");

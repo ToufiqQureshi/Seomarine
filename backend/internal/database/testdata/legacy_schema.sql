@@ -40,6 +40,15 @@ CREATE TABLE IF NOT EXISTS member (
     UNIQUE (organization_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS organization_branding (
+    organization_id text PRIMARY KEY REFERENCES organization (id) ON DELETE CASCADE,
+    brand_name text NOT NULL,
+    accent_color text NOT NULL,
+    logo_data_url text,
+    website_url text,
+    updated_at text NOT NULL
+);
+
 -- Legacy timestamps in app tables are ISO-8601 text, not timestamptz.
 CREATE TABLE IF NOT EXISTS projects (
     id text PRIMARY KEY,

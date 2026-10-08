@@ -38,11 +38,25 @@ export async function apiRequest<T>(
   path: string,
   schema: z.ZodType<T>,
   method: "GET" | "POST" = "GET",
+  jsonBody?: unknown,
 ): Promise<T> {
+  if (method === "GET" && jsonBody !== undefined) {
+    throw new TypeError("GET requests cannot include a JSON body");
+  }
+  const requestBody =
+    method === "POST" && jsonBody !== undefined
+      ? JSON.stringify(jsonBody)
+      : undefined;
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      ...(requestBody === undefined
+        ? {}
+        : { "Content-Type": "application/json" }),
+    },
+    ...(requestBody === undefined ? {} : { body: requestBody }),
   });
   // A proxy error page or an empty body is not JSON: treat it as no body.
   const body: unknown = await response.json().catch(() => undefined);
