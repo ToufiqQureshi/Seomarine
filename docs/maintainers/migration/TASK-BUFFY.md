@@ -1,6 +1,6 @@
 # TASK: Buffy
 
-Read first: `STATUS.md` (your rows = Owner "Buffy"), `parallel-tasks.md` (COMMON rules),
+Read first: `FEATURES.md` (every feature that must survive; mark your rows DONE with the Go endpoint), `STATUS.md` (your rows = Owner "Buffy"), `parallel-tasks.md` (COMMON rules),
 `codex-mega-task.md` (safety rules only; ignore its item list).
 
 ## Your own worktree (do not work in the main checkout)

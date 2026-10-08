@@ -38,7 +38,9 @@ Ported from `src/types/schemas/branding.ts` (`brandingInputSchema`) and
   are refused.
 - `accentColor` must match `^#[0-9a-fA-F]{6}$`.
 - `logoDataUrl` nullable, max 200 000 characters, must be a base64
-  png/jpeg/webp/svg data URL.
+  png/jpeg/webp/svg data URL. SVG is parsed and re-encoded with an allowlist
+  of static vector shapes and presentation attributes before storage; scripts,
+  styles, links, foreign content, and external references are rejected.
 - `websiteUrl` nullable, max 200 characters, absolute http(s) URL.
 - Every key is required (zod `.nullable()` is not `.optional()`), so a missing
   key is a 400 while an explicit `null` is accepted.
@@ -51,6 +53,11 @@ handler tests run with no database. The round-trip and org-isolation tests need
 `TEST_DATABASE_URL` and are skipped locally, as the rest of the Go suite does.
 
 ## Known differences
+
+- Report routes render the logo data URL into a server-rendered `<img src>`.
+  Although scripts in SVG loaded as an image do not execute in normal browsers,
+  the server sanitizes SVG markup before persistence to prevent active or
+  external content from entering shared report HTML.
 
 - The legacy server function returned the parsed payload; the Go route answers
   `{"ok":true}`. No client read the return value.

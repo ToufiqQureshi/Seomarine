@@ -76,8 +76,8 @@ func TestValidateAcceptsTheSettingsFormShape(t *testing.T) {
 		},
 		{
 			name:    "every accepted logo mime",
-			payload: fullPayload("Acme", "#abcdef", "data:image/svg+xml;base64,PHN2Zz4=", nil),
-			want:    Input{BrandName: "Acme", AccentColor: "#abcdef", LogoDataURL: ptr("data:image/svg+xml;base64,PHN2Zz4=")},
+			payload: fullPayload("Acme", "#abcdef", "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=", nil),
+			want:    Input{BrandName: "Acme", AccentColor: "#abcdef", LogoDataURL: ptr("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=")},
 		},
 		{
 			name:    "unicode name at the limit counts UTF-16 code units",
@@ -194,7 +194,7 @@ func TestSaveHandlerRejectsInvalidPayload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/api/v1/branding", strings.NewReader(tt.body))
-			r = r.WithContext(httpx.WithUser(r.Context(), auth.User{ID: testUserID, OrganizationID: testOrg, Role: "owner"}))
+			r = r.WithContext(auth.WithUser(r.Context(), auth.User{ID: testUserID, OrganizationID: testOrg, Role: "owner"}))
 			h.ServeHTTP(rec, r)
 			if rec.Code != tt.want {
 				t.Fatalf("status = %d, want %d; body = %s", rec.Code, tt.want, rec.Body.String())
@@ -226,7 +226,7 @@ func TestSaveHandlerRequiresPermissionAndWorkspace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/api/v1/branding", strings.NewReader(body))
-			r = r.WithContext(httpx.WithUser(r.Context(), tt.user))
+			r = r.WithContext(auth.WithUser(r.Context(), tt.user))
 			h.ServeHTTP(rec, r)
 			if rec.Code != tt.want {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want)

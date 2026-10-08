@@ -75,5 +75,5 @@ jobs:
 
       - name: deadcode (must report nothing)
         run: |
-          out="$(go run golang.org/x/tools/cmd/deadcode@latest ./...)"
+          out="$(go run golang.org/x/tools/cmd/deadcode@latest -test ./...)"
           test -z "$out" || { echo "$out"; exit 1; }

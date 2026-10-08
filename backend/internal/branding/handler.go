@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 )
 
@@ -20,10 +21,16 @@ const maxBrandingBody = 350 << 10
 
 // Mount registers branding routes on the root mux. withSession attaches the
 // signed-in user, whose active organization is the row that is read or written.
-func Mount(mux *http.ServeMux, logger *slog.Logger, svc *Service, withSession func(http.Handler) http.Handler) {
-	mux.Handle("GET /api/v1/branding", withSession(GetHandler(logger, svc)))
-	mux.Handle("POST /api/v1/branding", withSession(SaveHandler(logger, svc)))
-	mux.Handle("POST /api/v1/branding/reset", withSession(ResetHandler(logger, svc)))
+type Deps struct {
+	Logger      *slog.Logger
+	Service     *Service
+	WithSession func(http.Handler) http.Handler
+}
+
+func Mount(mux *http.ServeMux, d Deps) {
+	mux.Handle("GET /api/v1/branding", d.WithSession(GetHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/branding", d.WithSession(SaveHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/branding/reset", d.WithSession(ResetHandler(d.Logger, d.Service)))
 }
 
 // brandingPayload is the request body. The nullable fields are raw JSON so a
@@ -38,9 +45,7 @@ type brandingPayload struct {
 
 var (
 	accentPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
-	// SVG is safe in this position: the logo renders through <img>, which
-	// never runs its scripts.
-	logoPattern = regexp.MustCompile(`^data:image/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$`)
+	logoPattern   = regexp.MustCompile(`^data:image/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$`)
 )
 
 // validate mirrors brandingInputSchema: it trims the name, enforces the length
@@ -68,6 +73,13 @@ func (p brandingPayload) validate() (Input, error) {
 		}
 		if !logoPattern.MatchString(*logo) {
 			return Input{}, errors.New("logoDataUrl must be a base64 png, jpeg, webp or svg data URL")
+		}
+		if strings.HasPrefix(*logo, "data:image/svg+xml;base64,") {
+			safe, err := sanitizeSVGDataURL(*logo)
+			if err != nil {
+				return Input{}, errors.New("logoDataUrl must contain a safe SVG image")
+			}
+			logo = &safe
 		}
 	}
 	in.LogoDataURL = logo
@@ -128,7 +140,7 @@ func canUpdateOrganization(role string) bool {
 
 // brandingOrg returns the request's active organization.
 func brandingOrg(w http.ResponseWriter, r *http.Request) (string, bool) {
-	user, ok := httpx.UserFromContext(r.Context())
+	user, ok := auth.UserFromContext(r.Context())
 	if !ok || user.OrganizationID == "" {
 		httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
 		return "", false
@@ -165,7 +177,7 @@ func SaveHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		user, _ := httpx.UserFromContext(r.Context())
+		user, _ := auth.UserFromContext(r.Context())
 		if !canUpdateOrganization(user.Role) {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Your organization role does not allow this action.")
 			return
@@ -202,7 +214,7 @@ func ResetHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		user, _ := httpx.UserFromContext(r.Context())
+		user, _ := auth.UserFromContext(r.Context())
 		if !canUpdateOrganization(user.Role) {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Your organization role does not allow this action.")
 			return
