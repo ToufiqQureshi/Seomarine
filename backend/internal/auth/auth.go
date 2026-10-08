@@ -83,17 +83,18 @@ func (s *Service) Authenticate(r *http.Request) (User, error) {
 	return user, nil
 }
 
-// AuthorizeProject returns nil when userID is a member of the organization
-// that owns the active project projectID, and ErrProjectNotFound otherwise.
-func (s *Service) AuthorizeProject(ctx context.Context, userID, projectID string) error {
-	ok, err := s.repo.isProjectMember(ctx, userID, projectID)
+// AuthorizeProject returns the id of the organization that owns the active
+// project projectID when userID is a member of it, and ErrProjectNotFound
+// otherwise.
+func (s *Service) AuthorizeProject(ctx context.Context, userID, projectID string) (string, error) {
+	orgID, ok, err := s.repo.projectOrganization(ctx, userID, projectID)
 	if err != nil {
-		return fmt.Errorf("authorize project %s: %w", projectID, err)
+		return "", fmt.Errorf("authorize project %s: %w", projectID, err)
 	}
 	if !ok {
-		return ErrProjectNotFound
+		return "", ErrProjectNotFound
 	}
-	return nil
+	return orgID, nil
 }
 
 // verifySignedValue checks a better-call signed cookie value and returns the

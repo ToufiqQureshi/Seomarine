@@ -152,3 +152,29 @@ func TestLoadRazorpay(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadDataForSEOKey(t *testing.T) {
+	env := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/seomarine",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"UPSTREAM_APP_URL":   "http://legacy.internal:3000",
+		"PUBLIC_URL":         "https://seomarine.com",
+	}
+	load := func() Config {
+		t.Helper()
+		cfg, err := Load(func(key string) string { return env[key] })
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		return cfg
+	}
+
+	if got := load().DataForSEOAPIKey; got != "" {
+		t.Errorf("without DATAFORSEO_API_KEY the key = %q, want empty (AI search off)", got)
+	}
+	env["DATAFORSEO_API_KEY"] = "  placeholder-key \n"
+	if got := load().DataForSEOAPIKey; got != "placeholder-key" {
+		t.Errorf("key = %q, want it trimmed", got)
+	}
+}

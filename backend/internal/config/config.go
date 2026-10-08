@@ -29,6 +29,9 @@ type Config struct {
 	PublicURL *url.URL
 	// Razorpay is the payment configuration, nil when billing is off.
 	Razorpay *Razorpay
+	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
+	// account behind AI search. Empty turns those endpoints off.
+	DataForSEOAPIKey string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -112,6 +115,7 @@ func Load(getenv func(string) string) (Config, error) {
 		UpstreamAppURL:    upstream,
 		PublicURL:         public,
 		Razorpay:          rzp,
+		DataForSEOAPIKey:  strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
 		TrustedProxyCIDRs: trusted,
 	}, nil
 }

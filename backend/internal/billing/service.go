@@ -119,6 +119,15 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 	return Status{Plan: plan, Status: sub.Status, CurrentPeriodEnd: sub.CurrentPeriodEnd}, nil
 }
 
+// HasPaidPlan reports whether orgID is on a paid plan.
+func (s *Service) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
+	status, err := s.Status(ctx, orgID)
+	if err != nil {
+		return false, err
+	}
+	return status.Plan != PlanFree, nil
+}
+
 // Checkout creates a Razorpay subscription to the pro plan for orgID. The
 // caller must have checked that the user may manage the organization's
 // billing. It returns ErrAlreadySubscribed when orgID's subscription is live.

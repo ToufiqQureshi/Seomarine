@@ -479,3 +479,26 @@ func testDatabaseURL(t *testing.T) string {
 	t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	return ""
 }
+
+func TestHasPaidPlan(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	assertPaid := func(want bool, when string) {
+		t.Helper()
+		if got, err := f.svc.HasPaidPlan(ctx, f.org); err != nil || got != want {
+			t.Fatalf("HasPaidPlan() %s = %v, %v; want %v", when, got, err, want)
+		}
+	}
+
+	assertPaid(false, "without a subscription")
+	f.deliver(ctx, t, f.event("subscription.activated", "sub_paid", "active", t1))
+	assertPaid(true, "with an active subscription")
+	f.deliver(ctx, t, f.event("subscription.halted", "sub_paid", "halted", t2))
+	assertPaid(false, "after the subscription halted")
+
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := f.svc.HasPaidPlan(canceled, f.org); err == nil {
+		t.Error("HasPaidPlan() on a failing database succeeded, want an error")
+	}
+}
