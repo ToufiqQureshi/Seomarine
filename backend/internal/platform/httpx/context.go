@@ -31,9 +31,6 @@ var ErrInvalidLimit = errors.New("limit must be between 1 and 100")
 // userKey is the request-scoped context key for the signed-in user.
 type userKey struct{}
 
-// requestIDKey is the request-scoped context key for a request ID.
-type requestIDKey struct{}
-
 // Error is the common API error envelope body.
 type Error struct {
 	Code    string `json:"code"`
@@ -56,17 +53,6 @@ func UserFromContext(ctx context.Context) (auth.User, bool) {
 	return user, ok
 }
 
-// WithRequestID attaches the request ID to the context.
-func WithRequestID(ctx context.Context, requestID string) context.Context {
-	return context.WithValue(ctx, requestIDKey{}, requestID)
-}
-
-// RequestIDFromContext returns the request ID for the current request.
-func RequestIDFromContext(ctx context.Context) string {
-	requestID, _ := ctx.Value(requestIDKey{}).(string)
-	return requestID
-}
-
 // RequestLogging wraps the next handler with request-scoped logging metadata.
 func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -78,8 +64,6 @@ func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 				requestID = newRequestID()
 			}
 			w.Header().Set("X-Request-Id", requestID)
-			ctx := WithRequestID(r.Context(), requestID)
-			r = r.WithContext(ctx)
 			log := logger
 			if logger != nil {
 				log = logger.With("request_id", requestID, "method", r.Method, "path", r.URL.Path)
@@ -87,7 +71,7 @@ func RequestLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			next.ServeHTTP(w, r)
 			if log != nil {
-				log.InfoContext(ctx, "request complete", "duration_ms", time.Since(start).Milliseconds())
+				log.InfoContext(r.Context(), "request complete", "duration_ms", time.Since(start).Milliseconds())
 			}
 		})
 	}

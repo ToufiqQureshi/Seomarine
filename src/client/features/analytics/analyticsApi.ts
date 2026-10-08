@@ -94,7 +94,7 @@ const countrySchema = z.object({
   visitors: count,
   pct: z.number().min(0).max(100),
 });
-export type Country = z.infer<typeof countrySchema>;
+type Country = z.infer<typeof countrySchema>;
 
 export function analyticsSiteQueryOptions(projectId: string) {
   return {
