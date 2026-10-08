@@ -2,7 +2,7 @@
 
 Status: ✅ merged · 🔨 in progress · ⏳ pending.
 One PR per item.
-Product reasoning lives in `CLAUDE.md`.
+Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `CLAUDE.md`.
 
 ## Phase 0: Foundation (must come first)
 

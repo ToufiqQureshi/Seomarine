@@ -15,8 +15,8 @@ with a per-test verdict when the maintainer asks to prune the whole suite; see
 [Campaign mode](#campaign-mode). Optimize for confidence, not deletion count.
 Land one coherent batch per PR; continue broad audits as separate follow-ups.
 
-The repository's own rules live in the "Testing" section of `AGENTS.md`. This
-skill is the procedure for applying them; when the two disagree, `AGENTS.md`
+The repository's own rules live in section 4 ("How to write tests") of `CLAUDE.md`. This
+skill is the procedure for applying them; when the two disagree, `CLAUDE.md`
 wins and this file needs an update.
 
 ## Authoring gate
@@ -52,7 +52,7 @@ replay it at every layer it crosses.
 The shared checklist for both modes. The authoring gate rejects a new test that
 matches one; audits hunt for existing tests that do.
 
-Repo-specific (each is a `AGENTS.md` rule):
+Repo-specific (each is a `CLAUDE.md` rule):
 
 - per-test `await import()` or `vi.resetModules()` without a comment explaining
   which module-level state must reset;

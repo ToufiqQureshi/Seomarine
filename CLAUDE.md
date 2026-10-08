@@ -1,168 +1,174 @@
-# Seomarine: product brief for agents
+# Seomarine: agent guide
 
-Read this before any work in this repo. Where this file conflicts with
-`AGENTS.md`, **this file wins**.
+Every coding agent (Claude, Codex, Cursor, others) follows this file.
+`AGENTS.md` only points here. Product reasoning is in
+`docs/maintainers/PRODUCT.md`; feature status is in `ROADMAP.md`.
 
-## What Seomarine is
+## 1. What to read, and when
 
-An all-in-one SEO + AI-search platform that has to beat Semrush and Ahrefs
-on the things users actually complain about, and not by cloning their
-feature count.
+| You are about to...                      | Read first                                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| Do anything                              | This file                                                                              |
+| Choose, scope or prioritise a feature    | `docs/maintainers/PRODUCT.md`, `ROADMAP.md`                                            |
+| Touch a feature's code                   | That feature's `README.md` (next to its code), then its tests                          |
+| Port a feature from TypeScript to Go     | Section 5 below, the feature's TS code, then `docs/maintainers/REPO-LAYOUT.md`         |
+| Move files or folders                    | `docs/maintainers/REPO-LAYOUT.md`                                                      |
+| Add or change a table                    | `db/` (or `backend/internal/database/migrations` until the move), the feature's README |
+| Add or change an HTTP endpoint           | `backend/api/<feature>.yaml`, the feature's README                                     |
+| Review a PR                              | `docs/maintainers/review-guidelines.md`                                                |
+| Deploy or run locally                    | `backend/README.md`, `docs/LOCAL_DEVELOPMENT.md`, `docs/maintainers/runbooks/`         |
+| Hit repo friction (flaky script, gotcha) | Log it in `.agents/PAPERCUTS.md` with the `papercuts` skill                            |
 
-Part of the codebase is derived from an MIT-licensed project (see
-`LICENSE-OPENSEO-MIT`). That code is a **starting point, not the
-product**. Nothing in the product, code or docs may carry the upstream
-name, links, look or services.
+If a README and the code disagree, the code is the truth: fix the README in
+the same change.
 
-## Why people will pick us over Semrush and Ahrefs
+## 2. Layout
 
-These are the complaints we exist to fix (2026 research):
+Target: three code folders, plus docs.
 
-1. **Price.** A Semrush Pro seat is about $140/mo, and the AI Visibility
-   add-on costs another $99/mo per domain. Ahrefs Lite caps every report
-   at 2,500 rows and charges by credits. → We give simple, honest pricing,
-   include AI visibility in the base plan, put no row caps on our own data,
-   and keep INR pricing for India.
-2. **Overwhelming UI.** Both tools bury solo owners and beginners under
-   features. → We give focused workflows with one clear next action per
-   screen, plus a plain-language explanation and an "AI fix" for every
-   finding.
-3. **Billing dark patterns.** Users report surprise price hikes, two-step
-   cancellation and credit confusion. → We cancel in one click, show live
-   usage, and never surprise anyone on price.
-4. **AI search is the new SEO.** Over 40% of Google searches show AI
-   Overviews, and AI-referred visitors convert 4–11x better than organic
-   ones. Yet about 70% of AI traffic lands as "Direct" in analytics. →
-   We track both sides: where the brand shows up in AI answers, and who
-   actually arrives from AI.
+```
+frontend/   React + Vite SPA (pnpm/npm). Built to frontend/dist, served by the Go server.
+backend/    Go server: cmd/, internal/<feature>/, internal/platform/, api/ (OpenAPI).
+db/         migrations/ (goose SQL), schema/ (per-feature table docs, test fixtures), seed/.
+docs/       user-facing docs, plus docs/maintainers/ for engineering notes.
+legacy/     TEMPORARY. Today's TypeScript app. Shrinks per ported feature, then is deleted.
+```
 
-## Must-have features (priority order)
+Today the repo is mid-move: the React app and the legacy server still live in
+`src/`, and migrations in `backend/internal/database/migrations`. The plan and
+the order of moves are in `docs/maintainers/REPO-LAYOUT.md`. Never move
+folders outside that plan.
 
-Full list and status: `ROADMAP.md`.
+Every feature folder (Go package or frontend feature) has a `README.md`: what
+it does, the flow, tables, env vars, the rules that must never break, edge
+cases and production limits. Say **why**, not what the code already says.
+Code and README change in the same PR.
 
-1. **Seomarine Analytics**: our own privacy-friendly tracker (GA4/PostHog
-   style) with first-class **AI traffic detection** for ChatGPT,
-   Perplexity, Gemini, Claude and Copilot, including recovery of the
-   "Direct" traffic that is really AI.
-2. **AI Visibility**: brand mentions, citations, sentiment and competitor
-   share of voice across ChatGPT, Perplexity, Gemini, Google AI Overviews
-   and Claude, joined with the analytics data so users see "seen in AI"
-   next to "visitors from AI".
-3. **Content SEO Editor ("RankMath for every site")**: works on any site
-   (HTML, React, Webflow, Shopify, WordPress). It gives a live SEO score
-   and AI rewrites, and ships fixes through a JS snippet, a GitHub PR, or
-   copy-paste.
-4. **White-label client reports**: done. Every client-facing surface is
-   agency-branded.
-5. Rank tracking with city-level India locations, a site audit with AI
-   fix steps (English + Hinglish), and Local SEO with a Google Maps rank
-   grid.
+## 3. How to write code
 
-The bar for any feature: a solo owner gets value in under 5 minutes, and
-an agency can show it to a client.
+**Go is the core.** Every new backend feature is Go. No Next.js. No new
+TypeScript backend work: the legacy server only gets bug fixes and is ported
+out feature by feature. The Go server proxies every route it does not own yet
+to the legacy app.
 
-## Architecture (owner decision)
+- **Inbuilt first.** Use the standard library (`net/http`, `log/slog`,
+  `context`, `encoding/json`, `errors`, `slices`, `maps`, `strings`, `sync`,
+  `time`, `testing`, `net/http/httptest`) and what `go.mod` already has.
+  Hand-rolling something the standard library does is a defect. Check
+  `go doc` before writing a helper. A new dependency needs a reason in the PR.
+- **Layering:** handler -> service -> repository. Handlers validate every
+  input and map errors to HTTP. Services hold the rules. Repositories hold
+  plain SQL (pgx, no ORM). Go tables are prefixed `go_`.
+- **Errors:** never ignore one. Wrap with context
+  (`fmt.Errorf("load project %s: %w", id, err)`), check with `errors.Is` and
+  `errors.AsType`. No panics for control flow.
+- **Context and time:** pass `context.Context` through every request path and
+  set a timeout on every outbound call.
+- **No global mutable state.** Make concurrency explicit (`sync`, channels)
+  and race-free.
+- **Simple, flat, readable.** Delete any line that does not earn its place.
+  Abstract only when it prevents real drift.
+- **Data:** Postgres is the primary store, normalized. Redis holds rate limits
+  and short-lived caches. ClickHouse only when analytics volume needs it.
+  Secrets live in Railway variables, never in the repo.
+- **External data:** DataForSEO stays behind `backend/internal/platform/dataforseo`.
+  Never send a request the provider would reject, because failed tasks are billed.
+- **Brand:** the product is Seomarine. Never add the upstream name, links,
+  logos or copy. The only mention is the license attribution
+  (`LICENSE-OPENSEO-MIT`, never delete it).
+- **Copy:** plain language, Hinglish where the market is India, no raw jargon
+  without a one-line explanation.
 
-- **Go is the core.** Every new backend service is written in Go: API,
-  analytics ingest, crawlers, schedulers and data pipelines.
-- **No Next.js, and no Node/JS backend for new work.** The existing
-  TypeScript/TanStack/Cloudflare Workers backend is legacy. Port it to Go
-  feature by feature; don't add new backend features to it.
-- **Frontend:** a React SPA built with Vite and served by the Go server
-  as static files (no SSR framework). Existing React components can be
-  reused once rebranded.
-- **Data:** Postgres is the primary store. Use a column store
-  (ClickHouse) for analytics events once volume needs it. Keep relational
-  data normalized. Redis holds rate limits and short-lived keys only.
-- **Hosting:** Railway (Go server, Postgres, Redis). Secrets live in
-  Railway variables, never in the repo.
-- **Go conventions:** standard library first (`net/http`, `log/slog`,
-  `context`). The layering is handler → service → repository. Use
-  `sqlc` or plain SQL, not a heavy ORM. Validate every input at the
-  handler. Return errors and never panic for control flow. The full check list
-  is in **Code quality** below.
-- **External data:** DataForSEO stays the SEO data provider (BYOK on
-  self-host). Isolate it behind one Go client package so it can be swapped.
+**Frontend** (`frontend/`, today `src/client` and `src/routes`): React with
+Vite, TanStack Query/Router/Form patterns, shadcn on Base UI (compose with the
+`render` prop, not `asChild`). New screens call the Go API under `/api/v1/`
+through `apiRequest` and validate responses with Zod. In the legacy TypeScript
+app, keep schema changes compatible with SQLite and Postgres.
 
-## Code quality: the most critical rule (mandatory, no exceptions)
+## 4. How to write tests
 
-Write code like a senior engineer shipping to production. Every line has
-to be correct, needed and readable. Delete any line that doesn't earn its
-place.
+A test exists to **catch a bug**, not to turn CI green.
 
-**Use what Go already gives you.** Before writing a helper, check the
-standard library (`slices`, `maps`, `strings`, `errors`, `context`,
-`net/http`, `encoding/json`, `log/slog`, `sync`, `time`, `testing`) and
-the dependencies already in `go.mod`. Hand-rolling something the stdlib
-already does counts as a defect.
+1. **Test behavior at the public entry point.** Go: table-driven, `httptest`
+   for handlers, a real Postgres and Redis for repositories (never mock SQL),
+   an in-process fake (`httptest.Server`) for outside providers.
+2. **Cover what can actually happen:** empty, nil, max size, unicode, timeouts,
+   concurrency, and every error path (including the provider failing, the cache
+   being down, the caller going away).
+3. **Every test must be able to fail.** After writing tests, break the code
+   under test on purpose (flip a condition, drop a check) and confirm a test
+   fails. A mutation that survives means a missing test: add it.
+4. **A failing test is a real bug until proven otherwise.** Find out whether
+   the code or the test is wrong, and fix the cause. Never skip, weaken,
+   delete or loosen a test to get green.
+5. **Bug fix:** write the test that reproduces it first, watch it fail, then fix.
+6. A negative test must fail for the reason its name gives, not because an
+   earlier guard rejected first.
+7. Test fixtures must not look like real credentials (secret scanners flag
+   them, and rewriting history is the only cure).
+8. Vitest (frontend): import the module under test statically, set default mock
+   values in `beforeEach` only, keep fixtures to the fields asserted on, and do
+   not export a function only so a test can reach it (knip fails on it).
 
-**Every one of these must pass before any commit or push.** CI runs the
-same list, and a failure blocks the merge:
+## 5. Porting a feature from TypeScript to Go
 
-| Command                                                                                                                                                                                                       | What it catches                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `gofmt -l .` (must print nothing) and `goimports`                                                                                                                                                             | formatting, import order                                                       |
-| `go vet ./...`                                                                                                                                                                                                | suspicious code: bad printf args, copied locks, unreachable code               |
-| `staticcheck ./...`                                                                                                                                                                                           | bugs, deprecated APIs, simplifications                                         |
-| `golangci-lint run` with `errcheck`, `unused`, `ineffassign`, `govet`, `staticcheck`, `gosec`, `bodyclose`, `sqlclosecheck`, `rowserrcheck`, `errorlint`, `nilerr`, `contextcheck`, `noctx`, `revive` enabled | ignored errors, dead and unused code, unclosed bodies and rows, security holes |
-| `go test -race -count=1 ./...`                                                                                                                                                                                | real failures and data races                                                   |
-| `go test -cover ./...`                                                                                                                                                                                        | untested code paths in the packages you changed                                |
-| `govulncheck ./...`                                                                                                                                                                                           | known vulnerabilities in dependencies                                          |
-| `go mod tidy` (`go.mod`/`go.sum` must not change)                                                                                                                                                             | unused or missing modules                                                      |
-| `deadcode ./...`                                                                                                                                                                                              | functions nothing calls                                                        |
+One feature per PR, with its `ROADMAP.md` number.
 
-**Tests exist to catch bugs, not to turn CI green.**
+1. Read the TS code, its tests and its callers. List behaviors and edge cases.
+2. Write the Go package (handler, service, repository), keeping the JSON
+   contract so the page changes only its call site.
+3. Port the TS tests, then add the cases the TS never had. Run the mutation check.
+4. Switch the page to the Go API. Remove the proxy route.
+5. Delete the TS code that became dead (`knip` finds it). Code that other
+   features still import stays, and the PR says so.
+6. Write the feature `README.md`. Update `ROADMAP.md`.
+7. PR description: what changed, decisions the owner must confirm, how it was
+   validated, what was _not_ run.
 
-- Every test must be able to fail. Test the real behavior, the edge
-  cases (empty, nil, max size, unicode, timeouts, concurrent access) and
-  the error paths that can actually happen.
-- Prefer table-driven tests. Use `httptest` for handlers and a real
-  Postgres (testcontainers or a CI service) for repositories. Never mock
-  SQL.
-- When a bug is fixed, add the test that reproduces it first, see it
-  fail, then fix the code.
-- A failing test is a real bug until proven otherwise. Never skip,
-  weaken or delete a test to get green.
+Do not change behavior silently while porting. A deliberate difference goes in
+the README and the PR.
 
-**Errors and safety**
+## 6. Checks before every push
 
-- Never ignore an error. Wrap it with context:
-  `fmt.Errorf("load project %s: %w", id, err)`. Check it with
-  `errors.Is` or `errors.As`.
-- Pass `context.Context` through every request path, and set a timeout
-  on every outbound call.
-- No global mutable state. Make concurrency explicit with `sync` or
-  channels, and keep it race-free under `-race`.
-- Validate all untrusted input at the handler boundary.
+Go (all must pass; CI runs the same against a real Postgres and Redis):
 
-**The frontend gets the same rigor.** `tsc --noEmit`, `oxlint`, `knip`
-(no unused exports or files), `prettier --check` and the tests must all
-pass.
+```sh
+go mod tidy && git diff --exit-code -- go.mod go.sum
+test -z "$(gofmt -l .)"
+go vet ./...
+staticcheck ./...
+golangci-lint run ./...
+TEST_DATABASE_URL=... TEST_REDIS_URL=... go test -race -count=1 -cover ./...
+govulncheck ./...
+test -z "$(deadcode -test ./...)"
+```
 
-## UI and brand rules
+Frontend: `pnpm ci:check` (prettier, knip, tsc, oxlint) and `pnpm test`.
 
-- Ship a fresh design system: our own name, logo, palette, typography,
-  icons, layout and copy.
-- Never add the upstream brand (OpenSEO) anywhere: names, identifiers,
-  links, logos, meta tags, emails, docs or third-party keys. The only
-  allowed mention is the license attribution below.
-- Use plain language, and Hinglish where the market is India. Never show
-  raw jargon without a one-line explanation.
+Run them from the Go module root (`backend/` until `REPO-LAYOUT.md` moves
+`go.mod`). Do not commit with a failing check, and do not commit secrets.
 
-## Working with the owner
+## 7. Working with the owner
 
-- The owner (Toufiq) decides product scope, pricing, branding and
-  architecture. Propose with a recommendation; don't decide silently.
-- Keep answers short, in Hinglish, senior-dev tone.
-- Ship each feature as its own PR with validation notes. Never commit
-  secrets.
+The owner (Toufiq) decides product scope, pricing, branding and architecture.
+Propose with a recommendation; do not decide silently.
+
+- Keep answers short, in Hinglish, senior-dev tone. No long essays.
 - Before planning a new feature, search the web for current competitor
-  features, pricing and user complaints, and cite the sources in the PR
-  or plan.
+  features, pricing and user complaints, and cite the sources in the PR.
+- Ship each feature as its own PR with validation notes.
+- Changes to `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.agents/skills/**` and
+  `.github/**` change how agents and CI work. Call them out in the PR.
 
-## Legal
+## 8. Documentation rules
 
-- `LICENSE` is proprietary (all rights reserved) for Seomarine's own work.
-- Upstream-derived code stays under MIT. Never delete
-  `LICENSE-OPENSEO-MIT` or the copyright notice it carries; the MIT
-  license requires it.
+- `docs/` (except `docs/maintainers/`) is user-facing: only what helps users
+  understand, use or self-host Seomarine.
+- `docs/maintainers/` holds engineering decisions and notes. Never put
+  secrets there.
+
+## 9. Legal
+
+`LICENSE` is proprietary (all rights reserved) for Seomarine's own work.
+Upstream-derived code stays under MIT. Never delete `LICENSE-OPENSEO-MIT` or
+the copyright notice it carries.
