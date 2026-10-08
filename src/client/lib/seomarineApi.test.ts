@@ -49,6 +49,22 @@ describe("apiRequest", () => {
     });
   });
 
+  it("sends JSON bodies with POST and omits them for GET", async () => {
+    await apiRequest("/api/v1/test", schema, "POST", { enabled: true });
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: true }),
+    });
+  });
+
+  it("rejects a GET with a JSON body before fetching", async () => {
+    await expect(
+      apiRequest("/api/v1/test", schema, "GET", { enabled: true }),
+    ).rejects.toThrow("GET requests cannot include a JSON body");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("rejects a 200 whose body breaks the contract", async () => {
     respond(200, JSON.stringify({ plan: "enterprise" }));
     const error = await rejection(apiRequest("/x", schema));

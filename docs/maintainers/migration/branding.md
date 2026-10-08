@@ -5,15 +5,15 @@ migration range: none needed (no new tables).
 
 ## Status
 
-| Piece | State | Notes |
-| --- | --- | --- |
-| `backend/internal/branding` | done | Plain SQL over the unchanged `organization_branding` table. |
-| `backend/api/branding.yaml` | done | GET/POST `/branding`, POST `/branding/reset`. |
-| `src/client/features/branding/brandingApi.ts` | done | Calls the Go API through `apiRequest`. |
-| `src/serverFunctions/branding.ts` | deleted | Replaced by the client API module. |
-| `src/server/features/branding/services/BrandingService.ts` | **blocked** | Still imported by `src/routes/r/$reportId.ts`, `src/routes/s/$token/raw.ts` and `reports/sharePage.tsx`. |
-| `src/server/features/branding/repositories/BrandingRepository.ts` | **blocked** | Only used through `BrandingService`. |
-| `src/server/features/branding/brandBar.tsx` | **blocked** | Renders the brand bar inside the reports HTML; moves with `reports`. |
+| Piece                                                             | State       | Notes                                                                                                    |
+| ----------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `backend/internal/branding`                                       | done        | Plain SQL over the unchanged `organization_branding` table.                                              |
+| `backend/api/branding.yaml`                                       | done        | GET/POST `/branding`, POST `/branding/reset`.                                                            |
+| `src/client/features/branding/brandingApi.ts`                     | done        | Calls the Go API through `apiRequest`.                                                                   |
+| `src/serverFunctions/branding.ts`                                 | deleted     | Replaced by the client API module.                                                                       |
+| `src/server/features/branding/services/BrandingService.ts`        | **blocked** | Still imported by `src/routes/r/$reportId.ts`, `src/routes/s/$token/raw.ts` and `reports/sharePage.tsx`. |
+| `src/server/features/branding/repositories/BrandingRepository.ts` | **blocked** | Only used through `BrandingService`.                                                                     |
+| `src/server/features/branding/brandBar.tsx`                       | **blocked** | Renders the brand bar inside the reports HTML; moves with `reports`.                                     |
 
 The odd-looking dates in the table are deliberate: `updatedAt` keeps the legacy
 `Date#toISOString()` shape (`2006-01-02T15:04:05.000Z`) so a reader of the old

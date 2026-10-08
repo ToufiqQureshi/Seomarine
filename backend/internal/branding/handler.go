@@ -47,14 +47,14 @@ var (
 // caps and patterns, and returns the value that may be stored.
 func (p brandingPayload) validate() (Input, error) {
 	if p.BrandName == nil {
-		return Input{}, errors.New("brandName is required.")
+		return Input{}, errors.New("brandName is required")
 	}
 	in := Input{BrandName: strings.TrimSpace(*p.BrandName)}
 	if n := utf16Len(in.BrandName); n < 1 || n > MaxNameChars {
-		return Input{}, fmt.Errorf("brandName must be 1 to %d characters.", MaxNameChars)
+		return Input{}, fmt.Errorf("brandName must be 1 to %d characters", MaxNameChars)
 	}
 	if p.AccentColor == nil || !accentPattern.MatchString(*p.AccentColor) {
-		return Input{}, errors.New("accentColor must be a hex color like #2563eb.")
+		return Input{}, errors.New("accentColor must be a hex color like #2563eb")
 	}
 	in.AccentColor = *p.AccentColor
 
@@ -64,10 +64,10 @@ func (p brandingPayload) validate() (Input, error) {
 	}
 	if logo != nil {
 		if utf16Len(*logo) > MaxLogoChars {
-			return Input{}, fmt.Errorf("logoDataUrl must be at most %d characters.", MaxLogoChars)
+			return Input{}, fmt.Errorf("logoDataUrl must be at most %d characters", MaxLogoChars)
 		}
 		if !logoPattern.MatchString(*logo) {
-			return Input{}, errors.New("logoDataUrl must be a base64 png, jpeg, webp or svg data URL.")
+			return Input{}, errors.New("logoDataUrl must be a base64 png, jpeg, webp or svg data URL")
 		}
 	}
 	in.LogoDataURL = logo
@@ -78,11 +78,11 @@ func (p brandingPayload) validate() (Input, error) {
 	}
 	if website != nil {
 		if utf16Len(*website) > MaxWebsiteChars {
-			return Input{}, fmt.Errorf("websiteUrl must be at most %d characters.", MaxWebsiteChars)
+			return Input{}, fmt.Errorf("websiteUrl must be at most %d characters", MaxWebsiteChars)
 		}
 		parsed, err := url.Parse(*website)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			return Input{}, errors.New("websiteUrl must be a full http or https URL.")
+			return Input{}, errors.New("websiteUrl must be a full http or https URL")
 		}
 	}
 	in.WebsiteURL = website
@@ -94,14 +94,14 @@ func (p brandingPayload) validate() (Input, error) {
 // absent and a missing key or another JSON type as invalid.
 func optionalString(raw json.RawMessage, field string) (*string, error) {
 	if raw == nil {
-		return nil, fmt.Errorf("%s is required.", field)
+		return nil, fmt.Errorf("%s is required", field)
 	}
 	if string(raw) == "null" {
 		return nil, nil
 	}
 	var value string
 	if err := json.Unmarshal(raw, &value); err != nil {
-		return nil, fmt.Errorf("%s must be a string or null.", field)
+		return nil, fmt.Errorf("%s must be a string or null", field)
 	}
 	return &value, nil
 }
