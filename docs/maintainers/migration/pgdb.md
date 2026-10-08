@@ -13,4 +13,4 @@ transaction commit, and callback-error rollback. The real-Postgres tests run in
 Linux CI because this Windows host's Application Control blocks some Go test
 executables even when `GOTMPDIR` is set to `D:\gotmp`.
 
-PR: pending.
+PR: https://github.com/ToufiqQureshi/Seomarine/pull/10
