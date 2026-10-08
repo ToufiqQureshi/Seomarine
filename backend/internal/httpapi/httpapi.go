@@ -3,7 +3,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
@@ -73,7 +73,7 @@ func NewHandler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, d.Logger, http.StatusOK, map[string]string{"status": "ok"})
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
@@ -82,11 +82,11 @@ func NewHandler(d Deps) http.Handler {
 		for name, dep := range map[string]Pinger{"postgres": d.DB, "redis": d.Redis} {
 			if err := dep.Ping(ctx); err != nil {
 				d.Logger.WarnContext(ctx, "readiness check failed", "dependency", name, "err", err)
-				writeJSON(w, d.Logger, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+				httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
 				return
 			}
 		}
-		writeJSON(w, d.Logger, http.StatusOK, map[string]string{"status": "ok"})
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	app := newUpstreamProxy(d.Logger, d.Upstream)
@@ -96,29 +96,20 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
 
 	mux.HandleFunc("GET /t.js", serveTracker())
-	mux.HandleFunc("POST /collect", collect(d.Logger, d.Analytics, d.TrustedProxyCIDRs))
-	mux.HandleFunc("OPTIONS /collect", collectPreflight)
-	mux.HandleFunc("POST /webhooks/razorpay", razorpayWebhook(d.Logger, d.Billing))
-
-	projectRoutes := http.NewServeMux()
-	projectRoutes.HandleFunc("POST /api/v1/projects/{projectId}/analytics/site", ensureSite(d.Logger, d.Analytics))
-	projectRoutes.HandleFunc("GET /api/v1/projects/{projectId}/analytics/summary", summary(d.Logger, d.Analytics))
-	projectRoutes.HandleFunc("/", notFound(d.Logger))
+	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
+	analytics.Mount(mux, d.Logger, d.Analytics, d.TrustedProxyCIDRs, withSession, func(next http.Handler) http.Handler {
+		return requireProjectAccess(d.Logger, d.Auth, next)
+	})
+	billing.Mount(mux, d.Logger, d.Billing, withSession)
 
 	api := http.NewServeMux()
-	api.HandleFunc("GET /api/v1/billing/status", billingStatus(d.Logger, d.Billing))
-	api.HandleFunc("POST /api/v1/billing/checkout", billingCheckout(d.Logger, d.Billing))
-	api.HandleFunc("GET /api/v1/analytics/{siteId}/countries", countries(d.Logger, d.Analytics))
-	api.Handle("/api/v1/projects/{projectId}/", requireProjectAccess(d.Logger, d.Auth, projectRoutes))
-	api.HandleFunc("/", notFound(d.Logger))
+	api.HandleFunc("/", notFound())
 	mux.Handle("/api/v1/", requireSession(d.Logger, d.Auth, api))
 
 	mux.Handle("/", app)
 
-	return mux
+	return httpx.RequestLogging(d.Logger)(mux)
 }
-
-type userKey struct{}
 
 // requireSession answers 401 unless the request carries a valid session,
 // and passes the session's user to next in the request context.
@@ -126,15 +117,15 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := authn.Authenticate(r)
 		if errors.Is(err, auth.ErrUnauthenticated) {
-			writeError(w, logger, http.StatusUnauthorized, "unauthenticated", "Sign in to continue.")
+			httpx.WriteError(w, http.StatusUnauthorized, "unauthenticated", "Sign in to continue.")
 			return
 		}
 		if err != nil {
 			logger.ErrorContext(r.Context(), "authenticate request", "err", err)
-			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userKey{}, user)))
+		next.ServeHTTP(w, r.WithContext(httpx.WithUser(r.Context(), user)))
 	})
 }
 
@@ -144,15 +135,15 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 // member row has an empty user id.
 func requireProjectAccess(logger *slog.Logger, authz *auth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, _ := r.Context().Value(userKey{}).(auth.User)
+		user, _ := httpx.UserFromContext(r.Context())
 		err := authz.AuthorizeProject(r.Context(), user.ID, r.PathValue("projectId"))
 		if errors.Is(err, auth.ErrProjectNotFound) {
-			writeError(w, logger, http.StatusNotFound, "project_not_found", "Project not found.")
+			httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")
 			return
 		}
 		if err != nil {
 			logger.ErrorContext(r.Context(), "authorize project", "err", err)
-			writeError(w, logger, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -179,9 +170,9 @@ func landing(logger *slog.Logger, authn *auth.Service, pages *site.Site, app htt
 	}
 }
 
-func notFound(logger *slog.Logger) http.HandlerFunc {
+func notFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		writeError(w, logger, http.StatusNotFound, "not_found", "No such endpoint.")
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such endpoint.")
 	}
 }
 
@@ -205,25 +196,7 @@ func newUpstreamProxy(logger *slog.Logger, upstream *url.URL) *httputil.ReverseP
 		Transport: transport,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			logger.ErrorContext(r.Context(), "proxy to legacy app", "err", err)
-			writeError(w, logger, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
+			httpx.WriteError(w, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
 		},
-	}
-}
-
-type apiError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-// writeError writes the API's error shape: {"error": {"code", "message"}}.
-func writeError(w http.ResponseWriter, logger *slog.Logger, status int, code, message string) {
-	writeJSON(w, logger, status, map[string]apiError{"error": {Code: code, Message: message}})
-}
-
-func writeJSON(w http.ResponseWriter, logger *slog.Logger, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(body); err != nil {
-		logger.Error("write JSON response", "err", err)
 	}
 }
