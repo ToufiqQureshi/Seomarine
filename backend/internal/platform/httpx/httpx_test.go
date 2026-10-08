@@ -102,7 +102,7 @@ func TestRequestLoggingSetsSafeRequestID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := RequestLogging(nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := RequestLogging(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				if w.Header().Get("X-Request-Id") == "" {
 					t.Error("request ID header not set before handler")
 				}
