@@ -77,4 +77,8 @@ No other worktree was registered. No branch or worktree was deleted.
 No candidate passed the task's deletion/reference rules. Deleted files: none.
 Size saved: **0 B**. No cleanup deletion was performed.
 
-PR link will be added after the reviewable draft PR is created.
+Branch pushed: `chore/cleanup-useless-files` at commit `5cdcc5f`.
+
+Draft PR creation was attempted but GitHub returned `403 Resource not
+accessible by integration`; no PR exists yet. Create/review link:
+<https://github.com/ToufiqQureshi/Seomarine/compare/main...chore/cleanup-useless-files?expand=1>.
