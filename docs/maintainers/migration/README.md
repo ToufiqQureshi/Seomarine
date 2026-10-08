@@ -14,7 +14,7 @@ in the same change.
 | Codex | Shared `backend/internal/platform`, identity, projects, project-context, domain, serp-locations, keywords, rank-tracking, and rank workflows. |
 | Buffy | Audit, Lighthouse, crawler access, Google integrations and reports, billing, AI search, SAM, backlinks, and growth/admin features.            |
 
-`TASK-CODEX.md` and `TASK-BUFFY.md` define each worker's order. Only edit your
+`TASK-CODEX-2.md` defines the worker order. Only edit your
 assigned feature and its progress file. Platform code belongs to the foundation
 work and must be coordinated before feature lanes depend on it.
 

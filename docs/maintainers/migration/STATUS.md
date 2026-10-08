@@ -61,7 +61,7 @@ Order (biggest wins first, platform before features):
 2. Buffy (starts immediately; needs only `httpx` + `pgdb`, both merged): audit (biggest, 6.8k), billing, ga4, gsc, google, backlinks, ai-search, sam, reports, branding, dashboard, activation, referrals, gdpr, email.
 3. Wave 2 (after all above): mcp, then delete `db-schema` (src/db, only when no TS query is left), Cloudflare/Alchemy/wrangler config, and make Go serve the React build.
 
-Rules for every PR are in `parallel-tasks.md` (COMMON) and `codex-mega-task.md`. Buffy follows the same rules. Features that need `platform/jobs`, `dataforseo` or `entitlements` before Codex has merged them: build a small private helper in the feature and note it in `docs/maintainers/migration/<feature>.md`.
+Rules for every PR are in `TASK-CODEX-2.md`. Features that need `platform/jobs`, `dataforseo` or `entitlements` before Codex has merged them: build a small private helper in the feature and note it in `docs/maintainers/migration/<feature>.md`.
 
 ## Docs that are outdated (must be rewritten for the Go backend)
 
