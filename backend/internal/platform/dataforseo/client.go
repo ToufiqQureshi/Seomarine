@@ -39,14 +39,6 @@ type CostRecorder interface {
 	RecordDataForSEO(ctx context.Context, organizationID string, cost Cost) error
 }
 
-// CostRecorderFunc adapts a function to CostRecorder.
-type CostRecorderFunc func(context.Context, string, Cost) error
-
-// RecordDataForSEO calls f.
-func (f CostRecorderFunc) RecordDataForSEO(ctx context.Context, organizationID string, cost Cost) error {
-	return f(ctx, organizationID, cost)
-}
-
 // Options configures a Client. Zero values select safe defaults.
 type Options struct {
 	BaseURL      string
