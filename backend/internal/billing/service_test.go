@@ -19,6 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 )
 
@@ -338,7 +339,7 @@ type fixture struct {
 // numbers the subscriptions it creates sub_1, sub_2, ...
 func newFixture(ctx context.Context, t *testing.T) *fixture {
 	t.Helper()
-	pool, err := database.Open(ctx, testDatabaseURL(t))
+	pool, err := pgdb.Open(ctx, testDatabaseURL(t))
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}

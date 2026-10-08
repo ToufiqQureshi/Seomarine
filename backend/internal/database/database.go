@@ -1,5 +1,4 @@
-// Package database owns the Postgres connection pool and the schema
-// migrations for the tables the Go server owns.
+// Package database owns schema migrations for tables managed by the Go server.
 package database
 
 import (
@@ -21,20 +20,6 @@ const migrationsTable = "go_schema_migrations"
 
 //go:embed migrations/*.sql
 var migrations embed.FS
-
-// Open connects to Postgres and verifies the connection with a ping, so a
-// bad DATABASE_URL fails at startup instead of on the first request.
-func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, url)
-	if err != nil {
-		return nil, fmt.Errorf("create postgres pool: %w", err)
-	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("ping postgres: %w", err)
-	}
-	return pool, nil
-}
 
 // Migrate applies every pending embedded migration. A Postgres advisory lock
 // serializes concurrent callers, so several instances can start at once.

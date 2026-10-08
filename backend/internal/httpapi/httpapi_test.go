@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
@@ -396,7 +397,7 @@ func openTestDB(ctx context.Context, t *testing.T) *pgxpool.Pool {
 		}
 		t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	}
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgdb.Open(ctx, dbURL)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
