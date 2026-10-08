@@ -13,6 +13,7 @@ type Checker interface {
 // checker without changing feature service contracts.
 type AllowAll struct{}
 
+// Check always allows the action.
 func (AllowAll) Check(ctx context.Context, _, _ string) error {
 	return ctx.Err()
 }

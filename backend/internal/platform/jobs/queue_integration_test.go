@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"sync"
 	"testing"
@@ -97,7 +98,7 @@ func TestQueueEnqueueClaimConcurrencyAndStaleClaims(t *testing.T) {
 	if state != "queued" {
 		t.Fatalf("retried job state = %q, want queued", state)
 	}
-	if err := queue.Complete(ctx, job); err != ErrClaimLost {
+	if err := queue.Complete(ctx, job); !errors.Is(err, ErrClaimLost) {
 		t.Fatalf("stale completion error = %v, want ErrClaimLost", err)
 	}
 	time.Sleep(1100 * time.Millisecond)
