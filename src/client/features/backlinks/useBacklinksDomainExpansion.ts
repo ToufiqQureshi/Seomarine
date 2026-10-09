@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { getBacklinksRows } from "@/serverFunctions/backlinks";
+import { getBacklinksRows } from "./backlinksApi";
 import type { BacklinksRow, BacklinksSearchState } from "./backlinksPageTypes";
 
 const DOMAIN_LINKS_PAGE_SIZE = 100;
@@ -57,18 +57,16 @@ export function useBacklinksDomainExpansion({
       staleTime: DOMAIN_LINKS_STALE_TIME_MS,
       queryFn: () =>
         getBacklinksRows({
-          data: {
-            projectId,
-            target,
-            scope,
-            page: 1,
-            pageSize: DOMAIN_LINKS_PAGE_SIZE,
-            sortField: "rank",
-            sortOrder: "desc",
-            filters: { domainFrom: domain },
-            mode: "as_is",
-            hideSpam: !includeSpam,
-          },
+          projectId,
+          target,
+          scope,
+          page: 1,
+          pageSize: DOMAIN_LINKS_PAGE_SIZE,
+          sortField: "rank",
+          sortOrder: "desc",
+          filters: { domainFrom: domain },
+          mode: "as_is",
+          hideSpam: !includeSpam,
         }),
     })),
   });

@@ -14,6 +14,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
@@ -46,6 +47,8 @@ type Deps struct {
 	// AISearch is nil when no DataForSEO key is configured; its routes then
 	// answer 503.
 	AISearch *aisearch.Service
+	// Backlinks is nil when no DataForSEO key is configured.
+	Backlinks *backlinks.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -128,6 +131,14 @@ func NewHandler(d Deps) http.Handler {
 		WithProjectAccess: func(next http.Handler) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
+	})
+	var backlinkPlans backlinks.PaidPlans
+	if d.Billing != nil {
+		backlinkPlans = d.Billing
+	}
+	backlinks.Mount(mux, backlinks.Deps{
+		Logger: d.Logger, Service: d.Backlinks, Plans: backlinkPlans, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 
 	api := http.NewServeMux()

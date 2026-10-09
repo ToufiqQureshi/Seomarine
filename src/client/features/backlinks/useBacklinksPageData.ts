@@ -13,7 +13,7 @@ import {
   getBacklinksReferringDomains,
   getBacklinksRows,
   getBacklinksTopPages,
-} from "@/serverFunctions/backlinks";
+} from "./backlinksApi";
 import {
   BACKLINKS_DEFAULT_SORT,
   backlinksRowsSortFieldSchema,
@@ -105,7 +105,7 @@ export function useBacklinksPageData({
     queryKey: ["backlinksOverview", ...baseQueryKeyParts],
     enabled: targetReady,
     staleTime: BACKLINKS_QUERY_STALE_TIME_MS,
-    queryFn: () => getBacklinksOverview({ data: { projectId, target, scope } }),
+    queryFn: () => getBacklinksOverview({ projectId, target, scope }),
   });
 
   const rowsSort = toSort(
@@ -142,14 +142,12 @@ export function useBacklinksPageData({
     placeholderData: rowsFilterError ? undefined : keepSameTarget,
     queryFn: () =>
       getBacklinksRows({
-        data: {
-          ...pageInputBase,
-          sortField: rowsSort.field,
-          sortOrder: rowsSort.order,
-          filters: rowsFilters,
-          mode: rowsMode,
-          hideSpam: !searchState.includeSpam,
-        },
+        ...pageInputBase,
+        sortField: rowsSort.field,
+        sortOrder: rowsSort.order,
+        filters: rowsFilters,
+        mode: rowsMode,
+        hideSpam: !searchState.includeSpam,
       }),
   });
 
@@ -178,12 +176,10 @@ export function useBacklinksPageData({
     placeholderData: keepSameTarget,
     queryFn: () =>
       getBacklinksReferringDomains({
-        data: {
-          ...pageInputBase,
-          sortField: domainsSort.field,
-          sortOrder: domainsSort.order,
-          filters: domainsFilters,
-        },
+        ...pageInputBase,
+        sortField: domainsSort.field,
+        sortOrder: domainsSort.order,
+        filters: domainsFilters,
       }),
   });
 
@@ -212,12 +208,10 @@ export function useBacklinksPageData({
     placeholderData: keepSameTarget,
     queryFn: () =>
       getBacklinksTopPages({
-        data: {
-          ...pageInputBase,
-          sortField: pagesSort.field,
-          sortOrder: pagesSort.order,
-          filters: pagesFilters,
-        },
+        ...pageInputBase,
+        sortField: pagesSort.field,
+        sortOrder: pagesSort.order,
+        filters: pagesFilters,
       }),
   });
 

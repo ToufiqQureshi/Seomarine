@@ -6,14 +6,15 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 
 ## Phase 0: Foundation (must come first)
 
-| #    | Task                                                                                                                            | Status |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 0.1  | Import code into the Seomarine repo, add the proprietary license, keep the MIT attribution                                      | ✅     |
-| 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                               | ⏳     |
-| 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                   | ✅     |
-| 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                    | ✅     |
-| 0.4  | Go server serves the React SPA (Vite build) as static files                                                                     | ⏳     |
-| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | 🔧     |
+| #    | Task                                                                                                                            | Status      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1  | Import code into the Seomarine repo, add the proprietary license, keep the MIT attribution                                      | ✅          |
+| 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                               | ⏳          |
+| 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                   | ✅          |
+| 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                    | ✅          |
+| 0.4  | Go server serves the React SPA (Vite build) as static files                                                                     | ⏳          |
+| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | 🔧          |
+| 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                            | in progress |
 
 ## Phase 1: Rebrand + new UI
 
@@ -69,6 +70,9 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 2. 5.3 One-click cancel and live usage (part of the pricing promise).
 3. 0.4 Go serves the React build, retiring the legacy proxy route by route.
 4. 2.4 AI Visibility, then 2.5 joining it with analytics.
+
+Backlinks Go API is implemented for the React pages. Legacy MCP tools continue
+using the TypeScript service until MCP is ported.
 
 ## Owner actions
 

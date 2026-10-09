@@ -4,29 +4,18 @@ import type {
   BacklinksTargetScope,
 } from "@/types/schemas/backlinks";
 import type {
-  getBacklinksOverview,
-  getBacklinksReferringDomains,
-  getBacklinksRows,
-  getBacklinksTopPages,
-} from "@/serverFunctions/backlinks";
+  BacklinksOverviewData,
+  BacklinksRow,
+  ReferringDomainRow,
+  TopPageRow,
+} from "./backlinksApi";
 
-export type BacklinksOverviewData = Awaited<
-  ReturnType<typeof getBacklinksOverview>
->;
-export type BacklinksRowsPageData = Awaited<
-  ReturnType<typeof getBacklinksRows>
->;
-export type BacklinksReferringDomainsData = Awaited<
-  ReturnType<typeof getBacklinksReferringDomains>
->;
-export type BacklinksTopPagesData = Awaited<
-  ReturnType<typeof getBacklinksTopPages>
->;
-
-export type BacklinksRow = BacklinksRowsPageData["rows"][number];
-export type ReferringDomainRow = BacklinksReferringDomainsData["rows"][number];
-export type TopPageRow = BacklinksTopPagesData["rows"][number];
-
+export type {
+  BacklinksOverviewData,
+  BacklinksRow,
+  ReferringDomainRow,
+  TopPageRow,
+};
 export type BacklinksSearchState = {
   includeSpam?: boolean;
   target: string;
