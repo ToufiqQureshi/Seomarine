@@ -39,6 +39,8 @@ func Mount(mux *http.ServeMux, d Deps) {
 		{"progress", progressHandler},
 		{"delete", deleteHandler},
 		{"capabilities", capabilitiesHandler},
+		{"lighthouse/issues", lighthouseIssuesHandler},
+		{"lighthouse/export", lighthouseExportHandler},
 	} {
 		mux.Handle("POST /api/v1/projects/{projectId}/audit/"+route.path, protect(route.fn(d)))
 	}

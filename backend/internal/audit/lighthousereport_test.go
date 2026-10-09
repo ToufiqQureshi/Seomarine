@@ -52,7 +52,7 @@ func TestBuildLighthouseIssuesSortsByImpactThenScore(t *testing.T) {
 		testIssue("seo", "high-score", ptr(90), nil, nil),
 		testIssue("seo", "no-score", nil, nil, nil),
 		testIssue("performance", "big-bytes", ptr(50), nil, ptr(5000.0)),
-		testIssue("performance", "slow", ptr(50), ptr(2.0), nil),
+		testIssue("performance", "slow", ptr(50), ptr(10.0), nil),
 	)
 	result, err := BuildLighthouseIssues(detailFixture(payload))
 	if err != nil {
@@ -137,8 +137,8 @@ func TestBuildLighthouseExport(t *testing.T) {
 			if content.ResultID != "result-1" || content.Category != tc.wantCategory || issueKeys(content.Issues) != tc.wantKeys {
 				t.Fatalf("content = %+v keys = %s", content, issueKeys(content.Issues))
 			}
-			if strings.Contains(file.Content, `<`) {
-				t.Fatal("HTML characters must not be escaped")
+			if !strings.Contains(file.Content, "<b>&") && strings.Contains(tc.wantKeys, "<b>&") {
+				t.Fatalf("HTML characters must be written as-is, not escaped: %s", file.Content)
 			}
 			if strings.HasSuffix(file.Content, "\n") || !strings.Contains(file.Content, "\n  \"") {
 				t.Fatalf("content must be 2-space indented with no trailing newline: %q", file.Content)

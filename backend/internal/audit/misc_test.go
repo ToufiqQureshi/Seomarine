@@ -221,7 +221,8 @@ func TestContentHash(t *testing.T) {
 	if contentHash("a") == contentHash("b") {
 		t.Fatal("different content must hash differently")
 	}
-	if contentHash("a") != contentHash("a") {
+	first, second := contentHash("a"), contentHash("a")
+	if first != second {
 		t.Fatal("the hash must be stable")
 	}
 }

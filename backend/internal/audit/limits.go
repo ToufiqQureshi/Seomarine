@@ -29,16 +29,6 @@ const (
 	FetchError       PageFetchClass = "error"
 )
 
-// valid reports whether c is one of the four known classes.
-func (c PageFetchClass) valid() bool {
-	switch c {
-	case FetchOK, FetchBlocked, FetchRateLimited, FetchError:
-		return true
-	default:
-		return false
-	}
-}
-
 // LighthouseStrategy selects how many pages get a paid Lighthouse check.
 type LighthouseStrategy string
 

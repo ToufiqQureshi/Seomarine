@@ -11,9 +11,6 @@ import (
 // ShopifySignatureAgent is the constant Shopify expects, quotes included.
 const ShopifySignatureAgent = `"https://shopify.com"`
 
-// maxSignatureValueLength bounds a stored signature value.
-const maxSignatureValueLength = 4096
-
 // CrawlerAccess is a bot-protection credential bound to one host. The binding is
 // the security boundary: these values must never be sent to another site,
 // including across a redirect hop.
