@@ -1,0 +1,195 @@
+openapi: 3.1.0
+info:
+  title: Seomarine site audit
+  version: 1.0.0
+  description: |
+    Crawl a site, run page and cross-page checks, and optionally sample
+    Lighthouse. Every route is a POST with a JSON body, needs a session and
+    membership of the project's organization, and rejects unknown fields.
+servers:
+  - url: /api/v1
+paths:
+  /projects/{projectId}/audit/start:
+    post:
+      operationId: startAudit
+      summary: Start an audit
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startUrl]
+              properties:
+                startUrl: { type: string, maxLength: 2048 }
+                maxPages: { type: integer, minimum: 10, maximum: 10000 }
+                lighthouseStrategy: { type: string, enum: [auto, none] }
+                renderJavaScript: { type: boolean }
+      responses:
+        "200":
+          description: The audit was queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [auditId]
+                properties:
+                  auditId: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/status:
+    post:
+      operationId: getAuditStatus
+      summary: Read an audit's status and progress counters
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody: { $ref: "#/components/requestBodies/AuditId" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/results:
+    post:
+      operationId: getAuditResults
+      summary: Read an audit's pages, issues and Lighthouse results
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody: { $ref: "#/components/requestBodies/AuditId" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/history:
+    post:
+      operationId: getAuditHistory
+      summary: List the project's audits, newest first
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+  /projects/{projectId}/audit/progress:
+    post:
+      operationId: getCrawlProgress
+      summary: Live crawl feed of a running audit
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody: { $ref: "#/components/requestBodies/AuditId" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/delete:
+    post:
+      operationId: deleteAudit
+      summary: Stop and delete an audit
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody: { $ref: "#/components/requestBodies/AuditId" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/capabilities:
+    post:
+      operationId: getAuditCapabilities
+      summary: Which audit features this deployment supports
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+  /projects/{projectId}/audit/lighthouse/issues:
+    post:
+      operationId: getLighthouseIssues
+      summary: Stored issues of one Lighthouse result
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resultId]
+              properties:
+                resultId: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/audit/lighthouse/export:
+    post:
+      operationId: exportLighthouse
+      summary: Build a download for one Lighthouse result
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resultId, mode]
+              properties:
+                resultId: { type: string }
+                mode: { type: string, enum: [full, issues, category] }
+                category:
+                  type: string
+                  enum: [performance, accessibility, best-practices, seo]
+      responses:
+        "200":
+          description: A filename and the file content.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [filename, content]
+                properties:
+                  filename: { type: string }
+                  content: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string }
+  requestBodies:
+    AuditId:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [auditId]
+            properties:
+              auditId: { type: string }
+  responses:
+    Json:
+      description: The JSON payload described by `backend/internal/audit`.
+      content:
+        application/json:
+          schema: { type: object }
+    BadRequest:
+      description: The body failed validation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error:
+      description: An error with a machine-readable code.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }

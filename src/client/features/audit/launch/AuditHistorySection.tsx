@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ScanSearch, Trash2 } from "lucide-react";
-import type { getAuditHistory } from "@/serverFunctions/audit";
+import type { AuditHistory } from "@/client/features/audit/auditApi";
 import { EmptyState } from "@/client/components/EmptyState";
 import { QueryState } from "@/client/components/QueryState";
 import { RowActionsMenu } from "@/client/components/RowActionsMenu";
@@ -19,8 +19,6 @@ import {
   TableRow,
 } from "@/client/components/ui/table";
 import { formatDate, StatusBadge } from "@/client/features/audit/shared";
-
-type AuditHistory = Awaited<ReturnType<typeof getAuditHistory>>;
 
 export function AuditHistorySection({
   projectId,

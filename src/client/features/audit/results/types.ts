@@ -1,3 +1,3 @@
-import type { getAuditResults } from "@/serverFunctions/audit";
+import type { AuditResultsData } from "@/client/features/audit/auditApi";
 
-export type AuditResultsData = Awaited<ReturnType<typeof getAuditResults>>;
+export type { AuditResultsData };

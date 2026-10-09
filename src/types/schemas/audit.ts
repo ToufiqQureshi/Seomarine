@@ -1,51 +1,9 @@
 import { z } from "zod";
-import {
-  DEFAULT_AUDIT_PAGES,
-  MIN_AUDIT_PAGES,
-  PAID_MAX_AUDIT_PAGES,
-} from "@/shared/audit-limits";
 
-// ─── Server function input schemas ──────────────────────────────────────────
-
-export const startAuditSchema = z.object({
-  projectId: z.string().min(1),
-  renderJavaScript: z.boolean().optional().default(false),
-  startUrl: z.string().min(1, "URL is required").max(2048),
-  maxPages: z
-    .number()
-    .int()
-    .min(MIN_AUDIT_PAGES)
-    .max(PAID_MAX_AUDIT_PAGES)
-    .optional()
-    .default(DEFAULT_AUDIT_PAGES),
-  lighthouseStrategy: z.enum(["auto", "none"]).optional().default("auto"),
-});
-
-export const getAuditStatusSchema = z.object({
-  projectId: z.string().min(1),
-  auditId: z.string().min(1),
-});
-
-export const getAuditResultsSchema = z.object({
-  projectId: z.string().min(1),
-  auditId: z.string().min(1),
-});
-
-export const getAuditHistorySchema = z.object({
-  projectId: z.string().min(1),
-});
-
-export const deleteAuditSchema = z.object({
-  projectId: z.string().min(1),
-  auditId: z.string().min(1),
-});
-
-export const getCrawlProgressSchema = z.object({
-  projectId: z.string().min(1),
-  auditId: z.string().min(1),
-});
-
-// ─── URL search params schema for /p/$projectId/audit ────────────────────────
+// The audit server functions moved to the Go API
+// (`src/client/features/audit/auditApi.ts`), so their input schemas are gone.
+// This file now only holds the URL search-params schema for the audit route,
+// which the React router still reads.
 
 const auditTabs = ["issues", "pages", "performance"] as const;
 

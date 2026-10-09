@@ -11,7 +11,7 @@ import {
 import { cn } from "cn";
 import { Badge } from "@/client/components/ui/badge";
 import { Spinner } from "@/client/components/ui/spinner";
-import { getAuditCapabilities } from "@/serverFunctions/audit";
+import { getAuditCapabilities } from "@/client/features/audit/auditApi";
 import type { IssueSeverity } from "@/shared/audit-issues";
 
 export function extractPathname(url: string): string {
