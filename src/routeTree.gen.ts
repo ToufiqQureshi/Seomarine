@@ -58,8 +58,6 @@ import { Route as AppPProjectIdSamRouteImport } from './routes/_app/p/$projectId
 import { Route as AppPProjectIdSavedRouteImport } from './routes/_app/p/$projectId/saved'
 import { Route as AppPProjectIdSearchPerformanceRouteImport } from './routes/_app/p/$projectId/search-performance'
 import { Route as AppPProjectIdSettingsRouteImport } from './routes/_app/p/$projectId/settings'
-import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
-import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as AppPProjectIdAuditIndexRouteImport } from './routes/_app/p/$projectId/audit/index'
 import { Route as AppPProjectIdRankTrackingIndexRouteImport } from './routes/_app/p/$projectId/rank-tracking/index'
 import { Route as AppPProjectIdRankTrackingConfigIdRouteImport } from './routes/_app/p/$projectId/rank-tracking/$configId'
@@ -320,16 +318,6 @@ const AppPProjectIdSettingsRoute = AppPProjectIdSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppPProjectIdRouteRoute,
 } as any)
-const ApiGa4OauthCallbackRoute = ApiGa4OauthCallbackRouteImport.update({
-  id: '/api/ga4/oauth/callback',
-  path: '/api/ga4/oauth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGscOauthCallbackRoute = ApiGscOauthCallbackRouteImport.update({
-  id: '/api/gsc/oauth/callback',
-  path: '/api/gsc/oauth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppPProjectIdAuditIndexRoute = AppPProjectIdAuditIndexRouteImport.update({
   id: '/audit/',
   path: '/audit/',
@@ -436,8 +424,6 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/saved': typeof AppPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof AppPProjectIdSearchPerformanceRoute
   '/p/$projectId/settings': typeof AppPProjectIdSettingsRouteWithChildren
-  '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
-  '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/p/$projectId/': typeof AppPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -492,8 +478,6 @@ export interface FileRoutesByTo {
   '/p/$projectId/sam': typeof AppPProjectIdSamRoute
   '/p/$projectId/saved': typeof AppPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof AppPProjectIdSearchPerformanceRoute
-  '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
-  '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/p/$projectId': typeof AppPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -556,8 +540,6 @@ export interface FileRoutesById {
   '/_app/p/$projectId/saved': typeof AppPProjectIdSavedRoute
   '/_app/p/$projectId/search-performance': typeof AppPProjectIdSearchPerformanceRoute
   '/_app/p/$projectId/settings': typeof AppPProjectIdSettingsRouteWithChildren
-  '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
-  '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/_app/p/$projectId/': typeof AppPProjectIdIndexRoute
   '/_app/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/_app/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -618,8 +600,6 @@ export interface FileRouteTypes {
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
     | '/p/$projectId/settings'
-    | '/api/ga4/oauth/callback'
-    | '/api/gsc/oauth/callback'
     | '/p/$projectId/'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/reports/$reportId'
@@ -674,8 +654,6 @@ export interface FileRouteTypes {
     | '/p/$projectId/sam'
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
-    | '/api/ga4/oauth/callback'
-    | '/api/gsc/oauth/callback'
     | '/p/$projectId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/reports/$reportId'
@@ -737,8 +715,6 @@ export interface FileRouteTypes {
     | '/_app/p/$projectId/saved'
     | '/_app/p/$projectId/search-performance'
     | '/_app/p/$projectId/settings'
-    | '/api/ga4/oauth/callback'
-    | '/api/gsc/oauth/callback'
     | '/_app/p/$projectId/'
     | '/_app/p/$projectId/rank-tracking/$configId'
     | '/_app/p/$projectId/reports/$reportId'
@@ -769,8 +745,6 @@ export interface RootRouteChildren {
   STokenOgDotpngRoute: typeof STokenOgDotpngRoute
   STokenRawRoute: typeof STokenRawRoute
   STokenIndexRoute: typeof STokenIndexRoute
-  ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
-  ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1118,20 +1092,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPProjectIdSettingsRouteImport
       parentRoute: typeof AppPProjectIdRouteRoute
     }
-    '/api/ga4/oauth/callback': {
-      id: '/api/ga4/oauth/callback'
-      path: '/api/ga4/oauth/callback'
-      fullPath: '/api/ga4/oauth/callback'
-      preLoaderRoute: typeof ApiGa4OauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/gsc/oauth/callback': {
-      id: '/api/gsc/oauth/callback'
-      path: '/api/gsc/oauth/callback'
-      fullPath: '/api/gsc/oauth/callback'
-      preLoaderRoute: typeof ApiGscOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app/p/$projectId/audit/': {
       id: '/_app/p/$projectId/audit/'
       path: '/audit'
@@ -1381,8 +1341,6 @@ const rootRouteChildren: RootRouteChildren = {
   STokenOgDotpngRoute: STokenOgDotpngRoute,
   STokenRawRoute: STokenRawRoute,
   STokenIndexRoute: STokenIndexRoute,
-  ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
-  ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
