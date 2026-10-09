@@ -10,7 +10,7 @@ import {
   buildKeywordResearchRequest,
   keywordResearchQueryFn,
 } from "@/client/features/keywords/hooks/useKeywordResearchData";
-import { getBacklinksOverview } from "@/serverFunctions/backlinks";
+import { getBacklinksOverview } from "@/client/features/backlinks/backlinksApi";
 import { getDomainOverview } from "@/serverFunctions/domain";
 
 type Props = {
@@ -175,11 +175,9 @@ function getSearchTabQueryConfig(
       queryKey: ["backlinksOverview", projectId, input.scope, input.target],
       queryFn: () =>
         getBacklinksOverview({
-          data: {
-            projectId,
-            target: input.target,
-            scope: input.scope,
-          },
+          projectId,
+          target: input.target,
+          scope: input.scope,
         }),
     };
   }
