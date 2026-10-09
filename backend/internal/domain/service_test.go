@@ -384,7 +384,7 @@ func TestKeywordsPageCacheKeyCoversEveryInput(t *testing.T) {
 	svc := newTestService(t, provider, &memoryCache{})
 	base := KeywordsPageInput{ProjectID: "proj", Domain: "example.com", Scope: ScopeDomain, LocationCode: 2840, LanguageCode: "en", Page: 1, PageSize: 50, SortMode: "traffic", SortOrder: "desc"}
 	variants := []func(*KeywordsPageInput){
-		func(in *KeywordsPageInput) {},
+		func(*KeywordsPageInput) {},
 		func(in *KeywordsPageInput) { in.Page = 2 },
 		func(in *KeywordsPageInput) { in.PageSize = 100 },
 		func(in *KeywordsPageInput) { in.SortMode = "cpc" },

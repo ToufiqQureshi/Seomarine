@@ -72,6 +72,7 @@ func NewServiceWithCache(client *dataforseo.Client, c cache, logger *slog.Logger
 	return &Service{provider: provider{client: client}, cache: c, logger: logger, now: now}
 }
 
+// OverviewResult is the Domain Overview card: organic traffic and keyword count.
 type OverviewResult struct {
 	Domain           string   `json:"domain"`
 	Scope            Scope    `json:"scope"`
@@ -84,6 +85,7 @@ type OverviewResult struct {
 	FetchedAt        string   `json:"fetchedAt"`
 }
 
+// KeywordSuggestion is a ranking keyword with its metrics.
 type KeywordSuggestion struct {
 	Keyword           string   `json:"keyword"`
 	Position          *float64 `json:"position"`
@@ -100,6 +102,7 @@ type KeywordRow struct {
 	RelativeURL *string `json:"relativeUrl"`
 }
 
+// KeywordsPageInput is a validated request for one page of ranking keywords.
 type KeywordsPageInput struct {
 	ProjectID    string
 	Domain       string
@@ -114,6 +117,7 @@ type KeywordsPageInput struct {
 	Search       string
 }
 
+// KeywordsPageResult is one page of ranking keywords.
 type KeywordsPageResult struct {
 	Domain     string       `json:"domain"`
 	Page       int          `json:"page"`
@@ -124,6 +128,7 @@ type KeywordsPageResult struct {
 	FetchedAt  string       `json:"fetchedAt"`
 }
 
+// PageResult is a ranking page with its organic traffic and keyword count.
 type PageResult struct {
 	Page           string   `json:"page"`
 	RelativePath   *string  `json:"relativePath"`
@@ -131,6 +136,7 @@ type PageResult struct {
 	Keywords       *float64 `json:"keywords"`
 }
 
+// PagesPageInput is a validated request for one page of ranking pages.
 type PagesPageInput struct {
 	ProjectID    string
 	Domain       string
@@ -145,6 +151,7 @@ type PagesPageInput struct {
 	Search       string
 }
 
+// PagesPageResult is one page of ranking pages.
 type PagesPageResult struct {
 	Domain     string       `json:"domain"`
 	Page       int          `json:"page"`

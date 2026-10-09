@@ -1,3 +1,5 @@
+// Package domain serves the Domain Overview API: overview, keyword suggestions
+// and the keywords and pages tabs, backed by DataForSEO Labs.
 package domain
 
 import (

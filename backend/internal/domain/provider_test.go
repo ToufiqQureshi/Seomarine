@@ -55,7 +55,7 @@ func (f costRecorderFunc) RecordDataForSEO(ctx context.Context, org string, cost
 
 func TestProviderDoesNotRetryPaidCall(t *testing.T) {
 	calls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
 		_, _ = w.Write([]byte(`{"status_code":20000,"tasks":[{"status_code":40500,"status_message":"failed"}]} `))
 	}))

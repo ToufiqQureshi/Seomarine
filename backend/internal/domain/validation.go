@@ -6,6 +6,7 @@ import "github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 // feature: exact URL, subfolder, entire domain or all subdomains.
 type Scope = aisearch.Scope
 
+// The four research scopes, shared with AI search.
 const (
 	ScopeExactURL   = aisearch.ScopeExactURL
 	ScopeSubfolder  = aisearch.ScopeSubfolder
