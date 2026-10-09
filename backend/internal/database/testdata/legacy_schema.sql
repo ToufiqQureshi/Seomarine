@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS projects (
     organization_id text NOT NULL REFERENCES organization (id) ON DELETE CASCADE,
     name text NOT NULL,
     domain text,
+    location_code integer NOT NULL DEFAULT 2840,
+    language_code text NOT NULL DEFAULT 'en',
     created_at text NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     archived_at text
 );
