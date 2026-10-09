@@ -19,6 +19,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
@@ -90,6 +91,7 @@ func run(logger *slog.Logger) error {
 
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service
+	var domainSvc *domain.Service
 	if cfg.DataForSEOAPIKey != "" {
 		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
 		if err != nil {
@@ -97,8 +99,9 @@ func run(logger *slog.Logger) error {
 		}
 		aiSearchSvc = aisearch.NewService(client, rdb, logger)
 		backlinksSvc = backlinks.NewService(client, rdb, logger)
+		domainSvc = domain.NewService(client, rdb, logger)
 	} else {
-		logger.Warn("DATAFORSEO_API_KEY not set; AI search and backlinks endpoints answer 503")
+		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
 
 	srv := &http.Server{
@@ -114,6 +117,7 @@ func run(logger *slog.Logger) error {
 			Branding:          branding.NewService(db),
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
+			Domain:            domainSvc,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),

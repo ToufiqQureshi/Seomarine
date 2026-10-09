@@ -15,6 +15,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.4  | Go server serves the React SPA (Vite build) as static files                                                                     | ⏳          |
 | 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP) | 🔧          |
 | 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                            | in progress |
+| 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript      | in progress |
 
 ## Phase 1: Rebrand + new UI
 

@@ -1,6 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { getDomainPagesPage } from "@/serverFunctions/domain";
-import { toPageSortMode } from "@/client/features/domain/utils";
+import { skipToken, useQuery } from "@tanstack/react-query";
+import { getDomainPagesPage } from "@/client/features/domain/domainApi";
+import { useDomainMarket } from "@/client/features/domain/domainMarket";
+import {
+  toNumberOrUndefined,
+  toPageSortMode,
+} from "@/client/features/domain/utils";
 import type { ResearchScope } from "@/shared/researchScope";
 import type {
   DomainSortMode,
@@ -23,6 +27,15 @@ type DomainPagesQueryInput = {
 
 export function useDomainPagesQuery(input: DomainPagesQueryInput) {
   const pageSortMode = toPageSortMode(input.sortMode);
+  const market = useDomainMarket(input.projectId, input.locationCode);
+  const filters = {
+    include: input.appliedFilters.include || undefined,
+    exclude: input.appliedFilters.exclude || undefined,
+    minTraffic: toNumberOrUndefined(input.appliedFilters.minTraffic),
+    maxTraffic: toNumberOrUndefined(input.appliedFilters.maxTraffic),
+    minVol: toNumberOrUndefined(input.appliedFilters.minVol),
+    maxVol: toNumberOrUndefined(input.appliedFilters.maxVol),
+  };
   return useQuery({
     enabled: input.enabled && Boolean(input.domain),
     queryKey: [
@@ -37,20 +50,22 @@ export function useDomainPagesQuery(input: DomainPagesQueryInput) {
       input.sortOrder,
       input.appliedFilters,
     ],
-    queryFn: () =>
-      getDomainPagesPage({
-        data: {
-          projectId: input.projectId,
-          domain: input.domain,
-          scope: input.scope,
-          locationCode: input.locationCode,
-          page: input.page,
-          pageSize: input.pageSize,
-          sortMode: pageSortMode,
-          sortOrder: input.sortOrder,
-          filters: input.appliedFilters,
-        },
-      }),
+    queryFn: market
+      ? () =>
+          getDomainPagesPage({
+            data: {
+              projectId: input.projectId,
+              domain: input.domain,
+              scope: input.scope,
+              ...market,
+              page: input.page,
+              pageSize: input.pageSize,
+              sortMode: pageSortMode,
+              sortOrder: input.sortOrder,
+              filters,
+            },
+          })
+      : skipToken,
     staleTime: 60_000,
   });
 }
