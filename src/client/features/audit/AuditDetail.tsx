@@ -27,7 +27,7 @@ import {
   getAuditResults,
   getAuditStatus,
   getCrawlProgress,
-} from "@/serverFunctions/audit";
+} from "@/client/features/audit/auditApi";
 import { ResultsView } from "@/client/features/audit/results/ResultsView";
 import {
   BotProtectionAdvice,
@@ -170,7 +170,7 @@ export function AuditDetail({
             <AlertDescription>
               <BotProtectionAdvice
                 projectId={projectId}
-                rendered={results.audit.config.renderJavaScript === true}
+                rendered={results.audit.config.renderJavaScript}
               />
             </AlertDescription>
           </Alert>

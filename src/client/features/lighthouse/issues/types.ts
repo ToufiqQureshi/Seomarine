@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { getAuditLighthouseIssues } from "@/serverFunctions/lighthouse";
+import type { LighthouseIssuesData } from "@/client/features/audit/auditApi";
 import {
   LIGHTHOUSE_CATEGORY_TABS,
   type LighthouseCategoryTab,
@@ -15,12 +15,6 @@ export type ExportPayload = Omit<
   "projectId" | "resultId"
 >;
 
-type LighthouseIssuesResponse = Awaited<
-  ReturnType<typeof getAuditLighthouseIssues>
->;
-
-export type LighthouseIssue = LighthouseIssuesResponse["issues"][number];
-export type LighthouseScores = NonNullable<LighthouseIssuesResponse["scores"]>;
-export type LighthouseMetrics = NonNullable<
-  LighthouseIssuesResponse["metrics"]
->;
+export type LighthouseIssue = LighthouseIssuesData["issues"][number];
+export type LighthouseScores = NonNullable<LighthouseIssuesData["scores"]>;
+export type LighthouseMetrics = NonNullable<LighthouseIssuesData["metrics"]>;

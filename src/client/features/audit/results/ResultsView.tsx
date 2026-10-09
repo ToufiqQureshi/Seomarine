@@ -107,7 +107,7 @@ export function ResultsView({
           <AlertDescription>
             <BotProtectionAdvice
               projectId={projectId}
-              rendered={audit.config.renderJavaScript === true}
+              rendered={audit.config.renderJavaScript}
             />
           </AlertDescription>
         </Alert>
