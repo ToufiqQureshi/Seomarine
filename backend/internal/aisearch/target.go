@@ -192,6 +192,12 @@ func parseResearchTarget(input string, requested Scope) (ResearchTarget, error) 
 	return ResearchTarget{Scope: scope, Hostname: host, Path: path, Display: display}, nil
 }
 
+// ResolveResearchTarget reuses the same validation as the AI search provider
+// without duplicating the host parsing rules.
+func ResolveResearchTarget(input string, requested Scope) (ResearchTarget, error) {
+	return parseResearchTarget(input, requested)
+}
+
 func normalizePath(p string) string {
 	return strings.TrimRight(p, "/")
 }

@@ -56,6 +56,14 @@ export function toPageSortMode(
 }
 
 /** Normalized path of a domain input; `""` when it is a root or unparseable. */
+/** Parses a filter input; blank or non-numeric text means "no limit". */
+export function toNumberOrUndefined(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (trimmed === "") return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function getResearchInputPath(input: string): string {
   const parsed = parseResearchTarget(input);
   return parsed.ok ? parsed.target.path : "";

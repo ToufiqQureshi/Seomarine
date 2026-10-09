@@ -42,14 +42,6 @@ export const booleanSearchParamSchema = z
   .union([z.boolean(), z.enum(["true", "false"])])
   .transform((value) => value === true || value === "true");
 
-export const domainOverviewSchema = z.object({
-  projectId: z.string().uuid(),
-  domain: z.string().min(1, "Domain is required").max(2048),
-  scope: researchScopeSchema.optional(),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: z.string().min(2).max(8).optional(),
-});
-
 /* ------------------------------------------------------------------ */
 /*  URL search params schema for /p/$projectId/domain                  */
 /* ------------------------------------------------------------------ */
@@ -57,14 +49,6 @@ export const domainOverviewSchema = z.object({
 const domainSortModes = ["rank", "traffic", "volume", "score", "cpc"] as const;
 const domainSortOrders = ["asc", "desc"] as const;
 const domainTabs = ["keywords", "pages"] as const;
-
-export const domainKeywordSuggestionsSchema = z.object({
-  projectId: z.string().uuid(),
-  domain: z.string().min(1, "Domain is required").max(2048),
-  scope: researchScopeSchema.optional(),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: z.string().min(2).max(8).optional(),
-});
 
 export const DOMAIN_KEYWORDS_PAGE_SIZES = [50, 100, 200] as const;
 export const DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE = 50;
@@ -102,48 +86,6 @@ const domainKeywordsFiltersSchema = z.object({
 });
 
 export type DomainKeywordsFilters = z.infer<typeof domainKeywordsFiltersSchema>;
-
-export const domainKeywordsPageRequestSchema = z.object({
-  projectId: z.string().uuid(),
-  domain: z.string().min(1).max(2048),
-  scope: researchScopeSchema.optional(),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: z.string().min(2).max(8).optional(),
-  page: z.number().int().positive().default(1),
-  pageSize: z
-    .number()
-    .int()
-    .refine((value) =>
-      (DOMAIN_KEYWORDS_PAGE_SIZES as readonly number[]).includes(value),
-    )
-    .default(DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE),
-  sortMode: z.enum(domainSortModes).default("traffic"),
-  sortOrder: z.enum(domainSortOrders).default("desc"),
-  filters: domainKeywordsFiltersSchema.default({}),
-  search: z.string().optional(),
-});
-
-const domainPagesSortModes = ["traffic", "keywords"] as const;
-
-export const domainPagesPageRequestSchema = z.object({
-  projectId: z.string().uuid(),
-  domain: z.string().min(1).max(2048),
-  scope: researchScopeSchema.optional(),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: z.string().min(2).max(8).optional(),
-  page: z.number().int().positive().default(1),
-  pageSize: z
-    .number()
-    .int()
-    .refine((value) =>
-      (DOMAIN_KEYWORDS_PAGE_SIZES as readonly number[]).includes(value),
-    )
-    .default(DEFAULT_DOMAIN_KEYWORDS_PAGE_SIZE),
-  sortMode: z.enum(domainPagesSortModes).default("traffic"),
-  sortOrder: z.enum(domainSortOrders).default("desc"),
-  filters: domainKeywordsFiltersSchema.default({}),
-  search: z.string().optional(),
-});
 
 export const optionalSearchNumberParam = z.coerce
   .number()

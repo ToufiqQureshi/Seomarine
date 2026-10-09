@@ -17,6 +17,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -49,6 +50,8 @@ type Deps struct {
 	AISearch *aisearch.Service
 	// Backlinks is nil when no DataForSEO key is configured.
 	Backlinks *backlinks.Service
+	// Domain is nil when no DataForSEO key is configured.
+	Domain *domain.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -138,6 +141,14 @@ func NewHandler(d Deps) http.Handler {
 	}
 	backlinks.Mount(mux, backlinks.Deps{
 		Logger: d.Logger, Service: d.Backlinks, Plans: backlinkPlans, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	var domainPlans domain.PaidPlans
+	if d.Billing != nil {
+		domainPlans = d.Billing
+	}
+	domain.Mount(mux, domain.Deps{
+		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 
