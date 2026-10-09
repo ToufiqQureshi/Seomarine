@@ -23,6 +23,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
+	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
@@ -92,6 +93,7 @@ func run(logger *slog.Logger) error {
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service
 	var domainSvc *domain.Service
+	var locationSvc *keywords.LocationService
 	if cfg.DataForSEOAPIKey != "" {
 		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
 		if err != nil {
@@ -100,6 +102,7 @@ func run(logger *slog.Logger) error {
 		aiSearchSvc = aisearch.NewService(client, rdb, logger)
 		backlinksSvc = backlinks.NewService(client, rdb, logger)
 		domainSvc = domain.NewService(client, rdb, logger)
+		locationSvc = keywords.NewLocationService(client, rdb, logger)
 	} else {
 		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
@@ -119,6 +122,7 @@ func run(logger *slog.Logger) error {
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
+			Locations:         locationSvc,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),

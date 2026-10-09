@@ -18,6 +18,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -54,6 +55,8 @@ type Deps struct {
 	Domain *domain.Service
 	// ProjectMarkets reads the authorized project's default market for domain lookups.
 	ProjectMarkets domain.ProjectMarkets
+	// Locations serves the authenticated city and region picker.
+	Locations *keywords.LocationService
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -153,6 +156,7 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	keywords.MountLocations(mux, keywords.LocationDeps{Logger: d.Logger, Service: d.Locations, WithSession: withSession})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())

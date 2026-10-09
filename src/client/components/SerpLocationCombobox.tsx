@@ -13,9 +13,11 @@ import {
 } from "@/client/components/ui/combobox";
 import { InputGroupAddon } from "@/client/components/ui/input-group";
 import { Spinner } from "@/client/components/ui/spinner";
-import { searchSerpLocations } from "@/serverFunctions/serp-locations";
+import {
+  searchSerpLocations,
+  type SerpLocationResult,
+} from "@/client/features/keywords/keywordsApi";
 import { formatLocationLabel } from "@/shared/keyword-locations";
-import type { SerpLocationResult } from "@/server/lib/dataforseo/serp-locations";
 
 // The selected value is only a location name, so it has no type badge.
 type LocationItem = Pick<SerpLocationResult, "locationName" | "displayLabel"> &
@@ -57,8 +59,7 @@ export function SerpLocationCombobox({
 
   const searchQuery = useQuery({
     queryKey: ["serpLocations", countryCode, debounced],
-    queryFn: () =>
-      searchSerpLocations({ data: { query: debounced, countryCode } }),
+    queryFn: () => searchSerpLocations({ query: debounced, countryCode }),
     enabled: debounced !== "",
     staleTime: 5 * 60 * 1000,
   });
