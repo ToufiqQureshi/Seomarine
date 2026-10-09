@@ -1,3 +1,4 @@
+// Package backlinks exposes the organization-scoped backlinks reporting API.
 package backlinks
 
 import (
@@ -18,9 +19,12 @@ import (
 
 const maxBody = 32 << 10
 
+// PaidPlans checks whether an organization can use paid backlinks reports.
 type PaidPlans interface {
 	HasPaidPlan(context.Context, string) (bool, error)
 }
+
+// Deps contains the services and middleware required to mount backlinks routes.
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
@@ -29,6 +33,7 @@ type Deps struct {
 	WithProjectAccess func(http.Handler) http.Handler
 }
 
+// Mount registers the backlinks reporting routes on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	for _, route := range []struct {

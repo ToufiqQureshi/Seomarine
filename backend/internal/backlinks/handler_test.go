@@ -22,7 +22,7 @@ func (p planResult) HasPaidPlan(context.Context, string) (bool, error) { return 
 
 func requestHandler(t *testing.T, body string, plans PaidPlans, providerCalls *int) *httptest.ResponseRecorder {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		*providerCalls++
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{map[string]any{"status_code": 20000, "path": []string{"v3", "backlinks", "summary", "live"}, "cost": 0, "result": []any{map[string]any{"backlinks": 0, "info": map[string]any{}}}}}})
@@ -74,7 +74,7 @@ func TestHandlerStrictJSONAndTargetValidation(t *testing.T) {
 func TestRowsHandlerRejectsInvalidFiltersBeforeProvider(t *testing.T) {
 	t.Parallel()
 	calls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls++ }))
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { calls++ }))
 	defer server.Close()
 	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")), Recorder: billingRecorder{}, MaxRetries: 0})
 	if err != nil {

@@ -158,7 +158,7 @@ func TestCacheDownFallsThroughToProvider(t *testing.T) {
 func TestProviderRejectsBillingIssueWithoutRetry(t *testing.T) {
 	t.Parallel()
 	var calls int
-	server := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{map[string]any{"status_code": 40210, "status_message": "Insufficient funds"}}})

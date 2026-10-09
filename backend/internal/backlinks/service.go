@@ -35,6 +35,7 @@ func (c redisCache) Set(ctx context.Context, key string, value []byte, ttl time.
 	return c.client.Set(ctx, key, value, ttl).Err()
 }
 
+// Service retrieves and caches backlinks reports for organizations.
 type Service struct {
 	provider provider
 	cache    cache
@@ -42,6 +43,7 @@ type Service struct {
 	now      func() time.Time
 }
 
+// NewService constructs a backlinks service using the shared DataForSEO client.
 func NewService(client *dataforseo.Client, rdb *redis.Client, logger *slog.Logger) *Service {
 	return newService(client, redisCache{rdb}, logger, time.Now)
 }
@@ -97,6 +99,7 @@ type pagesFilters struct {
 	MaxRank             *float64 `json:"maxRank,omitempty"`
 }
 
+// Overview returns summary and history reports for a target.
 func (s *Service) Overview(ctx context.Context, org string, in lookupInput) (Overview, error) {
 	target, err := normalizeTarget(in.Target, in.Scope)
 	if err != nil {
@@ -162,6 +165,7 @@ func (s *Service) Overview(ctx context.Context, org string, in lookupInput) (Ove
 	return result, nil
 }
 
+// Rows returns paginated backlink rows matching the request filters.
 func (s *Service) Rows(ctx context.Context, org string, in lookupInput, page pageInput, filters rowsFilters, hideSpam bool) (Page[BacklinkRow], error) {
 	target, err := normalizeTarget(in.Target, in.Scope)
 	if err != nil {
@@ -198,6 +202,8 @@ func (s *Service) Rows(ctx context.Context, org string, in lookupInput, page pag
 	s.writeCache(ctx, key, out)
 	return out, nil
 }
+
+// Domains returns paginated referring domains matching the request filters.
 func (s *Service) Domains(ctx context.Context, org string, in lookupInput, page pageInput, filters domainsFilters) (Page[ReferringDomainRow], error) {
 	target, err := normalizeTarget(in.Target, in.Scope)
 	if err != nil {
@@ -234,6 +240,8 @@ func (s *Service) Domains(ctx context.Context, org string, in lookupInput, page 
 	s.writeCache(ctx, key, out)
 	return out, nil
 }
+
+// Pages returns top pages and their backlink metrics for a target.
 func (s *Service) Pages(ctx context.Context, org string, in lookupInput, page pageInput, filters pagesFilters) (Page[TopPageRow], error) {
 	target, err := normalizeTarget(in.Target, in.Scope)
 	if err != nil {
@@ -406,12 +414,12 @@ func buildPagesFilters(f pagesFilters) []any {
 	appendRange(&out, "rank", f.MinRank, f.MaxRank)
 	return prependInclude(out, "url", f.Include)
 }
-func appendRange(out *[]any, field string, min, max *float64) {
-	if min != nil {
-		*out = append(*out, []any{field, ">=", *min})
+func appendRange(out *[]any, field string, minimum, maximum *float64) {
+	if minimum != nil {
+		*out = append(*out, []any{field, ">=", *minimum})
 	}
-	if max != nil {
-		*out = append(*out, []any{field, "<=", *max})
+	if maximum != nil {
+		*out = append(*out, []any{field, "<=", *maximum})
 	}
 }
 func prependInclude(out []any, field, value string) []any {

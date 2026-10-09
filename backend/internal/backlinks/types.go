@@ -2,8 +2,10 @@ package backlinks
 
 import "time"
 
+// Scope identifies how a backlink target should be interpreted.
 type Scope string
 
+// Supported target scope values.
 const (
 	ScopeExactURL   Scope = "exact_url"
 	ScopeSubfolder  Scope = "subfolder"
@@ -11,6 +13,7 @@ const (
 	ScopeSubdomains Scope = "subdomains"
 )
 
+// Target is the normalized request target sent to the DataForSEO API.
 type Target struct {
 	APITarget         string
 	Display           string
@@ -19,6 +22,7 @@ type Target struct {
 	IncludeSubdomains bool
 }
 
+// Page is the common paginated response shape for backlinks rows.
 type Page[T any] struct {
 	Rows       []T    `json:"rows"`
 	TotalCount *int   `json:"totalCount"`
@@ -28,6 +32,7 @@ type Page[T any] struct {
 	FetchedAt  string `json:"fetchedAt"`
 }
 
+// Summary contains aggregate backlink metrics for a target.
 type Summary struct {
 	Rank                 *float64 `json:"rank"`
 	Backlinks            *float64 `json:"backlinks"`
@@ -43,6 +48,7 @@ type Summary struct {
 	LostReferringDomains *float64 `json:"lostReferringDomains"`
 }
 
+// Trend contains historical backlink metrics for one date.
 type Trend struct {
 	Date             string   `json:"date"`
 	Backlinks        *float64 `json:"backlinks"`
@@ -50,6 +56,7 @@ type Trend struct {
 	Rank             *float64 `json:"rank"`
 }
 
+// NewLostTrend contains new and lost link counts for one date.
 type NewLostTrend struct {
 	Date                 string   `json:"date"`
 	NewBacklinks         *float64 `json:"newBacklinks"`
@@ -58,6 +65,7 @@ type NewLostTrend struct {
 	LostReferringDomains *float64 `json:"lostReferringDomains"`
 }
 
+// Overview combines the normalized target, summary, and historical metrics.
 type Overview struct {
 	Target        string         `json:"target"`
 	DisplayTarget string         `json:"displayTarget"`
@@ -68,6 +76,7 @@ type Overview struct {
 	FetchedAt     string         `json:"fetchedAt"`
 }
 
+// BacklinkRow represents an individual backlink provider result.
 type BacklinkRow struct {
 	DomainFrom     *string  `json:"domainFrom"`
 	URLFrom        *string  `json:"urlFrom"`
@@ -87,6 +96,7 @@ type BacklinkRow struct {
 	LinksCount     *float64 `json:"linksCount"`
 }
 
+// ReferringDomainRow represents a referring domain and its metrics.
 type ReferringDomainRow struct {
 	Domain          *string  `json:"domain"`
 	Backlinks       *float64 `json:"backlinks"`
@@ -98,6 +108,7 @@ type ReferringDomainRow struct {
 	BrokenPages     *float64 `json:"brokenPages"`
 }
 
+// TopPageRow represents a target page and its backlink metrics.
 type TopPageRow struct {
 	Page             *string  `json:"page"`
 	Backlinks        *float64 `json:"backlinks"`
