@@ -12,7 +12,14 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
 )
+
+type marketFunc func(context.Context, string, string) (market.Pair, error)
+
+func (f marketFunc) Get(ctx context.Context, org, project string) (market.Pair, error) {
+	return f(ctx, org, project)
+}
 
 type planFunc func(context.Context, string) (bool, error)
 
@@ -29,6 +36,7 @@ type serveOptions struct {
 	noOrg    bool
 	noSvc    bool
 	ctx      context.Context
+	markets  ProjectMarkets
 }
 
 func serve(t *testing.T, opts serveOptions, endpoint, body string) *httptest.ResponseRecorder {
@@ -50,9 +58,16 @@ func serve(t *testing.T, opts serveOptions, endpoint, body string) *httptest.Res
 	}
 	identity := func(next http.Handler) http.Handler { return next }
 	mux := http.NewServeMux()
+	markets := opts.markets
+	if markets == nil {
+		markets = marketFunc(func(context.Context, string, string) (market.Pair, error) {
+			return market.Pair{LocationCode: 2840, LanguageCode: "en"}, nil
+		})
+	}
 	Mount(mux, Deps{
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Service: svc, Plans: opts.plans,
-		WithSession: identity, WithProjectAccess: setOrg,
+		ProjectMarkets: markets,
+		WithSession:    identity, WithProjectAccess: setOrg,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/domain/"+endpoint, strings.NewReader(body))
 	if opts.ctx != nil {
@@ -79,7 +94,7 @@ func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 func TestHandlerRoutesAndOverviewContract(t *testing.T) {
 	t.Parallel()
 	provider := &fakeProvider{result: overviewResult(1234.6, 99)}
-	rec := serve(t, serveOptions{provider: provider, plans: paid}, "overview", `{"domain":"https://www.example.com/x","scope":"domain","locationCode":2826,"languageCode":" fr "}`)
+	rec := serve(t, serveOptions{provider: provider, plans: paid}, "overview", `{"domain":"https://www.example.com/x","scope":"domain","locationCode":2124,"languageCode":" fr "}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
 	}
@@ -96,8 +111,59 @@ func TestHandlerRoutesAndOverviewContract(t *testing.T) {
 		t.Errorf("overview values = %v", got)
 	}
 	body := provider.lastBody(t)
-	if body["location_code"] != 2826.0 || body["language_code"] != "fr" {
+	if body["location_code"] != 2124.0 || body["language_code"] != "fr" {
 		t.Fatalf("explicit market not forwarded: %v", body)
+	}
+}
+
+func TestHandlerResolvesProjectMarketAndRejectsUnservedPairs(t *testing.T) {
+	provider := &fakeProvider{result: overviewResult(10, 5)}
+	markets := marketFunc(func(_ context.Context, org, project string) (market.Pair, error) {
+		if org != "org-a" || project != "proj-1" {
+			t.Fatalf("wrong tenant: %s/%s", org, project)
+		}
+		return market.Pair{LocationCode: 2356, LanguageCode: "hi"}, nil
+	})
+	rec := serve(t, serveOptions{provider: provider, markets: markets}, "overview", `{"domain":"example.com"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("project market: %d %s", rec.Code, rec.Body)
+	}
+	body := provider.lastBody(t)
+	if body["location_code"] != float64(2356) || body["language_code"] != "hi" {
+		t.Fatalf("project market not sent: %v", body)
+	}
+	rec = serve(t, serveOptions{provider: provider, markets: markets}, "overview", `{"domain":"example.com","locationCode":2124}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("override: %d %s", rec.Code, rec.Body)
+	}
+	body = provider.lastBody(t)
+	if body["location_code"] != float64(2124) || body["language_code"] != "en" {
+		t.Fatalf("location override did not reset language: %v", body)
+	}
+	before := provider.calls.Load()
+	for _, input := range []string{
+		`{"domain":"example.com","locationCode":2044}`,
+		`{"domain":"example.com","locationCode":2840,"languageCode":"ru"}`,
+	} {
+		rec = serve(t, serveOptions{provider: provider, markets: markets}, "overview", input)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("unserved pair: %d %s", rec.Code, rec.Body)
+		}
+	}
+	if got := provider.calls.Load(); got != before {
+		t.Fatalf("invalid markets billed %d calls", got-before)
+	}
+}
+
+func TestHandlerProjectMarketNotFound(t *testing.T) {
+	provider := &fakeProvider{result: overviewResult(10, 5)}
+	markets := marketFunc(func(context.Context, string, string) (market.Pair, error) { return market.Pair{}, ErrProjectNotFound })
+	rec := serve(t, serveOptions{provider: provider, markets: markets}, "overview", `{"domain":"example.com"}`)
+	if rec.Code != http.StatusNotFound || errorCode(t, rec) != "project_not_found" {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body)
+	}
+	if provider.calls.Load() != 0 {
+		t.Fatal("missing project billed provider")
 	}
 }
 

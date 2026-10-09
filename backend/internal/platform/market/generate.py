@@ -12,7 +12,7 @@ def section(start: str, end: str) -> str:
     return source.split(start, 1)[1].split(end, 1)[0]
 
 
-def records(block: str, keys: tuple[str, ...]) -> list[dict]:
+def records(block: str, keys: tuple[str, ...], ads_flag: bool = False) -> list[dict]:
     result = []
     for match in re.finditer(r"\{([^{}]+)\}", block):
         body = match.group(1)
@@ -22,7 +22,8 @@ def records(block: str, keys: tuple[str, ...]) -> list[dict]:
             if value:
                 values[key] = json.loads(value.group(1))
         if all(key in values for key in keys):
-            values["googleAdsOnly"] = bool(re.search(r"\bgoogleAdsOnly:\s*true", body))
+            if ads_flag:
+                values["googleAdsOnly"] = bool(re.search(r"\bgoogleAdsOnly:\s*true", body))
             result.append(values)
     return result
 
@@ -30,6 +31,7 @@ def records(block: str, keys: tuple[str, ...]) -> list[dict]:
 locations = records(
     section("export const LOCATION_OPTIONS:", "export const SERP_LANGUAGE_OPTIONS"),
     ("code", "label", "shortLabel", "languageCode"),
+    ads_flag=True,
 )
 languages = records(
     section("export const SERP_LANGUAGE_OPTIONS = [", "] as const;"),

@@ -45,12 +45,11 @@ Validation runs before the provider: failed provider tasks are billed.
 
 ## Differences from the TypeScript version
 
-- **The client resolves the market.** TS resolved a missing location/language
-  from the project row with `resolveLabsMarket`. That needs the full location
-  tables, which are not ported yet, so the React side (`domainMarket.ts`) calls
-  the shared `resolveLabsMarket` and always sends `locationCode` and
-  `languageCode`. A call without them uses `2840` / `en`. Move this server-side
-  when the location data is ported with Keywords.
+- **The server resolves the market.** A project-scoped SQL lookup reads
+  `projects.location_code` and `language_code` for the authorized organization.
+  A location override selects that country's default language unless the request
+  also supplies a language. An unsupported project default falls back to US/English.
+  Explicit unserved Labs locations and language pairs are rejected before billing.
 - Request schemas moved from Zod on the server to Go validation; the response
   contract is unchanged and checked by Zod in `domainApi.ts`.
 - The Playwright fixtures (`VITE_E2E_DOMAIN_FIXTURES`) now short-circuit in
@@ -58,7 +57,8 @@ Validation runs before the provider: failed provider tasks are billed.
 
 ## Tables, env
 
-No tables. Needs `DATAFORSEO_API_KEY`; Redis is optional.
+Reads the legacy `projects` table, filtered by both project and organization.
+No new tables. Needs `DATAFORSEO_API_KEY`; Redis is optional.
 
 ## Edge cases covered by tests
 

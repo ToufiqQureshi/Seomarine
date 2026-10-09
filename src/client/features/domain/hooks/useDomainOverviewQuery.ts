@@ -1,6 +1,5 @@
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getDomainOverview } from "@/client/features/domain/domainApi";
-import { useDomainMarket } from "@/client/features/domain/domainMarket";
 import type { ResearchScope } from "@/shared/researchScope";
 
 type Input = {
@@ -12,7 +11,6 @@ type Input = {
 
 export function useDomainOverviewQuery(input: Input) {
   const trimmedDomain = input.domain.trim();
-  const market = useDomainMarket(input.projectId, input.locationCode);
 
   return useQuery({
     enabled: trimmedDomain !== "",
@@ -23,17 +21,15 @@ export function useDomainOverviewQuery(input: Input) {
       input.scope,
       input.locationCode,
     ],
-    queryFn: market
-      ? () =>
-          getDomainOverview({
-            data: {
-              projectId: input.projectId,
-              domain: trimmedDomain,
-              scope: input.scope,
-              ...market,
-            },
-          })
-      : skipToken,
+    queryFn: () =>
+      getDomainOverview({
+        data: {
+          projectId: input.projectId,
+          domain: trimmedDomain,
+          scope: input.scope,
+          locationCode: input.locationCode,
+        },
+      }),
     staleTime: 5 * 60_000,
   });
 }

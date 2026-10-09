@@ -118,6 +118,7 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
+			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),

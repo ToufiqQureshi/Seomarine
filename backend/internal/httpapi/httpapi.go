@@ -52,6 +52,8 @@ type Deps struct {
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
 	Domain *domain.Service
+	// ProjectMarkets reads the authorized project's default market for domain lookups.
+	ProjectMarkets domain.ProjectMarkets
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -148,7 +150,7 @@ func NewHandler(d Deps) http.Handler {
 		domainPlans = d.Billing
 	}
 	domain.Mount(mux, domain.Deps{
-		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, WithSession: withSession,
+		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 
