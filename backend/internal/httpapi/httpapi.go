@@ -13,6 +13,7 @@ import (
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
@@ -52,6 +53,9 @@ type Deps struct {
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
 	Domain *domain.Service
+	// Audit is nil when the audit engine is not configured; its routes then
+	// answer 503.
+	Audit *audit.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -149,6 +153,10 @@ func NewHandler(d Deps) http.Handler {
 	}
 	domain.Mount(mux, domain.Deps{
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	audit.Mount(mux, audit.Deps{
+		Logger: d.Logger, Service: d.Audit, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 

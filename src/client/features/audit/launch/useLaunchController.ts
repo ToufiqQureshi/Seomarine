@@ -6,7 +6,7 @@ import {
   deleteAudit,
   getAuditHistory,
   startAudit,
-} from "@/serverFunctions/audit";
+} from "@/client/features/audit/auditApi";
 import {
   DEFAULT_LAUNCH_FORM_VALUES,
   getMaxPagesLimit,
