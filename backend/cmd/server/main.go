@@ -28,6 +28,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
@@ -121,6 +122,7 @@ func run(logger *slog.Logger) error {
 		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
 	var googleOAuthSvc *google.OAuthService
+	var googleAPIClient *google.APIClient
 	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
 		key := cfg.GoogleTokenEncryptionKey
 		keyID := "v1"
@@ -143,12 +145,14 @@ func run(logger *slog.Logger) error {
 		if err != nil {
 			return err
 		}
+		tokenService := &google.TokenService{Pool: db, Cipher: cipher, LegacyCipher: legacyCipher, ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret}
 		googleOAuthSvc = &google.OAuthService{
 			States:       google.StateStore{Pool: db},
-			Tokens:       &google.TokenService{Pool: db, Cipher: cipher, LegacyCipher: legacyCipher, ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
+			Tokens:       tokenService,
 			Verifier:     &google.IDTokenVerifier{},
 			PublicOrigin: cfg.PublicURL.String(),
 		}
+		googleAPIClient = &google.APIClient{Tokens: tokenService}
 	}
 
 	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
@@ -176,6 +180,7 @@ func run(logger *slog.Logger) error {
 			Domain:            domainSvc,
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
+			GSC:               buildGSCService(db, googleAPIClient),
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
@@ -226,6 +231,18 @@ const rankTickInterval = 5 * time.Minute
 // queues checks. Without a DataForSEO key it returns nil and the check route
 // answers 503. Checks run ungated only when billing is not configured, as for
 // a self-hosted deployment.
+func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {
+	if api == nil {
+		return nil
+	}
+	return &gsc.Service{
+		Connections: gsc.ConnectionRepository{DB: db},
+		NewClient: func(userID, accountID string) gsc.SearchClient {
+			return &gsc.Client{API: api, UserID: userID, AccountID: accountID}
+		},
+	}
+}
+
 func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, billingSvc *billing.Service, dfClient *dataforseo.Client) (*ranktracking.Checks, error) {
 	if dfClient == nil {
 		return nil, nil

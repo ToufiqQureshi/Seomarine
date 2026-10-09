@@ -1,0 +1,124 @@
+openapi: 3.1.0
+info:
+  title: Seomarine Search Console
+  version: 1.0.0
+  description: |
+    Read-only Search Performance report, paginated query/page tables and capped export.
+    Every route is POST with a strict JSON object, requires a session and project access.
+servers:
+  - url: /api/v1
+paths:
+  /projects/{projectId}/gsc/search-performance/report:
+    post:
+      operationId: gsc_search_performance_report
+      summary: Get Search Performance totals and breakdowns
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PerformanceInput"
+              unevaluatedProperties: false
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/search-performance/table:
+    post:
+      operationId: gsc_search_performance_table
+      summary: Get a page of query or page performance rows
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TableInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/search-performance/export:
+    post:
+      operationId: gsc_search_performance_export
+      summary: Export up to 1000 query or page rows
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  schemas:
+    PerformanceInput:
+      type: object
+      properties:
+        dateRange:
+          {
+            type: string,
+            enum: [last_7_days, last_28_days, last_3_months],
+            default: last_28_days,
+          }
+        device: { type: string, enum: [DESKTOP, MOBILE, TABLET] }
+        country: { type: string, minLength: 3, maxLength: 3 }
+        pageFilter: { $ref: "#/components/schemas/TextFilter" }
+        queryFilter: { $ref: "#/components/schemas/TextFilter" }
+    TextFilter:
+      type: object
+      additionalProperties: false
+      required: [operator, expression]
+      properties:
+        operator: { type: string, enum: [contains, equals] }
+        expression: { type: string, minLength: 1, maxLength: 4096 }
+    TableInput:
+      allOf:
+        - $ref: "#/components/schemas/PerformanceInput"
+        - type: object
+          required: [dimension]
+          properties:
+            dimension: { type: string, enum: [query, page] }
+            page: { type: integer, minimum: 1, default: 1 }
+            pageSize: { type: integer, enum: [25, 50, 100], default: 25 }
+      unevaluatedProperties: false
+    ExportInput:
+      allOf:
+        - $ref: "#/components/schemas/PerformanceInput"
+        - type: object
+          required: [dimension]
+          properties:
+            dimension: { type: string, enum: [query, page] }
+      unevaluatedProperties: false
+  responses:
+    Json:
+      description: JSON result
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema: { type: object }

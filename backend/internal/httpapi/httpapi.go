@@ -20,6 +20,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
@@ -60,6 +61,8 @@ type Deps struct {
 	GoogleAccounts google.AccountRepository
 	// GoogleOAuth owns consent start and callback routes.
 	GoogleOAuth *google.OAuthService
+	// GSC serves read-only Search Console performance reports.
+	GSC *gsc.Service
 	// ProjectMarkets reads the authorized project's default market for domain lookups.
 	ProjectMarkets domain.ProjectMarkets
 	// Locations serves the authenticated city and region picker.
@@ -205,6 +208,10 @@ func NewHandler(d Deps) http.Handler {
 		WithSession: withSession,
 	})
 	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
+	gsc.MountPerformance(mux, gsc.PerformanceDeps{
+		Logger: d.Logger, Service: d.GSC, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())
