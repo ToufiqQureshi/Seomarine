@@ -14,4 +14,17 @@
 
 ## Migration status
 
-This package is an inventory for the Go port. The legacy TypeScript API and Cloudflare workflow remain in service until the Go jobs, tables, HTTP contracts and React callers are verified together.
+Slice 1 (this package today), pure rules ported with tests:
+
+- `schedule.go`: next-check anchors (daily/weekly/monthly, timezone to UTC, month-end shifts, no drift). Clock and randomness are injected.
+- `cost.go`: live vs queued cost estimates, 5x operator multiplier, per-call credit rounding, recurring monthly estimate.
+- `keywords.go`: domain normalising, keyword trim/lowercase/match-case/dedupe/caps (UTF-16 length like the legacy app).
+- Migration `00009`: `go_rank_*` tables. One active run per config is enforced by a partial unique index.
+
+Not ported yet: repository, service, HTTP handlers, run workflow, scheduler job, results queries, React switch. The legacy TypeScript API and Cloudflare workflow stay in service until all of these are verified together.
+
+## Decisions for the owner
+
+- Credit maths (`costMarkup` 1.28, 1000 credits per USD) is copied from the legacy app. Seomarine's Razorpay plan model may want different numbers.
+- `go_rank_*` start empty. Existing customer data needs a one-time copy from the legacy tables before the switch.
+- Deliberate difference: a keyword over 200 UTF-16 units is returned as rejected, not silently dropped.
