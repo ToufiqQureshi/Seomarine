@@ -181,6 +181,7 @@ func run(logger *slog.Logger) error {
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GSC:               buildGSCService(db, googleAPIClient),
+			GSCConnections:    buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
@@ -241,6 +242,22 @@ func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {
 			return &gsc.Client{API: api, UserID: userID, AccountID: accountID}
 		},
 	}
+}
+
+func buildGSCConnectionOperations(db *pgxpool.Pool, api *google.APIClient, oauthConfigured bool) *gsc.ConnectionOperations {
+	repository := gsc.PropertyRepository{DB: db}
+	operations := &gsc.ConnectionOperations{
+		Connections: repository,
+		Grants:      repository,
+		Manager:     repository,
+		OAuthReady:  oauthConfigured,
+	}
+	if api != nil {
+		operations.NewClient = func(userID, accountID string) gsc.SearchConsoleClient {
+			return &gsc.Client{API: api, UserID: userID, AccountID: accountID}
+		}
+	}
+	return operations
 }
 
 func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, billingSvc *billing.Service, dfClient *dataforseo.Client) (*ranktracking.Checks, error) {

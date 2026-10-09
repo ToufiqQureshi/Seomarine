@@ -14,10 +14,17 @@
 
 ## Status
 
-The Go backend now serves the Search Performance report, query/page table and
-export endpoints. It reads the existing `gsc_connections` mapping and uses the
-shared Google API client. GSC consent, property selection, URL inspection, MCP
-wrappers and the React call-site switch remain on the TypeScript side.
+The Go backend serves Search Console grant status, property listing and
+selection, disconnect, and Search Performance report/table/export routes. It
+reads the existing `gsc_connections` mapping and uses the shared Google API
+client. GSC consent, URL inspection, MCP wrappers and the React call-site switch
+remain on the TypeScript side.
+
+Property selection and disconnect require an owner or admin role. Selecting a
+property verifies that the chosen Google grant belongs to the user, that the
+exact site URL appears in that grant, and that the permission is not
+`siteUnverifiedUser`. Listing sites keeps per-grant reconnect/unavailable
+states independent, and a user-info failure leaves the email empty.
 
 ## Search Performance API
 
@@ -32,14 +39,14 @@ one extra row to compute `hasNextPage`. Export is capped at 1000 rows.
 
 Routes and request/response contracts are in `backend/api/gsc.yaml`.
 
-## Deliberate difference
+## Deliberate differences
 
 The existing provider client rejects Search Console filter expressions longer
 than 1024 UTF-8 bytes before a provider call. The legacy page schema accepts up
 to 4096 JavaScript characters, so Go returns a 400 for expressions over the
-provider client's safe request bound. This prevents sending a request that the
-Go client itself rejects; changing the shared provider bound needs a separate
-contract review.
+provider client's safe request bound. Product analytics events emitted by the
+old server functions are not emitted by these Go endpoints. Changing the shared
+provider bound needs a separate contract review.
 
 ## Rules
 

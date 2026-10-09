@@ -21,6 +21,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                     | in progress |
 | 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                          | in progress |
 | 0.5h | GSC Search Performance API in Go (report, query/page paging and export); property setup, URL inspection, MCP and React switch pending          | in progress |
+| 0.5i | GSC project connection API in Go (grant status, property listing/selection, disconnect); OAuth, URL inspection, MCP and React switch pending   | in progress |
 
 ## Phase 1: Rebrand + new UI
 

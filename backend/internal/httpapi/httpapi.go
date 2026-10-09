@@ -63,6 +63,8 @@ type Deps struct {
 	GoogleOAuth *google.OAuthService
 	// GSC serves read-only Search Console performance reports.
 	GSC *gsc.Service
+	// GSCConnections serves project property selection and status.
+	GSCConnections *gsc.ConnectionOperations
 	// ProjectMarkets reads the authorized project's default market for domain lookups.
 	ProjectMarkets domain.ProjectMarkets
 	// Locations serves the authenticated city and region picker.
@@ -210,6 +212,10 @@ func NewHandler(d Deps) http.Handler {
 	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
 	gsc.MountPerformance(mux, gsc.PerformanceDeps{
 		Logger: d.Logger, Service: d.GSC, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	gsc.MountConnections(mux, gsc.ConnectionDeps{
+		Logger: d.Logger, Operations: d.GSCConnections, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 
