@@ -228,7 +228,7 @@ func (s *Service) Domains(ctx context.Context, org string, in lookupInput, page 
 	}
 	rows := make([]ReferringDomainRow, 0, len(items))
 	for _, v := range items {
-		rows = append(rows, ReferringDomainRow{Domain: v.Domain, Backlinks: v.Backlinks, ReferringPages: v.ReferringPages, Rank: v.Rank, SpamScore: v.SpamScore, FirstSeen: v.FirstSeen, BrokenBacklinks: v.BrokenBacklinks, BrokenPages: v.BrokenPages})
+		rows = append(rows, ReferringDomainRow(v))
 	}
 	out := pageResult(rows, total, page, s.now())
 	s.writeCache(ctx, key, out)

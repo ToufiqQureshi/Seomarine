@@ -77,7 +77,7 @@ func overviewHandler(d Deps) http.HandlerFunc {
 		if _, err := normalizeTarget(req.Target, req.Scope); err != nil {
 			return nil, err
 		}
-		return d.Service.Overview(r.Context(), org, lookupInput{Target: req.Target, Scope: req.Scope})
+		return d.Service.Overview(r.Context(), org, lookupInput(req))
 	})
 }
 func rowsHandler(d Deps) http.HandlerFunc {

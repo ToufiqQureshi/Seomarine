@@ -88,14 +88,3 @@ func TestFilterTranslationMatchesLegacySemantics(t *testing.T) {
 		t.Fatalf("LIKE metacharacters not escaped: %#v", filtersGot)
 	}
 }
-
-//go:fix inline
-func boolPtr(v bool) *bool { return new(v) }
-func mustJSON(t *testing.T, v any) string {
-	t.Helper()
-	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
