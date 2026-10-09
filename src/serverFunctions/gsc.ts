@@ -1,17 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
 import { GscService } from "@/server/features/gsc/services/GscService";
 import { hasGoogleOAuthConfig } from "@/server/features/google/oauth-config";
-import {
-  createGoogleAuthorizationUrl,
-  GSC_INTEGRATION,
-} from "@/server/features/google/googleOAuth";
 import { hasOrgPermission } from "@/lib/org-permissions";
 import { requireOrgPermission } from "@/server/auth/org-gate";
 import { captureServerEvent } from "@/server/lib/posthog";
-import { getPublicOrigin } from "@/server/mcp/public-origin";
 import {
   requireAuthenticatedContext,
   requireProjectContext,
@@ -21,9 +15,6 @@ const projectScopedSchema = z.object({ projectId: z.string().min(1) });
 const setSiteSchema = projectScopedSchema.extend({
   accountId: z.string().min(1),
   siteUrl: z.string().min(1),
-});
-const startLinkSchema = z.object({
-  callbackURL: z.string().min(1),
 });
 
 // Account-level grant check (no project needed) for surfaces like onboarding
@@ -138,15 +129,3 @@ export const disconnectGsc = createServerFn({ method: "POST" })
     );
     return { connected: false as const };
   });
-
-export const startGscLink = createServerFn({ method: "POST" })
-  .middleware(requireAuthenticatedContext)
-  .validator(startLinkSchema)
-  .handler(async ({ data, context }) => ({
-    url: await createGoogleAuthorizationUrl({
-      integration: GSC_INTEGRATION,
-      userId: context.userId,
-      callbackURL: data.callbackURL,
-      publicOrigin: getPublicOrigin(getRequest()),
-    }),
-  }));

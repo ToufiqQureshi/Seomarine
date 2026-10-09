@@ -19,6 +19,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
@@ -54,6 +55,10 @@ type Deps struct {
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
 	Domain *domain.Service
+	// GoogleAccounts removes a user's Google data grants and mappings.
+	GoogleAccounts google.AccountRepository
+	// GoogleOAuth owns consent start and callback routes.
+	GoogleOAuth *google.OAuthService
 	// ProjectMarkets reads the authorized project's default market for domain lookups.
 	ProjectMarkets domain.ProjectMarkets
 	// Locations serves the authenticated city and region picker.
@@ -165,6 +170,12 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.Audit, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	google.MountAccounts(mux, google.AccountDeps{
+		Repository:  d.GoogleAccounts,
+		Logger:      d.Logger,
+		WithSession: withSession,
+	})
+	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())

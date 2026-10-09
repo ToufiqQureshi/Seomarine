@@ -18,7 +18,7 @@ vi.mock("@/serverFunctions/ga4", () => ({
   disconnectGa4: vi.fn(),
 }));
 vi.mock("@/serverFunctions/projects", () => ({ getProjects: vi.fn() }));
-vi.mock("@/serverFunctions/googleAccounts", () => ({
+vi.mock("@/client/features/integrations/googleAccountsApi", () => ({
   getGoogleAccountRemovalImpact: vi.fn(),
   removeGoogleAccount: vi.fn(),
 }));

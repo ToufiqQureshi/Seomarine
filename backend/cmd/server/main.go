@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -25,6 +27,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
@@ -112,6 +115,36 @@ func run(logger *slog.Logger) error {
 	} else {
 		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
+	var googleOAuthSvc *google.OAuthService
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		key := cfg.GoogleTokenEncryptionKey
+		keyID := "v1"
+		if key == "" {
+			derived := sha256.Sum256([]byte("seomarine-google-tokens-v1:" + cfg.BetterAuthSecret))
+			key = base64.StdEncoding.EncodeToString(derived[:])
+			keyID = "derived-v1"
+		}
+		cipher, err := google.NewTokenCipher(keyID, key)
+		if err != nil {
+			return fmt.Errorf("configure google token encryption: %w", err)
+		}
+		if keyID != "derived-v1" {
+			derived := sha256.Sum256([]byte("seomarine-google-tokens-v1:" + cfg.BetterAuthSecret))
+			if err := cipher.AddDecryptionKey("derived-v1", base64.StdEncoding.EncodeToString(derived[:])); err != nil {
+				return err
+			}
+		}
+		legacyCipher, err := google.NewLegacyTokenCipher(cfg.BetterAuthSecret)
+		if err != nil {
+			return err
+		}
+		googleOAuthSvc = &google.OAuthService{
+			States:       google.StateStore{Pool: db},
+			Tokens:       &google.TokenService{Pool: db, Cipher: cipher, LegacyCipher: legacyCipher, ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
+			Verifier:     &google.IDTokenVerifier{},
+			PublicOrigin: cfg.PublicURL.String(),
+		}
+	}
 
 	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient)
 	if err != nil {
@@ -132,6 +165,8 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
+			GoogleAccounts:    google.AccountRepository{Pool: db},
+			GoogleOAuth:       googleOAuthSvc,
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,

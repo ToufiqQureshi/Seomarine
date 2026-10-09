@@ -21,6 +21,12 @@ type Config struct {
 	// BetterAuthSecret is the legacy app's BETTER_AUTH_SECRET, which signs the
 	// session cookie.
 	BetterAuthSecret string
+	// GoogleClientID and GoogleClientSecret configure incremental GSC/GA4 consent.
+	GoogleClientID     string
+	GoogleClientSecret string
+	// GoogleTokenEncryptionKey is an optional base64 AES-256 key. When empty,
+	// the server derives a domain-separated key from BETTER_AUTH_SECRET.
+	GoogleTokenEncryptionKey string
 	// UpstreamAppURL is the legacy TypeScript app that receives every request
 	// the Go server does not route itself.
 	UpstreamAppURL *url.URL
@@ -108,15 +114,18 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		Addr:              fmt.Sprintf(":%d", port),
-		DatabaseURL:       databaseURL,
-		RedisURL:          redisURL,
-		BetterAuthSecret:  secret,
-		UpstreamAppURL:    upstream,
-		PublicURL:         public,
-		Razorpay:          rzp,
-		DataForSEOAPIKey:  strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
-		TrustedProxyCIDRs: trusted,
+		Addr:                     fmt.Sprintf(":%d", port),
+		DatabaseURL:              databaseURL,
+		RedisURL:                 redisURL,
+		BetterAuthSecret:         secret,
+		GoogleClientID:           strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:       strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey: strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		UpstreamAppURL:           upstream,
+		PublicURL:                public,
+		Razorpay:                 rzp,
+		DataForSEOAPIKey:         strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
+		TrustedProxyCIDRs:        trusted,
 	}, nil
 }
 

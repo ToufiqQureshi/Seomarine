@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
 import { shiftGa4Date } from "@/server/features/ga4/services/Ga4Dates";
@@ -8,26 +7,15 @@ import { Ga4Service } from "@/server/features/ga4/services/Ga4Service";
 import { AppError } from "@/server/lib/errors";
 import { Ga4ReportError } from "@/server/lib/ga4Errors";
 import { hasGoogleOAuthConfig } from "@/server/features/google/oauth-config";
-import {
-  createGoogleAuthorizationUrl,
-  GA4_INTEGRATION,
-} from "@/server/features/google/googleOAuth";
 import { hasOrgPermission } from "@/lib/org-permissions";
 import { requireOrgPermission } from "@/server/auth/org-gate";
 import { captureServerEvent } from "@/server/lib/posthog";
-import { getPublicOrigin } from "@/server/mcp/public-origin";
-import {
-  requireAuthenticatedContext,
-  requireProjectContext,
-} from "@/serverFunctions/middleware";
+import { requireProjectContext } from "@/serverFunctions/middleware";
 
 const projectScopedSchema = z.object({ projectId: z.string().min(1) });
 const setPropertySchema = projectScopedSchema.extend({
   accountId: z.string().min(1),
   propertyId: z.string().regex(/^properties\/\d+$/),
-});
-const startLinkSchema = z.object({
-  callbackURL: z.string().min(1),
 });
 
 export const getGa4Connection = createServerFn({ method: "POST" })
@@ -206,15 +194,3 @@ export const disconnectGa4 = createServerFn({ method: "POST" })
     );
     return { connected: false as const };
   });
-
-export const startGa4Link = createServerFn({ method: "POST" })
-  .middleware(requireAuthenticatedContext)
-  .validator(startLinkSchema)
-  .handler(async ({ data, context }) => ({
-    url: await createGoogleAuthorizationUrl({
-      integration: GA4_INTEGRATION,
-      userId: context.userId,
-      callbackURL: data.callbackURL,
-      publicOrigin: getPublicOrigin(getRequest()),
-    }),
-  }));
