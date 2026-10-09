@@ -34,6 +34,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -101,6 +102,8 @@ func run(logger *slog.Logger) error {
 	var backlinksSvc *backlinks.Service
 	var domainSvc *domain.Service
 	var locationSvc *keywords.LocationService
+	var rankLocationChecker ranktracking.LocationChecker // stays a nil interface without a provider key
+	var keywordResearch *keywords.ResearchService
 	var dfClient *dataforseo.Client
 	if cfg.DataForSEOAPIKey != "" {
 		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
@@ -112,6 +115,8 @@ func run(logger *slog.Logger) error {
 		backlinksSvc = backlinks.NewService(client, rdb, logger)
 		domainSvc = domain.NewService(client, rdb, logger)
 		locationSvc = keywords.NewLocationService(client, rdb, logger)
+		rankLocationChecker = ranktracking.RegistryChecker{Registry: locationSvc}
+		keywordResearch = keywords.NewResearchService(keywords.DataForSEOProvider{Client: client}, rdb, locationSvc, keywords.SavedRepository{DB: db}, logger)
 	} else {
 		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
@@ -146,6 +151,10 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
+	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
+	if err != nil {
+		return err
+	}
 	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient)
 	if err != nil {
 		return err
@@ -170,6 +179,10 @@ func run(logger *slog.Logger) error {
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
+			RankTracking:      ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker),
+			RankChecks:        rankChecks,
+			SavedKeywords:     &keywords.SavedService{Store: keywords.SavedRepository{DB: db}},
+			KeywordResearch:   keywordResearch,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),
@@ -206,6 +219,63 @@ func run(logger *slog.Logger) error {
 // buildAuditService wires the audit engine: the SSRF-guarded crawler, the
 // Lighthouse provider, the Postgres-backed job scheduler and the background
 // worker that runs audits.
+// rankTickInterval is how often the rank tracking scheduler looks for due checks.
+const rankTickInterval = 5 * time.Minute
+
+// buildRankChecks starts the rank check worker and returns the service that
+// queues checks. Without a DataForSEO key it returns nil and the check route
+// answers 503. Checks run ungated only when billing is not configured, as for
+// a self-hosted deployment.
+func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, billingSvc *billing.Service, dfClient *dataforseo.Client) (*ranktracking.Checks, error) {
+	if dfClient == nil {
+		return nil, nil
+	}
+	queue, err := jobs.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("create rank check job queue: %w", err)
+	}
+	store := ranktracking.Store{DB: db}
+	var plans ranktracking.PaidPlans
+	if billingSvc != nil {
+		plans = billingSvc
+	}
+	checks := &ranktracking.Checks{
+		Repo: store, Results: store, Runs: store, Serp: ranktracking.DataForSEOSerp{Client: dfClient},
+		Queued: ranktracking.DataForSEOSerp{Client: dfClient}, Tasks: store,
+		Scheduler: ranktracking.QueueScheduler{Queue: queue}, Plans: plans, Logger: logger, Now: time.Now,
+	}
+	worker := jobs.Worker{
+		Queue: queue, QueueName: ranktracking.QueueName, Handle: checks.JobHandler(),
+		Lease: time.Minute, PollInterval: 2 * time.Second,
+	}
+	go func() {
+		if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
+			logger.Error("rank check worker stopped", "err", err)
+		}
+	}()
+	// Every instance ticks: each due config is claimed with a compare-and-set,
+	// so only one of them starts it.
+	ticker := &ranktracking.Ticker{
+		Store: store, Starter: checks, Plans: plans, Logger: logger,
+		Schedule: ranktracking.Scheduler{Now: time.Now, Rand: ranktracking.CryptoRand},
+	}
+	go func() {
+		timer := time.NewTicker(rankTickInterval)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				if _, err := ticker.Tick(ctx); err != nil && ctx.Err() == nil {
+					logger.Error("rank tracking scheduler tick failed", "err", err)
+				}
+			}
+		}
+	}()
+	return checks, nil
+}
+
 func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
 	progress := audit.NewProgress(rdb)

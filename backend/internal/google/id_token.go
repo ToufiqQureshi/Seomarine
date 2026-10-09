@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
@@ -58,7 +59,7 @@ func (v *IDTokenVerifier) client() *http.Client {
 	return &http.Client{Timeout: 8 * time.Second}
 }
 
-func (v *IDTokenVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+func (v *IDTokenVerifier) key(ctx context.Context, kid string) (verified *rsa.PublicKey, err error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if v.now().Before(v.keysTill) {
@@ -76,7 +77,11 @@ func (v *IDTokenVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, 
 	if err != nil {
 		return nil, errors.New("google identity keys unavailable")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close google identity keys response: %w", closeErr))
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("google identity keys unavailable")
 	}

@@ -3,6 +3,7 @@ package google
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -53,7 +54,7 @@ func TestAPIClientStopsAfterSecond401(t *testing.T) {
 	client := &APIClient{Tokens: tokens, Client: server.Client()}
 	var result any
 	err := client.DoJSON(t.Context(), APIRequest{UserID: "user", Provider: "gsc", Method: http.MethodGet, URL: server.URL, Response: &result, Retryable: true})
-	if apiErr, ok := err.(APIError); !ok || apiErr.Status != http.StatusUnauthorized || calls != 2 {
+	if apiErr, ok := errors.AsType[APIError](err); !ok || apiErr.Status != http.StatusUnauthorized || calls != 2 {
 		t.Fatalf("error=%v, calls=%d", err, calls)
 	}
 }
@@ -68,7 +69,7 @@ func TestAPIClientDoesNotRetryNonIdempotentRequest(t *testing.T) {
 	client := &APIClient{Tokens: &fakeTokenSource{}, Client: server.Client()}
 	var result any
 	err := client.DoJSON(t.Context(), APIRequest{UserID: "user", Provider: "gsc", Method: http.MethodPost, URL: server.URL, Body: map[string]string{"x": "y"}, Response: &result})
-	if _, ok := err.(APIError); !ok || serverCalls != 1 {
+	if _, ok := errors.AsType[APIError](err); !ok || serverCalls != 1 {
 		t.Fatalf("error=%v, calls=%d", err, serverCalls)
 	}
 }

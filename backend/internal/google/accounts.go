@@ -60,7 +60,7 @@ func (r AccountRepository) Remove(ctx context.Context, userID, provider, account
 		return fmt.Errorf("begin google account removal: %w", err)
 	}
 	defer func() {
-		rollbackCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 		defer cancel()
 		_ = tx.Rollback(rollbackCtx)
 	}()

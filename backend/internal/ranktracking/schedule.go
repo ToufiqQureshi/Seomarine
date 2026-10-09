@@ -1,8 +1,10 @@
 package ranktracking
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 )
 
@@ -194,4 +196,14 @@ func floorDiv(a, b int) int {
 		q--
 	}
 	return q
+}
+
+// CryptoRand returns a number in [0, n) for Scheduler.Rand. It spreads default
+// run times across the 04:00-09:59 UTC window; it needs no seed and no lock.
+func CryptoRand(n int) int {
+	v, err := rand.Int(rand.Reader, big.NewInt(int64(n)))
+	if err != nil {
+		return 0 // unreachable: the system random source does not fail
+	}
+	return int(v.Int64())
 }

@@ -1,0 +1,344 @@
+openapi: 3.1.0
+info:
+  title: Seomarine rank tracking
+  version: 1.0.0
+  description: |
+    Rank tracking configs and keywords. Every route is a POST with a JSON
+    body, needs a session and membership of the project's organization, and
+    rejects unknown fields. Checks run on the job queue; poll `runs/latest` for progress.
+servers:
+  - url: /api/v1
+paths:
+  /projects/{projectId}/rank-tracking/configs/list:
+    post:
+      operationId: listRankConfigs
+      summary: List active configs
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/configs/create:
+    post:
+      operationId: createRankConfig
+      summary: Track a domain (re-adding an archived one reactivates it)
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [domain, serpDepth]
+              properties:
+                domain: { type: string, maxLength: 253 }
+                locationCode: { type: integer, minimum: 1 }
+                languageCode: { type: string, maxLength: 10 }
+                devices: { type: string, enum: [both, desktop, mobile] }
+                serpDepth: { type: integer, minimum: 10, maximum: 100, multipleOf: 10 }
+                scheduleInterval: { type: string, enum: [daily, weekly, monthly, manual] }
+                scheduleTime: { type: object, required: [hour, minute], properties: { weekday: { type: integer, minimum: 0, maximum: 6 }, hour: { type: integer, minimum: 0, maximum: 23 }, minute: { type: integer, minimum: 0, maximum: 59 }, timeZone: { type: string } } }
+                locationName: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/configs/update:
+    post:
+      operationId: updateRankConfig
+      summary: Edit or archive a config
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+                domain: { type: string, maxLength: 253 }
+                locationCode: { type: integer, minimum: 1 }
+                languageCode: { type: string, maxLength: 10 }
+                devices: { type: string, enum: [both, desktop, mobile] }
+                serpDepth: { type: integer, minimum: 10, maximum: 100, multipleOf: 10 }
+                scheduleInterval: { type: string, enum: [daily, weekly, monthly, manual] }
+                scheduleTime: { type: object, required: [hour, minute], properties: { weekday: { type: integer, minimum: 0, maximum: 6 }, hour: { type: integer, minimum: 0, maximum: 23 }, minute: { type: integer, minimum: 0, maximum: 59 }, timeZone: { type: string } } }
+                locationName: { type: [string, "null"], maxLength: 200 }
+                isActive: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/keywords/list:
+    post:
+      operationId: listRankKeywords
+      summary: List a config's keywords
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/keywords/add:
+    post:
+      operationId: addRankKeywords
+      summary: Add keywords (max 1000 per config)
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId, keywords]
+              properties:
+                configId: { type: string }
+                keywords: { type: array, minItems: 1, maxItems: 2000, items: { type: string } }
+                matchCase: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/keywords/remove:
+    post:
+      operationId: removeRankKeywords
+      summary: Remove keywords
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId, keywordIds]
+              properties:
+                configId: { type: string }
+                keywordIds: { type: array, minItems: 1, maxItems: 2000, items: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/estimate-cost:
+    post:
+      operationId: estimateRankCost
+      summary: Price a manual check, plus the recurring cost if scheduled
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+                additionalKeywords: { type: array, maxItems: 2000, items: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/results/latest:
+    post:
+      operationId: getRankResults
+      summary: Keyword table with latest and compared positions
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+                comparePeriod: { type: string, enum: [1d, 7d, 30d, 90d], default: 7d }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/runs/latest:
+    post:
+      operationId: getRankRun
+      summary: Newest check run, or null
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/results/history:
+    post:
+      operationId: getRankKeywordHistory
+      summary: One keyword's positions over time
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId, trackingKeywordId]
+              properties:
+                configId: { type: string }
+                trackingKeywordId: { type: string }
+                sinceDays: { type: integer, minimum: 1, maximum: 730, default: 365 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/results/trend:
+    post:
+      operationId: getRankTrend
+      summary: Keywords per position bucket for each full run
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId, device]
+              properties:
+                configId: { type: string }
+                device: { type: string, enum: [desktop, mobile] }
+                sinceDays: { type: integer, minimum: 1, maximum: 730, default: 365 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/results/matrix:
+    post:
+      operationId: getRankMatrix
+      summary: Positions of the last full runs, keyword by date
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId, device]
+              properties:
+                configId: { type: string }
+                device: { type: string, enum: [desktop, mobile] }
+                runLimit: { type: integer, minimum: 1, maximum: 26, default: 12 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/checks/start:
+    post:
+      operationId: startRankCheck
+      summary: Start a manual check (live SERP lookups, billed by the provider)
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+                keywordIds: { type: array, maxItems: 2000, items: { type: string } }
+                maxCostCredits: { type: integer, minimum: 0 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "402": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: A check is already running; `blockingRunId` names it.
+          content:
+            application/json:
+              schema: { type: object }
+        "503": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Json:
+      description: The JSON payload described by `backend/internal/ranktracking`.
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: An error with a machine-readable code.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }

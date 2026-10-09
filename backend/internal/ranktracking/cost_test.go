@@ -2,6 +2,7 @@ package ranktracking
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -91,6 +92,32 @@ func TestNormalizeDomain(t *testing.T) {
 		got, err := NormalizeDomain(tt.in)
 		if (err != nil) != tt.err || got != tt.want {
 			t.Errorf("NormalizeDomain(%q) = %q, %v; want %q, err %v", tt.in, got, err, tt.want, tt.err)
+		}
+	}
+}
+
+func TestParseDomain(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+		ok   bool
+	}{
+		{"Sub-Domain.Example.co.in", "sub-domain.example.co.in", true},
+		{"https://www.example.com/a?b#c", "example.com", true},
+		{"localhost", "", false},
+		{"example.com:8080", "", false},
+		{"-bad.example.com", "", false},
+		{"bad-.example.com", "", false},
+		{"a..com", "", false},
+		{"exa_mple.com", "", false},
+		{"münchen.de", "", false},
+		{strings.Repeat("a", 64) + ".com", "", false},
+		{strings.Repeat("a.", 130) + "com", "", false},
+	}
+	for _, tt := range tests {
+		got, err := ParseDomain(tt.in)
+		if (err == nil) != tt.ok || got != tt.want {
+			t.Errorf("ParseDomain(%q) = %q, %v; want %q, ok %v", tt.in, got, err, tt.want, tt.ok)
 		}
 	}
 }

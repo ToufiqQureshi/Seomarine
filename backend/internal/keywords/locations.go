@@ -68,6 +68,19 @@ func (s *LocationService) Search(ctx context.Context, organizationID, country, q
 	return RankSerpLocations(query, all, country), nil
 }
 
+// LocationNames returns the canonical names of the country's cities, counties and regions.
+func (s *LocationService) LocationNames(ctx context.Context, organizationID, country string) ([]string, error) {
+	rows, err := s.Locations(ctx, organizationID, country)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(rows))
+	for i, r := range rows {
+		names[i] = r.LocationName
+	}
+	return names, nil
+}
+
 // Locations returns the country's filtered registry, using a 30-day shared cache.
 func (s *LocationService) Locations(ctx context.Context, organizationID, country string) ([]SerpLocation, error) {
 	key := "serp-locations:" + strings.ToLower(country)
