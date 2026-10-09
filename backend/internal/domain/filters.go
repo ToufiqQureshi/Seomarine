@@ -148,7 +148,7 @@ func buildKeywordFilters(filters keywordFilters, search string, scope scopeFilte
 		count += 2
 	}
 	if count > maxFilterConditions {
-		return nil, fmt.Errorf("Too many filter conditions (maximum %d).", maxFilterConditions)
+		return nil, badRequest(fmt.Sprintf("Too many filter conditions (maximum %d).", maxFilterConditions))
 	}
 	return combine(scope.clauses, conditions, searchGroup), nil
 }
@@ -163,7 +163,7 @@ func buildPageFilters(filters keywordFilters, search string, scope scopeFilter) 
 		conditions = append(conditions, []any{"page_address", "ilike", "%" + escapeLikeTerm(search) + "%"})
 	}
 	if scope.count+len(conditions) > maxFilterConditions {
-		return nil, fmt.Errorf("Too many filter conditions (maximum %d).", maxFilterConditions)
+		return nil, badRequest(fmt.Sprintf("Too many filter conditions (maximum %d).", maxFilterConditions))
 	}
 	return combine(scope.clauses, conditions, nil), nil
 }
