@@ -209,7 +209,14 @@ func TestEmptyProviderListReturnsEmptyArray(t *testing.T) {
 func TestProviderTimeoutIsReturnedToCaller(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	server := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { calls.Add(1); <-r.Context().Done() })
+	server := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		select {
+		case <-r.Context().Done():
+		case <-time.After(2 * time.Second):
+		}
+		providerOK(w, r.URL.Path, map[string]any{})
+	})
 	svc := newService(testClientWithTimeout(t, server, &usageRecorder{}, time.Second), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Now)
 	_, err := svc.Overview(context.Background(), "org", lookupInput{Target: "example.com", Scope: "exact_url"})
 	if !errors.Is(err, context.DeadlineExceeded) {
