@@ -8,11 +8,11 @@ type Store interface {
 	CreateAudit(ctx context.Context, input CreateAuditInput) error
 	UpdateAuditProgress(ctx context.Context, auditID, workflowInstanceID string, update ProgressUpdate) error
 	CompleteAudit(ctx context.Context, auditID, workflowInstanceID string, pagesCrawled, pagesTotal int) error
-	FailAudit(ctx context.Context, auditID, workflowInstanceID string, info AuditErrorInfo, failedPhase string) error
-	GetAuditForProject(ctx context.Context, auditID, projectID string) (AuditRecord, error)
+	FailAudit(ctx context.Context, auditID, workflowInstanceID string, info ErrorInfo, failedPhase string) error
+	GetAuditForProject(ctx context.Context, auditID, projectID string) (Record, error)
 	GetAuditResultsForProject(ctx context.Context, auditID, projectID string) (Results, error)
-	ListAuditsByProject(ctx context.Context, projectID string) ([]AuditRecord, error)
-	AuditUsageForOrganization(ctx context.Context, organizationID string) (AuditUsage, error)
+	ListAuditsByProject(ctx context.Context, projectID string) ([]Record, error)
+	AuditUsageForOrganization(ctx context.Context, organizationID string) (Usage, error)
 	DeleteAuditForProject(ctx context.Context, auditID, projectID string) error
 	InsertCrawledBatch(ctx context.Context, auditID string, pages []CrawledPageResult, issues []DetectedIssue) error
 	InsertIssues(ctx context.Context, auditID string, issues []DetectedIssue) error

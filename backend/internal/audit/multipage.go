@@ -64,7 +64,7 @@ func FindDuplicates(pages []SlimPage) []DetectedIssue {
 	}
 
 	issues := make([]DetectedIssue, 0)
-	emitGroups := func(groups map[string][]SlimPage, issueType AuditIssueType) {
+	emitGroups := func(groups map[string][]SlimPage, issueType IssueType) {
 		for _, group := range groups {
 			if len(group) < 2 {
 				continue

@@ -28,7 +28,7 @@ func TestDeterministicAuditRowID(t *testing.T) {
 func TestClassifyAuditError(t *testing.T) {
 	cases := []struct {
 		message string
-		want    AuditErrorCode
+		want    ErrorCode
 	}{
 		{"Worker exceeded memory limit", ErrorOOM},
 		{"exceeded CPU time limit", ErrorCPULimit},

@@ -54,14 +54,14 @@ func clampMaxPages(maxPages int) int {
 	return maxPages
 }
 
-// AuditLimitTier names the plan ceiling applied to a new audit.
-type AuditLimitTier string
+// LimitTier names the plan ceiling applied to a new audit.
+type LimitTier string
 
 // The three tiers. Self-hosted is not gated.
 const (
-	TierFree       AuditLimitTier = "free"
-	TierPaid       AuditLimitTier = "paid"
-	TierSelfHosted AuditLimitTier = "self_hosted"
+	TierFree       LimitTier = "free"
+	TierPaid       LimitTier = "paid"
+	TierSelfHosted LimitTier = "self_hosted"
 )
 
 // tierLimits is the abuse bound per tier (mirrors AUDIT_LIMITS).
@@ -77,7 +77,7 @@ type tierLimits struct {
 const maxInt = int(^uint(0) >> 1)
 
 // auditLimits mirrors AUDIT_LIMITS in audit-capacity.ts.
-var auditLimits = map[AuditLimitTier]tierLimits{
+var auditLimits = map[LimitTier]tierLimits{
 	TierFree:       {MaxPagesPerAudit: FreeMaxAuditPages, MaxCapacityUnits: 2_000, MaxRunningAudits: 5},
 	TierPaid:       {MaxPagesPerAudit: PaidMaxAuditPages, MaxCapacityUnits: 100_000, MaxRunningAudits: maxInt},
 	TierSelfHosted: {MaxPagesPerAudit: PaidMaxAuditPages, MaxCapacityUnits: maxInt, MaxRunningAudits: maxInt},

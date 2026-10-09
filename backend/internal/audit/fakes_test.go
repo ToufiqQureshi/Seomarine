@@ -25,7 +25,7 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { retu
 // memoryStore is an in-memory Store for service, handler and runner tests.
 type memoryStore struct {
 	mu             sync.Mutex
-	audits         map[string]AuditRecord
+	audits         map[string]Record
 	projectOf      map[string]string
 	pages          map[string][]CrawledPageResult
 	issues         map[string][]DetectedIssue
@@ -38,7 +38,7 @@ type memoryStore struct {
 
 func newMemoryStore() *memoryStore {
 	return &memoryStore{
-		audits:     map[string]AuditRecord{},
+		audits:     map[string]Record{},
 		projectOf:  map[string]string{},
 		pages:      map[string][]CrawledPageResult{},
 		issues:     map[string][]DetectedIssue{},
@@ -53,7 +53,7 @@ func (m *memoryStore) CreateAudit(_ context.Context, input CreateAuditInput) err
 		return errors.New("create failed")
 	}
 	instance := input.WorkflowInstanceID
-	m.audits[input.ID] = AuditRecord{
+	m.audits[input.ID] = Record{
 		ID: input.ID, ProjectID: input.ProjectID, StartedByUserID: input.StartedByUserID, StartURL: input.StartURL,
 		Status: "running", WorkflowInstanceID: &instance, Config: input.Config, PagesTotal: input.PagesTotal,
 		LighthouseTotal: input.LighthouseTotal, StartedAt: time.Unix(0, 0),
@@ -91,7 +91,7 @@ func (m *memoryStore) UpdateAuditProgress(_ context.Context, auditID, workflowIn
 	return nil
 }
 
-func (m *memoryStore) CompleteAudit(_ context.Context, auditID, workflowInstanceID string, pagesCrawled, pagesTotal int) error {
+func (m *memoryStore) CompleteAudit(_ context.Context, auditID, _ string, pagesCrawled, pagesTotal int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	audit, ok := m.audits[auditID]
@@ -108,7 +108,7 @@ func (m *memoryStore) CompleteAudit(_ context.Context, auditID, workflowInstance
 	return nil
 }
 
-func (m *memoryStore) FailAudit(_ context.Context, auditID, workflowInstanceID string, info AuditErrorInfo, failedPhase string) error {
+func (m *memoryStore) FailAudit(_ context.Context, auditID, _ string, info ErrorInfo, failedPhase string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	audit, ok := m.audits[auditID]
@@ -123,12 +123,12 @@ func (m *memoryStore) FailAudit(_ context.Context, auditID, workflowInstanceID s
 	return nil
 }
 
-func (m *memoryStore) GetAuditForProject(_ context.Context, auditID, projectID string) (AuditRecord, error) {
+func (m *memoryStore) GetAuditForProject(_ context.Context, auditID, projectID string) (Record, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	audit, ok := m.audits[auditID]
 	if !ok || m.projectOf[auditID] != projectID {
-		return AuditRecord{}, fmt.Errorf("%w: %s", ErrAuditNotFound, auditID)
+		return Record{}, fmt.Errorf("%w: %s", ErrAuditNotFound, auditID)
 	}
 	return audit, nil
 }
@@ -158,10 +158,10 @@ func issuesToRecords(auditID string, issues []DetectedIssue) []IssueRecord {
 	return records
 }
 
-func (m *memoryStore) ListAuditsByProject(_ context.Context, projectID string) ([]AuditRecord, error) {
+func (m *memoryStore) ListAuditsByProject(_ context.Context, projectID string) ([]Record, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	records := []AuditRecord{}
+	records := []Record{}
 	for id, audit := range m.audits {
 		if m.projectOf[id] == projectID {
 			records = append(records, audit)
@@ -170,10 +170,10 @@ func (m *memoryStore) ListAuditsByProject(_ context.Context, projectID string) (
 	return records, nil
 }
 
-func (m *memoryStore) AuditUsageForOrganization(context.Context, string) (AuditUsage, error) {
+func (m *memoryStore) AuditUsageForOrganization(context.Context, string) (Usage, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	usage := AuditUsage{}
+	usage := Usage{}
 	for _, audit := range m.audits {
 		usage.CapacityUnits += audit.PagesTotal + audit.LighthouseTotal
 		if audit.Status == "running" {
@@ -303,13 +303,13 @@ func (m *memoryStore) CountPagesByFetchClass(_ context.Context, auditID string, 
 
 // recordingScheduler records enqueued and terminated audits.
 type recordingScheduler struct {
-	enqueued    []AuditJobPayload
+	enqueued    []JobPayload
 	terminated  []string
 	failEnqueue bool
 	enqueueErr  error
 }
 
-func (s *recordingScheduler) EnqueueAudit(_ context.Context, _ string, payload AuditJobPayload) error {
+func (s *recordingScheduler) EnqueueAudit(_ context.Context, _ string, payload JobPayload) error {
 	if s.failEnqueue {
 		if s.enqueueErr != nil {
 			return s.enqueueErr

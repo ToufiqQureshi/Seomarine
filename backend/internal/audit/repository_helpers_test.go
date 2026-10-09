@@ -96,7 +96,7 @@ func TestPageArgsFlattensLinks(t *testing.T) {
 }
 
 func TestMarshalAuditConfigRoundTrip(t *testing.T) {
-	config := AuditConfig{MaxPages: 123, LighthouseStrategy: LighthouseNone, RenderJavaScript: true, SitePlatform: "shopify", CrawlerCredentialID: "cred-1"}
+	config := Config{MaxPages: 123, LighthouseStrategy: LighthouseNone, RenderJavaScript: true, SitePlatform: "shopify", CrawlerCredentialID: "cred-1"}
 	encoded, err := MarshalAuditConfig(config)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)

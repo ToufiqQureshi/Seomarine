@@ -29,16 +29,16 @@ type ProgressEntry struct {
 	CrawledAt int64 `json:"crawledAt"`
 }
 
-// AuditProgress stores the live crawl feed in Redis so the UI can poll it.
-type AuditProgress struct {
+// Progress stores the live crawl feed in Redis so the UI can poll it.
+type Progress struct {
 	client *redis.Client
 	now    func() time.Time
 }
 
-// NewAuditProgress returns a Redis-backed progress store. A nil client makes
+// NewProgress returns a Redis-backed progress store. A nil client makes
 // every method a no-op, so a deployment without Redis still serves audits.
-func NewAuditProgress(client *redis.Client) *AuditProgress {
-	return &AuditProgress{client: client, now: time.Now}
+func NewProgress(client *redis.Client) *Progress {
+	return &Progress{client: client, now: time.Now}
 }
 
 func progressKey(auditID string) string { return progressKeyPrefix + auditID }
@@ -58,7 +58,7 @@ func parseProgressEntries(raw string) []ProgressEntry {
 
 // PushCrawledURLs appends entries in one Redis write. New entries are prepended
 // and the list is capped, so the feed is newest-first. Mirrors pushCrawledUrls.
-func (p *AuditProgress) PushCrawledURLs(ctx context.Context, auditID string, entries []ProgressEntry) error {
+func (p *Progress) PushCrawledURLs(ctx context.Context, auditID string, entries []ProgressEntry) error {
 	if p == nil || p.client == nil || len(entries) == 0 {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (p *AuditProgress) PushCrawledURLs(ctx context.Context, auditID string, ent
 }
 
 // CrawledURLs reads the live feed for a running audit, newest-first.
-func (p *AuditProgress) CrawledURLs(ctx context.Context, auditID string) ([]ProgressEntry, error) {
+func (p *Progress) CrawledURLs(ctx context.Context, auditID string) ([]ProgressEntry, error) {
 	if p == nil || p.client == nil {
 		return []ProgressEntry{}, nil
 	}
@@ -109,7 +109,7 @@ func (p *AuditProgress) CrawledURLs(ctx context.Context, auditID string) ([]Prog
 }
 
 // Clear deletes the progress key after an audit finishes.
-func (p *AuditProgress) Clear(ctx context.Context, auditID string) error {
+func (p *Progress) Clear(ctx context.Context, auditID string) error {
 	if p == nil || p.client == nil {
 		return nil
 	}

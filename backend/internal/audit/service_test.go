@@ -179,7 +179,7 @@ func TestResolveAuditLimitTier(t *testing.T) {
 
 func TestGetStatusAndResultsAndHistory(t *testing.T) {
 	store := newMemoryStore()
-	config, _ := MarshalAuditConfig(AuditConfig{MaxPages: 50, LighthouseStrategy: LighthouseAuto})
+	config, _ := MarshalAuditConfig(Config{MaxPages: 50, LighthouseStrategy: LighthouseAuto})
 	if err := store.CreateAudit(context.Background(), CreateAuditInput{
 		ID: "audit-1", ProjectID: "proj-1", StartedByUserID: "user-1", StartURL: "https://example.com/",
 		WorkflowInstanceID: "audit-1", Config: config, PagesTotal: 50, LighthouseTotal: 20,

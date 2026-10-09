@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// AuditConfig is the stored configuration of one audit.
-type AuditConfig struct {
+// Config is the stored configuration of one audit.
+type Config struct {
 	MaxPages           int                `json:"maxPages"`
 	LighthouseStrategy LighthouseStrategy `json:"lighthouseStrategy"`
 	RenderJavaScript   bool               `json:"renderJavaScript"`
@@ -18,7 +18,7 @@ type AuditConfig struct {
 }
 
 // MarshalAuditConfig encodes a config the same way the TypeScript writes it.
-func MarshalAuditConfig(config AuditConfig) (string, error) {
+func MarshalAuditConfig(config Config) (string, error) {
 	encoded, err := json.Marshal(config)
 	if err != nil {
 		return "", err
@@ -32,25 +32,25 @@ func MarshalAuditConfig(config AuditConfig) (string, error) {
 // of making the whole config parse fail and the audit unviewable. Returns
 // ok=false when the value is missing or the required fields are invalid —
 // matching the Zod safeParse that the TypeScript used.
-func ParseAuditConfig(raw string) (AuditConfig, bool) {
+func ParseAuditConfig(raw string) (Config, bool) {
 	if strings.TrimSpace(raw) == "" {
-		return AuditConfig{}, false
+		return Config{}, false
 	}
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(raw), &fields); err != nil {
-		return AuditConfig{}, false
+		return Config{}, false
 	}
-	config := AuditConfig{LighthouseStrategy: LighthouseAuto}
+	config := Config{LighthouseStrategy: LighthouseAuto}
 
 	rawMaxPages, ok := fields["maxPages"]
 	if !ok {
-		return AuditConfig{}, false
+		return Config{}, false
 	}
 	if err := json.Unmarshal(rawMaxPages, &config.MaxPages); err != nil {
-		return AuditConfig{}, false
+		return Config{}, false
 	}
 	if config.MaxPages < MinAuditPages || config.MaxPages > PaidMaxAuditPages {
-		return AuditConfig{}, false
+		return Config{}, false
 	}
 
 	if rawStrategy, ok := fields["lighthouseStrategy"]; ok {
@@ -70,7 +70,7 @@ func ParseAuditConfig(raw string) (AuditConfig, bool) {
 
 	if rawRender, ok := fields["renderJavaScript"]; ok {
 		if err := json.Unmarshal(rawRender, &config.RenderJavaScript); err != nil {
-			return AuditConfig{}, false
+			return Config{}, false
 		}
 	}
 
@@ -181,10 +181,10 @@ type CrawledPageResult struct {
 	HeadingOrder       []int          `json:"headingOrder"`
 	WordCount          int            `json:"wordCount"`
 	ContentHash        string         `json:"contentHash"`
-	// IsHtml is true when an HTML document was fetched and analyzed. It gates
+	// IsHTML is true when an HTML document was fetched and analyzed. It gates
 	// the content checks in page reporters (an empty-shell HTML page must still
 	// be checked; a PDF must not). Transient — not persisted.
-	IsHtml bool `json:"-"`
+	IsHTML bool `json:"-"`
 	// JavaScriptShell is an app-shell signal for the per-page reporter.
 	JavaScriptShell bool `json:"-"`
 	// HTMLBytes is the HTML size read for this page, feeding the crawl window's

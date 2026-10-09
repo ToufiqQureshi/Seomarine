@@ -10,41 +10,41 @@ const (
 	SeverityInfo     IssueSeverity = "info"
 )
 
-// AuditIssueType identifies one issue kind.
-type AuditIssueType string
+// IssueType identifies one issue kind.
+type IssueType string
 
 // The closed registry of issue types, mirroring AUDIT_ISSUE_TYPES.
 const (
-	IssueBlockedPage                  AuditIssueType = "blocked-page"
-	IssueJavaScriptRenderingSuspected AuditIssueType = "javascript-rendering-suspected"
-	IssueRateLimitedPage              AuditIssueType = "rate-limited-page"
-	IssueCrawlRateLimited             AuditIssueType = "crawl-rate-limited"
-	IssueServerError                  AuditIssueType = "server-error"
-	IssueBrokenInternalLink           AuditIssueType = "broken-internal-link"
-	IssueMissingTitle                 AuditIssueType = "missing-title"
-	IssueBrokenPage                   AuditIssueType = "broken-page"
-	IssueDuplicateTitle               AuditIssueType = "duplicate-title"
-	IssueDuplicateMetaDescription     AuditIssueType = "duplicate-meta-description"
-	IssueDuplicateContent             AuditIssueType = "duplicate-content"
-	IssueMissingMetaDescription       AuditIssueType = "missing-meta-description"
-	IssueMissingH1                    AuditIssueType = "missing-h1"
-	IssueMultipleH1                   AuditIssueType = "multiple-h1"
-	IssueRedirectChain                AuditIssueType = "redirect-chain"
-	IssueRedirectLoop                 AuditIssueType = "redirect-loop"
-	IssueCanonicalConflict            AuditIssueType = "canonical-conflict"
-	IssueThinContent                  AuditIssueType = "thin-content"
-	IssueImagesMissingAlt             AuditIssueType = "images-missing-alt"
-	IssueOrphanPage                   AuditIssueType = "orphan-page"
-	IssueNoOutgoingLinks              AuditIssueType = "no-outgoing-links"
-	IssueTitleTooLong                 AuditIssueType = "title-too-long"
-	IssueTitleTooShort                AuditIssueType = "title-too-short"
-	IssueMetaDescriptionTooLong       AuditIssueType = "meta-description-too-long"
-	IssueMetaDescriptionTooShort      AuditIssueType = "meta-description-too-short"
-	IssueHeadingOrderSkip             AuditIssueType = "heading-order-skip"
-	IssueSlowResponse                 AuditIssueType = "slow-response"
-	IssueNoindexPage                  AuditIssueType = "noindex-page"
-	IssueCanonicalizedPage            AuditIssueType = "canonicalized-page"
-	IssueDeepPage                     AuditIssueType = "deep-page"
+	IssueBlockedPage                  IssueType = "blocked-page"
+	IssueJavaScriptRenderingSuspected IssueType = "javascript-rendering-suspected"
+	IssueRateLimitedPage              IssueType = "rate-limited-page"
+	IssueCrawlRateLimited             IssueType = "crawl-rate-limited"
+	IssueServerError                  IssueType = "server-error"
+	IssueBrokenInternalLink           IssueType = "broken-internal-link"
+	IssueMissingTitle                 IssueType = "missing-title"
+	IssueBrokenPage                   IssueType = "broken-page"
+	IssueDuplicateTitle               IssueType = "duplicate-title"
+	IssueDuplicateMetaDescription     IssueType = "duplicate-meta-description"
+	IssueDuplicateContent             IssueType = "duplicate-content"
+	IssueMissingMetaDescription       IssueType = "missing-meta-description"
+	IssueMissingH1                    IssueType = "missing-h1"
+	IssueMultipleH1                   IssueType = "multiple-h1"
+	IssueRedirectChain                IssueType = "redirect-chain"
+	IssueRedirectLoop                 IssueType = "redirect-loop"
+	IssueCanonicalConflict            IssueType = "canonical-conflict"
+	IssueThinContent                  IssueType = "thin-content"
+	IssueImagesMissingAlt             IssueType = "images-missing-alt"
+	IssueOrphanPage                   IssueType = "orphan-page"
+	IssueNoOutgoingLinks              IssueType = "no-outgoing-links"
+	IssueTitleTooLong                 IssueType = "title-too-long"
+	IssueTitleTooShort                IssueType = "title-too-short"
+	IssueMetaDescriptionTooLong       IssueType = "meta-description-too-long"
+	IssueMetaDescriptionTooShort      IssueType = "meta-description-too-short"
+	IssueHeadingOrderSkip             IssueType = "heading-order-skip"
+	IssueSlowResponse                 IssueType = "slow-response"
+	IssueNoindexPage                  IssueType = "noindex-page"
+	IssueCanonicalizedPage            IssueType = "canonicalized-page"
+	IssueDeepPage                     IssueType = "deep-page"
 )
 
 // issueDescriptor is the server-side part of an issue descriptor: the severity
@@ -56,7 +56,7 @@ type issueDescriptor struct {
 }
 
 // issueRegistry carries the severity and title for every known issue type.
-var issueRegistry = map[AuditIssueType]issueDescriptor{
+var issueRegistry = map[IssueType]issueDescriptor{
 	IssueBlockedPage:                  {SeverityCritical, "Crawler was blocked"},
 	IssueJavaScriptRenderingSuspected: {SeverityWarning, "Content may require JavaScript"},
 	IssueRateLimitedPage:              {SeverityWarning, "Rate limited (429)"},
@@ -91,14 +91,14 @@ var issueRegistry = map[AuditIssueType]issueDescriptor{
 
 // getIssueDescriptor returns the descriptor for an issue type, or ok=false when
 // the type is unknown.
-func getIssueDescriptor(issueType AuditIssueType) (issueDescriptor, bool) {
+func getIssueDescriptor(issueType IssueType) (issueDescriptor, bool) {
 	descriptor, ok := issueRegistry[issueType]
 	return descriptor, ok
 }
 
 // severityOf returns the severity for an issue type, defaulting to warning so a
 // future type cannot make a write fail.
-func severityOf(issueType AuditIssueType) IssueSeverity {
+func severityOf(issueType IssueType) IssueSeverity {
 	if descriptor, ok := issueRegistry[issueType]; ok {
 		return descriptor.Severity
 	}

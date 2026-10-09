@@ -168,7 +168,7 @@ func run(logger *slog.Logger) error {
 // worker that runs audits.
 func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
-	progress := audit.NewAuditProgress(rdb)
+	progress := audit.NewProgress(rdb)
 	guard := audit.NewGuard()
 	crawler := audit.NewCrawler(audit.CrawlerOptions{Guard: guard})
 
@@ -202,7 +202,7 @@ func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Poo
 // startAuditWorker consumes audits from the jobs queue until ctx ends. The
 // worker's jobs are at-least-once, so a crashed worker's audit is retried and
 // its deterministic row ids keep the retry idempotent.
-func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.AuditProgress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider) {
+func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider) {
 	runner := audit.NewRunner(audit.RunnerConfig{
 		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
 		Lighthouse: lighthouseProvider, Logger: logger,

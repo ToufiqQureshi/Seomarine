@@ -29,7 +29,7 @@ func NewQueueScheduler(queue *jobs.Queue) *QueueScheduler {
 
 // EnqueueAudit inserts the audit's job. The audit id is the idempotency key, so
 // a retried start does not schedule the audit twice.
-func (s *QueueScheduler) EnqueueAudit(ctx context.Context, auditID string, payload AuditJobPayload) error {
+func (s *QueueScheduler) EnqueueAudit(ctx context.Context, auditID string, payload JobPayload) error {
 	if s == nil || s.queue == nil {
 		return fmt.Errorf("audit scheduler is not configured")
 	}
@@ -55,7 +55,7 @@ func (s *QueueScheduler) TerminateAudit(context.Context, string) error { return 
 // RunnerHandler adapts a Runner to a jobs.Handler.
 func RunnerHandler(runner *Runner) jobs.Handler {
 	return func(ctx context.Context, job jobs.Job) error {
-		var payload AuditJobPayload
+		var payload JobPayload
 		if err := json.Unmarshal(job.Payload, &payload); err != nil {
 			return fmt.Errorf("decode audit job %d: %w", job.ID, err)
 		}

@@ -61,7 +61,7 @@ func seedProject(ctx context.Context, t *testing.T, pool *pgxpool.Pool, organiza
 		t.Fatalf("insert project: %v", err)
 	}
 	t.Cleanup(func() {
-		if _, err := pool.Exec(context.Background(), `DELETE FROM projects WHERE id = $1`, projectID); err != nil {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM projects WHERE id = $1`, projectID); err != nil {
 			t.Errorf("clean project: %v", err)
 		}
 	})
@@ -70,7 +70,7 @@ func seedProject(ctx context.Context, t *testing.T, pool *pgxpool.Pool, organiza
 
 func seedRepositoryAudit(ctx context.Context, t *testing.T, repo *Repository, auditID, projectID string) {
 	t.Helper()
-	config, _ := MarshalAuditConfig(AuditConfig{MaxPages: 50, LighthouseStrategy: LighthouseAuto})
+	config, _ := MarshalAuditConfig(Config{MaxPages: 50, LighthouseStrategy: LighthouseAuto})
 	if err := repo.CreateAudit(ctx, CreateAuditInput{
 		ID: auditID, ProjectID: projectID, StartedByUserID: "user-1", StartURL: "https://example.com/",
 		WorkflowInstanceID: auditID, Config: config, PagesTotal: 50, LighthouseTotal: 20,
@@ -78,7 +78,7 @@ func seedRepositoryAudit(ctx context.Context, t *testing.T, repo *Repository, au
 		t.Fatalf("create audit: %v", err)
 	}
 	t.Cleanup(func() {
-		if _, err := repo.pool.Exec(context.Background(), `DELETE FROM go_audits WHERE id = $1`, auditID); err != nil {
+		if _, err := repo.pool.Exec(context.WithoutCancel(ctx), `DELETE FROM go_audits WHERE id = $1`, auditID); err != nil {
 			t.Errorf("clean audit: %v", err)
 		}
 	})
@@ -89,7 +89,7 @@ func samplePage(id, rawURL string) CrawledPageResult {
 	return CrawledPageResult{
 		ID: id, URL: rawURL, StatusCode: 200, FetchClass: FetchOK, Title: "A reasonable page title",
 		MetaDescription: "A meta description long enough to pass the minimum length check the audit applies.",
-		WordCount:       200, ContentHash: "hash-" + id, IsIndexable: true, IsHtml: true, ResponseTimeMs: 120,
+		WordCount:       200, ContentHash: "hash-" + id, IsIndexable: true, IsHTML: true, ResponseTimeMs: 120,
 		CrawlDepth: &depth, HeadingOrder: []int{1, 2}, H1Count: 1,
 		Images: []ImageRef{{Src: "/a.png", Alt: "a"}}, HreflangTags: []string{"en"},
 		Links: []PageLink{{TargetURL: "https://example.com/other", IsInternal: true}},
@@ -125,7 +125,7 @@ func TestRepositoryAuditLifecycle(t *testing.T) {
 		t.Fatalf("audit = %+v err = %v", audit, err)
 	}
 	// A completed audit cannot be failed afterwards.
-	if err := repo.FailAudit(ctx, auditID, auditID, AuditErrorInfo{ErrorCode: ErrorUnknown}, ""); !errors.Is(err, ErrAuditNotFound) {
+	if err := repo.FailAudit(ctx, auditID, auditID, ErrorInfo{ErrorCode: ErrorUnknown}, ""); !errors.Is(err, ErrAuditNotFound) {
 		t.Fatalf("failing a completed audit error = %v, want ErrAuditNotFound", err)
 	}
 

@@ -56,7 +56,7 @@ func newTestRunner(store Store, server *httptest.Server, lighthouse LighthousePr
 	})
 }
 
-func seedAudit(t *testing.T, store *memoryStore, config AuditConfig) {
+func seedAudit(t *testing.T, store *memoryStore, config Config) {
 	t.Helper()
 	encoded, err := MarshalAuditConfig(config)
 	if err != nil {
@@ -73,10 +73,10 @@ func seedAudit(t *testing.T, store *memoryStore, config AuditConfig) {
 func TestRunnerCrawlsAndCompletes(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	runner := newTestRunner(store, server, nil, nil)
 
-	job := AuditJobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone}}
+	job := JobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: Config{MaxPages: 10, LighthouseStrategy: LighthouseNone}}
 	if err := runner.Run(context.Background(), job); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestRunnerCrawlsAndCompletes(t *testing.T) {
 		if page.FetchClass != FetchOK {
 			t.Errorf("page %s fetchClass = %s", page.URL, page.FetchClass)
 		}
-		if page.IsHtml && page.WordCount == 0 {
+		if page.IsHTML && page.WordCount == 0 {
 			t.Errorf("page %s has no word count", page.URL)
 		}
 	}
@@ -103,11 +103,11 @@ func TestRunnerCrawlsAndCompletes(t *testing.T) {
 func TestRunnerRunsLighthouse(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseAuto})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseAuto})
 	provider := &fakeLighthouseProvider{}
 	runner := newTestRunner(store, server, provider, nil)
 
-	job := AuditJobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseAuto}}
+	job := JobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: Config{MaxPages: 10, LighthouseStrategy: LighthouseAuto}}
 	if err := runner.Run(context.Background(), job); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -123,11 +123,11 @@ func TestRunnerRunsLighthouse(t *testing.T) {
 func TestRunnerMarksAuditFailedOnStoreError(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	store.failInsert = true
 	runner := newTestRunner(store, server, nil, nil)
 
-	job := AuditJobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone}}
+	job := JobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: Config{MaxPages: 10, LighthouseStrategy: LighthouseNone}}
 	if err := runner.Run(context.Background(), job); err == nil {
 		t.Fatal("expected the run to fail")
 	}
@@ -140,14 +140,14 @@ func TestRunnerMarksAuditFailedOnStoreError(t *testing.T) {
 func TestRunnerReleasesRenderingLocksOnFailure(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	store.failInsert = true
 	meter := &fakeRenderingMeter{}
 	runner := newTestRunner(store, server, nil, meter)
 
-	job := AuditJobPayload{
+	job := JobPayload{
 		AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1",
-		Config:         AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone},
+		Config:         Config{MaxPages: 10, LighthouseStrategy: LighthouseNone},
 		RenderingLocks: []RenderingLock{{LockID: "lock-1", EstimatedCredits: 5}},
 	}
 	if err := runner.Run(context.Background(), job); err == nil {
@@ -161,13 +161,13 @@ func TestRunnerReleasesRenderingLocksOnFailure(t *testing.T) {
 func TestRunnerSettlesRenderingLocksOnSuccess(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	meter := &fakeRenderingMeter{}
 	runner := newTestRunner(store, server, nil, meter)
 
-	job := AuditJobPayload{
+	job := JobPayload{
 		AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1",
-		Config:         AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone},
+		Config:         Config{MaxPages: 10, LighthouseStrategy: LighthouseNone},
 		RenderingLocks: []RenderingLock{{LockID: "lock-1", EstimatedCredits: 5}},
 	}
 	if err := runner.Run(context.Background(), job); err != nil {
@@ -181,7 +181,7 @@ func TestRunnerSettlesRenderingLocksOnSuccess(t *testing.T) {
 func TestRunnerRejectsBlockedOrigin(t *testing.T) {
 	store := newMemoryStore()
 	runner := NewRunner(RunnerConfig{Repository: store, Logger: discardLogger()})
-	err := runner.Run(context.Background(), AuditJobPayload{AuditID: "audit-1", StartURL: "http://127.0.0.1/"})
+	err := runner.Run(context.Background(), JobPayload{AuditID: "audit-1", StartURL: "http://127.0.0.1/"})
 	if err == nil {
 		t.Fatal("expected a blocked origin to fail")
 	}
@@ -190,10 +190,10 @@ func TestRunnerRejectsBlockedOrigin(t *testing.T) {
 func TestRunnerHandlerDecodesJobs(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	runner := newTestRunner(store, server, nil, nil)
 
-	payload, err := json.Marshal(AuditJobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", Config: AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone}})
+	payload, err := json.Marshal(JobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", Config: Config{MaxPages: 10, LighthouseStrategy: LighthouseNone}})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestRunnerHandlerDecodesJobs(t *testing.T) {
 
 func TestQueueSchedulerRequiresQueue(t *testing.T) {
 	scheduler := &QueueScheduler{}
-	if err := scheduler.EnqueueAudit(context.Background(), "audit-1", AuditJobPayload{}); err == nil {
+	if err := scheduler.EnqueueAudit(context.Background(), "audit-1", JobPayload{}); err == nil {
 		t.Fatal("expected an error without a queue")
 	}
 	if err := scheduler.TerminateAudit(context.Background(), "audit-1"); err != nil {
@@ -225,11 +225,11 @@ func TestQueueSchedulerRequiresQueue(t *testing.T) {
 func TestRunnerContextCanceled(t *testing.T) {
 	server := auditTestServer(t)
 	store := newMemoryStore()
-	seedAudit(t, store, AuditConfig{MaxPages: 10, LighthouseStrategy: LighthouseNone})
+	seedAudit(t, store, Config{MaxPages: 10, LighthouseStrategy: LighthouseNone})
 	runner := newTestRunner(store, server, nil, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := runner.Run(ctx, AuditJobPayload{AuditID: "audit-1", StartURL: "http://audit.test/", Config: AuditConfig{MaxPages: 10}})
+	err := runner.Run(ctx, JobPayload{AuditID: "audit-1", StartURL: "http://audit.test/", Config: Config{MaxPages: 10}})
 	if err == nil {
 		t.Fatal("expected a canceled context to fail the run")
 	}

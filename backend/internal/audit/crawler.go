@@ -110,10 +110,10 @@ func (c *Crawler) FetchPage(ctx context.Context, rawURL string) CrawlResult {
 	contentType := strings.ToLower(response.Header.Get("Content-Type"))
 	isHTML := strings.Contains(contentType, "html") || looksLikeHTML(body)
 	if !isHTML {
-		result.IsHtml = false
+		result.IsHTML = false
 		return result
 	}
-	result.IsHtml = true
+	result.IsHTML = true
 
 	analysis := AnalyzeHTML(body, rawURL, response.StatusCode, result.ResponseTimeMs, result.RedirectURL)
 	applyAnalysis(&result.CrawledPageResult, analysis, response.Header)

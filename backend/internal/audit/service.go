@@ -30,17 +30,17 @@ type CrawlerAccessResolver interface {
 // Scheduler enqueues and terminates audit work.
 type Scheduler interface {
 	// EnqueueAudit schedules an audit's job. It is idempotent on auditID.
-	EnqueueAudit(ctx context.Context, auditID string, payload AuditJobPayload) error
+	EnqueueAudit(ctx context.Context, auditID string, payload JobPayload) error
 	// TerminateAudit stops a running audit, if one exists.
 	TerminateAudit(ctx context.Context, auditID string) error
 }
 
-// AuditJobPayload is the schedule payload for one audit.
-type AuditJobPayload struct {
+// JobPayload is the schedule payload for one audit.
+type JobPayload struct {
 	AuditID        string          `json:"auditId"`
 	ProjectID      string          `json:"projectId"`
 	StartURL       string          `json:"startUrl"`
-	Config         AuditConfig     `json:"config"`
+	Config         Config          `json:"config"`
 	OrganizationID string          `json:"organizationId"`
 	RenderingLocks []RenderingLock `json:"renderingLocks,omitempty"`
 }
@@ -48,7 +48,7 @@ type AuditJobPayload struct {
 // ServiceConfig configures the audit Service.
 type ServiceConfig struct {
 	Repository Store
-	Progress   *AuditProgress
+	Progress   *Progress
 	Guard      *Guard
 	Crawler    *Crawler
 	Lighthouse LighthouseProvider
@@ -70,7 +70,7 @@ type ServiceConfig struct {
 // Service holds the audit rules.
 type Service struct {
 	repo       Store
-	progress   *AuditProgress
+	progress   *Progress
 	guard      *Guard
 	crawler    *Crawler
 	lighthouse LighthouseProvider
@@ -119,7 +119,7 @@ func randomID() string {
 }
 
 // ResolveAuditLimitTier resolves the plan ceiling for a new audit.
-func (s *Service) ResolveAuditLimitTier(ctx context.Context, organizationID string) (AuditLimitTier, error) {
+func (s *Service) ResolveAuditLimitTier(ctx context.Context, organizationID string) (LimitTier, error) {
 	if !s.hosted {
 		return TierSelfHosted, nil
 	}
@@ -153,7 +153,7 @@ type StartAuditInput struct {
 	MaxPages           int
 	LighthouseStrategy LighthouseStrategy
 	RenderJavaScript   bool
-	LimitTier          AuditLimitTier
+	LimitTier          LimitTier
 }
 
 // StartAuditResult carries the new audit's id.
@@ -216,7 +216,7 @@ func (s *Service) StartAudit(ctx context.Context, input StartAuditInput) (StartA
 		}
 	}
 
-	config := AuditConfig{
+	config := Config{
 		MaxPages:            maxPages,
 		LighthouseStrategy:  strategy,
 		RenderJavaScript:    input.RenderJavaScript,
@@ -249,7 +249,7 @@ func (s *Service) StartAudit(ctx context.Context, input StartAuditInput) (StartA
 		return StartAuditResult{}, err
 	}
 
-	payload := AuditJobPayload{
+	payload := JobPayload{
 		AuditID: auditID, ProjectID: input.ProjectID, StartURL: startURL, Config: config,
 		OrganizationID: input.OrganizationID, RenderingLocks: renderLocks,
 	}
@@ -330,7 +330,7 @@ func (s *Service) GetStatus(ctx context.Context, auditID, projectID string) (Sta
 }
 
 // statusFromRecord maps a stored audit to its status payload.
-func statusFromRecord(audit AuditRecord) StatusResult {
+func statusFromRecord(audit Record) StatusResult {
 	return StatusResult{
 		ID: audit.ID, StartURL: audit.StartURL, Status: audit.Status, PagesCrawled: audit.PagesCrawled,
 		PagesTotal: audit.PagesTotal, LighthouseTotal: audit.LighthouseTotal,
@@ -371,14 +371,14 @@ func (s *Service) GetCrawlProgress(ctx context.Context, auditID, projectID strin
 
 // ResultAudit is the audit header in the results payload.
 type ResultAudit struct {
-	ID           string      `json:"id"`
-	StartURL     string      `json:"startUrl"`
-	Status       string      `json:"status"`
-	PagesCrawled int         `json:"pagesCrawled"`
-	PagesTotal   int         `json:"pagesTotal"`
-	StartedAt    string      `json:"startedAt"`
-	CompletedAt  *string     `json:"completedAt"`
-	Config       AuditConfig `json:"config"`
+	ID           string  `json:"id"`
+	StartURL     string  `json:"startUrl"`
+	Status       string  `json:"status"`
+	PagesCrawled int     `json:"pagesCrawled"`
+	PagesTotal   int     `json:"pagesTotal"`
+	StartedAt    string  `json:"startedAt"`
+	CompletedAt  *string `json:"completedAt"`
+	Config       Config  `json:"config"`
 }
 
 // ResultsPayload is the audit results payload.

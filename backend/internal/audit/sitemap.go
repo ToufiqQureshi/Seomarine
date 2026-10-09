@@ -2,7 +2,6 @@ package audit
 
 import (
 	"encoding/xml"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -42,10 +41,9 @@ func parseSitemapXML(body string) sitemapSections {
 	for {
 		token, err := decoder.Token()
 		if err != nil {
-			if err != io.EOF {
-				// Malformed XML: keep what parsed so far, like fast-xml-parser
-				// returning a partial document.
-			}
+			// io.EOF ends a well-formed document; any other error is malformed
+			// XML, where we keep what parsed so far, like fast-xml-parser
+			// returning a partial document.
 			break
 		}
 		switch value := token.(type) {

@@ -421,12 +421,14 @@ func (v validator) resolveRedirects(ctx context.Context, startURL string) (Start
 		request, err := http.NewRequestWithContext(hopCtx, http.MethodHead, current, nil)
 		if err != nil {
 			cancel()
+			//nolint:nilerr // an unusable probe request falls back to the requested URL
 			return StartURLProbe{URL: current}, nil
 		}
 		request.Header.Set("User-Agent", auditUserAgent)
 		response, err := client.Do(request)
 		if err != nil {
 			cancel()
+			//nolint:nilerr // a failed probe falls back to the requested URL
 			return StartURLProbe{URL: current}, nil
 		}
 		poweredBy := response.Header.Get("Powered-By")
@@ -439,10 +441,12 @@ func (v validator) resolveRedirects(ctx context.Context, startURL string) (Start
 		}
 		next, err := url.Parse(location)
 		if err != nil {
+			//nolint:nilerr // an unparsable redirect target falls back to the current URL
 			return StartURLProbe{URL: current}, nil
 		}
 		base, err := url.Parse(current)
 		if err != nil {
+			//nolint:nilerr // an unparsable current URL falls back to itself
 			return StartURLProbe{URL: current}, nil
 		}
 		resolved, err := v.normalize(ctx, base.ResolveReference(next).String())

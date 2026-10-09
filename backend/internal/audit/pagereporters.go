@@ -3,7 +3,7 @@ package audit
 // DetectedIssue is one issue found on a page. Cross-page checks (duplicates,
 // redirect chains) also produce these.
 type DetectedIssue struct {
-	IssueType AuditIssueType `json:"issueType"`
+	IssueType IssueType `json:"issueType"`
 	// PageID is nil for issues that are not tied to a page.
 	PageID  *string        `json:"pageId"`
 	PageURL string         `json:"pageUrl"`
@@ -28,7 +28,7 @@ const (
 // returns the issues found. Mirrors runPageReporters.
 func runPageReporters(page CrawledPageResult) []DetectedIssue {
 	issues := make([]DetectedIssue, 0, 6)
-	report := func(issueType AuditIssueType, details map[string]any) {
+	report := func(issueType IssueType, details map[string]any) {
 		pageID := page.ID
 		issues = append(issues, DetectedIssue{IssueType: issueType, PageID: &pageID, PageURL: page.URL, Details: details})
 	}
@@ -64,7 +64,7 @@ func runPageReporters(page CrawledPageResult) []DetectedIssue {
 
 	// Content checks only make sense for analyzed HTML documents (a PDF has no
 	// title tag to miss).
-	if !page.IsHtml {
+	if !page.IsHTML {
 		return issues
 	}
 

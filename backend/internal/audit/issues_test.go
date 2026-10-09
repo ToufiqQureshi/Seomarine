@@ -10,15 +10,15 @@ func okPage() CrawledPageResult {
 	return CrawledPageResult{
 		ID: "p1", URL: "https://example.com/page", StatusCode: 200, FetchClass: FetchOK,
 		Title: "A perfectly reasonable title", MetaDescription: strings.Repeat("d", 100),
-		WordCount: 500, IsIndexable: true, IsHtml: true, ResponseTimeMs: 100,
+		WordCount: 500, IsIndexable: true, IsHTML: true, ResponseTimeMs: 100,
 		Links:   []PageLink{{TargetURL: "https://example.com/a", IsInternal: true}},
 		H1Count: 1, HeadingOrder: []int{1, 2},
 	}
 }
 
 // issueTypes returns the set of issue types in a result.
-func issueTypes(issues []DetectedIssue) map[AuditIssueType]bool {
-	set := map[AuditIssueType]bool{}
+func issueTypes(issues []DetectedIssue) map[IssueType]bool {
+	set := map[IssueType]bool{}
 	for _, issue := range issues {
 		set[issue.IssueType] = true
 	}
@@ -94,7 +94,7 @@ func TestRunPageReportersContentChecks(t *testing.T) {
 	page.CrawlDepth = &depth
 
 	set := issueTypes(runPageReporters(page))
-	for _, want := range []AuditIssueType{
+	for _, want := range []IssueType{
 		IssueMissingTitle, IssueMissingMetaDescription, IssueMultipleH1, IssueHeadingOrderSkip,
 		IssueThinContent, IssueImagesMissingAlt, IssueSlowResponse,
 		IssueNoOutgoingLinks, IssueCanonicalConflict, IssueCanonicalizedPage, IssueDeepPage,
@@ -137,7 +137,7 @@ func TestRunPageReportersJavaScriptShellSkipsContentChecks(t *testing.T) {
 
 func TestRunPageReportersNonHTMLSkipsContentChecks(t *testing.T) {
 	page := okPage()
-	page.IsHtml = false
+	page.IsHTML = false
 	page.Title = ""
 	set := issueTypes(runPageReporters(page))
 	if set[IssueMissingTitle] {
@@ -179,7 +179,7 @@ func TestFindDuplicates(t *testing.T) {
 		{ID: "c", URL: "https://example.com/c", StatusCode: &status, FetchClass: FetchOK, Title: "Unique", IsIndexable: true, WordCount: 10, ContentHash: "other"},
 	}
 	issues := FindDuplicates(pages)
-	counts := map[AuditIssueType]int{}
+	counts := map[IssueType]int{}
 	for _, issue := range issues {
 		counts[issue.IssueType]++
 	}
@@ -213,7 +213,7 @@ func TestFindRedirectChainsAndLoops(t *testing.T) {
 		{ID: "x", URL: "https://example.com/x", StatusCode: status(301), FetchClass: FetchOK, RedirectURL: "https://example.com/y"},
 		{ID: "y", URL: "https://example.com/y", StatusCode: status(301), FetchClass: FetchOK, RedirectURL: "https://example.com/x"},
 	}
-	set := map[AuditIssueType]int{}
+	set := map[IssueType]int{}
 	for _, issue := range FindRedirectChainsAndLoops(pages) {
 		set[issue.IssueType]++
 	}

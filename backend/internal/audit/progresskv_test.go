@@ -36,7 +36,7 @@ func TestAuditProgressFeed(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	client := progressRedis(ctx, t)
-	progress := NewAuditProgress(client)
+	progress := NewProgress(client)
 	auditID := "audit-progress-" + suffix(t)
 	t.Cleanup(func() { _ = progress.Clear(context.Background(), auditID) })
 
@@ -71,7 +71,7 @@ func TestAuditProgressCaps(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	client := progressRedis(ctx, t)
-	progress := NewAuditProgress(client)
+	progress := NewProgress(client)
 	auditID := "audit-progress-cap-" + suffix(t)
 	t.Cleanup(func() { _ = progress.Clear(context.Background(), auditID) })
 
@@ -92,7 +92,7 @@ func TestAuditProgressCaps(t *testing.T) {
 }
 
 func TestAuditProgressNilClientIsSafe(t *testing.T) {
-	progress := NewAuditProgress(nil)
+	progress := NewProgress(nil)
 	if err := progress.PushCrawledURLs(context.Background(), "audit", []ProgressEntry{{URL: "x"}}); err != nil {
 		t.Fatalf("push: %v", err)
 	}

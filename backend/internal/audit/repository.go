@@ -20,8 +20,8 @@ type Repository struct {
 // NewRepository returns a repository backed by pool.
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
 
-// AuditRecord is one audit row.
-type AuditRecord struct {
+// Record is one audit row.
+type Record struct {
 	ID                  string     `json:"id"`
 	ProjectID           string     `json:"-"`
 	StartedByUserID     string     `json:"-"`
@@ -188,7 +188,7 @@ func (r *Repository) CompleteAudit(ctx context.Context, auditID, workflowInstanc
 // FailAudit marks a running audit failed with its error classification. Only a
 // running audit can transition to failed, so the reconciler cannot flip a
 // just-completed audit.
-func (r *Repository) FailAudit(ctx context.Context, auditID, workflowInstanceID string, info AuditErrorInfo, failedPhase string) error {
+func (r *Repository) FailAudit(ctx context.Context, auditID, workflowInstanceID string, info ErrorInfo, failedPhase string) error {
 	var phase *string
 	if failedPhase != "" {
 		phase = &failedPhase
@@ -212,50 +212,50 @@ const auditColumns = `id, project_id, started_by_user_id, start_url, status, wor
 	error_code, error_detail, failed_phase, started_at, completed_at`
 
 // scanAudit reads one audit row.
-func scanAudit(row pgx.Row) (AuditRecord, error) {
-	var record AuditRecord
+func scanAudit(row pgx.Row) (Record, error) {
+	var record Record
 	err := row.Scan(&record.ID, &record.ProjectID, &record.StartedByUserID, &record.StartURL, &record.Status,
 		&record.WorkflowInstanceID, &record.Config, &record.PagesCrawled, &record.PagesTotal, &record.LighthouseTotal,
 		&record.LighthouseCompleted, &record.LighthouseFailed, &record.CurrentPhase, &record.ErrorCode,
 		&record.ErrorDetail, &record.FailedPhase, &record.StartedAt, &record.CompletedAt)
 	if err != nil {
-		return AuditRecord{}, err
+		return Record{}, err
 	}
 	return record, nil
 }
 
 // GetAuditForProject returns an audit scoped to its project.
-func (r *Repository) GetAuditForProject(ctx context.Context, auditID, projectID string) (AuditRecord, error) {
+func (r *Repository) GetAuditForProject(ctx context.Context, auditID, projectID string) (Record, error) {
 	record, err := scanAudit(r.pool.QueryRow(ctx, `SELECT `+auditColumns+` FROM go_audits WHERE id = $1 AND project_id = $2`, auditID, projectID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return AuditRecord{}, fmt.Errorf("%w: %s", ErrAuditNotFound, auditID)
+		return Record{}, fmt.Errorf("%w: %s", ErrAuditNotFound, auditID)
 	}
 	if err != nil {
-		return AuditRecord{}, fmt.Errorf("load audit: %w", err)
+		return Record{}, fmt.Errorf("load audit: %w", err)
 	}
 	return record, nil
 }
 
 // LatestAuditForProject returns the most recently started audit of a project.
-func (r *Repository) LatestAuditForProject(ctx context.Context, projectID string) (AuditRecord, bool, error) {
+func (r *Repository) LatestAuditForProject(ctx context.Context, projectID string) (Record, bool, error) {
 	record, err := scanAudit(r.pool.QueryRow(ctx, `SELECT `+auditColumns+` FROM go_audits WHERE project_id = $1 ORDER BY started_at DESC LIMIT 1`, projectID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return AuditRecord{}, false, nil
+		return Record{}, false, nil
 	}
 	if err != nil {
-		return AuditRecord{}, false, fmt.Errorf("load latest audit: %w", err)
+		return Record{}, false, fmt.Errorf("load latest audit: %w", err)
 	}
 	return record, true, nil
 }
 
 // ListAuditsByProject returns a project's audits, newest first.
-func (r *Repository) ListAuditsByProject(ctx context.Context, projectID string) ([]AuditRecord, error) {
+func (r *Repository) ListAuditsByProject(ctx context.Context, projectID string) ([]Record, error) {
 	rows, err := r.pool.Query(ctx, `SELECT `+auditColumns+` FROM go_audits WHERE project_id = $1 ORDER BY started_at DESC`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list audits: %w", err)
 	}
 	defer rows.Close()
-	records := []AuditRecord{}
+	records := []Record{}
 	for rows.Next() {
 		record, err := scanAudit(rows)
 		if err != nil {
@@ -269,8 +269,8 @@ func (r *Repository) ListAuditsByProject(ctx context.Context, projectID string) 
 	return records, nil
 }
 
-// AuditUsage is an organization's aggregate audit usage.
-type AuditUsage struct {
+// Usage is an organization's aggregate audit usage.
+type Usage struct {
 	CapacityUnits int
 	RunningCount  int
 }
@@ -278,7 +278,7 @@ type AuditUsage struct {
 // AuditUsageForOrganization aggregates usage across every project of an
 // organization. The free-plan ceiling belongs to the organization, so counting
 // per starting user would multiply it by the member count.
-func (r *Repository) AuditUsageForOrganization(ctx context.Context, organizationID string) (AuditUsage, error) {
+func (r *Repository) AuditUsageForOrganization(ctx context.Context, organizationID string) (Usage, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT
 			COALESCE(SUM(a.pages_total + a.lighthouse_total), 0)::bigint,
@@ -286,9 +286,9 @@ func (r *Repository) AuditUsageForOrganization(ctx context.Context, organization
 		FROM go_audits a
 		JOIN projects p ON p.id = a.project_id
 		WHERE p.organization_id = $1`, organizationID)
-	var usage AuditUsage
+	var usage Usage
 	if err := row.Scan(&usage.CapacityUnits, &usage.RunningCount); err != nil {
-		return AuditUsage{}, fmt.Errorf("audit usage: %w", err)
+		return Usage{}, fmt.Errorf("audit usage: %w", err)
 	}
 	return usage, nil
 }
@@ -505,7 +505,7 @@ func (r *Repository) InsertLighthouseResults(ctx context.Context, auditID string
 
 // Results bundles one audit's pages, issues and Lighthouse results.
 type Results struct {
-	Audit      AuditRecord
+	Audit      Record
 	Pages      []PageRecord
 	Issues     []IssueRecord
 	Lighthouse []LighthouseRecord

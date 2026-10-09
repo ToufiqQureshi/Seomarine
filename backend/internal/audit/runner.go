@@ -15,7 +15,7 @@ const maxCrawlDepth = 6
 // instead of duplicating.
 type Runner struct {
 	repo       Store
-	progress   *AuditProgress
+	progress   *Progress
 	guard      *Guard
 	crawler    *Crawler
 	lighthouse LighthouseProvider
@@ -27,7 +27,7 @@ type Runner struct {
 // RunnerConfig configures a Runner.
 type RunnerConfig struct {
 	Repository Store
-	Progress   *AuditProgress
+	Progress   *Progress
 	Guard      *Guard
 	Crawler    *Crawler
 	Lighthouse LighthouseProvider
@@ -65,7 +65,7 @@ const auditDeadline = 30 * time.Minute
 
 // Run executes the audit. A returned error means the audit failed and was
 // marked failed; a nil error means it completed (possibly with partial data).
-func (r *Runner) Run(ctx context.Context, job AuditJobPayload) error {
+func (r *Runner) Run(ctx context.Context, job JobPayload) error {
 	runCtx, cancel := context.WithTimeout(ctx, auditDeadline)
 	defer cancel()
 
@@ -80,7 +80,7 @@ func (r *Runner) Run(ctx context.Context, job AuditJobPayload) error {
 }
 
 // run performs the phases and completes the audit.
-func (r *Runner) run(ctx context.Context, job AuditJobPayload) error {
+func (r *Runner) run(ctx context.Context, job JobPayload) error {
 	maxPages := job.Config.MaxPages
 	if maxPages <= 0 {
 		maxPages = DefaultAuditPages
@@ -124,7 +124,7 @@ type crawlQueueItem struct {
 }
 
 // crawl runs the BFS crawl, persisting each sub-batch as it lands.
-func (r *Runner) crawl(ctx context.Context, job AuditJobPayload, origin string, seedURLs []string, robots RobotsResult, maxPages int) (int, error) {
+func (r *Runner) crawl(ctx context.Context, job JobPayload, _ string, seedURLs []string, robots RobotsResult, maxPages int) (int, error) {
 	startNormalized, ok := normalizeURL(job.StartURL, "")
 	if !ok {
 		return 0, ErrStartURLInvalid
@@ -277,7 +277,7 @@ func (r *Runner) fetchWithRetry(ctx context.Context, throttle *CrawlThrottle, ra
 }
 
 // finalizeChecks runs the cross-page checks and persists their issues.
-func (r *Runner) finalizeChecks(ctx context.Context, job AuditJobPayload) error {
+func (r *Runner) finalizeChecks(ctx context.Context, job JobPayload) error {
 	issues, _, err := r.repo.RunMultipageChecks(ctx, job.AuditID)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func (r *Runner) finalizeChecks(ctx context.Context, job AuditJobPayload) error 
 }
 
 // lighthousePhase runs the sampled Lighthouse checks.
-func (r *Runner) lighthousePhase(ctx context.Context, job AuditJobPayload) error {
+func (r *Runner) lighthousePhase(ctx context.Context, job JobPayload) error {
 	if job.Config.LighthouseStrategy == LighthouseNone || r.lighthouse == nil {
 		return nil
 	}
@@ -347,12 +347,12 @@ func (r *Runner) lighthousePhase(ctx context.Context, job AuditJobPayload) error
 }
 
 // setPhase records the audit's current phase.
-func (r *Runner) setPhase(ctx context.Context, job AuditJobPayload, phase string) error {
+func (r *Runner) setPhase(ctx context.Context, job JobPayload, phase string) error {
 	return r.repo.UpdateAuditProgress(ctx, job.AuditID, job.AuditID, ProgressUpdate{CurrentPhase: &phase})
 }
 
 // failAudit marks the audit failed, classifying the error.
-func (r *Runner) failAudit(ctx context.Context, job AuditJobPayload, cause error) {
+func (r *Runner) failAudit(ctx context.Context, job JobPayload, cause error) {
 	failCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
 	info := ClassifyAuditError(cause)

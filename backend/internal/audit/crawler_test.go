@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func TestCrawlerFetchPageAnalyzesHTML(t *testing.T) {
 	if result.FetchClass != FetchOK || result.StatusCode != 200 {
 		t.Fatalf("class=%s status=%d", result.FetchClass, result.StatusCode)
 	}
-	if !result.IsHtml {
+	if !result.IsHTML {
 		t.Fatal("expected HTML")
 	}
 	if result.Title != "T" || result.H1Count != 1 {
@@ -108,7 +109,7 @@ func TestCrawlerFetchPageRedirectRecordsTarget(t *testing.T) {
 	if result.RedirectURL != "http://audit.test/ok" {
 		t.Fatalf("redirectURL = %q", result.RedirectURL)
 	}
-	if result.IsHtml {
+	if result.IsHTML {
 		t.Fatal("a redirect has no body to analyze")
 	}
 }
@@ -116,7 +117,7 @@ func TestCrawlerFetchPageRedirectRecordsTarget(t *testing.T) {
 func TestCrawlerFetchPageNonHTML(t *testing.T) {
 	crawler := newTestCrawler(crawlerServer(t), 0)
 	result := crawler.FetchPage(context.Background(), "http://audit.test/pdf")
-	if result.IsHtml {
+	if result.IsHTML {
 		t.Fatal("a PDF must not be analyzed as HTML")
 	}
 	if result.StatusCode != 200 {
@@ -162,11 +163,12 @@ func TestCrawlerCrawlPageURLsPreservesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("crawl: %v", err)
 	}
-	if len(results) != 3 {
-		t.Fatalf("results = %d", len(results))
+	got := make([]string, 0, len(results))
+	for _, result := range results {
+		got = append(got, result.URL)
 	}
-	if results[0].URL != urls[0] || results[2].URL != urls[2] {
-		t.Fatalf("results out of order: %+v", results)
+	if !slices.Equal(got, urls) {
+		t.Fatalf("results = %v, want %v in input order", got, urls)
 	}
 }
 

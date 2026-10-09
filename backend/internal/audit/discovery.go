@@ -114,6 +114,7 @@ func (d discoverer) fetchFollowingRedirects(ctx context.Context, rawURL string, 
 		}
 		next, err := resolveLocation(location, current)
 		if err != nil {
+			//nolint:nilerr // a redirect target we cannot resolve ends the probe softly, as the TypeScript did
 			return nil, nil
 		}
 		if !isCrawlableURL(next) {

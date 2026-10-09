@@ -267,7 +267,7 @@ func historyHandler(d Deps) http.HandlerFunc {
 
 // capabilitiesHandler reports the deployment's audit features.
 func capabilitiesHandler(d Deps) http.HandlerFunc {
-	return handle(d, func(w http.ResponseWriter, _ *http.Request, _ string) (any, error) {
+	return handle(d, func(_ http.ResponseWriter, _ *http.Request, _ string) (any, error) {
 		return d.Service.Capabilities(), nil
 	})
 }
