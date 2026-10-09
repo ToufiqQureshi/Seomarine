@@ -1,14 +1,8 @@
 import { toast } from "sonner";
 import { useSyncExternalStore } from "react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { startGa4Link } from "@/serverFunctions/ga4";
-import { startGscLink } from "@/serverFunctions/gsc";
+import { startGoogleOAuth } from "./googleOAuthApi";
 import type { GoogleLinkProvider } from "@/shared/google-link";
-
-const startLink: Record<GoogleLinkProvider, typeof startGscLink> = {
-  gsc: startGscLink,
-  ga4: startGa4Link,
-};
 
 // One link flow at a time: a double-click, or a second Connect click while the
 // redirect to Google is pending, would start two consent screens for one
@@ -52,7 +46,7 @@ export async function startGoogleLink(
   setLinkPending(true);
   let redirecting = false;
   try {
-    const { url } = await startLink[provider]({ data: { callbackURL } });
+    const { url } = await startGoogleOAuth(provider, callbackURL);
     redirecting = true;
     window.location.href = url;
     // The page is about to unload, so the guard normally never needs to

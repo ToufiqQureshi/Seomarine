@@ -13,7 +13,7 @@ import {
 import {
   getGoogleAccountRemovalImpact,
   removeGoogleAccount,
-} from "@/serverFunctions/googleAccounts";
+} from "./googleAccountsApi";
 
 export function GoogleAccountRemovalDialog({
   provider,
@@ -31,15 +31,13 @@ export function GoogleAccountRemovalDialog({
   const queryClient = useQueryClient();
   const impact = useQuery({
     queryKey: ["googleAccountRemovalImpact", provider, accountId],
-    queryFn: () =>
-      getGoogleAccountRemovalImpact({ data: { provider, accountId } }),
+    queryFn: () => getGoogleAccountRemovalImpact({ provider, accountId }),
     staleTime: 0,
     gcTime: 0,
   });
   const removal = useMutation({
     meta: { errorToast: false },
-    mutationFn: () =>
-      removeGoogleAccount({ data: { provider, accountId, confirmed: true } }),
+    mutationFn: () => removeGoogleAccount({ provider, accountId }),
     onSuccess: async () => {
       const keys =
         provider === "gsc"

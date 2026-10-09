@@ -8,10 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // TokenCipher encrypts tokens using a versioned AES-256-GCM key ring.
 type TokenCipher struct {
+	mu        sync.RWMutex
 	keys      map[string][]byte
 	currentID string
 }
@@ -37,7 +39,9 @@ func (c *TokenCipher) AddDecryptionKey(keyID, encodedKey string) error {
 	if err != nil || len(key) != 32 {
 		return errors.New("invalid token encryption key")
 	}
+	c.mu.Lock()
 	c.keys[keyID] = key
+	c.mu.Unlock()
 	return nil
 }
 
@@ -46,7 +50,10 @@ func (c *TokenCipher) Encrypt(token string) (string, error) {
 	if c == nil || token == "" {
 		return "", errors.New("invalid token")
 	}
-	block, err := aes.NewCipher(c.keys[c.currentID])
+	c.mu.RLock()
+	key := c.keys[c.currentID]
+	c.mu.RUnlock()
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", fmt.Errorf("initialize token cipher: %w", err)
 	}
@@ -68,7 +75,9 @@ func (c *TokenCipher) Decrypt(encoded string) (string, error) {
 		return "", errors.New("token cipher unavailable")
 	}
 	keyID, payload, ok := strings.Cut(encoded, ":")
+	c.mu.RLock()
 	key, exists := c.keys[keyID]
+	c.mu.RUnlock()
 	if !ok || !exists {
 		return "", errors.New("unknown token key")
 	}

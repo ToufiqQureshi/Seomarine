@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { startLink } = vi.hoisted(() => ({ startLink: vi.fn() }));
-vi.mock("@/serverFunctions/gsc", () => ({ startGscLink: startLink }));
-vi.mock("@/serverFunctions/ga4", () => ({ startGa4Link: startLink }));
+vi.mock("./googleOAuthApi", () => ({ startGoogleOAuth: startLink }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 // Browser checks exercise React subscriptions; here read the real pending snapshot
 // to test network and navigation timing without a DOM.

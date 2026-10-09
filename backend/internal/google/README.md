@@ -26,4 +26,8 @@ not yet ported. No React caller uses this package yet.
   when a state is created. A state is consumed with one `DELETE ... RETURNING`.
 - `GOOGLE_TOKEN_ENCRYPTION_KEY` must supply 32 bytes, base64 encoded. The
   ciphertext prefix is a key identifier to support future rotation.
+- `golang.org/x/crypto/chacha20poly1305` is needed solely to read Better Auth's
+  existing XChaCha20-Poly1305 grants. Go's standard library lacks XChaCha.
+- Versioned Better Auth ciphertext envelopes need the matching old key ring;
+  a bare `BETTER_AUTH_SECRET` only decrypts bare hexadecimal ciphertext.
 - Never log OAuth state, code, tokens or decrypted ciphertext.
