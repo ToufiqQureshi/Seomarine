@@ -61,7 +61,7 @@ func (s *TokenService) tokenURL() string {
 	return "https://oauth2.googleapis.com/token"
 }
 
-func (s *TokenService) exchange(ctx context.Context, values url.Values) (tokenResponse, error) {
+func (s *TokenService) exchange(ctx context.Context, values url.Values) (out tokenResponse, err error) {
 	if s.ClientID == "" || s.ClientSecret == "" {
 		return tokenResponse{}, ErrGrantUnavailable
 	}
@@ -76,7 +76,11 @@ func (s *TokenService) exchange(ctx context.Context, values url.Values) (tokenRe
 	if err != nil {
 		return tokenResponse{}, errors.New("google token request unavailable")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close google token response: %w", closeErr))
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return tokenResponse{}, ErrGrantUnavailable
 	}
@@ -120,7 +124,7 @@ func (s *TokenService) AccessToken(ctx context.Context, userID, provider, accoun
 		return "", fmt.Errorf("begin google grant read: %w", err)
 	}
 	defer func() {
-		rollbackCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 		defer cancel()
 		_ = tx.Rollback(rollbackCtx)
 	}()

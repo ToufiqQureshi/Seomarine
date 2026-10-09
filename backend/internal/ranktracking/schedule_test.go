@@ -95,3 +95,17 @@ func TestResolveNext(t *testing.T) {
 		})
 	}
 }
+
+func TestCryptoRandStaysInRange(t *testing.T) {
+	seen := map[int]bool{}
+	for range 500 {
+		v := CryptoRand(6)
+		if v < 0 || v > 5 {
+			t.Fatalf("CryptoRand(6) = %d, want 0..5", v)
+		}
+		seen[v] = true
+	}
+	if len(seen) != 6 {
+		t.Errorf("saw %d distinct values in 500 draws, want all 6", len(seen))
+	}
+}

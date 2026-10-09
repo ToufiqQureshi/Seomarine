@@ -3,10 +3,12 @@ package google
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"math/rand/v2"
+	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
@@ -200,7 +202,11 @@ func parseRetryAfter(raw string) time.Duration {
 }
 
 func apiBackoff(ctx context.Context, attempt int, retryAfter time.Duration) error {
-	delay := time.Duration(200<<attempt)*time.Millisecond + time.Duration(rand.IntN(100))*time.Millisecond
+	jitter, err := rand.Int(rand.Reader, big.NewInt(100))
+	if err != nil {
+		return fmt.Errorf("generate google API retry jitter: %w", err)
+	}
+	delay := time.Duration(200<<attempt)*time.Millisecond + time.Duration(jitter.Int64())*time.Millisecond
 	if retryAfter > delay {
 		delay = retryAfter
 	}

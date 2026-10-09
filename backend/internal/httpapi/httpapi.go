@@ -22,6 +22,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
@@ -66,6 +67,17 @@ type Deps struct {
 	// Audit is nil when the audit engine is not configured; its routes then
 	// answer 503.
 	Audit *audit.Service
+	// KeywordResearch is nil when no DataForSEO key is configured; research,
+	// SERP and refresh routes then answer 503.
+	KeywordResearch *keywords.ResearchService
+	// SavedKeywords serves saved keywords, their metrics and tags.
+	SavedKeywords *keywords.SavedService
+	// RankTracking serves rank tracking configs and keywords. City-level
+	// configs answer 503 until the provider city check is wired in.
+	RankTracking *ranktracking.Service
+	// RankChecks is nil when no DataForSEO key is configured; the check route
+	// then answers 503.
+	RankChecks *ranktracking.Checks
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -165,7 +177,24 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	keywords.MountSaved(mux, keywords.SavedDeps{
+		Logger: d.Logger, Service: d.SavedKeywords, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	var researchPlans keywords.PaidPlans
+	if d.Billing != nil {
+		researchPlans = d.Billing
+	}
+	keywords.MountResearch(mux, keywords.ResearchDeps{
+		Logger: d.Logger, Service: d.KeywordResearch, Saved: d.SavedKeywords, ProjectMarkets: d.ProjectMarkets, Plans: researchPlans,
+		WithSession:       withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	keywords.MountLocations(mux, keywords.LocationDeps{Logger: d.Logger, Service: d.Locations, WithSession: withSession})
+	ranktracking.Mount(mux, ranktracking.Deps{
+		Logger: d.Logger, Service: d.RankTracking, Checks: d.RankChecks, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	audit.Mount(mux, audit.Deps{
 		Logger: d.Logger, Service: d.Audit, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

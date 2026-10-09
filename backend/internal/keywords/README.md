@@ -11,6 +11,15 @@
 - SERP location search accepts a two-letter ISO country and a 1–100 character query, returning at most 50 canonical city/county/municipality/DMA/region rows. Postal codes, states, airports and universities are excluded. Exact first-segment matches rank above prefixes and DMA rows; US/Canada/Australia region abbreviations expand after the place token. A prewarm request fills the same country cache.
 - DataForSEO's full per-country registry is large; cache successful, filtered country data for 30 days, coalesce concurrent cold fills, and bound provider calls. A failed or empty provider response must not poison the cache. Invalid input must never reach a billed provider task.
 
+## Go API (all `POST /api/v1/projects/{projectId}/keywords/...`, contract in `api/keywords.yaml`)
+
+`research`, `serp`, `saved/refresh` (billed, paid-plan gated when billing is wired), `saved/save|list|export|remove`, `saved/tags/assign|update|delete`.
+
+- Tables: `go_saved_keywords`, `go_saved_keyword_tags`, `go_saved_keyword_tag_assignments`, `go_keyword_metrics` (migration 00011). They start empty: one-time copy from the legacy tables is an owner step.
+- Env: needs `DATAFORSEO_*` for research/serp; Redis for caches (research v5 24h, SERP 12h).
+- Never break: validate before any provider call (failed tasks are billed); tag delete locks the tag so a concurrent assign cannot orphan rows; metrics persist under the requested language even when Labs served another.
+- Deliberate differences from legacy: NULL metrics sort last in saved lists; research language is normalized to the one Labs serves.
+
 ## Migration status
 
 Market tables and resolution are in `platform/market`. Domain analysis now reads the project market server-side. Keyword research, saved keywords, SERP analysis and SERP location API are being ported here; legacy TypeScript remains active until each response contract and caller is switched.

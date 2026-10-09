@@ -138,6 +138,18 @@ func (c *Client) Do(ctx context.Context, organizationID, method, path string, bo
 	if strings.TrimSpace(organizationID) == "" || len(organizationID) > 128 {
 		return nil, fmt.Errorf("%w: organization id is required", ErrInvalidRequest)
 	}
+	return c.do(ctx, organizationID, true, method, path, body, retrySafe)
+}
+
+// DoUnmetered sends one request whose cost is not recorded. Use it only for
+// free calls whose response still carries a cost field, such as collecting a
+// queued task: that task was charged when it was posted, and recording the
+// settled amount again would charge the customer twice.
+func (c *Client) DoUnmetered(ctx context.Context, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
+	return c.do(ctx, "", false, method, path, body, retrySafe)
+}
+
+func (c *Client) do(ctx context.Context, organizationID string, record bool, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
 	if method != http.MethodGet && method != http.MethodPost {
 		return nil, fmt.Errorf("%w: only GET and POST are supported", ErrInvalidRequest)
 	}
@@ -190,6 +202,9 @@ func (c *Client) Do(ctx context.Context, organizationID, method, path string, bo
 		}
 		if !json.Valid(payload) {
 			return nil, errors.New("DataForSEO returned invalid JSON")
+		}
+		if !record {
+			return json.RawMessage(payload), nil
 		}
 		costs, err := responseCosts(payload)
 		if err != nil {

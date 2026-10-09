@@ -164,3 +164,29 @@ func TestDoReturnsCostRecordingFailureWithReconciliationData(t *testing.T) {
 		t.Fatalf("Do() error = %#v, want cost recording context", err)
 	}
 }
+
+func TestDoUnmeteredNeverRecordsCosts(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.Header.Get("Authorization") == "" {
+			t.Errorf("request = %s, auth %q", r.Method, r.Header.Get("Authorization"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp","google","organic","task_get","advanced"],"cost":0.0006,"status_code":20000}]}`)
+	}))
+	defer server.Close()
+	recorder := &testRecorder{}
+	client := testClient(t, server, recorder, 0)
+	response, err := client.DoUnmetered(context.Background(), http.MethodGet, "/v3/serp/google/organic/task_get/advanced/abc", nil, true)
+	if err != nil || len(response) == 0 {
+		t.Fatalf("DoUnmetered() = %s, %v", response, err)
+	}
+	if costs := recorder.snapshot(); len(costs) != 0 {
+		t.Fatalf("recorded %#v for a free call, want nothing: the task was charged when it was posted", costs)
+	}
+	if _, err := client.DoUnmetered(context.Background(), http.MethodPut, "/v3/x", nil, false); !errors.Is(err, ErrInvalidRequest) {
+		t.Errorf("PUT error = %v, want ErrInvalidRequest", err)
+	}
+	if _, err := client.DoUnmetered(context.Background(), http.MethodGet, "v3/relative", nil, false); !errors.Is(err, ErrInvalidRequest) {
+		t.Errorf("relative path error = %v, want ErrInvalidRequest", err)
+	}
+}

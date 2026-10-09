@@ -58,3 +58,27 @@ func PrepareKeywords(raw, existing []string, matchCase bool) (added []string, to
 	}
 	return added, tooLong
 }
+
+// ParseDomain normalises input and rejects anything that is not a plain
+// hostname with a dot, such as "localhost", a host with a port, or a label
+// that DNS would not accept. Sending those to the provider would be billed.
+func ParseDomain(input string) (string, error) {
+	d, err := NormalizeDomain(input)
+	if err != nil {
+		return "", err
+	}
+	if len(d) > 253 || !strings.Contains(d, ".") {
+		return "", ErrInvalidDomain
+	}
+	for label := range strings.SplitSeq(d, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return "", ErrInvalidDomain
+		}
+		for _, c := range label {
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
+				return "", ErrInvalidDomain
+			}
+		}
+	}
+	return d, nil
+}
