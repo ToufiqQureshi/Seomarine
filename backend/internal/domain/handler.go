@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
 )
 
 const maxBody = 32 << 10
@@ -23,6 +25,7 @@ const maxBody = 32 << 10
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
+	ProjectMarkets    ProjectMarkets
 	Plans             PaidPlans
 	WithSession       func(http.Handler) http.Handler
 	WithProjectAccess func(http.Handler) http.Handler
@@ -112,6 +115,11 @@ func handle(d Deps, fn func(http.ResponseWriter, *http.Request, string, string) 
 			httpx.WriteJSON(w, http.StatusOK, result)
 		case isInvalid:
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", invalid.Error())
+		case errors.Is(err, ErrProjectNotFound):
+			httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")
+		case errors.Is(err, ErrProjectMarketUnavailable):
+			d.Logger.ErrorContext(r.Context(), "load project market", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 		case r.Context().Err() != nil:
 			d.Logger.InfoContext(r.Context(), "domain request canceled", "err", err)
 		case errors.Is(err, dataforseo.ErrBillingIssue):
@@ -124,6 +132,31 @@ func handle(d Deps, fn func(http.ResponseWriter, *http.Request, string, string) 
 	}
 }
 
+func resolveRequestMarket(ctx context.Context, d Deps, organizationID, projectID string, req requestBase) (market.Pair, error) {
+	if d.ProjectMarkets == nil {
+		return market.Pair{}, ErrProjectMarketUnavailable
+	}
+	project, err := d.ProjectMarkets.Get(ctx, organizationID, projectID)
+	if err != nil {
+		return market.Pair{}, err
+	}
+	var request market.Pair
+	if req.LocationCode != nil {
+		request.LocationCode = *req.LocationCode
+	}
+	if req.LanguageCode != nil {
+		request.LanguageCode = strings.TrimSpace(*req.LanguageCode)
+	}
+	resolved := market.ResolveLabs(request, project)
+	if !market.IsLabsLocationCode(resolved.LocationCode) {
+		return market.Pair{}, badRequest("Domain analytics is not available for this country.")
+	}
+	if !market.IsLanguageServedForLocation(resolved.LocationCode, resolved.LanguageCode) {
+		return market.Pair{}, badRequest("Language is not available for this location.")
+	}
+	return resolved, nil
+}
+
 func overviewHandler(d Deps) http.HandlerFunc {
 	return handle(d, func(w http.ResponseWriter, r *http.Request, organizationID, projectID string) (any, error) {
 		var req requestBase
@@ -133,7 +166,11 @@ func overviewHandler(d Deps) http.HandlerFunc {
 		if err := validateBase(req); err != nil {
 			return nil, err
 		}
-		return d.Service.Overview(r.Context(), organizationID, projectID, req.Domain, Scope(req.Scope), locationCode(req), languageCode(req))
+		resolved, err := resolveRequestMarket(r.Context(), d, organizationID, projectID, req)
+		if err != nil {
+			return nil, err
+		}
+		return d.Service.Overview(r.Context(), organizationID, projectID, req.Domain, Scope(req.Scope), resolved.LocationCode, resolved.LanguageCode)
 	})
 }
 
@@ -146,7 +183,11 @@ func keywordSuggestionsHandler(d Deps) http.HandlerFunc {
 		if err := validateBase(req); err != nil {
 			return nil, err
 		}
-		return d.Service.KeywordSuggestions(r.Context(), organizationID, projectID, req.Domain, Scope(req.Scope), locationCode(req), languageCode(req))
+		resolved, err := resolveRequestMarket(r.Context(), d, organizationID, projectID, req)
+		if err != nil {
+			return nil, err
+		}
+		return d.Service.KeywordSuggestions(r.Context(), organizationID, projectID, req.Domain, Scope(req.Scope), resolved.LocationCode, resolved.LanguageCode)
 	})
 }
 
@@ -162,9 +203,13 @@ func keywordsPageHandler(d Deps) http.HandlerFunc {
 		if err := validateFilters(req.Filters); err != nil {
 			return nil, err
 		}
+		resolved, err := resolveRequestMarket(r.Context(), d, organizationID, projectID, req.requestBase)
+		if err != nil {
+			return nil, err
+		}
 		return d.Service.KeywordsPage(r.Context(), organizationID, KeywordsPageInput{
-			ProjectID: projectID, Domain: req.Domain, Scope: Scope(req.Scope), LocationCode: locationCode(req.requestBase),
-			LanguageCode: languageCode(req.requestBase), Page: req.Page, PageSize: req.PageSize,
+			ProjectID: projectID, Domain: req.Domain, Scope: Scope(req.Scope), LocationCode: resolved.LocationCode,
+			LanguageCode: resolved.LanguageCode, Page: req.Page, PageSize: req.PageSize,
 			SortMode: req.SortMode, SortOrder: req.SortOrder, Filters: req.Filters, Search: req.Search,
 		})
 	})
@@ -182,9 +227,13 @@ func pagesPageHandler(d Deps) http.HandlerFunc {
 		if err := validateFilters(req.Filters); err != nil {
 			return nil, err
 		}
+		resolved, err := resolveRequestMarket(r.Context(), d, organizationID, projectID, req.requestBase)
+		if err != nil {
+			return nil, err
+		}
 		return d.Service.PagesPage(r.Context(), organizationID, PagesPageInput{
-			ProjectID: projectID, Domain: req.Domain, Scope: Scope(req.Scope), LocationCode: locationCode(req.requestBase),
-			LanguageCode: languageCode(req.requestBase), Page: req.Page, PageSize: req.PageSize,
+			ProjectID: projectID, Domain: req.Domain, Scope: Scope(req.Scope), LocationCode: resolved.LocationCode,
+			LanguageCode: resolved.LanguageCode, Page: req.Page, PageSize: req.PageSize,
 			SortMode: req.SortMode, SortOrder: req.SortOrder, Filters: req.Filters, Search: req.Search,
 		})
 	})
@@ -203,7 +252,7 @@ func validateBase(req requestBase) error {
 	if req.LocationCode != nil && *req.LocationCode <= 0 {
 		return badRequest("locationCode must be a positive number.")
 	}
-	if req.LanguageCode != nil && (utf16Length(*req.LanguageCode) < 2 || utf16Length(*req.LanguageCode) > 8) {
+	if req.LanguageCode != nil && (utf16Length(strings.TrimSpace(*req.LanguageCode)) < 2 || utf16Length(strings.TrimSpace(*req.LanguageCode)) > 8) {
 		return badRequest("languageCode must be 2 to 8 characters.")
 	}
 	return nil
@@ -245,16 +294,4 @@ func validateFilters(f keywordFilters) error {
 	return nil
 }
 
-func locationCode(req requestBase) int {
-	if req.LocationCode == nil {
-		return defaultLocationCode
-	}
-	return *req.LocationCode
-}
-func languageCode(req requestBase) string {
-	if req.LanguageCode == nil || strings.TrimSpace(*req.LanguageCode) == "" {
-		return defaultLanguageCode
-	}
-	return strings.TrimSpace(*req.LanguageCode)
-}
 func utf16Length(value string) int { return len(utf16.Encode([]rune(value))) }

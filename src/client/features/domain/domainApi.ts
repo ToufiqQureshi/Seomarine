@@ -66,11 +66,12 @@ const pagesPageSchema = z.object({
   fetchedAt: z.string(),
 });
 
-type Market = { locationCode: number; languageCode: string };
-type DomainTarget = Market & {
+type DomainTarget = {
   projectId: string;
   domain: string;
   scope?: string;
+  locationCode?: number;
+  languageCode?: string;
 };
 type DomainPageRequest = DomainTarget & {
   page: number;

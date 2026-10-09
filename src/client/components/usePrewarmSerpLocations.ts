@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { prewarmSerpLocations } from "@/serverFunctions/serp-locations";
+import { prewarmSerpLocations } from "@/client/features/keywords/keywordsApi";
 
 /**
  * Warm the server-side location cache before the first keystroke, so the
@@ -10,7 +10,7 @@ import { prewarmSerpLocations } from "@/serverFunctions/serp-locations";
 export function usePrewarmSerpLocations(countryCode: string, enabled: boolean) {
   useQuery({
     queryKey: ["serp-locations-prewarm", countryCode],
-    queryFn: () => prewarmSerpLocations({ data: { countryCode } }),
+    queryFn: () => prewarmSerpLocations({ countryCode }),
     enabled,
     staleTime: Infinity,
     retry: false,

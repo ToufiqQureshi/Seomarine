@@ -108,7 +108,7 @@ func (m *memoryStore) CompleteAudit(_ context.Context, auditID, _ string, pagesC
 	return nil
 }
 
-func (m *memoryStore) FailAudit(_ context.Context, auditID, _ string, info ErrorInfo, failedPhase string) error {
+func (m *memoryStore) FailAudit(_ context.Context, auditID, _ string, info ErrorInfo, _ string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	audit, ok := m.audits[auditID]

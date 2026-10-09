@@ -19,6 +19,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -53,6 +54,10 @@ type Deps struct {
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
 	Domain *domain.Service
+	// ProjectMarkets reads the authorized project's default market for domain lookups.
+	ProjectMarkets domain.ProjectMarkets
+	// Locations serves the authenticated city and region picker.
+	Locations *keywords.LocationService
 	// Audit is nil when the audit engine is not configured; its routes then
 	// answer 503.
 	Audit *audit.Service
@@ -152,9 +157,10 @@ func NewHandler(d Deps) http.Handler {
 		domainPlans = d.Billing
 	}
 	domain.Mount(mux, domain.Deps{
-		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, WithSession: withSession,
+		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	keywords.MountLocations(mux, keywords.LocationDeps{Logger: d.Logger, Service: d.Locations, WithSession: withSession})
 	audit.Mount(mux, audit.Deps{
 		Logger: d.Logger, Service: d.Audit, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

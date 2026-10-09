@@ -4,7 +4,7 @@ import { dataforseoGet } from "@/server/lib/dataforseo/core";
 import { assertOk } from "@/server/lib/dataforseo/envelope";
 import { formatLocationLabel } from "@/shared/keyword-locations";
 
-export interface SerpLocationResult {
+interface SerpLocationResult {
   locationCode: number;
   locationName: string;
   locationType: string;
