@@ -319,11 +319,11 @@ func handle(d Deps, fn func(http.ResponseWriter, *http.Request, string) (any, er
 			}
 		}
 		out, err := fn(w, r, org)
-		var invalid inputError
+		invalid, isInvalid := errors.AsType[inputError](err)
 		switch {
 		case err == nil:
 			httpx.WriteJSON(w, http.StatusOK, out)
-		case errors.As(err, &invalid):
+		case isInvalid:
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", invalid.Error())
 		case r.Context().Err() != nil:
 			d.Logger.InfoContext(r.Context(), "backlinks request canceled", "err", err)

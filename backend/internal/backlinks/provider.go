@@ -147,14 +147,11 @@ func (p provider) rows(ctx context.Context, org string, target Target, page page
 	}
 	return decodeList[providerBacklink](pathRows, results)
 }
-func (p provider) domains(ctx context.Context, org string, target Target, page pageInput, filters []any, hideSpam bool) ([]providerDomain, *int, error) {
+func (p provider) domains(ctx context.Context, org string, target Target, page pageInput, filters []any) ([]providerDomain, *int, error) {
 	payload := commonTarget(target)
 	payload["limit"] = page.PageSize
 	payload["offset"] = (page.Page - 1) * page.PageSize
 	payload["order_by"] = []string{page.Sort}
-	if hideSpam {
-		filters = appendFilter(filters, []any{"backlinks_spam_score", "<=", 40})
-	}
 	if len(filters) > 0 {
 		payload["filters"] = filters
 	}

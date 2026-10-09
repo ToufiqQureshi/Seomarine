@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -117,7 +116,6 @@ func (s *Service) Overview(ctx context.Context, org string, in lookupInput) (Ove
 	result := Overview{Target: target.APITarget, DisplayTarget: target.Display, Scope: target.Scope, Trends: []Trend{}, NewLostTrends: []NewLostTrend{}, FetchedAt: timestamp(now)}
 	if target.Scope == ScopeSubfolder {
 		filters := scopeFilters("url_to", target)
-		// Sequential because provider-side usage/balance can be checked per task.
 		_, allTotal, err := s.provider.rows(ctx, org, target, pageInput{Page: 1, PageSize: 1, Sort: "rank,desc", Mode: "as_is"}, filters, false)
 		if err != nil {
 			return Overview{}, err
@@ -131,24 +129,20 @@ func (s *Service) Overview(ctx context.Context, org string, in lookupInput) (Ove
 		s.writeCache(ctx, key, result)
 		return result, nil
 	}
-	var summary providerSummary
+	// Sequential: a billing or provider error on the first task must stop the
+	// second one, because failed provider tasks are billed.
+	summary, err := s.provider.summary(ctx, org, target)
+	if err != nil {
+		return Overview{}, err
+	}
 	var history []providerHistory
-	var summaryErr, historyErr error
-	var calls sync.WaitGroup
-	calls.Go(func() { summary, summaryErr = s.provider.summary(ctx, org, target) })
 	if target.Scope != ScopeExactURL {
 		dateTo := now.Truncate(24 * time.Hour).Add(-24 * time.Hour)
 		dateFrom := dateTo.AddDate(-1, 0, 0)
-		calls.Go(func() {
-			history, historyErr = s.provider.history(ctx, org, target.APITarget, dateFrom.Format("2006-01-02"), dateTo.Format("2006-01-02"))
-		})
-	}
-	calls.Wait()
-	if summaryErr != nil {
-		return Overview{}, summaryErr
-	}
-	if historyErr != nil {
-		return Overview{}, historyErr
+		history, err = s.provider.history(ctx, org, target.APITarget, dateFrom.Format("2006-01-02"), dateTo.Format("2006-01-02"))
+		if err != nil {
+			return Overview{}, err
+		}
 	}
 	result.Summary = mapSummary(summary)
 	if target.Scope != ScopeExactURL {
@@ -228,7 +222,7 @@ func (s *Service) Domains(ctx context.Context, org string, in lookupInput, page 
 	if countFilters(expr) > maxFilterConditions {
 		return Page[ReferringDomainRow]{}, inputError("Too many filter conditions (maximum 8).")
 	}
-	items, total, err := s.provider.domains(ctx, org, target, page, expr, false)
+	items, total, err := s.provider.domains(ctx, org, target, page, expr)
 	if err != nil {
 		return Page[ReferringDomainRow]{}, err
 	}

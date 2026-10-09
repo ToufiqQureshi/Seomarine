@@ -337,3 +337,67 @@ func TestFilterConditionsCountNestedGroups(t *testing.T) {
 
 //go:fix inline
 func floatPtr(v float64) *float64 { return new(v) }
+
+func providerFailure(w http.ResponseWriter, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{map[string]any{"status_code": code, "status_message": "task failed"}}})
+}
+
+func TestOverviewFailsWhenHistoryFails(t *testing.T) {
+	t.Parallel()
+	server := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/summary/live") {
+			providerOK(w, r.URL.Path, map[string]any{"backlinks": 90})
+			return
+		}
+		providerFailure(w, 50000)
+	})
+	svc := newService(testClient(t, server, &usageRecorder{}), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Now)
+	if _, err := svc.Overview(context.Background(), "org", lookupInput{Target: "example.com", Scope: string(ScopeDomain)}); err == nil {
+		t.Fatal("Overview succeeded although the history task failed")
+	}
+}
+
+func TestOverviewStopsAfterBillingIssue(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	server := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		providerFailure(w, 40210)
+	})
+	svc := newService(testClient(t, server, &usageRecorder{}), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Now)
+	_, err := svc.Overview(context.Background(), "org", lookupInput{Target: "example.com", Scope: string(ScopeDomain)})
+	if !errors.Is(err, dataforseo.ErrBillingIssue) {
+		t.Fatalf("error = %v, want billing issue", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("provider calls = %d, want 1: a billing failure must not send (and pay for) the history task", got)
+	}
+}
+
+func TestRowsHideSpamControlsProviderFilter(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		hideSpam bool
+	}{{"hidden", true}, {"shown", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var body atomic.Value
+			server := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				raw, _ := io.ReadAll(r.Body)
+				body.Store(string(raw))
+				providerOK(w, r.URL.Path, map[string]any{"items": []any{}, "total_count": 0})
+			})
+			svc := newService(testClient(t, server, &usageRecorder{}), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Now)
+			page := pageInput{Page: 1, PageSize: 50, Sort: "rank,desc", Mode: "as_is"}
+			if _, err := svc.Rows(context.Background(), "org", lookupInput{Target: "example.com", Scope: string(ScopeDomain)}, page, rowsFilters{}, tc.hideSpam); err != nil {
+				t.Fatal(err)
+			}
+			got, _ := body.Load().(string)
+			if has := strings.Contains(got, "backlink_spam_score"); has != tc.hideSpam {
+				t.Fatalf("spam filter present = %v, want %v; request body: %s", has, tc.hideSpam, got)
+			}
+		})
+	}
+}
