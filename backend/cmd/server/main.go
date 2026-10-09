@@ -27,6 +27,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
@@ -150,6 +151,10 @@ func run(logger *slog.Logger) error {
 			PublicOrigin: cfg.PublicURL.String(),
 		}
 	}
+	var ga4Svc *ga4.Service
+	if googleOAuthSvc != nil {
+		ga4Svc = &ga4.Service{Connections: ga4.ConnectionRepository{DB: db}, Google: &google.APIClient{Tokens: googleOAuthSvc.Tokens}}
+	}
 
 	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
 	if err != nil {
@@ -176,6 +181,7 @@ func run(logger *slog.Logger) error {
 			Domain:            domainSvc,
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
+			GA4:               ga4Svc,
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
