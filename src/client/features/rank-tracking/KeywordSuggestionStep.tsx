@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { getDomainKeywordSuggestions } from "@/client/features/domain/domainApi";
-import { useDomainMarket } from "@/client/features/domain/domainMarket";
 import { addTrackingKeywords } from "@/serverFunctions/rank-tracking";
 import { isLabsLocationCode } from "@/client/features/keywords/locations";
 import { Spinner } from "@/client/components/Spinner";
@@ -168,18 +167,15 @@ export function KeywordSuggestionStep({
   // Ranked-keyword suggestions are Labs-backed; countries served from Google
   // Ads keyword data (e.g. Iceland) have no ranking data to suggest from.
   // The tracker's language is deliberately not sent — rank tracking can pair
-  // any SERP language with any country, and the client resolves a Labs-served
-  // language for this country (resolveLabsMarket in useDomainMarket).
+  // any SERP language with any country; the domain API resolves a Labs-served
+  // language for this country on the server.
   const labsSupported = isLabsLocationCode(locationCode);
-  const market = useDomainMarket(projectId, locationCode);
   const suggestionsQuery = useQuery({
     queryKey: ["domainKeywordSuggestions", projectId, domain, locationCode],
-    queryFn: market
-      ? () =>
-          getDomainKeywordSuggestions({
-            data: { projectId, domain, ...market },
-          })
-      : skipToken,
+    queryFn: () =>
+      getDomainKeywordSuggestions({
+        data: { projectId, domain, locationCode },
+      }),
     enabled: labsSupported,
   });
 

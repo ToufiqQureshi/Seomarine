@@ -10,7 +10,8 @@
 
 ## Deliberate differences from TypeScript
 
-- The client sends the resolved market (`domainMarket.ts`); see the package README.
+- The Go handler reads the project market from the organization-scoped project row;
+  React sends only an optional location override.
 - Scope filter slots are counted from the clauses instead of hard-coded, and a
   test pins them to the UI budget.
 - Keyword rows keep the ranking `url` and `relativeUrl` (the table links to them).

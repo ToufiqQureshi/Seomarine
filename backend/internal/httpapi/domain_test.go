@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -45,9 +46,20 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	exec(ctx, t, pool, `INSERT INTO "user" (id,name,email) VALUES ($1,'Asha',$1 || '@example.com'),($2,'Stranger',$2 || '@example.com')`, userID, stranger)
 	exec(ctx, t, pool, `INSERT INTO organization (id,name,slug,created_at) VALUES ($1,'Own',$1,now()),($2,'Other',$2,now())`, ownOrg, otherOrg)
 	exec(ctx, t, pool, `INSERT INTO member (id,organization_id,user_id,created_at) VALUES ($1,$2,$3,now()),($4,$5,$6,now())`, "domain-member-"+id, ownOrg, userID, "domain-member-stranger-"+id, otherOrg, stranger)
-	exec(ctx, t, pool, `INSERT INTO projects (id,organization_id,name) VALUES ($1,$3,'Own'),($2,$4,'Other')`, ownProject, otherProject, ownOrg, otherOrg)
+	exec(ctx, t, pool, `INSERT INTO projects (id,organization_id,name,location_code,language_code) VALUES ($1,$3,'Own',2356,'hi'),($2,$4,'Other',2124,'fr')`, ownProject, otherProject, ownOrg, otherOrg)
+	if _, err := (domain.ProjectMarketRepository{DB: pool}).Get(ctx, ownOrg, otherProject); !errors.Is(err, domain.ErrProjectNotFound) {
+		t.Fatalf("org A read org B market: %v", err)
+	}
 	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at) VALUES ($1,$2,$3,now()+interval '1 hour')`, "domain-session-"+id, token, userID)
+	providerMarkets := make(chan map[string]any, 1)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var tasks []map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&tasks); err != nil {
+			t.Errorf("decode provider request: %v", err)
+		}
+		if len(tasks) == 1 {
+			providerMarkets <- tasks[0]
+		}
 		task := map[string]any{"status_code": 20000, "status_message": "Ok.", "cost": 0.01, "path": strings.Split(strings.Trim(r.URL.Path, "/"), "/"), "result": []any{map[string]any{"items": []any{map[string]any{"metrics": map[string]any{"organic": map[string]any{"etv": 100.0, "count": 10.0}}}}}}}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{task}}); err != nil {
@@ -63,7 +75,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret), Domain: domain.NewService(client, rdb, discardLogger), Site: pages, Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"}})
+	h := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret), Domain: domain.NewService(client, rdb, discardLogger), ProjectMarkets: domain.ProjectMarketRepository{DB: pool}, Site: pages, Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"}})
 	lookup := func(project string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/domain/overview", strings.NewReader(`{"domain":"example.com","scope":"domain"}`))
 		if signed {
@@ -89,6 +101,10 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	rec := lookup(ownProject, true)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("lookup status=%d body=%s", rec.Code, rec.Body)
+	}
+	providerMarket := <-providerMarkets
+	if providerMarket["location_code"] != float64(2356) || providerMarket["language_code"] != "hi" {
+		t.Errorf("provider market = %v, want authorized project's India/Hindi", providerMarket)
 	}
 	if got := usage(ownOrg); got != 1 {
 		t.Errorf("authorized organization usage=%d, want 1", got)

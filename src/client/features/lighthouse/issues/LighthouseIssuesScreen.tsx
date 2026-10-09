@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   exportAuditLighthouseIssues,
   getAuditLighthouseIssues,
-} from "@/serverFunctions/lighthouse";
+} from "@/client/features/audit/auditApi";
 import { downloadFile } from "@/client/lib/download";
 import { QueryError } from "@/client/components/QueryState";
 import { TableCard } from "@/client/components/ui/table";

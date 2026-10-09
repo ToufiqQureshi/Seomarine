@@ -1,6 +1,5 @@
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getDomainPagesPage } from "@/client/features/domain/domainApi";
-import { useDomainMarket } from "@/client/features/domain/domainMarket";
 import {
   toNumberOrUndefined,
   toPageSortMode,
@@ -27,7 +26,6 @@ type DomainPagesQueryInput = {
 
 export function useDomainPagesQuery(input: DomainPagesQueryInput) {
   const pageSortMode = toPageSortMode(input.sortMode);
-  const market = useDomainMarket(input.projectId, input.locationCode);
   const filters = {
     include: input.appliedFilters.include || undefined,
     exclude: input.appliedFilters.exclude || undefined,
@@ -50,22 +48,20 @@ export function useDomainPagesQuery(input: DomainPagesQueryInput) {
       input.sortOrder,
       input.appliedFilters,
     ],
-    queryFn: market
-      ? () =>
-          getDomainPagesPage({
-            data: {
-              projectId: input.projectId,
-              domain: input.domain,
-              scope: input.scope,
-              ...market,
-              page: input.page,
-              pageSize: input.pageSize,
-              sortMode: pageSortMode,
-              sortOrder: input.sortOrder,
-              filters,
-            },
-          })
-      : skipToken,
+    queryFn: () =>
+      getDomainPagesPage({
+        data: {
+          projectId: input.projectId,
+          domain: input.domain,
+          scope: input.scope,
+          locationCode: input.locationCode,
+          page: input.page,
+          pageSize: input.pageSize,
+          sortMode: pageSortMode,
+          sortOrder: input.sortOrder,
+          filters,
+        },
+      }),
     staleTime: 60_000,
   });
 }

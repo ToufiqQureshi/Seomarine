@@ -12,9 +12,6 @@ import {
 } from "@/client/features/keywords/hooks/useKeywordResearchData";
 import { getBacklinksOverview } from "@/client/features/backlinks/backlinksApi";
 import { getDomainOverview } from "@/client/features/domain/domainApi";
-import { resolveDomainMarket } from "@/client/features/domain/domainMarket";
-import type { ProjectMarket } from "@/client/features/projects/types";
-import { useProjectMarket } from "@/client/features/projects/useProjectMarket";
 
 type Props = {
   activeTabId: string | null;
@@ -110,8 +107,7 @@ function SearchTabStatus({
   active: boolean;
   onViewed: (tabId: string, when?: number) => void;
 }) {
-  const projectMarket = useProjectMarket(projectId);
-  const config = getSearchTabQueryConfig(projectId, tab, projectMarket);
+  const config = getSearchTabQueryConfig(projectId, tab);
   const query = useQuery({
     queryKey: config.queryKey,
     queryFn: config.queryFn,
@@ -172,7 +168,6 @@ function SearchTabStatusIndicator({
 function getSearchTabQueryConfig(
   projectId: string,
   tab: SearchTab,
-  projectMarket: ProjectMarket | undefined,
 ): SearchTabQueryConfig {
   if (tab.input.type === "backlinks") {
     const input = tab.input;
@@ -200,13 +195,12 @@ function getSearchTabQueryConfig(
         input.locationCode,
       ],
       queryFn: () => {
-        if (!projectMarket) throw new Error("Project market is not loaded.");
         return getDomainOverview({
           data: {
             projectId,
             domain: trimmedDomain,
             scope: input.scope,
-            ...resolveDomainMarket(projectMarket, input.locationCode),
+            locationCode: input.locationCode,
           },
         });
       },

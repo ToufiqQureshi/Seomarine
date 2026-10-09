@@ -225,7 +225,7 @@ function buildPerformanceColumns({
       id: "issues",
       header: () => "Issues",
       cell: ({ row }) =>
-        row.original.r2Key && !isLighthouseFailure(row.original) ? (
+        row.original.hasPayload && !isLighthouseFailure(row.original) ? (
           <Button
             size="xs"
             nativeButton={false}

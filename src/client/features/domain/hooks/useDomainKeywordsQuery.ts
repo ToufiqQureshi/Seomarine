@@ -1,6 +1,5 @@
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getDomainKeywordsPage } from "@/client/features/domain/domainApi";
-import { useDomainMarket } from "@/client/features/domain/domainMarket";
 import { toNumberOrUndefined } from "@/client/features/domain/utils";
 import type { ResearchScope } from "@/shared/researchScope";
 import type {
@@ -43,7 +42,6 @@ function toFiltersPayload(
 
 export function useDomainKeywordsQuery(input: DomainKeywordsQueryInput) {
   const filtersPayload = toFiltersPayload(input.appliedFilters);
-  const market = useDomainMarket(input.projectId, input.locationCode);
   return useQuery({
     enabled: input.enabled && Boolean(input.domain),
     queryKey: [
@@ -58,22 +56,20 @@ export function useDomainKeywordsQuery(input: DomainKeywordsQueryInput) {
       input.sortOrder,
       filtersPayload,
     ],
-    queryFn: market
-      ? () =>
-          getDomainKeywordsPage({
-            data: {
-              projectId: input.projectId,
-              domain: input.domain,
-              scope: input.scope,
-              ...market,
-              page: input.page,
-              pageSize: input.pageSize,
-              sortMode: input.sortMode,
-              sortOrder: input.sortOrder,
-              filters: filtersPayload,
-            },
-          })
-      : skipToken,
+    queryFn: () =>
+      getDomainKeywordsPage({
+        data: {
+          projectId: input.projectId,
+          domain: input.domain,
+          scope: input.scope,
+          locationCode: input.locationCode,
+          page: input.page,
+          pageSize: input.pageSize,
+          sortMode: input.sortMode,
+          sortOrder: input.sortOrder,
+          filters: filtersPayload,
+        },
+      }),
     staleTime: 60_000,
   });
 }

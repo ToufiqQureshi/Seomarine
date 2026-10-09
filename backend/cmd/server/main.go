@@ -14,9 +14,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
+	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
@@ -26,8 +29,10 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
+	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
@@ -95,14 +100,18 @@ func run(logger *slog.Logger) error {
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service
 	var domainSvc *domain.Service
+	var locationSvc *keywords.LocationService
+	var dfClient *dataforseo.Client
 	if cfg.DataForSEOAPIKey != "" {
 		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
 		if err != nil {
 			return fmt.Errorf("create DataForSEO client: %w", err)
 		}
+		dfClient = client
 		aiSearchSvc = aisearch.NewService(client, rdb, logger)
 		backlinksSvc = backlinks.NewService(client, rdb, logger)
 		domainSvc = domain.NewService(client, rdb, logger)
+		locationSvc = keywords.NewLocationService(client, rdb, logger)
 	} else {
 		logger.Warn("DATAFORSEO_API_KEY not set; AI search, backlinks and domain endpoints answer 503")
 	}
@@ -137,6 +146,11 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
+	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient)
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -153,6 +167,9 @@ func run(logger *slog.Logger) error {
 			Domain:            domainSvc,
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
+			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
+			Locations:         locationSvc,
+			Audit:             auditSvc,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
 		}),
@@ -184,4 +201,59 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("serve: %w", err)
 	}
 	return nil
+}
+
+// buildAuditService wires the audit engine: the SSRF-guarded crawler, the
+// Lighthouse provider, the Postgres-backed job scheduler and the background
+// worker that runs audits.
+func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client) (*audit.Service, error) {
+	repository := audit.NewRepository(db)
+	progress := audit.NewProgress(rdb)
+	guard := audit.NewGuard()
+	crawler := audit.NewCrawler(audit.CrawlerOptions{Guard: guard})
+
+	var lighthouseProvider audit.LighthouseProvider
+	if dfClient != nil {
+		lighthouseProvider = audit.NewDataForseoLighthouseProvider(dfClient)
+	}
+
+	queue, err := jobs.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("create audit job queue: %w", err)
+	}
+
+	// Paid features gate on the plan only when billing is configured; a
+	// self-hosted deployment without billing runs audits ungated.
+	var plans audit.PaidPlans
+	if billingSvc != nil {
+		plans = billingSvc
+	}
+
+	service := audit.NewService(audit.ServiceConfig{
+		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
+		Lighthouse: lighthouseProvider, Scheduler: audit.NewQueueScheduler(queue), Plans: plans,
+		Hosted: billingSvc != nil, Env: os.Getenv, Logger: logger,
+	})
+
+	startAuditWorker(ctx, logger, queue, repository, progress, guard, crawler, lighthouseProvider)
+	return service, nil
+}
+
+// startAuditWorker consumes audits from the jobs queue until ctx ends. The
+// worker's jobs are at-least-once, so a crashed worker's audit is retried and
+// its deterministic row ids keep the retry idempotent.
+func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider) {
+	runner := audit.NewRunner(audit.RunnerConfig{
+		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
+		Lighthouse: lighthouseProvider, Logger: logger,
+	})
+	worker := jobs.Worker{
+		Queue: queue, QueueName: audit.AuditQueueName, Handle: audit.RunnerHandler(runner),
+		Lease: time.Minute, PollInterval: 2 * time.Second,
+	}
+	go func() {
+		if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
+			logger.Error("audit worker stopped", "err", err)
+		}
+	}()
 }

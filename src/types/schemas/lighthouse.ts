@@ -4,11 +4,6 @@ import {
   LIGHTHOUSE_CATEGORY_TABS,
 } from "@/shared/lighthouse";
 
-export const lighthouseAuditIssueSchema = z.object({
-  projectId: z.string().min(1, "Project id is required"),
-  resultId: z.string().min(1, "Result id is required"),
-});
-
 export const lighthouseAuditExportSchema = z.object({
   projectId: z.string().min(1, "Project id is required"),
   resultId: z.string().min(1, "Result id is required"),
