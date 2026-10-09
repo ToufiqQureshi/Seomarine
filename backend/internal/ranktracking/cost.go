@@ -1,3 +1,5 @@
+// Package ranktracking holds the rank-tracking rules ported from the legacy app:
+// check scheduling, provider cost estimates and keyword normalisation.
 package ranktracking
 
 import (

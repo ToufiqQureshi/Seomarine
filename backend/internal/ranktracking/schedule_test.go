@@ -13,8 +13,8 @@ func newScheduler() Scheduler {
 
 func ptr[T any](v T) *T { return &v }
 
-func utc(y int, m time.Month, d, h, min int) time.Time {
-	return time.Date(y, m, d, h, min, 0, 0, time.UTC)
+func utc(y int, m time.Month, d, h, minute int) time.Time {
+	return time.Date(y, m, d, h, minute, 0, 0, time.UTC)
 }
 
 func mustZone(t *testing.T, name string) *time.Location {
