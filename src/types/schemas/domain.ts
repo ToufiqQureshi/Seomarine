@@ -87,8 +87,6 @@ const domainKeywordsFiltersSchema = z.object({
 
 export type DomainKeywordsFilters = z.infer<typeof domainKeywordsFiltersSchema>;
 
-const domainPagesSortModes = ["traffic", "keywords"] as const;
-
 export const optionalSearchNumberParam = z.coerce
   .number()
   .optional()
