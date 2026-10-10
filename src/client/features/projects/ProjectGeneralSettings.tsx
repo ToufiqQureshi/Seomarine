@@ -13,7 +13,10 @@ import {
   clearLastProjectId,
   getLastProjectId,
 } from "@/client/lib/active-project";
-import { archiveProject, updateProject } from "@/serverFunctions/projects";
+import {
+  archiveProject,
+  updateProject,
+} from "@/client/features/projects/projectApi";
 import type { ProjectSummary } from "./types";
 
 export function ProjectGeneralSettings({ projectId }: { projectId: string }) {

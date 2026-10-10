@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   getArchivedProjects,
   restoreProject,
-} from "@/serverFunctions/projects";
+} from "@/client/features/projects/projectApi";
 import { PageHeader, SectionHeader } from "@/client/components/PageHeader";
 import { QueryState } from "@/client/components/QueryState";
 import { Badge } from "@/client/components/ui/badge";
