@@ -54,7 +54,7 @@ function createAuth() {
             // No sendInvitationEmail here on purpose: better-auth swallows a
             // throw from that callback, so a failed send would still read as
             // "sent" in the UI. The invite email is sent (and rate limited)
-            // by the sendTeamInvitation server function instead, which fails
+            // by the Go team API instead, which fails
             // the call visibly. Side effect worth knowing: hitting the raw
             // /api/auth/organization/invite-member endpoint creates a pending
             // invitation but emails nobody.

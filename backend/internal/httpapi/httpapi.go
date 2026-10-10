@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
@@ -19,6 +20,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -34,6 +36,8 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/team"
+	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
 
 // Pinger reports whether a dependency is reachable. *pgxpool.Pool satisfies it.
@@ -64,6 +68,8 @@ type Deps struct {
 	// AISearch is nil when no DataForSEO key is configured; its routes then
 	// answer 503.
 	AISearch *aisearch.Service
+	// Ahrefs serves optional, free domain-rating lookups.
+	Ahrefs *ahrefs.Service
 	// Backlinks is nil when no DataForSEO key is configured.
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
@@ -104,16 +110,23 @@ type Deps struct {
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
-	Onboarding *onboarding.Service
+	Onboarding     *onboarding.Service
+	WorkspaceMerge *workspace.Service
+	Team           *team.Service
+	CrawlerAccess  *crawleraccess.Service
 	// Reports owns project report documents, templates, and sharing.
 	Reports              *reports.Service
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
+	AutumnSecretKey      string
+	AuthMode             string
 	HostedMode           bool
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
 	MCP *mcp.Deps
+	// HealthStatus reports safe self-host setup checks on /api/health.
+	HealthStatus http.Handler
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -147,6 +160,10 @@ const (
 func NewHandler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 
+	if d.HealthStatus != nil {
+		mux.Handle("GET /api/health", d.HealthStatus)
+	}
+
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -172,6 +189,10 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
+	auth.MountOrganization(mux, d.Auth, withSession)
+	workspace.Mount(mux, d.WorkspaceMerge, withSession)
+	team.Mount(mux, d.Team, withSession)
+	crawleraccess.Mount(mux, d.CrawlerAccess, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
 	})))
@@ -203,7 +224,7 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession})
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
@@ -226,6 +247,9 @@ func NewHandler(d Deps) http.Handler {
 	backlinks.Mount(mux, backlinks.Deps{
 		Logger: d.Logger, Service: d.Backlinks, Plans: backlinkPlans, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	ahrefs.Mount(mux, d.Ahrefs, withSession, func(next http.Handler) http.Handler {
+		return requireProjectAccess(d.Logger, d.Auth, next)
 	})
 	var domainPlans domain.PaidPlans
 	if d.Billing != nil {

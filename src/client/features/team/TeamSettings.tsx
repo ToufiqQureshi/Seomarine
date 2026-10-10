@@ -33,7 +33,7 @@ import { TransferOwnershipModal } from "@/client/features/team/TransferOwnership
 import { captureClientEvent } from "@/client/lib/posthog";
 import { authClient, useSession } from "@/lib/auth-client";
 import { hasOrgPermission } from "@/lib/org-permissions";
-import { getTeam, sendTeamInvitation } from "@/serverFunctions/organization";
+import { getTeam, sendTeamInvitation } from "@/client/features/team/teamApi";
 
 const RESEND_KEY = ["team", "resend-invitation"];
 const REMOVE_KEY = ["team", "remove-member"];

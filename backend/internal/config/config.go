@@ -35,6 +35,8 @@ type Config struct {
 	// PublicURL is the site's public origin, e.g. https://seomarine.com. The
 	// landing and pricing pages build canonical and Open Graph URLs from it.
 	PublicURL *url.URL
+	// BetterAuthURL is the hosted app origin used for invitation links.
+	BetterAuthURL *url.URL
 	// Razorpay is the payment configuration, nil when billing is off.
 	Razorpay *Razorpay
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
@@ -42,6 +44,15 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey enables the self-hosted SAM agent.
 	OpenRouterAPIKey string
+	// AutumnSecretKey enables hosted billing-usage event history.
+	AutumnSecretKey string
+	// Loops configures hosted teammate invitation email.
+	LoopsAPIKey               string
+	LoopsInvitationTemplateID string
+	// Self-host setup values are shown only as configuration status, never as secrets.
+	TeamDomain       string
+	PolicyAudience   string
+	ContextAPIKey    string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -96,6 +107,15 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, errors.New("PUBLIC_URL must be an http or https origin such as https://seomarine.com, without a path")
 	}
 	public.Path = ""
+	betterAuthURL := public
+	if raw := strings.TrimSpace(getenv("BETTER_AUTH_URL")); raw != "" {
+		parsed, err := url.Parse(raw)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
+			return Config{}, errors.New("BETTER_AUTH_URL must be an absolute http or https origin")
+		}
+		parsed.Path = ""
+		betterAuthURL = parsed
+	}
 
 	rzp, err := loadRazorpay(getenv)
 	if err != nil {
@@ -125,20 +145,27 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		AuthMode:                 authMode,
-		Addr:                     fmt.Sprintf(":%d", port),
-		DatabaseURL:              databaseURL,
-		RedisURL:                 redisURL,
-		BetterAuthSecret:         secret,
-		GoogleClientID:           strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret:       strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleTokenEncryptionKey: strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		UpstreamAppURL:           upstream,
-		PublicURL:                public,
-		Razorpay:                 rzp,
-		DataForSEOAPIKey:         strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
-		OpenRouterAPIKey:         strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
-		TrustedProxyCIDRs:        trusted,
+		AuthMode:                  authMode,
+		Addr:                      fmt.Sprintf(":%d", port),
+		DatabaseURL:               databaseURL,
+		RedisURL:                  redisURL,
+		BetterAuthSecret:          secret,
+		GoogleClientID:            strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:        strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey:  strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		UpstreamAppURL:            upstream,
+		PublicURL:                 public,
+		BetterAuthURL:             betterAuthURL,
+		Razorpay:                  rzp,
+		DataForSEOAPIKey:          strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
+		OpenRouterAPIKey:          strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		AutumnSecretKey:           strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
+		LoopsAPIKey:               strings.TrimSpace(getenv("LOOPS_API_KEY")),
+		LoopsInvitationTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		TeamDomain:                strings.TrimSpace(getenv("TEAM_DOMAIN")),
+		PolicyAudience:            strings.TrimSpace(getenv("POLICY_AUD")),
+		ContextAPIKey:             strings.TrimSpace(getenv("CONTEXT_API_KEY")),
+		TrustedProxyCIDRs:         trusted,
 	}, nil
 }
 

@@ -14,9 +14,11 @@ const maxWebhookBody = 256 << 10
 
 // Deps contains billing services and the root router's authentication middleware.
 type Deps struct {
-	Logger      *slog.Logger
-	Service     *Service
-	WithSession func(http.Handler) http.Handler
+	Logger          *slog.Logger
+	Service         *Service
+	WithSession     func(http.Handler) http.Handler
+	AutumnSecretKey string
+	Hosted          bool
 }
 
 // Mount registers billing routes on mux.
@@ -24,6 +26,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /webhooks/razorpay", webhookHandler(d.Logger, d.Service))
 	mux.Handle("GET /api/v1/billing/status", d.WithSession(statusHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/billing/checkout", d.WithSession(checkoutHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/billing/usage-events", d.WithSession(usageEventsHandler(d.Logger, d.AutumnSecretKey, d.Hosted)))
 }
 
 // statusHandler returns the plan of the signed-in user's active organization.

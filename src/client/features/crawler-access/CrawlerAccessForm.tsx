@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useAppForm } from "@/client/components/form/useAppForm";
-import { saveCrawlerCredential } from "@/serverFunctions/crawlerAccess";
+import { saveCrawlerCredential } from "@/client/features/crawler-access/crawlerAccessApi";
 import {
   isCrawlerAccessExpired,
   parseSignatureExpiry,

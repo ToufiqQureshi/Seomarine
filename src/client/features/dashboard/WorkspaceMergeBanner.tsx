@@ -6,7 +6,7 @@ import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import {
   getWorkspaceMergeStatus,
   mergeLegacyWorkspaces,
-} from "@/serverFunctions/workspace";
+} from "@/client/features/dashboard/workspaceApi";
 
 // Shown on self-hosted Cloudflare Access deployments that still have per-user
 // workspaces from before the shared workspace existed. The server decides
