@@ -13,6 +13,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 )
@@ -47,6 +48,7 @@ type Deps struct {
 	Locations     *keywords.LocationService
 	SavedKeywords *keywords.SavedService
 	RankTracking  *ranktracking.Service
+	GSC           *gsc.Service
 }
 
 // Mount registers the MCP dispatcher on mux.
