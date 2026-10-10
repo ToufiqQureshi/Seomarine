@@ -1,8 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-
-// The hook module pulls in the server functions it calls, whose graph reaches
-// Workers-only bindings that don't resolve outside workerd.
-vi.mock("cloudflare:workers", () => ({ env: {} }));
+import { describe, expect, it } from "vitest";
 
 import {
   buildKeywordResearchRequest,

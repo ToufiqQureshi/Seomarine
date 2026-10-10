@@ -5,7 +5,7 @@ import { captureClientEvent } from "@/client/lib/posthog";
 import { LOCATIONS } from "@/client/features/keywords/utils";
 import { formatLocationLabel } from "@/shared/keyword-locations";
 import { parseKeywordInput } from "@/client/features/keywords/state/keywordControllerActions";
-import { researchKeywords } from "@/serverFunctions/keywords";
+import { getKeywordResearch } from "@/client/features/keywords/keywordsApi";
 import type {
   KeywordMode,
   ResultLimit,
@@ -86,7 +86,7 @@ export function buildKeywordResearchQueryKey(
 }
 
 export function keywordResearchQueryFn(request: KeywordResearchRequest) {
-  return researchKeywords({
+  return getKeywordResearch({
     data: {
       projectId: request.projectId,
       keywords: request.keywords,

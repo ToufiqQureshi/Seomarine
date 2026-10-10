@@ -53,7 +53,7 @@ import {
   refreshSavedKeywordMetrics,
   removeSavedKeywords,
   updateSavedKeywordTags,
-} from "@/serverFunctions/keywords";
+} from "@/client/features/keywords/keywordsApi";
 import type { SavedKeywordTag } from "@/types/keywords";
 import {
   savedKeywordsSearchSchema,
@@ -194,7 +194,7 @@ function SavedKeywordsPage() {
 
   const savedKeywordsQuery = useQuery({
     queryKey: ["savedKeywords", projectId, queryInput],
-    queryFn: () => getSavedKeywords({ data: queryInput }),
+    queryFn: () => getSavedKeywords(queryInput),
     placeholderData: keepPreviousData,
   });
   const { data, isLoading, isFetching } = savedKeywordsQuery;
@@ -227,7 +227,7 @@ function SavedKeywordsPage() {
 
   const removeMutation = useMutation({
     mutationFn: (savedKeywordIds: string[]) =>
-      removeSavedKeywords({ data: { projectId, savedKeywordIds } }),
+      removeSavedKeywords({ projectId, savedKeywordIds }),
     onSuccess: (result) => {
       setRowSelection({});
       setShowConfirm(false);
@@ -252,12 +252,10 @@ function SavedKeywordsPage() {
       removeTagIds?: string[];
     }) =>
       updateSavedKeywordTags({
-        data: {
-          projectId,
-          savedKeywordIds: input.savedKeywordIds,
-          addTags: input.addTags,
-          removeTagIds: input.removeTagIds,
-        },
+        projectId,
+        savedKeywordIds: input.savedKeywordIds,
+        addTags: input.addTags,
+        removeTagIds: input.removeTagIds,
       }),
     onSuccess: (result) => {
       setRowSelection({});
@@ -270,7 +268,7 @@ function SavedKeywordsPage() {
   });
 
   const refreshMetricsMutation = useMutation({
-    mutationFn: () => refreshSavedKeywordMetrics({ data: { projectId } }),
+    mutationFn: () => refreshSavedKeywordMetrics({ projectId }),
     onSuccess: (result) => {
       void invalidateSavedKeywords();
       toast.success(

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { getSerpAnalysis } from "@/serverFunctions/keywords";
+import { getSerpAnalysis } from "@/client/features/keywords/keywordsApi";
 
 const SERP_PAGE_SIZE = 10;
 /** Depth every SERP panel opens at — two pages of results, ~5 credits. */
@@ -38,13 +38,11 @@ export function useKeywordSerpAnalysis(
     queryKey: [...snapshotKey, requestedDepth],
     queryFn: () =>
       getSerpAnalysis({
-        data: {
-          projectId,
-          keyword: serpKeyword!,
-          locationCode,
-          locationName,
-          depth: requestedDepth,
-        },
+        projectId,
+        keyword: serpKeyword!,
+        locationCode,
+        locationName,
+        depth: requestedDepth,
       }),
     // Keep the shallow snapshot on screen while the deeper refetch runs — but
     // only when nothing except the depth changed, so a new keyword or market

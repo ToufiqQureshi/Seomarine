@@ -25,7 +25,7 @@ const savedKeywordPageSizeSchema = z.union([
   z.literal(250),
 ]);
 
-export const researchKeywordsSchema = z.object({
+const researchKeywordsSchema = z.object({
   projectId: z.string().min(1),
   keywords: z.array(z.string().min(1)).min(1).max(200),
   locationCode: z.number().int().positive().optional(),
@@ -176,7 +176,7 @@ export const refreshSavedKeywordMetricsSchema = z.object({
   projectId: z.string().min(1),
 });
 
-export type ResearchKeywordsInput = z.infer<typeof researchKeywordsSchema>;
+type ResearchKeywordsInput = z.infer<typeof researchKeywordsSchema>;
 export type SaveKeywordsInput = z.infer<typeof saveKeywordsSchema>;
 type ResolvedMarket = { locationCode: number; languageCode: string };
 export type ResolvedResearchKeywordsInput = Omit<
@@ -209,7 +209,7 @@ export type DeleteSavedKeywordTagInput = z.infer<
 export type RefreshSavedKeywordMetricsInput = z.infer<
   typeof refreshSavedKeywordMetricsSchema
 >;
-export const serpAnalysisSchema = z.object({
+const serpAnalysisSchema = z.object({
   projectId: z.string().min(1),
   keyword: z.string().min(1),
   locationCode: z.number().int().positive().optional(),

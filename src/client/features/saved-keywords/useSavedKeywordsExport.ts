@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { formatCentsForCsv } from "@/client/features/keywords/state/keywordControllerActions";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { exportRows } from "@/client/lib/exportRows";
-import { exportSavedKeywords } from "@/serverFunctions/keywords";
+import { exportSavedKeywords } from "@/client/features/keywords/keywordsApi";
 import type { SavedKeywordRow } from "@/types/keywords";
 import type { ExportSavedKeywordsInput } from "@/types/schemas/keywords";
 import type { AppliedSavedKeywordsFilters } from "./savedKeywordsFilterTypes";
@@ -59,7 +59,7 @@ export function useSavedKeywordsExport(params: {
   const exportFiltered = async (format: "csv" | "sheets") => {
     setExporting(format);
     try {
-      const result = await exportSavedKeywords({ data: exportInput });
+      const result = await exportSavedKeywords(exportInput);
       await runExport(format, result.rows);
     } catch (error) {
       toast.error(getStandardErrorMessage(error, "Could not export"));

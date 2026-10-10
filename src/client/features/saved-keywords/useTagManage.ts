@@ -5,7 +5,7 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   deleteSavedKeywordTag,
   updateSavedKeywordTag,
-} from "@/serverFunctions/keywords";
+} from "@/client/features/keywords/keywordsApi";
 import type { TagColorKey } from "@/shared/tag-colors";
 
 export function useTagManage(projectId: string) {
@@ -32,12 +32,10 @@ export function useTagManage(projectId: string) {
     markBusy(input.tagId, true);
     try {
       await updateSavedKeywordTag({
-        data: {
-          projectId,
-          tagId: input.tagId,
-          name: input.name,
-          color: input.color ?? undefined,
-        },
+        projectId,
+        tagId: input.tagId,
+        name: input.name,
+        color: input.color ?? undefined,
       });
       await invalidate();
       toast.success("Tag updated");
@@ -51,7 +49,7 @@ export function useTagManage(projectId: string) {
   const deleteTag = async (tagId: string): Promise<boolean> => {
     markBusy(tagId, true);
     try {
-      await deleteSavedKeywordTag({ data: { projectId, tagId } });
+      await deleteSavedKeywordTag({ projectId, tagId });
       await invalidate();
       toast.success("Tag deleted");
       return true;

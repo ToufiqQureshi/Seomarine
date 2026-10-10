@@ -30,7 +30,7 @@ import {
   SEARCH_PERFORMANCE_PAGE_SIZES,
   type SearchPerformanceTableDimension,
 } from "@/types/schemas/search-performance";
-import { saveKeywords } from "@/serverFunctions/keywords";
+import { saveKeywords } from "@/client/features/keywords/keywordsApi";
 
 export type ExportTarget = "csv" | "sheets";
 
@@ -293,8 +293,7 @@ export function StrikingDistanceTable({
   };
 
   const save = useMutation({
-    mutationFn: (keywords: string[]) =>
-      saveKeywords({ data: { projectId, keywords } }),
+    mutationFn: (keywords: string[]) => saveKeywords({ projectId, keywords }),
     onSuccess: (_result, keywords) => {
       captureClientEvent("keyword:save", {
         source_feature: "search_performance",
