@@ -90,9 +90,9 @@ Features and platform pieces that are easy to forget:
 - **Observability.** Error reporting and a `/metrics` or log pipeline.
 - **A schema baseline.** The legacy tables come from Drizzle. Once TypeScript
   stops writing, capture them in one goose baseline migration so `db/` is the
-  only owner of the schema. The version 1 snapshot is prepared under
-  `backend/internal/database/migrations/00001_drizzle_baseline.sql`; it includes
-  the prior Goose v1 analytics table so deployed version history stays stable.
+  only owner of the schema. The version 1 snapshot is staged under
+  `backend/internal/database/baseline/00001_drizzle_baseline.sql`; it is not
+  embedded in active migrations. It includes the prior Goose v1 analytics table.
 - **API contract checks.** Generate TypeScript types from `backend/api/*.yaml`
   and fail CI when the frontend and an endpoint disagree.
 - **Self-hosting docs** for the single-binary deployment.
