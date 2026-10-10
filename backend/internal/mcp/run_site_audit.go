@@ -33,6 +33,12 @@ func handleRunSiteAudit(ctx context.Context, raw json.RawMessage, env *callEnv) 
 	if err := json.Unmarshal(raw, &args); err != nil || args.ProjectID == "" || args.URL == "" {
 		return nil, newAppErrorf("VALIDATION_ERROR", "projectId and url are required")
 	}
+	if len(args.URL) > 2048 {
+		return nil, newAppErrorf("VALIDATION_ERROR", "url must be at most 2048 characters")
+	}
+	if args.MaxPages != nil && (*args.MaxPages < audit.MinAuditPages || *args.MaxPages > audit.PaidMaxAuditPages) {
+		return nil, newAppErrorf("VALIDATION_ERROR", "maxPages must be between 10 and 10000")
+	}
 	if env.deps.Audit == nil {
 		return nil, newAppErrorf("SERVICE_UNAVAILABLE", "Site audits are not configured on this server.")
 	}
@@ -42,7 +48,7 @@ func handleRunSiteAudit(ctx context.Context, raw json.RawMessage, env *callEnv) 
 	}
 	tier, err := env.deps.Audit.ResolveAuditLimitTier(ctx, access.Auth.OrganizationID)
 	if err != nil {
-		return nil, auditToolError(err)
+		return nil, auditToolError(ctx, env, err)
 	}
 	maxPages := audit.DefaultAuditPages
 	if args.MaxPages != nil {
@@ -58,7 +64,7 @@ func handleRunSiteAudit(ctx context.Context, raw json.RawMessage, env *callEnv) 
 		LighthouseStrategy: strategy, RenderJavaScript: args.RenderJavaScript, LimitTier: tier,
 	})
 	if err != nil {
-		return nil, auditToolError(err)
+		return nil, auditToolError(ctx, env, err)
 	}
 	return mcpResponse(
 		fmt.Sprintf("Audit %s started for %s. Poll get_audit_status until it finishes, then call get_audit_issues for the prioritized report.", started.AuditID, args.URL),
@@ -67,7 +73,7 @@ func handleRunSiteAudit(ctx context.Context, raw json.RawMessage, env *callEnv) 
 	), nil
 }
 
-func auditToolError(err error) error {
+func auditToolError(ctx context.Context, env *callEnv, err error) error {
 	switch {
 	case errors.Is(err, audit.ErrPaymentRequired):
 		return newAppErrorf("PAYMENT_REQUIRED", "This organization does not have managed access for site audits.")
@@ -82,6 +88,9 @@ func auditToolError(err error) error {
 	case errors.Is(err, audit.ErrStartURLInvalid), errors.Is(err, audit.ErrCrawlTargetBlocked):
 		return newAppErrorf("INVALID_URL", "The audit URL is invalid or points to an address the crawler cannot access.")
 	default:
+		if env.deps.Logger != nil {
+			env.deps.Logger.ErrorContext(ctx, "start MCP site audit", "err", err)
+		}
 		return newAppErrorf("INTERNAL_ERROR", "Could not start the site audit. Please try again.")
 	}
 }
