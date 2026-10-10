@@ -30,7 +30,7 @@ import (
 const (
 	oauthRegisterPath  = "/api/auth/oauth2/register"
 	oauthAuthorizePath = "/api/auth/oauth2/authorize"
-	oauthTokenPath     = "/api/auth/oauth2/token"
+	oauthTokenPath     = "/api/auth/oauth2/token" // #nosec G101 -- OAuth endpoint path, not a credential.
 	oauthConsentPath   = "/api/oauth/consent"
 	oauthMetadataPath  = "/.well-known/oauth-authorization-server"
 
@@ -46,6 +46,7 @@ const (
 
 var oauthScopesSupported = []string{"offline_access", oauthScope}
 
+// MountOAuth registers the MCP OAuth endpoints on mux.
 func MountOAuth(mux *http.ServeMux, d Deps) {
 	h := oauthHandler{deps: d, log: d.Logger}
 	if h.log == nil {

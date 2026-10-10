@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	// Route is the public MCP endpoint served by the Go dispatcher.
 	Route                 = "/mcp"
 	requestTimeout        = 30 * time.Second
 	maxBodyBytes          = 4 << 20
@@ -32,6 +33,7 @@ var corsHeaders = map[string]string{
 	"Access-Control-Max-Age":        "86400",
 }
 
+// Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
 	Logger        *slog.Logger
 	DB            *pgxpool.Pool
@@ -45,6 +47,7 @@ type Deps struct {
 	SavedKeywords *keywords.SavedService
 }
 
+// Mount registers the MCP dispatcher on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	h := newHandler(d)
 	mux.Handle(Route, h)
