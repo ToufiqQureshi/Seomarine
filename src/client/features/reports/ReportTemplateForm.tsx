@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/client/components/ui/dialog";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { saveReportTemplate } from "@/serverFunctions/reportTemplates";
+import { saveReportTemplate } from "@/client/features/reports/reportApi";
 import type { ReportTemplate } from "@/types/schemas/report-templates";
 
 // One form for create and edit. Shape only, as at every other boundary: the

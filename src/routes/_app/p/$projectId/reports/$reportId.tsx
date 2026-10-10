@@ -35,7 +35,7 @@ import { formatRelativeTime } from "@/client/lib/relative-time";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { getErrorCode } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { getReport } from "@/serverFunctions/reports";
+import { getReport } from "@/client/features/reports/reportApi";
 
 // Expand lives in the URL, not in state, so a refresh (or a link someone
 // pasted) comes back expanded.

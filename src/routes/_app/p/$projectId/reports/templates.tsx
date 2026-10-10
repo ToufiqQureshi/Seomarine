@@ -17,7 +17,7 @@ import { captureClientEvent } from "@/client/lib/posthog";
 import {
   deleteReportTemplate,
   listReportTemplates,
-} from "@/serverFunctions/reportTemplates";
+} from "@/client/features/reports/reportApi";
 import type { ReportTemplate } from "@/types/schemas/report-templates";
 
 export const Route = createFileRoute("/_app/p/$projectId/reports/templates")({
