@@ -187,7 +187,6 @@ func run(logger *slog.Logger) error {
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, GSC: gscService,
-		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
 		RankTracking: rankTrackingService,
 	}
 	srv := &http.Server{
