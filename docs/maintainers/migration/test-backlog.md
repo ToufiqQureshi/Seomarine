@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **32 files**.
+Current confirmed count: **33 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,6 +34,7 @@ Current confirmed count: **32 files**.
 | Autumn credit-balance Go client | `backend/internal/billing/autumn_test.go`                             | Covers missing configuration, request headers/payload, null balances, provider failures, timeouts, and response bounds.                                |
 | MCP whoami credit lookup         | `backend/internal/mcp/whoami_test.go`                                  | Covers hosted/self-hosted mode, zero and unknown balances, scopes, and upstream failures without charging credits.                                     |
 | Organization Go API              | `backend/internal/auth/organization_handler_test.go`                  | Covers membership context, active organization switching, team listing permissions, and ownership transfer.                                        |
+| Go MCP backlinks overview tool   | `backend/internal/mcp/backlinks_overview_test.go`                   | Covers project auth, scope normalization, summary/trend payloads, subfolder behavior, spam filtering, top referring domains, and provider errors. |
 | Go MCP audit issue read tool     | `backend/internal/mcp/audit_issues_test.go`                         | Covers project authorization, latest/requested audit resolution, severity/type filters, deterministic sorting, summaries, row limits, and issue remediation metadata. |
 | Go MCP site-audit start tool     | `backend/internal/mcp/run_site_audit_test.go`                       | Covers project membership, tier/capacity gates, URL/SSRF validation, optional Lighthouse/rendering flags, and the queued audit response. |
 | Hosted Go sign-out endpoint      | `backend/internal/auth/session_handler_test.go`                       | Covers hosted route ownership, valid/revoked/invalid cookies, cookie expiry, and database failure responses.                                          |
