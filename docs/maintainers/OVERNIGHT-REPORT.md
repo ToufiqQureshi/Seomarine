@@ -2,8 +2,8 @@
 
 ## PR
 
-- Consolidated migration PR: pending creation.
-- Superseded drafts: [#31 GA4](https://github.com/ToufiqQureshi/Seomarine/pull/31), [#32 GSC](https://github.com/ToufiqQureshi/Seomarine/pull/32), [#33 SAM](https://github.com/ToufiqQureshi/Seomarine/pull/33), and [#34 audit fixtures](https://github.com/ToufiqQureshi/Seomarine/pull/34). They were not closed before the consolidated PR is available.
+- Consolidated draft PR: [#35](https://github.com/ToufiqQureshi/Seomarine/pull/35).
+- Superseded drafts: [#31 GA4](https://github.com/ToufiqQureshi/Seomarine/pull/31), [#32 GSC](https://github.com/ToufiqQureshi/Seomarine/pull/32), [#33 SAM](https://github.com/ToufiqQureshi/Seomarine/pull/33), and [#34 audit fixtures](https://github.com/ToufiqQureshi/Seomarine/pull/34); these are being closed in favor of #35.
 
 ## Is pass mein
 
@@ -18,6 +18,7 @@
 - Audit, GA4, GSC, SAM aur HTTP API race suite pehle Linux Docker par pass hui.
 - GSC aur HTTP API focused tests pass hue.
 - Naye GSC/HTTP API race tests Linux Docker par pass hue.
+- `go vet ./internal/gsc ./internal/httpapi` Docker mein pass hua.
 - Windows par race tests CGO disabled hone se nahi chale. `golangci-lint`, `govulncheck`, frontend checks aur `deadcode` ka complete clean pass is run mein nahi mila. CI ko poll nahi kiya.
 
 ## Baaki / owner decisions
