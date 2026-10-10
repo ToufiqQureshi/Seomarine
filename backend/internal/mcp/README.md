@@ -95,3 +95,6 @@ The Go API-key MCP registry also owns `get_business_profile`, returning the prov
 
 
 The Go API-key MCP registry also owns `get_business_reviews`. It posts Google/extended review tasks once, polls within the request budget, and returns resumable IDs for still-running tasks without repeat charges.
+
+
+The Go API-key MCP registry also owns `get_business_updates`; it uses the Go task queue path and supports free resume polling with the returned task ID.
