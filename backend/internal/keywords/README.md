@@ -56,3 +56,6 @@ The Go provider now supports metered Google and extended review task-post operat
 
 
 The Go DataForSEO provider now posts and collects `my_business_updates` tasks, keeping the post metered and task polling unmetered. Contract tests are deferred to the final migration phase.
+
+
+The local SERP provider also supports bounded Google Maps rank grids. It uses a fixed, latitude-aware zoom for comparable grid points and keeps each request independently metered.
