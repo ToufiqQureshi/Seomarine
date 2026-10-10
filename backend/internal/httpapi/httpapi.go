@@ -18,6 +18,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
@@ -59,7 +60,8 @@ type Deps struct {
 	// Backlinks is nil when no DataForSEO key is configured.
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
-	Domain *domain.Service
+	Domain            *domain.Service
+	DashboardOverview *dashboardoverview.Service
 	// GoogleAccounts removes a user's Google data grants and mappings.
 	GoogleAccounts google.AccountRepository
 	// GoogleOAuth owns consent start and callback routes.
@@ -193,6 +195,7 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	dashboardoverview.Mount(mux, dashboardoverview.Deps{Logger: d.Logger, Service: d.DashboardOverview, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	keywords.MountSaved(mux, keywords.SavedDeps{
 		Logger: d.Logger, Service: d.SavedKeywords, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
