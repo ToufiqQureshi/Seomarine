@@ -98,3 +98,6 @@ The Go API-key MCP registry also owns `get_business_reviews`. It posts Google/ex
 
 
 The Go API-key MCP registry also owns `get_business_updates`; it uses the Go task queue path and supports free resume polling with the returned task ID.
+
+
+The Go API-key MCP registry also owns `get_local_rank_grid`. It uses the Go local SERP provider for bounded Google Maps grids, preserves per-point failures and rank summaries, and computes a market-aware zoom when one is omitted. Contract tests remain deferred to the final test phase.
