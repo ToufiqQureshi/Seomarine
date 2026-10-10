@@ -3,6 +3,7 @@ package domain
 import (
  "context"
  "encoding/json"
+ "errors"
  "fmt"
  "regexp"
  "strings"
@@ -43,5 +44,8 @@ func (s *Service) SerpCompetitorsForMCP(ctx context.Context,org string,in MCPSer
  if response.Items==nil{return []MCPSerpCompetitor{},nil};return response.Items,nil
 }
 func ValidMCPCompetitorDomain(domain string)bool{
- v:=strings.ToLower(strings.TrimPrefix(strings.TrimSpace(domain),"www."));return v==domain && competitorDomainPattern.MatchString(v)
+ v:=strings.ToLower(strings.TrimPrefix(strings.TrimSpace(domain),"www."));return competitorDomainPattern.MatchString(v)
 }
+
+// IsBadRequest reports service validation errors safe to show to MCP callers.
+func IsBadRequest(err error) bool { var target badRequest; return errors.As(err,&target) }
