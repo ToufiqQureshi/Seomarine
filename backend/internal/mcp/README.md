@@ -89,3 +89,6 @@ The Go API-key MCP registry also owns `list_business_categories`. It reads and c
 
 
 The Go API-key MCP registry also owns `search_local_businesses`. It validates coordinate scope and provider filters, then returns the legacy compact business identity/contact rows.
+
+
+The Go API-key MCP registry also owns `get_business_profile`, returning the provider profile for exactly one business identifier and the requested project market or coordinate.
