@@ -30,6 +30,9 @@ func TestLoad(t *testing.T) {
 		wantErr  bool
 	}{
 		{name: "defaults the port", env: valid, wantAddr: ":8080"},
+		{name: "defaults auth mode", env: valid, wantAddr: ":8080"},
+		{name: "accepts hosted auth mode", env: with("AUTH_MODE", "hosted"), wantAddr: ":8080"},
+		{name: "rejects invalid auth mode", env: with("AUTH_MODE", "Hosted"), wantErr: true},
 		{name: "uses PORT", env: with("PORT", "3000"), wantAddr: ":3000"},
 		{name: "accepts the highest port", env: with("PORT", "65535"), wantAddr: ":65535"},
 		{name: "accepts an https upstream", env: with("UPSTREAM_APP_URL", "https://app.example.com"), wantAddr: ":8080"},
@@ -65,6 +68,12 @@ func TestLoad(t *testing.T) {
 			}
 			if cfg.Addr != tt.wantAddr {
 				t.Errorf("Addr = %q, want %q", cfg.Addr, tt.wantAddr)
+			}
+			if tt.name == "defaults auth mode" && cfg.AuthMode != "cloudflare_access" {
+				t.Errorf("AuthMode = %q, want cloudflare_access", cfg.AuthMode)
+			}
+			if tt.name == "accepts hosted auth mode" && cfg.AuthMode != "hosted" {
+				t.Errorf("AuthMode = %q, want hosted", cfg.AuthMode)
 			}
 			if cfg.DatabaseURL != tt.env["DATABASE_URL"] || cfg.RedisURL != tt.env["REDIS_URL"] ||
 				cfg.BetterAuthSecret != secret || cfg.UpstreamAppURL.String() != tt.env["UPSTREAM_APP_URL"] {

@@ -16,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 )
 
 const (
@@ -47,6 +48,7 @@ type Deps struct {
 	Audit         *audit.Service
 	Locations     *keywords.LocationService
 	SavedKeywords *keywords.SavedService
+	Reports       *reports.Service
 	GSC           *gsc.Service
 	RankTracking  *ranktracking.Service
 }

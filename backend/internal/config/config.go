@@ -12,6 +12,8 @@ import (
 
 // Config is the validated server configuration.
 type Config struct {
+	// AuthMode matches the legacy runtime mode; only hosted deployments may expose public reports.
+	AuthMode string
 	// Addr is the TCP address the HTTP server listens on, e.g. ":8080".
 	Addr string
 	// DatabaseURL is the Postgres connection string.
@@ -73,6 +75,13 @@ func Load(getenv func(string) string) (Config, error) {
 	if len(secret) < minSecretLength {
 		return Config{}, fmt.Errorf("BETTER_AUTH_SECRET must be at least %d characters", minSecretLength)
 	}
+	authMode := strings.TrimSpace(getenv("AUTH_MODE"))
+	if authMode == "" {
+		authMode = "cloudflare_access"
+	}
+	if authMode != "cloudflare_access" && authMode != "local_noauth" && authMode != "hosted" {
+		return Config{}, fmt.Errorf("AUTH_MODE must be cloudflare_access, local_noauth, or hosted")
+	}
 
 	upstream, err := url.Parse(getenv("UPSTREAM_APP_URL"))
 	if err != nil || (upstream.Scheme != "http" && upstream.Scheme != "https") || upstream.Host == "" {
@@ -114,6 +123,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
+		AuthMode:                 authMode,
 		Addr:                     fmt.Sprintf(":%d", port),
 		DatabaseURL:              databaseURL,
 		RedisURL:                 redisURL,
