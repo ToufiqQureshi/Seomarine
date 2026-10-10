@@ -22,6 +22,8 @@ repository reads and writes then scope records to that project. Public links
 are enabled only when `AUTH_MODE=hosted`, and share tokens are never included
 in report lists or ordinary report metadata. API clients use the same Go
 service through the authenticated `/api/v1/projects/{projectId}/reports/*`
-routes. The legacy TypeScript tools remain registered but are shadowed by the
+routes. Go also serves the public report document at `/s/{token}/raw` with a
+strict sandbox CSP; the wrapper page and social image remain on their existing
+frontend routes. The legacy TypeScript tools remain registered but are shadowed by the
 Go registry while the dispatcher runs; remove their implementation only after
 the external MCP contract suite passes.

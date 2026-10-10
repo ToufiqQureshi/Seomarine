@@ -15,6 +15,7 @@ type memoryStore struct {
 	bytes        int64
 	rows         []Template
 	shareCreated bool
+	archived     bool
 }
 
 func newMemoryStore() *memoryStore {
@@ -99,7 +100,7 @@ func (m *memoryStore) SetShare(_ context.Context, project, id string, token, at 
 func (m *memoryStore) GetShared(_ context.Context, token string) (SharedReport, error) {
 	for _, v := range m.items {
 		if v.ShareToken != nil && *v.ShareToken == token {
-			return SharedReport{Metadata: v, HTML: m.html[v.ID]}, nil
+			return SharedReport{Metadata: v, HTML: m.html[v.ID], Archived: m.archived}, nil
 		}
 	}
 	return SharedReport{}, ErrNotFound

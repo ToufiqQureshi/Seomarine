@@ -24,6 +24,7 @@ type Deps struct {
 }
 
 func Mount(mux *http.ServeMux, d Deps) {
+	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	base := "POST /api/v1/projects/{projectId}/reports/"
 	mux.Handle(base+"list", protect(http.HandlerFunc(d.listReports)))
@@ -35,6 +36,56 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle(base+"templates/get", protect(http.HandlerFunc(d.getTemplate)))
 	mux.Handle(base+"templates/save", protect(http.HandlerFunc(d.saveTemplate)))
 	mux.Handle(base+"templates/delete", protect(http.HandlerFunc(d.deleteTemplate)))
+}
+
+// sharedRaw serves only the sandboxed public document; the share wrapper page
+// and its social image remain on the existing frontend route.
+func (d Deps) sharedRaw(w http.ResponseWriter, r *http.Request) {
+	if d.Service == nil || !d.Service.Hosted {
+		http.NotFound(w, r)
+		return
+	}
+	token := r.PathValue("token")
+	if r.URL.RawQuery != "" {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, "/s/"+token+"/raw", http.StatusFound)
+		return
+	}
+	if r.Header.Get("Sec-Fetch-Dest") == "document" {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, "/s/"+token, http.StatusFound)
+		return
+	}
+	report, err := d.Service.GetShared(r.Context(), token)
+	if err != nil {
+		var typed *Error
+		if errors.As(err, &typed) && typed.Code == "NOT_FOUND" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Context().Err() != nil {
+			return
+		}
+		if d.Logger != nil {
+			d.Logger.ErrorContext(r.Context(), "load shared report", "err", err)
+		}
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+	if report.Archived {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", "sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'")
+	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+	w.Header().Set("Cache-Control", "public, max-age=0, s-maxage=60")
+	if _, err := io.WriteString(w, report.HTML); err != nil && d.Logger != nil {
+		d.Logger.ErrorContext(r.Context(), "write shared report document", "err", err)
+	}
 }
 
 func (d Deps) service(w http.ResponseWriter) bool {
