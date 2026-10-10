@@ -41,3 +41,6 @@ The shared Go DataForSEO keyword provider also owns the MCP Maps and Local Finde
 
 
 The Go keyword/DataForSEO provider also supports Google Business Profile Q&A lookups, including `cid:` and `place_id:` identifiers and the provider's billed empty-result response. Contract tests are deferred to the final migration test phase.
+
+
+The Go DataForSEO provider exposes the free business-category index using its unmetered HTTP path. The MCP handler caches the normalized category list for seven days and filters it locally.
