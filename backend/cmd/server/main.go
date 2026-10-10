@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
+	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -37,6 +38,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
@@ -186,6 +188,7 @@ func run(logger *slog.Logger) error {
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
 		GA4: ga4Svc, GSC: gscService,
+		RankTracking: rankTrackingService,
 	}
 	srv := &http.Server{
 		Addr: cfg.Addr,
@@ -201,6 +204,7 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
+			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}},
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,
@@ -212,6 +216,7 @@ func run(logger *slog.Logger) error {
 			Audit:             auditSvc,
 			RankTracking:      rankTrackingService,
 			RankChecks:        rankChecks,
+			Projects:          &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,

@@ -16,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 )
 
 const (
@@ -49,6 +50,7 @@ type Deps struct {
 	SavedKeywords *keywords.SavedService
 	GA4           *ga4.Service
 	GSC           *gsc.Service
+	RankTracking  *ranktracking.Service
 }
 
 // Mount registers the MCP dispatcher on mux.
