@@ -1,3 +1,4 @@
+// Package mcp serves Go-owned MCP tools and proxies unported tools to the legacy server.
 package mcp
 
 import (
