@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **34 files**.
+Current confirmed count: **35 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,6 +34,7 @@ Current confirmed count: **34 files**.
 | Autumn credit-balance Go client | `backend/internal/billing/autumn_test.go`                             | Covers missing configuration, request headers/payload, null balances, provider failures, timeouts, and response bounds.                                |
 | MCP whoami credit lookup         | `backend/internal/mcp/whoami_test.go`                                  | Covers hosted/self-hosted mode, zero and unknown balances, scopes, and upstream failures without charging credits.                                     |
 | Organization Go API              | `backend/internal/auth/organization_handler_test.go`                  | Covers membership context, active organization switching, team listing permissions, and ownership transfer.                                        |
+| Go MCP domain overview tool       | `backend/internal/mcp/domain_overview_test.go`                      | Covers project auth, project-market fallback, language/location validation, scope aliases, organic metrics, backlink summary, and provider errors. |
 | Go MCP backlinks profile tool     | `backend/internal/mcp/backlinks_profile_test.go`                    | Covers project auth, target scope, defaults, pagination, sort mapping, filters, spam threshold, grouping mode, row summaries, and provider errors. |
 | Go MCP backlinks overview tool   | `backend/internal/mcp/backlinks_overview_test.go`                   | Covers project auth, scope normalization, summary/trend payloads, subfolder behavior, spam filtering, top referring domains, and provider errors. |
 | Go MCP audit issue read tool     | `backend/internal/mcp/audit_issues_test.go`                         | Covers project authorization, latest/requested audit resolution, severity/type filters, deterministic sorting, summaries, row limits, and issue remediation metadata. |

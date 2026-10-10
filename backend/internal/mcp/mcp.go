@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
+	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -53,6 +54,7 @@ type Deps struct {
 	PublicURL      *url.URL
 	Audit          *audit.Service
 	Backlinks      *backlinks.Service
+	Domain         *domain.Service
 	Locations      *keywords.LocationService
 	SavedKeywords  *keywords.SavedService
 	GA4            *ga4.Service
