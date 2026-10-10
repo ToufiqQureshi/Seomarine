@@ -23,6 +23,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
@@ -90,6 +91,9 @@ type Deps struct {
 	RankChecks *ranktracking.Checks
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
+	// credentials and tools that are not registered in Go.
+	MCP *mcp.Deps
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -233,6 +237,13 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Operations: d.GSCConnections, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	if d.MCP != nil {
+		deps := *d.MCP
+		if deps.Logger == nil {
+			deps.Logger = d.Logger
+		}
+		mcp.Mount(mux, deps)
+	}
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())

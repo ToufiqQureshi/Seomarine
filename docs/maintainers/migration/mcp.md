@@ -116,7 +116,8 @@ that have no Go service stay on the proxy and are marked "pending" below.
 
 - **PR 1 (`port-mcp-go-1`):** server, Streamable HTTP transport, JSON-RPC
   errors, tool registry, dispatcher + legacy proxy, API-key auth, project
-  scoping, usage instrumentation, `/mcp` route on the Go server. Tools:
+  scoping, usage instrumentation, `/mcp` route mounted in the Go server with
+  legacy `tools/list` merge and unowned-call fallback. Tools:
   `whoami`, `list_projects`, `create_project`, `get_project_context`,
   `update_project_context`.
 - **PR 2 (`port-mcp-go-2`):** free/read-only tools over existing Go services

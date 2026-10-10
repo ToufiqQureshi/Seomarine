@@ -79,7 +79,7 @@ func (h *handler) serveRPC(ctx context.Context, w http.ResponseWriter, r *http.R
 			h.executeNotification(ctx, req, auth)
 			continue
 		}
-		responses = append(responses, h.execute(ctx, req, auth))
+		responses = append(responses, h.execute(ctx, r, req, auth))
 	}
 	if len(responses) == 0 {
 		w.WriteHeader(http.StatusAccepted)
@@ -147,7 +147,7 @@ func (h *handler) needsProxy(requests []rpcRequest) bool {
 func (h *handler) executeNotification(_ context.Context, _ rpcRequest, _ Auth) {}
 
 // execute runs one JSON-RPC request locally with panic recovery.
-func (h *handler) execute(ctx context.Context, req rpcRequest, auth Auth) (resp rpcResponse) {
+func (h *handler) execute(ctx context.Context, r *http.Request, req rpcRequest, auth Auth) (resp rpcResponse) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			h.deps.Logger.ErrorContext(ctx, "panic in mcp handler",
@@ -164,10 +164,10 @@ func (h *handler) execute(ctx context.Context, req rpcRequest, auth Auth) (resp 
 	case "notifications/initialized", "notifications/cancelled", "notifications/progress":
 		return resultResponse(req.ID, map[string]any{})
 	case "tools/list":
-		tools, err := h.listTools(ctx, auth)
+		tools, err := h.listTools(ctx, r, req)
 		if err != nil {
 			h.deps.Logger.ErrorContext(ctx, "merge tools list failed", "err", err)
-			return errorResponse(req.ID, codeInternalError, "Internal error.")
+			return errorResponse(req.ID, codeServerError, "Could not load the Seomarine tool list.")
 		}
 		return resultResponse(req.ID, map[string]any{"tools": tools})
 	case "tools/call":

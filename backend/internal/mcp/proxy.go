@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -34,6 +36,7 @@ func (h *handler) proxyRequest(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
+	host := originalHost(r)
 	r = r.Clone(ctx)
 	r.URL = &url.URL{
 		Scheme:   upstream.Scheme,
@@ -45,7 +48,7 @@ func (h *handler) proxyRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	r.Host = upstream.Host
 	// Preserve the caller's Host so the legacy app builds absolute URLs from
 	// the same origin it already uses for cookies and CORS.
-	if host := r.Header.Get("Host"); host != "" {
+	if host != "" {
 		r.Header.Set("X-Forwarded-Host", host)
 	}
 	// The legacy app expects the real client IP and scheme.
@@ -90,6 +93,7 @@ func (h *handler) proxyBodyRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
+	// #nosec G704 -- upstream is validated from server configuration, not request input.
 	req, err := http.NewRequestWithContext(ctx, r.Method,
 		upstream.Scheme+"://"+upstream.Host+singleJoiningSlash(upstream.Path, r.URL.Path)+"?"+r.URL.RawQuery,
 		io.NopCloser(strings.NewReader(string(body))))
@@ -100,11 +104,15 @@ func (h *handler) proxyBodyRequest(ctx context.Context, w http.ResponseWriter, r
 	}
 	req.Header = r.Header.Clone()
 	req.Host = upstream.Host
+	if host := originalHost(r); host != "" {
+		req.Header.Set("X-Forwarded-Host", host)
+	}
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ResponseHeaderTimeout = 30 * time.Second
 	client := &http.Client{Transport: transport, Timeout: requestTimeout}
 
+	// #nosec G704 -- upstream is validated from server configuration, not request input.
 	resp, err := client.Do(req)
 	if err != nil {
 		h.deps.Logger.ErrorContext(ctx, "proxy to legacy app", "err", err)
@@ -123,7 +131,45 @@ func (h *handler) proxyBodyRequest(ctx context.Context, w http.ResponseWriter, r
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		h.deps.Logger.WarnContext(ctx, "copy proxied MCP response", "err", err)
+	}
+}
+
+// proxyRoundTrip sends a buffered JSON-RPC request to the legacy MCP endpoint
+// and returns its response for protocol-level merging by the dispatcher.
+func (h *handler) proxyRoundTrip(ctx context.Context, r *http.Request, body []byte) (*http.Response, error) {
+	upstream := h.deps.Upstream
+	if upstream == nil {
+		return nil, errors.New("legacy app upstream is not configured")
+	}
+	target := *upstream
+	target.Path = singleJoiningSlash(upstream.Path, r.URL.Path)
+	target.RawPath = singleJoiningSlash(upstream.RawPath, r.URL.RawPath)
+	target.RawQuery = r.URL.RawQuery
+	req, err := http.NewRequestWithContext(ctx, r.Method, target.String(), strings.NewReader(string(body)))
+	if err != nil {
+		return nil, fmt.Errorf("build legacy MCP request: %w", err)
+	}
+	req.Header = r.Header.Clone()
+	req.Host = upstream.Host
+	if host := originalHost(r); host != "" {
+		req.Header.Set("X-Forwarded-Host", host)
+	}
+	client := &http.Client{Timeout: requestTimeout}
+	// #nosec G704 -- upstream is validated from server configuration, not request input.
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("call legacy MCP endpoint: %w", err)
+	}
+	return resp, nil
+}
+
+func originalHost(r *http.Request) string {
+	if r.Host != "" {
+		return r.Host
+	}
+	return r.Header.Get("Host")
 }
 
 // singleJoiningSlash concatenates two path segments with exactly one slash.
