@@ -54,3 +54,8 @@ The Go API-key MCP registry also owns `create_rank_tracker`. It creates an empty
 configuration with the project's market/domain defaults, validates optional
 canonical local locations, and keeps the MCP default schedule manual so tracker
 creation never starts future credit spend.
+
+
+The Go API-key MCP registry also owns `estimate_rank_tracker_cost`. It reads
+the project-scoped tracker and calculates live and scheduled estimates without
+starting a check or spending provider credits.
