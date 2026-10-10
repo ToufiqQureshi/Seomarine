@@ -25,7 +25,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                                   | in progress |
 | 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending            | in progress |
 | 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                                  | in progress |
-| 0.5l | Goose version 1 baseline for the current Drizzle PostgreSQL schema; apply at schema cutover                                                                  | ready       |
+| 0.5l | Goose version 1 baseline for the current Drizzle PostgreSQL schema; apply at schema cutover                                                             | ready       |
 
 ## Phase 1: Rebrand + new UI
 
