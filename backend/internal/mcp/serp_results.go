@@ -43,7 +43,7 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 		ProjectID string `json:"projectId"`
 		Queries []struct {
 			Keyword string `json:"keyword"`
-			LocationCode int `json:"locationCode"`
+			LocationCode *int `json:"locationCode"`
 			LanguageCode string `json:"languageCode"`
 			LocationName *string `json:"locationName"`
 		} `json:"queries"`
@@ -64,7 +64,7 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 		if strings.TrimSpace(q.Keyword) == "" {
 			return nil, newAppErrorf("VALIDATION_ERROR", "each query keyword is required")
 		}
-		if q.LocationCode < 0 || (q.LanguageCode != "" && (len(strings.TrimSpace(q.LanguageCode)) < 2 || len(strings.TrimSpace(q.LanguageCode)) > 8)) {
+		if (q.LocationCode != nil && *q.LocationCode < 1) || (q.LanguageCode != "" && (len(strings.TrimSpace(q.LanguageCode)) < 2 || len(strings.TrimSpace(q.LanguageCode)) > 8)) {
 			return nil, newAppErrorf("VALIDATION_ERROR", "query location or language is not valid")
 		}
 		if q.LocationName != nil && strings.TrimSpace(*q.LocationName) == "" {
@@ -81,7 +81,11 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 	okCount := 0
 	for i, q := range args.Queries {
 		results[i] = serpToolQueryResult{Keyword: q.Keyword}
-		pair, err := keywords.ResolveMarket(q.LocationCode, strings.TrimSpace(q.LanguageCode), market.Pair{
+		locationCode := 0
+		if q.LocationCode != nil {
+			locationCode = *q.LocationCode
+		}
+		pair, err := keywords.ResolveMarket(locationCode, strings.TrimSpace(q.LanguageCode), market.Pair{
 			LocationCode: access.Project.LocationCode, LanguageCode: access.Project.LanguageCode,
 		})
 		if err != nil {
