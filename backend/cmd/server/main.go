@@ -179,9 +179,11 @@ func run(logger *slog.Logger) error {
 	rankTrackingService.Plans = billingSvc
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
+	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
+		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
 	}
 	srv := &http.Server{
 		Addr: cfg.Addr,
@@ -210,7 +212,7 @@ func run(logger *slog.Logger) error {
 			RankChecks:        rankChecks,
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			MCP:               mcpDeps,
-			SavedKeywords:     &keywords.SavedService{Store: keywords.SavedRepository{DB: db}},
+			SavedKeywords:     savedKeywordsSvc,
 			KeywordResearch:   keywordResearch,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,

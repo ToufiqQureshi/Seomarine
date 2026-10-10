@@ -10,11 +10,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 )
 
 const (
+	// Route is the public MCP endpoint served by the Go dispatcher.
 	Route                 = "/mcp"
 	requestTimeout        = 30 * time.Second
 	maxBodyBytes          = 4 << 20
@@ -30,16 +33,21 @@ var corsHeaders = map[string]string{
 	"Access-Control-Max-Age":        "86400",
 }
 
+// Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger    *slog.Logger
-	DB        *pgxpool.Pool
-	Redis     *redis.Client
-	Auth      *auth.Service
-	Billing   *billing.Service
-	Upstream  *url.URL
-	PublicURL *url.URL
+	Logger        *slog.Logger
+	DB            *pgxpool.Pool
+	Redis         *redis.Client
+	Auth          *auth.Service
+	Billing       *billing.Service
+	Upstream      *url.URL
+	PublicURL     *url.URL
+	Audit         *audit.Service
+	Locations     *keywords.LocationService
+	SavedKeywords *keywords.SavedService
 }
 
+// Mount registers the MCP dispatcher on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	h := newHandler(d)
 	mux.Handle(Route, h)

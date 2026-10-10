@@ -71,6 +71,14 @@ func registry() []*tool {
 		listProjectsTool(),
 		createProjectTool(),
 		getProjectContextTool(),
+		searchSerpLocationsTool(),
+		auditHistoryTool(),
+		auditStatusTool(),
+		auditPagesTool(),
+		deleteAuditTool(),
+		listSavedKeywordsTool(),
+		saveKeywordsTool(),
+		removeSavedKeywordsTool(),
 	}
 }
 
