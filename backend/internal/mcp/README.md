@@ -21,6 +21,11 @@ OAuth authorization remains on the TypeScript fallback until the Go OAuth
 flow is complete.
 
 The read/free tools currently owned here include saved keyword list/save/remove,
+SERP location search, Search Console performance, and site audit
+history/status/pages/deletion. Audit deletion checks owner/admin membership and
+uses the same stop-and-delete service as the dashboard. Tools whose backing Go
+service or response contract is not ported yet (including reports,
+templates/sharing, GA4, rank tracker tools, and audit issue formatting) continue
 SERP location search, rank tracker list/latest results/add/remove, and site audit
 history/status/pages/deletion. Audit deletion checks owner/admin membership and
 uses the same stop-and-delete service as the dashboard. Tools whose backing Go
