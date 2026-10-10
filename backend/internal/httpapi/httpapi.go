@@ -19,6 +19,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
@@ -26,7 +27,9 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -62,7 +65,8 @@ type Deps struct {
 	// Backlinks is nil when no DataForSEO key is configured.
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
-	Domain *domain.Service
+	Domain            *domain.Service
+	DashboardOverview *dashboardoverview.Service
 	// GoogleAccounts removes a user's Google data grants and mappings.
 	GoogleAccounts google.AccountRepository
 	// GoogleOAuth owns consent start and callback routes.
@@ -92,8 +96,13 @@ type Deps struct {
 	// RankChecks is nil when no DataForSEO key is configured; the check route
 	// then answers 503.
 	RankChecks *ranktracking.Checks
+	// Projects serves organization-scoped project management.
+	Projects *projects.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// Reports owns project report documents, templates, and sharing.
+	Reports   *reports.Service
+	PublicURL *url.URL
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
 	MCP *mcp.Deps
@@ -196,6 +205,7 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	dashboardoverview.Mount(mux, dashboardoverview.Deps{Logger: d.Logger, Service: d.DashboardOverview, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	keywords.MountSaved(mux, keywords.SavedDeps{
 		Logger: d.Logger, Service: d.SavedKeywords, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
@@ -215,6 +225,10 @@ func NewHandler(d Deps) http.Handler {
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	activation.Mount(mux, activation.Deps{Logger: d.Logger, Service: d.Activation, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
+	reports.Mount(mux, reports.Deps{Logger: d.Logger, Service: d.Reports, PublicURL: d.PublicURL, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	sam.Mount(mux, sam.Deps{
 		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

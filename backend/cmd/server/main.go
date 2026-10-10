@@ -26,6 +26,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
+	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -38,8 +39,10 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
+	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -178,13 +181,17 @@ func run(logger *slog.Logger) error {
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
 	rankTrackingService.Plans = billingSvc
+	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}, Hosted: cfg.AuthMode == "hosted"}
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
+	gscService := buildGSCService(db, googleAPIClient)
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
+		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
+		RankTracking: rankTrackingService,
 	}
 	srv := &http.Server{
 		Addr: cfg.Addr,
@@ -200,19 +207,23 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
+			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}},
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,
 			GA4Setup:          ga4Setup,
-			GSC:               buildGSCService(db, googleAPIClient),
+			GSC:               gscService,
 			GSCConnections:    buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
 			RankTracking:      rankTrackingService,
 			RankChecks:        rankChecks,
+			Projects:          &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			Activation:        &activation.Service{Store: activation.Repository{DB: db}},
+			Reports:           reportsSvc,
+			PublicURL:         cfg.PublicURL,
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,
 			KeywordResearch:   keywordResearch,

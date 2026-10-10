@@ -1,7 +1,10 @@
 // Package ga4 implements the project's read-only Google Analytics reports.
 package ga4
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // ReportKind identifies one of the supported GA4 report types.
 type ReportKind string
@@ -169,6 +172,15 @@ type reportError struct {
 }
 
 func (e *reportError) Error() string { return e.Message }
+
+// PublicError unwraps the stable user-safe errors for API and MCP callers.
+func PublicError(err error) (code, message string, retryAfterSeconds *int, ok bool) {
+	var target *reportError
+	if !errors.As(err, &target) {
+		return "", "", nil, false
+	}
+	return target.Code, target.Message, target.RetryAfterSeconds, true
+}
 
 type dateResolution struct {
 	Requested *DateRange `json:"requestedDateRange"`
