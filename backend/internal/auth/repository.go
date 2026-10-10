@@ -15,6 +15,13 @@ type repository struct {
 	db *pgxpool.Pool
 }
 
+// OrganizationMembership is the authenticated user's workspace membership.
+type OrganizationMembership struct {
+	OrganizationID   string `json:"organizationId"`
+	OrganizationName string `json:"organizationName"`
+	Role             string `json:"role"`
+}
+
 // userBySessionToken returns the user of the unexpired session with token,
 // with the session's active organization when the user is still a member of
 // it, or ErrUnauthenticated when there is no such session.
@@ -55,4 +62,28 @@ func (r repository) projectOrganization(ctx context.Context, userID, projectID s
 		return "", false, fmt.Errorf("check project membership: %w", err)
 	}
 	return orgID, true, nil
+}
+
+func (r repository) memberships(ctx context.Context, userID string) ([]OrganizationMembership, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT m.organization_id, o.name, m.role
+		FROM member m JOIN organization o ON o.id = m.organization_id
+		WHERE m.user_id = $1
+		ORDER BY m.created_at`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list organization memberships: %w", err)
+	}
+	defer rows.Close()
+	out := []OrganizationMembership{}
+	for rows.Next() {
+		var row OrganizationMembership
+		if err := rows.Scan(&row.OrganizationID, &row.OrganizationName, &row.Role); err != nil {
+			return nil, fmt.Errorf("scan organization membership: %w", err)
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate organization memberships: %w", err)
+	}
+	return out, nil
 }

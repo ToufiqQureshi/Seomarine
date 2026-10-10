@@ -176,6 +176,7 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
+	auth.MountOrganization(mux, d.Auth, withSession)
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
 	})))

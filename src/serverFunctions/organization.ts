@@ -12,29 +12,6 @@ import { sendHostedInvitationEmail } from "@/server/email/loops";
 import { AppError } from "@/server/lib/errors";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 
-// The client's source of truth for "who am I in this organization": the active
-// org, the caller's role from their member row (resolved server-side by
-// ensure-user), and every organization they belong to (for the switcher). Used
-// to gate billing/team UI; the server functions and better-auth endpoints
-// re-enforce every permission regardless.
-export const getOrganizationContext = createServerFn({ method: "GET" })
-  .middleware(requireAuthenticatedContext)
-  .handler(async ({ context }) => {
-    const memberships = await AuthRepository.listMembershipsForUser(
-      context.userId,
-    );
-    const active = memberships.find(
-      (membership) => membership.organizationId === context.organizationId,
-    );
-
-    return {
-      organizationId: context.organizationId,
-      organizationName: active?.organizationName ?? "Organization",
-      role: context.role,
-      organizations: memberships,
-    };
-  });
-
 // Team data for the organization settings tab. Pending invitations are
 // sensitive (invitee emails, inviter ids) and should only be visible to callers
 // who can manage invitations; the server filters them here so the client cannot
@@ -66,36 +43,6 @@ export const getTeam = createServerFn({ method: "GET" })
       members: fullOrganization.members ?? [],
       pendingInvitations,
     };
-  });
-
-const switchOrganizationSchema = z.object({
-  organizationId: z.string().min(1),
-});
-
-// Switch the active organization and persist the choice so the next sign-in
-// lands in the same org (session hook reads user.lastActiveOrganizationId).
-export const switchOrganization = createServerFn({ method: "POST" })
-  .middleware(requireAuthenticatedContext)
-  .validator(switchOrganizationSchema)
-  .handler(async ({ data, context }) => {
-    const membership = await AuthRepository.getMembership(
-      context.userId,
-      data.organizationId,
-    );
-    if (!membership) {
-      throw new AppError("NOT_FOUND");
-    }
-
-    await getAuth().api.setActiveOrganization({
-      headers: getRequest().headers,
-      body: { organizationId: data.organizationId },
-    });
-    await AuthRepository.setLastActiveOrganization(
-      context.userId,
-      data.organizationId,
-    );
-
-    return { organizationId: data.organizationId };
   });
 
 const sendInvitationSchema = z.object({ email: z.string().email() });

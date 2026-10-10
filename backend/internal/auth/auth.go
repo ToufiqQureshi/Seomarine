@@ -97,6 +97,53 @@ func (s *Service) AuthorizeProject(ctx context.Context, userID, projectID string
 	return orgID, nil
 }
 
+// OrganizationMemberships returns the organizations the user may switch to.
+func (s *Service) OrganizationMemberships(ctx context.Context, userID string) ([]OrganizationMembership, error) {
+	return s.repo.memberships(ctx, userID)
+}
+
+// SwitchOrganization changes the active organization only when the user has
+// a current membership in it.
+func (s *Service) SwitchOrganization(r *http.Request, userID, organizationID string) error {
+	cookie, err := r.Cookie(secureSessionCookie)
+	if errors.Is(err, http.ErrNoCookie) {
+		cookie, err = r.Cookie(sessionCookie)
+	}
+	if err != nil {
+		return ErrUnauthenticated
+	}
+	token, ok := verifySignedValue(cookie.Value, s.secret)
+	if !ok {
+		return ErrUnauthenticated
+	}
+	tx, err := s.repo.db.Begin(r.Context())
+	if err != nil {
+		return fmt.Errorf("begin organization switch: %w", err)
+	}
+	defer tx.Rollback(r.Context())
+	var exists bool
+	if err := tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM member WHERE user_id = $1 AND organization_id = $2)`, userID, organizationID).Scan(&exists); err != nil {
+		return fmt.Errorf("check organization membership: %w", err)
+	}
+	if !exists {
+		return ErrProjectNotFound
+	}
+	tag, err := tx.Exec(r.Context(), `UPDATE session SET active_organization_id = $1 WHERE token = $2 AND user_id = $3 AND expires_at > now()`, organizationID, token, userID)
+	if err != nil {
+		return fmt.Errorf("update active session organization: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUnauthenticated
+	}
+	if _, err := tx.Exec(r.Context(), `UPDATE "user" SET last_active_organization_id = $1 WHERE id = $2`, organizationID, userID); err != nil {
+		return fmt.Errorf("save last active organization: %w", err)
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		return fmt.Errorf("commit organization switch: %w", err)
+	}
+	return nil
+}
+
 // verifySignedValue checks a better-call signed cookie value and returns the
 // token it carries. better-call signs as
 // encodeURIComponent(token + "." + base64(HMAC-SHA256(secret, token))).
