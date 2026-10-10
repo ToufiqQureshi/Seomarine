@@ -202,7 +202,7 @@ func run(logger *slog.Logger) error {
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Backlinks: backlinksSvc, Domain: domainSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, KeywordResearch: keywordResearch, ProjectContext: projectContextSvc,
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
-		RankTracking: rankTrackingService,
+		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
 	srv := &http.Server{
 		Addr: cfg.Addr,

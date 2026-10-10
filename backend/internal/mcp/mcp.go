@@ -62,6 +62,7 @@ type Deps struct {
 	Reports        *reports.Service
 	GSC            *gsc.Service
 	RankTracking   *ranktracking.Service
+	RankChecks     *ranktracking.Checks
 	ProjectContext *projectcontext.Service
 }
 
