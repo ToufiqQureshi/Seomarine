@@ -34,3 +34,8 @@ API. OAuth calls still use the TypeScript fallback.
 The Go API-key MCP registry owns `get_domain_overview`. It uses the Go
 Domain service for organic estimates and the Go backlinks service for backlink
 totals, while resolving country/language from the project when omitted.
+
+
+The Go API-key MCP registry owns `get_domain_keyword_suggestions`, using the
+Go Domain service, project market defaults, and supported Labs location and
+language validation.
