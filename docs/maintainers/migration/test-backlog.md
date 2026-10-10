@@ -50,6 +50,10 @@ to the count.
 The existing `src/client/features/billing/BillingFeatureBreakdown.test.ts`
 needs its server-function mock moved to `billingApi` in the final test phase.
 
+The existing `src/client/features/onboarding/onboardingModel.test.ts` and
+`src/client/features/integrations/googleSetupState.test.ts` still mock retired
+server-function modules; update them to mock the onboarding and GSC client APIs.
+
 The existing Go `backend/internal/audit/runner_test.go` and
 `backend/internal/config/config_test.go` need cases for crawler credential
 replay and hosted invitation URL configuration in the final test phase.
