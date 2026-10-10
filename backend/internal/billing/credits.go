@@ -75,7 +75,7 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credits (organization_id, balance_credits, updated_at)
@@ -109,7 +109,7 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 	if err != nil {
 		return CreditReservation{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if idempotencyKey != "" {
 		var res CreditReservation
@@ -194,7 +194,7 @@ func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, 
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var orgID, status string
 	var reservedAmount int64
@@ -243,7 +243,7 @@ func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, $4, 'settle', 'settled reservation', now())
-	`, ledgerID, orgID, reservationID, -actualAmount, err)
+	`, ledgerID, orgID, reservationID, -actualAmount)
 	if err != nil {
 		return fmt.Errorf("insert ledger settle: %w", err)
 	}
@@ -257,7 +257,7 @@ func (s *CreditLedgerService) Refund(ctx context.Context, reservationID string, 
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var orgID, status string
 	var reservedAmount int64

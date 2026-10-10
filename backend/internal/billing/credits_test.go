@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -72,7 +73,7 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 
 	t.Run("insufficient balance", func(t *testing.T) {
 		_, err := svc.Reserve(ctx, orgID, 10000, "ik_over")
-		if err != ErrInsufficientBalance {
+		if !errors.Is(err, ErrInsufficientBalance) {
 			t.Errorf("expected ErrInsufficientBalance, got %v", err)
 		}
 	})
@@ -104,7 +105,7 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 		}
 
 		// Double settle should fail
-		if err := svc.Settle(ctx, res.ID, 1500); err != ErrReservationAlreadyClosed {
+		if err := svc.Settle(ctx, res.ID, 1500); !errors.Is(err, ErrReservationAlreadyClosed) {
 			t.Errorf("expected ErrReservationAlreadyClosed on double settle, got %v", err)
 		}
 
