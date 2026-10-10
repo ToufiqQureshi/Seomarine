@@ -221,6 +221,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
 	ga4.Mount(mux, ga4.Deps{Logger: d.Logger, Service: d.GA4, WithSession: withSession,
+		SearchConsole:     d.GSC,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	gsc.MountPerformance(mux, gsc.PerformanceDeps{

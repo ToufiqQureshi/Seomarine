@@ -61,6 +61,30 @@ func TestResolveDateRangePresetsAndFloor(t *testing.T) {
 	}
 }
 
+func TestGetPageRowsBuildsBoundedFinalWebPageRequest(t *testing.T) {
+	client := &performanceClientStub{rows: []SearchRow{{Keys: []string{"https://example.test/"}, Clicks: 2}}}
+	service := &Service{Connections: performanceConnectionStub{connection: Connection{SiteURL: "https://example.test/"}},
+		NewClient: func(string, string) SearchClient { return client }}
+	connection, rows, err := service.GetPageRows(context.Background(), "org-1", "project-1", "2026-01-01", "2026-01-28")
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := client.requestSnapshot()
+	if connection.SiteURL != "https://example.test/" || len(rows) != 1 || len(requests) != 1 {
+		t.Fatalf("connection=%+v rows=%+v requests=%+v", connection, rows, requests)
+	}
+	request := requests[0]
+	if request.StartDate != "2026-01-01" || request.EndDate != "2026-01-28" || request.RowLimit != 1000 || request.DataState != "final" || request.Type != "web" || len(request.Dimensions) != 1 || request.Dimensions[0] != "page" {
+		t.Fatalf("query request = %+v", request)
+	}
+	if _, _, err := service.GetPageRows(context.Background(), "org-1", "project-1", "2026-02-01", "2026-01-01"); err == nil {
+		t.Fatal("reversed date range was accepted")
+	}
+	if len(client.requestSnapshot()) != 1 {
+		t.Fatal("invalid dates reached Search Console")
+	}
+}
+
 func TestValidatePerformanceInputAcceptsOnlyThreeAsciiLettersForCountry(t *testing.T) {
 	valid := PerformanceInput{Country: "USA"}
 	if err := validatePerformanceInput(&valid); err != nil || valid.Country != "usa" {

@@ -6,8 +6,10 @@ rules, and the repository reads the selected property and OAuth account from
 the existing `ga4_connections` row. Google tokens are always requested for
 the connecting user, the `google-analytics` grant, and that grant's account.
 
-The Go endpoint is `POST /api/v1/projects/{projectId}/ga4/reports/run`.
-It returns the existing report JSON shape, including source and date metadata,
+The Go report endpoint is `POST /api/v1/projects/{projectId}/ga4/reports/run`;
+the organic dashboard endpoint is
+`POST /api/v1/projects/{projectId}/ga4/overview/organic`. The report route
+returns the existing report JSON shape, including source and date metadata,
 rows, pagination, quota, warnings, optional previous-period comparison, and
 report-specific diagnostics/activity. Report filters and dimensions stay
 explicit because GA4 rejects incompatible combinations and may bill failed
@@ -33,10 +35,36 @@ requests.
   `ga4_*` error codes. The shared Google API client only retains Google's
   allowlisted `SERVICE_DISABLED` reason and numeric `Retry-After` value; it
   never includes provider error text in logs or responses.
-- Property listing, connection setup/removal, the organic overview and
-  measurement-health reports, the MCP wrappers, and the React call-site switch
-  remain on the legacy implementation for later roadmap items. No legacy code
-  is deleted by this API port.
+- Property listing, connection setup/removal, MCP wrappers, and the React
+  call-site switch remain on the legacy implementation for later roadmap
+  items. No legacy code is deleted by this API port.
+
+## Organic overview
+
+The overview runs a bounded aggregate report for the current range, an equal-
+length previous range, and a daily or weekly trend. All three use the same
+organic-search filter and property timezone as the report endpoint. The daily
+trend is capped at 1,000 rows; a truncated trend carries the legacy
+`trend_truncated` warning. Key-event decline diagnostics are suppressed when
+any report is limited, or the previous period contains fewer than five events.
+
+## Measurement health
+
+`POST /api/v1/projects/{projectId}/ga4/measurement-health` reads up to 200
+data streams, each web stream's enhanced-measurement settings, key events, and
+custom definitions. Admin API calls use the connecting user's existing
+`google-analytics` grant through the shared bounded Google client. Provider
+stream names are checked against the selected property before follow-up calls.
+
+## Search opportunities
+
+`POST /api/v1/projects/{projectId}/ga4/search-opportunities` joins up to 1,000
+final GSC page rows with up to 1,000 organic GA4 landing-page rows. It keeps
+GSC positions 4 through 20, normalizes host/path keys, scores joined rows by
+demand, business value, and reachability, and returns coverage and truncation
+metadata. The default range ends three property-local days before today to
+match Search Console's final-data lag. Results expose the difference between
+the GSC Pacific time zone and the Analytics property time zone as a warning.
 
 ## Environment
 

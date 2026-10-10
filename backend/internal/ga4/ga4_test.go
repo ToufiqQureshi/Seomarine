@@ -2,6 +2,7 @@ package ga4
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 )
 
 type testRow struct{ err error }
@@ -42,9 +44,45 @@ func (c testConnections) GetByProjectID(context.Context, string) (Connection, er
 }
 
 type testGoogle struct {
-	response ProviderResponse
-	err      error
-	requests []google.APIRequest
+	response  ProviderResponse
+	responses []ProviderResponse
+	err       error
+	requests  []google.APIRequest
+}
+
+type adminGoogle struct {
+	requests       []google.APIRequest
+	streamResponse any
+}
+
+func (g *adminGoogle) DoJSON(_ context.Context, request google.APIRequest) error {
+	g.requests = append(g.requests, request)
+	var body any
+	switch {
+	case strings.Contains(request.URL, "/dataStreams?"):
+		body = g.streamResponse
+		if body == nil {
+			body = map[string]any{"dataStreams": []any{
+				map[string]any{"name": "properties/123/dataStreams/17", "type": "WEB_DATA_STREAM", "displayName": "Web", "webStreamData": map[string]any{"measurementId": "G-TEST123", "defaultUri": "https://example.test"}},
+				map[string]any{"name": "properties/123/dataStreams/22", "type": "ANDROID_APP_DATA_STREAM", "displayName": "Android"},
+			}}
+		}
+	case strings.HasSuffix(request.URL, "/enhancedMeasurementSettings"):
+		body = map[string]any{"streamEnabled": true, "siteSearchEnabled": false, "searchQueryParameter": "q"}
+	case strings.Contains(request.URL, "/keyEvents?"):
+		body = map[string]any{"keyEvents": []any{map[string]any{"eventName": "purchase", "countingMethod": "ONCE_PER_EVENT"}}}
+	case strings.Contains(request.URL, "/customDimensions?"):
+		body = map[string]any{"customDimensions": []any{map[string]any{"parameterName": "author", "displayName": "Author", "scope": "EVENT"}}}
+	case strings.Contains(request.URL, "/customMetrics?"):
+		body = map[string]any{"customMetrics": []any{map[string]any{"parameterName": "score", "displayName": "Score", "measurementUnit": "STANDARD", "scope": "EVENT"}}}
+	default:
+		return errors.New("unexpected Admin API URL")
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(encoded, request.Response)
 }
 
 func reportCode(t *testing.T, err error) string {
@@ -61,8 +99,150 @@ func (g *testGoogle) DoJSON(_ context.Context, r google.APIRequest) error {
 	if g.err != nil {
 		return g.err
 	}
-	*r.Response.(*ProviderResponse) = g.response
+	response := g.response
+	if len(g.responses) > 0 {
+		response = g.responses[0]
+		g.responses = g.responses[1:]
+	}
+	*r.Response.(*ProviderResponse) = response
 	return nil
+}
+
+func TestOrganicOverviewRunsBoundedOrganicReportsAndDiagnostics(t *testing.T) {
+	metrics := []Name{{Name: "sessions"}, {Name: "activeUsers"}, {Name: "engagedSessions"}, {Name: "engagementRate"}, {Name: "keyEvents"}, {Name: "transactions"}, {Name: "purchaseRevenue"}}
+	values := func(v ...string) []Value {
+		out := make([]Value, len(v))
+		for i := range v {
+			out[i] = Value{Value: v[i]}
+		}
+		return out
+	}
+	row := func(values ...string) ProviderRow {
+		return ProviderRow{MetricValues: func() []Value { return valuesOf(values) }()}
+	}
+	current := ProviderResponse{MetricHeaders: metrics, Rows: []ProviderRow{row("100", "80", "60", "0.6", "2", "1", "25")}}
+	previous := ProviderResponse{MetricHeaders: metrics, Rows: []ProviderRow{row("90", "70", "50", "0.5", "6", "1", "15")}}
+	trend := ProviderResponse{DimensionHeaders: []Name{{Name: "date"}}, MetricHeaders: metrics,
+		Rows: []ProviderRow{{DimensionValues: values("20261001"), MetricValues: values("100", "80", "60", "0.6", "2", "1", "25")}}, RowCount: 1}
+	googleClient := &testGoogle{responses: []ProviderResponse{current, previous, trend}}
+	service := &Service{Connections: testConnections{}, Google: googleClient, Now: func() time.Time { return time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC) }}
+	got, err := service.GetOrganicOverview(context.Background(), "project-1", OrganicOverviewInput{Trend: "daily"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(googleClient.requests) != 3 || len(googleClient.requests[0].Body.(APIRequest).Dimensions) != 0 {
+		t.Fatalf("overview requests = %#v", googleClient.requests)
+	}
+	currentSummary := got["current"].(map[string]any)
+	if currentSummary["sessions"] != float64(100) || len(got["diagnostics"].([]any)) != 1 {
+		t.Fatalf("overview response = %#v", got)
+	}
+	firstRequest := googleClient.requests[0]
+	body := firstRequest.Body.(APIRequest)
+	if body.Limit != "1" || body.DimensionFilter == nil || body.Metrics[6].Name != "purchaseRevenue" {
+		t.Fatalf("summary request = %#v", body)
+	}
+	trendBody := googleClient.requests[2].Body.(APIRequest)
+	if trendBody.Limit != "1000" || trendBody.Dimensions[0].Name != "date" || trendBody.OrderBys[0].Dimension.DimensionName != "date" || trendBody.OrderBys[0].Metric != nil {
+		t.Fatalf("trend request = %#v", trendBody)
+	}
+}
+
+func TestMeasurementHealthMapsAdminConfigurationAndFlags(t *testing.T) {
+	client := &adminGoogle{}
+	service := &Service{Connections: testConnections{}, Google: client}
+	got, err := service.GetMeasurementHealth(context.Background(), "project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	summary := got["summary"].(map[string]any)
+	if summary["dataStreamCount"] != 2 || summary["webStreamCount"] != 1 || summary["keyEventCount"] != 1 || summary["customDimensionCount"] != 1 || summary["customMetricCount"] != 1 || summary["issueCount"] != 1 {
+		t.Fatalf("summary = %#v", summary)
+	}
+	if len(client.requests) != 5 || client.requests[0].Method != http.MethodGet || client.requests[0].Provider != "google-analytics" || client.requests[0].AccountID != "account-1" {
+		t.Fatalf("Admin API requests = %#v", client.requests)
+	}
+	if got["issues"].([]string)[0] != "site_search_measurement_disabled" {
+		t.Fatalf("issues = %#v", got["issues"])
+	}
+}
+
+func TestMeasurementHealthRejectsCrossPropertyDataStreamName(t *testing.T) {
+	client := &adminGoogle{streamResponse: map[string]any{"dataStreams": []any{map[string]any{
+		"name": "properties/999/dataStreams/17", "type": "WEB_DATA_STREAM",
+	}}}}
+	service := &Service{Connections: testConnections{}, Google: client}
+	_, err := service.GetMeasurementHealth(context.Background(), "project-1")
+	if reportCode(t, err) != "ga4_malformed_response" || len(client.requests) != 1 {
+		t.Fatalf("error = %v; requests = %d", err, len(client.requests))
+	}
+}
+
+type opportunityGSCStorage struct{ connection gsc.Connection }
+
+func (s opportunityGSCStorage) GetByProjectID(context.Context, string, string) (gsc.Connection, error) {
+	return s.connection, nil
+}
+
+type opportunityGSCClient struct {
+	rows    []gsc.SearchRow
+	request gsc.SearchRequest
+}
+
+func (c *opportunityGSCClient) QuerySearchAnalytics(_ context.Context, _ string, request gsc.SearchRequest) ([]gsc.SearchRow, error) {
+	c.request = request
+	return c.rows, nil
+}
+
+func TestSearchOpportunitiesJoinsAndScoresOrganicPages(t *testing.T) {
+	gscClient := &opportunityGSCClient{rows: []gsc.SearchRow{
+		{Keys: []string{"https://example.test/path/?campaign=x"}, Clicks: 10, Impressions: 100, CTR: .1, Position: 5},
+		{Keys: []string{"https://example.test/unmatched"}, Clicks: 20, Impressions: 200, CTR: .1, Position: 4},
+		{Keys: []string{"https://example.test/ignored"}, Impressions: 900, Position: 21},
+	}}
+	searchConsole := &gsc.Service{Connections: opportunityGSCStorage{connection: gsc.Connection{SiteURL: "https://example.test/"}},
+		NewClient: func(string, string) gsc.SearchClient { return gscClient }}
+	metrics := []Name{{Name: "sessions"}, {Name: "activeUsers"}, {Name: "engagedSessions"}, {Name: "engagementRate"}, {Name: "keyEvents"}, {Name: "sessionKeyEventRate"}, {Name: "transactions"}, {Name: "purchaseRevenue"}}
+	googleClient := &testGoogle{response: ProviderResponse{DimensionHeaders: []Name{{Name: "hostName"}, {Name: "landingPage"}}, MetricHeaders: metrics,
+		Rows: []ProviderRow{{DimensionValues: []Value{{Value: "example.test"}, {Value: "/path/"}}, MetricValues: valuesOf([]string{"50", "40", "30", "0.75", "0", "0", "1", "15"})}}, RowCount: 1}}
+	service := &Service{Connections: testConnections{}, Google: googleClient, Now: func() time.Time { return time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC) }}
+	got, err := service.GetSearchOpportunities(context.Background(), searchConsole, "org-1", "project-1", SearchOpportunityInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gscClient.request.StartDate != "2026-09-10" || gscClient.request.EndDate != "2026-10-07" || gscClient.request.DataState != "final" || gscClient.request.RowLimit != 1000 {
+		t.Fatalf("Search Console request = %+v", gscClient.request)
+	}
+	rows := got["rows"].([]map[string]any)
+	if len(rows) != 2 || rows[0]["joinStatus"] != "joined" || rows[0]["normalizedPage"] != "example.test/path" || rows[0]["score"] != float64(100) || rows[1]["score"] != nil {
+		t.Fatalf("opportunity rows = %#v", rows)
+	}
+	scoring := got["scoring"].(map[string]any)
+	if scoring["businessValueMetric"] != "engagementRate" || scoring["engagementFallback"] != true {
+		t.Fatalf("scoring = %#v", scoring)
+	}
+	coverage := got["coverage"].(map[string]any)
+	if coverage["gscRowsConsidered"] != 3 || coverage["matchedRows"] != 1 || coverage["unmatchedGscRows"] != 1 {
+		t.Fatalf("coverage = %#v", coverage)
+	}
+}
+
+func TestNormalizePageKeyCanonicalizesHostAndDropsQuery(t *testing.T) {
+	got, ok := normalizePageKey(" HTTPS://BÜCHER.example:443/path///?q=1#top ")
+	if !ok || got != "xn--bcher-kva.example/path" {
+		t.Fatalf("normalizePageKey() = %q, %v", got, ok)
+	}
+	if _, ok := normalizePageKey("(not set)"); ok {
+		t.Fatal("placeholder URL was accepted")
+	}
+}
+
+func valuesOf(values []string) []Value {
+	out := make([]Value, len(values))
+	for i := range values {
+		out[i] = Value{Value: values[i]}
+	}
+	return out
 }
 
 func TestBuildDefinitions(t *testing.T) {
@@ -192,5 +372,37 @@ func TestReportHandlerRejectsUnknownFields(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestNewHandlersRejectUnknownFields(t *testing.T) {
+	service := &Service{Connections: testConnections{}, Google: &testGoogle{}}
+	withSession := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), auth.User{ID: "user-1"})))
+		})
+	}
+	withProject := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1")))
+		})
+	}
+	mux := http.NewServeMux()
+	Mount(mux, Deps{Logger: slog.Default(), Service: service, WithSession: withSession, WithProjectAccess: withProject})
+	for _, test := range []struct{ path, body string }{
+		{"/api/v1/projects/project-1/ga4/overview/organic", `{"trend":"monthly"}`},
+		{"/api/v1/projects/project-1/ga4/overview/organic", `{"startDate":null}`},
+		{"/api/v1/projects/project-1/ga4/measurement-health", `{"unexpected":true}`},
+		{"/api/v1/projects/project-1/ga4/search-opportunities", `{"unexpected":true}`},
+		{"/api/v1/projects/project-1/ga4/search-opportunities", `{"limit":null}`},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.body))
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, req)
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
 	}
 }

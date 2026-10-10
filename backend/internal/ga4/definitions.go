@@ -53,7 +53,7 @@ func buildDefinition(i ReportInput) (reportDefinition, error) {
 
 func buildRequest(i ReportInput, dates DateRange, d reportDefinition, limit, offset int) APIRequest {
 	request := APIRequest{DateRanges: []DateRange{dates}, Offset: fmt.Sprint(offset), Limit: fmt.Sprint(limit), KeepEmptyRows: false, ReturnPropertyQuota: true,
-		OrderBys: []OrderBy{{Metric: MetricOrder{MetricName: d.orderMetric}, Desc: true}}}
+		OrderBys: []OrderBy{{Metric: &MetricOrder{MetricName: d.orderMetric}, Desc: true}}}
 	for _, n := range d.dimensions {
 		request.Dimensions = append(request.Dimensions, Name{Name: n})
 	}

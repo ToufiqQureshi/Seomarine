@@ -67,13 +67,19 @@ type Name struct {
 
 // OrderBy configures descending ordering for the requested report metric.
 type OrderBy struct {
-	Metric MetricOrder `json:"metric"`
-	Desc   bool        `json:"desc"`
+	Metric    *MetricOrder    `json:"metric,omitempty"`
+	Dimension *DimensionOrder `json:"dimension,omitempty"`
+	Desc      bool            `json:"desc,omitempty"`
 }
 
 // MetricOrder identifies the metric used to sort the report.
 type MetricOrder struct {
 	MetricName string `json:"metricName"`
+}
+
+// DimensionOrder identifies a dimension used to order a trend report.
+type DimensionOrder struct {
+	DimensionName string `json:"dimensionName"`
 }
 
 // ProviderResponse is the bounded GA4 Data API response used by normalization.
