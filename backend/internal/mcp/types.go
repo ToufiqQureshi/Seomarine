@@ -82,6 +82,7 @@ func registry() []*tool {
 		getBacklinksOverviewTool(),
 		getBacklinksProfileTool(),
 		getDomainOverviewTool(),
+		getDomainKeywordSuggestionsTool(),
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
