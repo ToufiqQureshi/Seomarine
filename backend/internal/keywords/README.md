@@ -35,3 +35,6 @@ The Go MCP `get_keyword_metrics` tool fetches known terms from Labs or Google Ad
 
 
 The Go MCP `research_keywords` tool calls the shared Go research service per seed, honors local-area markets and the requested research options, and returns a separate result for each seed. Its contract tests are deferred to the final test phase.
+
+
+The shared Go DataForSEO keyword provider also owns the MCP Maps and Local Finder SERP paths. It preserves coordinate formatting, device/OS selection, depth and trimmed local-result fields. Contract tests are deferred to the final migration phase.

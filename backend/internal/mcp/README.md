@@ -77,3 +77,6 @@ The Go API-key MCP registry also owns `inspect_urls`. It checks project authoriz
 
 
 The Go API-key MCP registry also owns `find_serp_competitors`, using the Go domain provider's Labs lookup with market validation, domain exclusions, and the legacy sort choices.
+
+
+The Go API-key MCP registry also owns `get_local_serp_results`. It queries the Go Maps or Local Finder provider near the supplied coordinate and returns a bounded, trimmed row shape.
