@@ -48,3 +48,9 @@ The Go API-key MCP registry also owns `get_serp_results`. Each query resolves
 its own market and optional canonical local location, while individual provider
 errors are returned alongside successful query rows. OAuth requests still use
 the TypeScript fallback for tools not yet ported.
+
+
+The Go API-key MCP registry also owns `create_rank_tracker`. It creates an empty
+configuration with the project's market/domain defaults, validates optional
+canonical local locations, and keeps the MCP default schedule manual so tracker
+creation never starts future credit spend.

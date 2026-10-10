@@ -41,3 +41,10 @@ Not ported yet: per-run credit holds, the React switch and the MCP tools. Until 
 - Deliberate differences from the legacy app: a tie on `checked_at` picks the later-written snapshot (the legacy join could return both); a keyword over 200 UTF-16 units is returned as rejected, not silently dropped; domains must be plain ASCII hostnames (no ports, no unicode, labels up to 63 characters), because a name the provider rejects is still billed; the MCP-only credit-ceiling approval flow is not ported (it returns with the MCP tools).
 - City-level configs (`locationName`) are checked against the registry; without a provider key they answer 503.
 - The project cap (500 active configs) is checked before insert, not locked, so two simultaneous creates could end one over.
+
+
+The Go MCP `create_rank_tracker` tool reuses the rank-tracking service and its
+project-scoped duplicate/limit checks. It defaults to mobile, depth 40, and a
+manual schedule, matching the legacy MCP tool even though the API's own
+configuration defaults differ. Tool-contract tests are deferred to the final
+migration test phase.
