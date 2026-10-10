@@ -178,7 +178,7 @@ func run(logger *slog.Logger) error {
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
 	rankTrackingService.Plans = billingSvc
-	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}, Hosted: billingSvc != nil}
+	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}, Hosted: cfg.AuthMode == "hosted"}
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
