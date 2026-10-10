@@ -50,3 +50,6 @@ The shared Go DataForSEO provider supports Business Listings search with coordin
 
 
 The Go DataForSEO provider also reads a single `my_business_info` record by name, CID, or place ID with a project-market or coordinate selector, merging the provider's check URL into the profile. Contract tests are deferred to the final migration test phase.
+
+
+The Go provider now supports metered Google and extended review task-post operations plus unmetered task-get polling. Review task IDs remain resumable across MCP calls, and contract tests are deferred to the final migration phase.

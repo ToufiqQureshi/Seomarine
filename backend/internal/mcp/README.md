@@ -92,3 +92,6 @@ The Go API-key MCP registry also owns `search_local_businesses`. It validates co
 
 
 The Go API-key MCP registry also owns `get_business_profile`, returning the provider profile for exactly one business identifier and the requested project market or coordinate.
+
+
+The Go API-key MCP registry also owns `get_business_reviews`. It posts Google/extended review tasks once, polls within the request budget, and returns resumable IDs for still-running tasks without repeat charges.

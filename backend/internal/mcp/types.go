@@ -95,6 +95,7 @@ func registry() []*tool {
 		getGoogleBusinessQuestionsTool(),
 		searchLocalBusinessesTool(),
 		getBusinessProfileTool(),
+		getBusinessReviewsTool(),
 		listBusinessCategoriesTool(),
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
