@@ -38,6 +38,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
+	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
@@ -193,6 +194,7 @@ func run(logger *slog.Logger) error {
 			Audit:             auditSvc,
 			RankTracking:      ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker),
 			RankChecks:        rankChecks,
+			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			SavedKeywords:     &keywords.SavedService{Store: keywords.SavedRepository{DB: db}},
 			KeywordResearch:   keywordResearch,
 			Site:              pages,

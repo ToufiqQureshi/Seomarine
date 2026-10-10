@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
 
@@ -86,6 +87,8 @@ type Deps struct {
 	// RankChecks is nil when no DataForSEO key is configured; the check route
 	// then answers 503.
 	RankChecks *ranktracking.Checks
+	// SAMSessions serves the project chat-session registry.
+	SAMSessions *sam.Service
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -201,6 +204,10 @@ func NewHandler(d Deps) http.Handler {
 	keywords.MountLocations(mux, keywords.LocationDeps{Logger: d.Logger, Service: d.Locations, WithSession: withSession})
 	ranktracking.Mount(mux, ranktracking.Deps{
 		Logger: d.Logger, Service: d.RankTracking, Checks: d.RankChecks, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	sam.Mount(mux, sam.Deps{
+		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	audit.Mount(mux, audit.Deps{

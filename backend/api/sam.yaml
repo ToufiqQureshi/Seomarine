@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Seomarine SAM sessions
+  version: 1.0.0
+  description: |
+    Project-scoped SAM session registry. Every route is POST with a strict JSON
+    body, requires a session and project access, and scopes sessions to the caller.
+servers:
+  - url: /api/v1
+paths:
+  /projects/{projectId}/sam/sessions/list:
+    post:
+      operationId: sam_sessions_list
+      summary: List the caller's active SAM sessions for a project
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/sam/sessions/create:
+    post:
+      operationId: sam_sessions_create
+      summary: Create a SAM session registry entry
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/sam/sessions/archive:
+    post:
+      operationId: sam_sessions_archive
+      summary: Archive a caller-owned session without deleting its transcript
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sessionId]
+              properties:
+                sessionId: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  schemas:
+    EmptyInput:
+      type: object
+      additionalProperties: false
+  responses:
+    Json:
+      description: JSON result
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema: { type: object }

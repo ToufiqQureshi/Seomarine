@@ -23,6 +23,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5h | GA4 reporting API in Go (seven report types, paging, comparisons and diagnostics); legacy setup/overview and React switch pending              | in progress |
 | 0.5i | GSC Search Performance API in Go (report, query/page paging and export); property setup, URL inspection, MCP and React switch pending          | in progress |
 | 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect); OAuth, URL inspection, MCP and React switch pending   | in progress |
+| 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                         | in progress |
 
 ## Phase 1: Rebrand + new UI
 
