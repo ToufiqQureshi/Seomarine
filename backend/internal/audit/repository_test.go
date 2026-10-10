@@ -56,6 +56,10 @@ func suffix(t *testing.T) string {
 // seedProject inserts a project and returns its id.
 func seedProject(ctx context.Context, t *testing.T, pool *pgxpool.Pool, organizationID string) string {
 	t.Helper()
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at)
+		VALUES ($1, 'audit test', $2, now()) ON CONFLICT (id) DO NOTHING`, organizationID, "audit-test-"+organizationID); err != nil {
+		t.Fatalf("insert organization: %v", err)
+	}
 	projectID := "proj-" + suffix(t)
 	if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name) VALUES ($1, $2, $3)`, projectID, organizationID, "test"); err != nil {
 		t.Fatalf("insert project: %v", err)
@@ -63,6 +67,9 @@ func seedProject(ctx context.Context, t *testing.T, pool *pgxpool.Pool, organiza
 	t.Cleanup(func() {
 		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM projects WHERE id = $1`, projectID); err != nil {
 			t.Errorf("clean project: %v", err)
+		}
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM organization WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM projects WHERE organization_id = $1)`, organizationID); err != nil {
+			t.Errorf("clean organization: %v", err)
 		}
 	})
 	return projectID
@@ -101,8 +108,8 @@ func TestRepositoryAuditLifecycle(t *testing.T) {
 	defer cancel()
 	pool := auditTestPool(ctx, t)
 	repo := NewRepository(pool)
-	projectID := seedProject(ctx, t, pool, "org-1")
-	otherProject := seedProject(ctx, t, pool, "org-2")
+	projectID := seedProject(ctx, t, pool, "org-"+suffix(t))
+	otherProject := seedProject(ctx, t, pool, "org-"+suffix(t))
 	auditID := "audit-" + suffix(t)
 	seedRepositoryAudit(ctx, t, repo, auditID, projectID)
 
@@ -147,7 +154,7 @@ func TestRepositoryInsertCrawledBatchIsIdempotent(t *testing.T) {
 	defer cancel()
 	pool := auditTestPool(ctx, t)
 	repo := NewRepository(pool)
-	projectID := seedProject(ctx, t, pool, "org-1")
+	projectID := seedProject(ctx, t, pool, "org-"+suffix(t))
 	auditID := "audit-" + suffix(t)
 	seedRepositoryAudit(ctx, t, repo, auditID, projectID)
 
@@ -189,7 +196,7 @@ func TestRepositoryMultipageChecks(t *testing.T) {
 	defer cancel()
 	pool := auditTestPool(ctx, t)
 	repo := NewRepository(pool)
-	projectID := seedProject(ctx, t, pool, "org-1")
+	projectID := seedProject(ctx, t, pool, "org-"+suffix(t))
 	auditID := "audit-" + suffix(t)
 	seedRepositoryAudit(ctx, t, repo, auditID, projectID)
 
@@ -233,7 +240,7 @@ func TestRepositoryLighthouseIdempotent(t *testing.T) {
 	defer cancel()
 	pool := auditTestPool(ctx, t)
 	repo := NewRepository(pool)
-	projectID := seedProject(ctx, t, pool, "org-1")
+	projectID := seedProject(ctx, t, pool, "org-"+suffix(t))
 	auditID := "audit-" + suffix(t)
 	seedRepositoryAudit(ctx, t, repo, auditID, projectID)
 	page := samplePage("page-1", "https://example.com/")
@@ -313,8 +320,8 @@ func TestRepositoryGetLighthouseForProject(t *testing.T) {
 	defer cancel()
 	pool := auditTestPool(ctx, t)
 	repo := NewRepository(pool)
-	projectID := seedProject(ctx, t, pool, "org-1")
-	otherProject := seedProject(ctx, t, pool, "org-2")
+	projectID := seedProject(ctx, t, pool, "org-"+suffix(t))
+	otherProject := seedProject(ctx, t, pool, "org-"+suffix(t))
 	auditID := "audit-" + suffix(t)
 	seedRepositoryAudit(ctx, t, repo, auditID, projectID)
 	page := samplePage("page-1", "https://example.com/")
