@@ -6,24 +6,24 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 
 ## Phase 0: Foundation (must come first)
 
-| #    | Task                                                                                                                                           | Status      |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 0.1  | Import code into the Seomarine repo, add the proprietary license, keep the MIT attribution                                                     | ✅          |
-| 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                                              | ⏳          |
-| 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                                  | ✅          |
-| 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                   | ✅          |
-| 0.4  | Go server serves the React SPA (Vite build) as static files                                                                                    | ⏳          |
-| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP)                | 🔧          |
-| 0.5d | Port keyword/rank-tracking market tables and resolution to Go; API and jobs remain pending                                                     | in progress |
-| 0.5f | Rank tracking in Go: tables, rules, configs, keywords, results, manual and scheduled checks done; metrics refresh and the React switch pending | in progress |
-| 0.5g | Keywords in Go: saved keywords, tags, research (Labs/Ads, local), SERP analysis, metrics refresh; React switch pending                         | in progress |
-| 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                                           | in progress |
-| 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                     | in progress |
-| 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                          | in progress |
-| 0.5h | GA4 reporting, organic overview, measurement-health and Search Opportunity APIs in Go; property setup, MCP and React switch pending            | in progress |
-| 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                          | in progress |
-| 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending   | in progress |
-| 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                         | in progress |
+| #    | Task                                                                                                                                                    | Status      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1  | Import code into the Seomarine repo, add the proprietary license, keep the MIT attribution                                                              | ✅          |
+| 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                                                       | ⏳          |
+| 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                                           | ✅          |
+| 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                            | ✅          |
+| 0.4  | Go server serves the React SPA (Vite build) as static files                                                                                             | ⏳          |
+| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP)                         | 🔧          |
+| 0.5d | Port keyword/rank-tracking market tables and resolution to Go; API and jobs remain pending                                                              | in progress |
+| 0.5f | Rank tracking in Go: tables, rules, configs, keywords, results, manual/scheduled checks and metrics refresh done; credit holds and React switch pending | in progress |
+| 0.5g | Keywords in Go: saved keywords, tags, research (Labs/Ads, local), SERP analysis, metrics refresh; React switch pending                                  | in progress |
+| 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                                                    | in progress |
+| 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                              | in progress |
+| 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                                   | in progress |
+| 0.5h | GA4 reporting, organic overview, measurement-health and Search Opportunity APIs in Go; property setup, MCP and React switch pending                     | in progress |
+| 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                                   | in progress |
+| 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending            | in progress |
+| 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                                  | in progress |
 
 ## Phase 1: Rebrand + new UI
 

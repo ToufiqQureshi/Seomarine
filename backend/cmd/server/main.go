@@ -169,6 +169,9 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
+	rankTrackingService.Metrics = keywordResearch
+	rankTrackingService.Plans = billingSvc
 
 	srv := &http.Server{
 		Addr: cfg.Addr,
@@ -192,7 +195,7 @@ func run(logger *slog.Logger) error {
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
 			Audit:             auditSvc,
-			RankTracking:      ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker),
+			RankTracking:      rankTrackingService,
 			RankChecks:        rankChecks,
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			SavedKeywords:     &keywords.SavedService{Store: keywords.SavedRepository{DB: db}},

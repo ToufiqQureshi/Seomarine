@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 )
 
 // SerpResult is one organic result of a keyword's SERP.
@@ -207,6 +208,24 @@ func (s *ResearchService) metricsForList(ctx context.Context, org string, keywor
 		}
 	}
 	return rows, nil
+}
+
+// RankTrackingMetrics refreshes only the metrics displayed by rank tracking.
+// It delegates to the same market-aware, capped provider path as keyword
+// research, including local-volume and country-served-language rules.
+func (s *ResearchService) RankTrackingMetrics(ctx context.Context, organizationID string, keywords []string, locationCode int, languageCode string, locationName *string) ([]ranktracking.KeywordMetric, error) {
+	rows, err := s.metricsForList(ctx, organizationID, keywords, locationCode, languageCode, locationName)
+	if err != nil {
+		return nil, err
+	}
+	metrics := make([]ranktracking.KeywordMetric, 0, len(rows))
+	for _, row := range rows {
+		metrics = append(metrics, ranktracking.KeywordMetric{
+			Keyword: row.Keyword, SearchVolume: row.SearchVolume,
+			KeywordDifficulty: row.KeywordDifficulty, CPC: row.CPC,
+		})
+	}
+	return metrics, nil
 }
 
 func mergeLocalAndNational(keywords []string, ads []AdsItem, labs []LabsItem) []metricRow {

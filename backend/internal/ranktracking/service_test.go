@@ -22,6 +22,20 @@ type fakeChecker struct {
 	orgs  []string
 }
 
+type fakeRankMetricProvider struct {
+	keywords []string
+	location int
+	language string
+	city     *string
+	metrics  []KeywordMetric
+	err      error
+}
+
+func (f *fakeRankMetricProvider) RankTrackingMetrics(_ context.Context, _ string, keywords []string, location int, language string, city *string) ([]KeywordMetric, error) {
+	f.keywords, f.location, f.language, f.city = keywords, location, language, city
+	return f.metrics, f.err
+}
+
 func (f *fakeChecker) Check(_ context.Context, org, _, _ string, _ int) error {
 	f.calls++
 	f.orgs = append(f.orgs, org)
@@ -344,6 +358,41 @@ func TestKeywords(t *testing.T) {
 	}
 	if kws, _ := s.ListKeywords(ctx, project, other.ID); len(kws) != 1 {
 		t.Errorf("another config lost keywords: %d left", len(kws))
+	}
+}
+
+func TestRefreshKeywordMetricsDeduplicatesCaseAndGatesProviderCalls(t *testing.T) {
+	s, project := newTestService(t, nil)
+	ctx := context.Background()
+	cfg := create(t, s, project, nil)
+	if _, err := s.AddKeywords(ctx, project, cfg.ID, []string{"Nodex", "nodex"}, true); err != nil {
+		t.Fatal(err)
+	}
+	volume, difficulty, cpc := 90, 12, 0.5
+	provider := &fakeRankMetricProvider{metrics: []KeywordMetric{{Keyword: "nodex", SearchVolume: &volume, KeywordDifficulty: &difficulty, CPC: &cpc}}}
+	s.Metrics, s.Plans = provider, fakePlans{paid: true}
+	updated, err := s.RefreshKeywordMetrics(ctx, "org-test", project, cfg.ID)
+	if err != nil || updated != 2 {
+		t.Fatalf("RefreshKeywordMetrics() = %d, %v; want 2", updated, err)
+	}
+	if len(provider.keywords) != 1 || provider.keywords[0] != "nodex" || provider.location != cfg.LocationCode || provider.language != cfg.LanguageCode || provider.city != nil {
+		t.Fatalf("provider request = %+v; want normalized terms and config market", provider)
+	}
+	got, err := s.ListKeywords(ctx, project, cfg.ID)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("ListKeywords() = %d, %v", len(got), err)
+	}
+	for _, keyword := range got {
+		if keyword.SearchVolume == nil || *keyword.SearchVolume != volume || keyword.KeywordDifficulty == nil || *keyword.KeywordDifficulty != difficulty || keyword.CPC == nil || *keyword.CPC != cpc || keyword.MetricsFetchedAt == nil {
+			t.Errorf("updated keyword metrics = %+v", keyword)
+		}
+	}
+	s.Plans = fakePlans{paid: false}
+	if _, err := s.RefreshKeywordMetrics(ctx, "org-test", project, cfg.ID); !errors.Is(err, ErrPaymentRequired) {
+		t.Fatalf("unpaid RefreshKeywordMetrics() error = %v; want ErrPaymentRequired", err)
+	}
+	if len(provider.keywords) != 1 {
+		t.Errorf("provider called before paid-plan gate: %d calls", len(provider.keywords))
 	}
 }
 

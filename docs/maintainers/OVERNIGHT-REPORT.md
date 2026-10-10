@@ -10,12 +10,15 @@
 - Local `main` ko `origin/main` tak sync kiya; root checkout ka untracked `backend/internal/dashboard/` untouched raha.
 - Audit FK fixtures theek kiye aur unused `fakeClock.Advance` hataya; tests weaken nahi kiye.
 - GA4 reports, organic overview, measurement health, Search Opportunity; GSC performance, property connections aur URL inspection; SAM session registry consolidate kiye.
+- Rank-tracking keyword metrics refresh Go API mein port kiya: config/project scoping, billing gate, case-insensitive dedupe, persisted metrics, aur strict request validation.
+- Billing status/webhook timestamps ko UTC normalize kiya, taaki API JSON timezone-independent rahe.
 - Reachable `x/net` advisory ko v0.60.0 se fix kiya. MCP untouched hai aur last phase ke liye rakha hai.
 - API contracts, docs, roadmap aur PR summary update kiye.
 
 ## Checks
 
 - `go mod tidy` + go.mod/go.sum diff check, gofmt, `go vet ./...`, `staticcheck ./...`, `deadcode -test ./...` pass.
+- Current rank refresh + affected Go packages integration tests pass; current `go vet ./...` pass.
 - Linux Docker Go 1.27.2 race suite ke tamam packages pass; pehla run sirf market fixture path mount se fail tha, correct repo-root mount ke baad market race test pass hua. Fresh Postgres 16 aur Redis 8 use kiye.
 - Go 1.27.2 `govulncheck ./...`: reachable vulnerabilities zero; ek module advisory reachable nahi.
 - `pnpm ci:check` pass (Prettier, knip, tsc aur oxlint).
@@ -25,7 +28,7 @@
 
 ## Baaki / owner decisions
 
-- GA4 property list/setup/select/disconnect aur rank-tracking keyword metrics refresh abhi baaki.
+- GA4 property list/setup/select/disconnect abhi baaki. Rank-tracking credit holds aur React switch abhi baaki.
 - Projects, project-context, reports, dashboard, activation/referrals, GDPR, email/jobs, storage, SAM runtime, auth/security design, credits/billing, data-copy tool, schema baseline, React switches, deploy, observability, API type checks aur repo moves baaki.
 - Login/session migration needs security review. Schema baseline TypeScript writes rukne ke baad. MCP last, abhi untouched.
 - Pricing, Railway/domain config aur secrets owner setup mangte hain; koi value guess nahi ki.

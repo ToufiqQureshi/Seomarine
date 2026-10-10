@@ -11,6 +11,7 @@ var (
 	ErrDuplicate           = errors.New("already tracked")
 	ErrLimit               = errors.New("limit reached")
 	ErrLocationUnavailable = errors.New("city check unavailable")
+	ErrMetricsUnavailable  = errors.New("rank tracking metrics are not available")
 )
 
 // ValidationError is a message that is safe to show the caller.
@@ -47,6 +48,23 @@ type Keyword struct {
 	CPC               *float64   `json:"cpc"`
 	MetricsFetchedAt  *time.Time `json:"metricsFetchedAt"`
 	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+// KeywordMetric is the provider's volume, difficulty and CPC for a term.
+type KeywordMetric struct {
+	Keyword           string
+	SearchVolume      *int
+	KeywordDifficulty *int
+	CPC               *float64
+}
+
+// KeywordMetricUpdate associates refreshed values with one stored keyword.
+type KeywordMetricUpdate struct {
+	ID                string    `json:"id"`
+	SearchVolume      *int      `json:"search_volume"`
+	KeywordDifficulty *int      `json:"keyword_difficulty"`
+	CPC               *float64  `json:"cpc"`
+	FetchedAt         time.Time `json:"fetched_at"`
 }
 
 // NewKeyword is a keyword ready to insert.
