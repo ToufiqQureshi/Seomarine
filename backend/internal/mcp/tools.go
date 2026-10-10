@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"sync"
+
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 )
 
@@ -38,33 +41,66 @@ func whoamiTool() *tool {
 	}
 }
 
-func handleWhoami(_ context.Context, _ json.RawMessage, env *callEnv) (*callResult, error) {
+func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callResult, error) {
 	auth := env.auth
-	hosted := env.deps.Billing != nil
+	hosted := env.deps.Hosted
 	mode := "self-hosted"
 	if hosted {
 		mode = "hosted"
 	}
-	scopes := "none"
-	if len(auth.Scopes) > 0 {
-		scopes = strings.Join(auth.Scopes, ", ")
+	scopes := auth.Scopes
+	if scopes == nil {
+		scopes = []string{}
 	}
-	// Go has no Autumn credit balance yet; hosted reports unknown, exactly as
-	// the legacy tool does when the balance check fails.
+	scopeText := "none"
+	if len(scopes) > 0 {
+		scopeText = strings.Join(scopes, ", ")
+	}
+
+	var creditsRemaining *int
+	if hosted && env.deps.AutumnCredits != nil && auth.OrganizationID != "" {
+		var base, topup *float64
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			base, _ = env.deps.AutumnCredits.Balance(ctx, auth.OrganizationID, billing.AutumnSEODataBalanceFeatureID)
+		}()
+		go func() {
+			defer wg.Done()
+			topup, _ = env.deps.AutumnCredits.Balance(ctx, auth.OrganizationID, billing.AutumnSEOTopupBalanceFeatureID)
+		}()
+		wg.Wait()
+		if base != nil || topup != nil {
+			total := 0.0
+			if base != nil {
+				total += *base
+			}
+			if topup != nil {
+				total += *topup
+			}
+			credits := int(total)
+			creditsRemaining = &credits
+		}
+	}
 	lines := []string{
 		"Account: " + auth.UserEmail,
 		"Mode: " + mode,
-		"Scopes: " + scopes,
+		"Scopes: " + scopeText,
 	}
 	if hosted {
-		lines = append(lines, "Credits remaining: unknown")
+		creditText := "unknown"
+		if creditsRemaining != nil {
+			creditText = fmt.Sprintf("%g", *creditsRemaining)
+		}
+		lines = append(lines, "Credits remaining: "+creditText)
 	}
 	return mcpResponse(strings.Join(lines, "\n"), map[string]any{
 		"userEmail":        auth.UserEmail,
-		"scopes":           auth.Scopes,
+		"scopes":           scopes,
 		"mode":             mode,
-		"creditsRemaining": nil,
-	}, metaFields{}), nil
+		"creditsRemaining": creditsRemaining,
+	}, metaFields{CreditsRemaining: creditsRemaining}), nil
 }
 
 func listProjectsTool() *tool {
