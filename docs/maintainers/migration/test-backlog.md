@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **25 files**.
+Current confirmed count: **26 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -36,6 +36,7 @@ Current confirmed count: **25 files**.
 | Team invitation Go service       | `backend/internal/team/invitations_test.go`                           | Covers permissions, deduped pending invitations, daily limits, email payloads, and failed delivery.                                                |
 | Crawler credential Go service    | `backend/internal/crawleraccess/service_test.go`                      | Covers Better Auth encryption compatibility, Shopify key verification, organization scoping, and audit resolution.                                 |
 | Crawler credential Go handlers   | `backend/internal/crawleraccess/handler_test.go`                      | Covers permissions, secret-free list/save results, validation problems, and delete scoping.                                                        |
+| Go self-host health endpoint     | `backend/internal/setupstatus/handler_test.go`                         | Covers hosted redaction, setup check statuses, base64 DataForSEO validation, database failure, and safe response details.                       |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

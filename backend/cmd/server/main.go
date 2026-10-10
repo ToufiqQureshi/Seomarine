@@ -50,6 +50,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/setupstatus"
 	"github.com/toufiqqureshi/seomarine/backend/internal/team"
 	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
@@ -205,6 +206,13 @@ func run(logger *slog.Logger) error {
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
+			HealthStatus: setupstatus.NewHandler(setupstatus.Config{
+				Version: "0.1.10", AuthMode: cfg.AuthMode, TeamDomain: cfg.TeamDomain,
+				PolicyAudience: cfg.PolicyAudience, DataForSEOKey: cfg.DataForSEOAPIKey,
+				GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret,
+				BetterAuthSecret: cfg.BetterAuthSecret, OpenRouterAPIKey: cfg.OpenRouterAPIKey,
+				ContextAPIKey: cfg.ContextAPIKey,
+			}, db),
 			Logger:               logger,
 			DB:                   db,
 			Redis:                httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),

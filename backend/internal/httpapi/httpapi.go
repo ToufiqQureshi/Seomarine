@@ -125,6 +125,8 @@ type Deps struct {
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
 	MCP *mcp.Deps
+	// HealthStatus reports safe self-host setup checks on /api/health.
+	HealthStatus http.Handler
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// Upstream is the legacy app that serves every route not listed here.
@@ -157,6 +159,10 @@ const (
 // other request goes to the legacy app.
 func NewHandler(d Deps) http.Handler {
 	mux := http.NewServeMux()
+
+	if d.HealthStatus != nil {
+		mux.Handle("GET /api/health", d.HealthStatus)
+	}
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})

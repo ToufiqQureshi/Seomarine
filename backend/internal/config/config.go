@@ -49,6 +49,10 @@ type Config struct {
 	// Loops configures hosted teammate invitation email.
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
+	// Self-host setup values are shown only as configuration status, never as secrets.
+	TeamDomain       string
+	PolicyAudience   string
+	ContextAPIKey    string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -158,6 +162,9 @@ func Load(getenv func(string) string) (Config, error) {
 		AutumnSecretKey:           strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
 		LoopsAPIKey:               strings.TrimSpace(getenv("LOOPS_API_KEY")),
 		LoopsInvitationTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		TeamDomain:                strings.TrimSpace(getenv("TEAM_DOMAIN")),
+		PolicyAudience:            strings.TrimSpace(getenv("POLICY_AUD")),
+		ContextAPIKey:             strings.TrimSpace(getenv("CONTEXT_API_KEY")),
 		TrustedProxyCIDRs:         trusted,
 	}, nil
 }

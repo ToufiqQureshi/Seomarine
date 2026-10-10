@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Seomarine setup health
+  version: 1.0.0
+paths:
+  /api/health:
+    get:
+      summary: Read runtime setup status
+      description: >
+        Unauthenticated operator endpoint. Hosted mode returns only status.
+        Self-host modes include safe configuration checks and database
+        availability; secret values and raw database errors are never returned.
+      operationId: getSetupHealth
+      responses:
+        "200":
+          description: Setup report is available.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [status]
+                    properties:
+                      status:
+                        const: ok
+                  - type: object
+                    required: [status, version, authMode, checks]
+                    properties:
+                      status:
+                        type: string
+                        enum: [ok, issues]
+                      version:
+                        type: string
+                      authMode:
+                        type: string
+                      checks:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          required: [status]
+                          properties:
+                            status:
+                              type: string
+                              enum: [ok, warn, error]
+                            detail:
+                              type: string
