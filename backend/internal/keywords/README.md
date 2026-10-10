@@ -53,3 +53,6 @@ The Go DataForSEO provider also reads a single `my_business_info` record by name
 
 
 The Go provider now supports metered Google and extended review task-post operations plus unmetered task-get polling. Review task IDs remain resumable across MCP calls, and contract tests are deferred to the final migration phase.
+
+
+The Go DataForSEO provider now posts and collects `my_business_updates` tasks, keeping the post metered and task polling unmetered. Contract tests are deferred to the final migration phase.
