@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 )
 
 // emptyObjectSchema is the JSON Schema for a tool with no inputs (z.object({})).
@@ -345,11 +347,14 @@ func handleGetProjectContext(ctx context.Context, raw json.RawMessage, env *call
 	if err != nil {
 		return nil, err
 	}
-	loaded, err := loadProjectContext(ctx, env.deps.DB, access.Project.ID)
+	if env.deps.ProjectContext == nil {
+		return nil, newAppErrorf("SERVICE_UNAVAILABLE", "Project context is not available.")
+	}
+	loaded, err := env.deps.ProjectContext.Get(ctx, access.Project.ID)
 	if err != nil {
 		return nil, err
 	}
-	return mcpResponse(renderProjectContextMarkdown(loaded), loaded, metaFields{
+	return mcpResponse(projectcontext.RenderMarkdown(loaded), loaded, metaFields{
 		ProjectID: access.Project.ID,
 		URL:       buildDashboardURL(env.auth.BaseURL, "/p/"+access.Project.ID+"/context", nil),
 	}), nil

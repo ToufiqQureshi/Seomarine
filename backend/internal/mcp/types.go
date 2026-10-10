@@ -71,6 +71,7 @@ func registry() []*tool {
 		listProjectsTool(),
 		createProjectTool(),
 		getProjectContextTool(),
+		updateProjectContextTool(),
 		searchSerpLocationsTool(),
 		auditHistoryTool(),
 		auditStatusTool(),

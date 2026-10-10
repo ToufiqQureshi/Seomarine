@@ -1,12 +1,16 @@
-package mcp
+package projectcontext
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
+
+type querier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
 
 // Typed project-context section keys, in the order the digest renders them.
 var typedSectionKeys = []string{"business_overview", "current_goal", "positioning", "writing_preferences"}
@@ -26,24 +30,24 @@ const (
 
 // projectContext is the digest both project-context tools return. Its JSON
 // shape matches the legacy ProjectContextService.getProjectContext result.
-type projectContext struct {
-	Sections        []contextSection    `json:"sections"`
+type ProjectContext struct {
+	Sections        []ContextSection    `json:"sections"`
 	MissingSections []string            `json:"missingSections"`
-	CustomSections  []customSection     `json:"customSections"`
-	Competitors     []contextCompetitor `json:"competitors"`
-	KeyPages        []contextKeyPage    `json:"keyPages"`
-	ResearchLog     []contextResearch   `json:"researchLog"`
-	ReportTemplates []contextTemplate   `json:"reportTemplates"`
+	CustomSections  []CustomSection     `json:"customSections"`
+	Competitors     []ContextCompetitor `json:"competitors"`
+	KeyPages        []ContextKeyPage    `json:"keyPages"`
+	ResearchLog     []ContextResearch   `json:"researchLog"`
+	ReportTemplates []ContextTemplate   `json:"reportTemplates"`
 }
 
-type contextSection struct {
+type ContextSection struct {
 	Key       string `json:"key"`
 	Content   string `json:"content"`
 	UpdatedAt string `json:"updatedAt"`
 	UpdatedBy string `json:"updatedBy"`
 }
 
-type customSection struct {
+type CustomSection struct {
 	Slug      string  `json:"slug"`
 	Title     *string `json:"title"`
 	Content   string  `json:"content"`
@@ -51,7 +55,7 @@ type customSection struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
-type contextCompetitor struct {
+type ContextCompetitor struct {
 	ID        string  `json:"id"`
 	ProjectID string  `json:"projectId"`
 	Domain    string  `json:"domain"`
@@ -61,7 +65,7 @@ type contextCompetitor struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
-type contextKeyPage struct {
+type ContextKeyPage struct {
 	ID        string  `json:"id"`
 	ProjectID string  `json:"projectId"`
 	URL       string  `json:"url"`
@@ -72,39 +76,39 @@ type contextKeyPage struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
-type contextResearch struct {
+type ContextResearch struct {
 	ID        string `json:"id"`
 	EntryDate string `json:"entryDate"`
 	Summary   string `json:"summary"`
 	CreatedBy string `json:"createdBy"`
 }
 
-type contextTemplate struct {
+type ContextTemplate struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
 // loadProjectContext reads every block of a project's memory.
-func loadProjectContext(ctx context.Context, db *pgxpool.Pool, projectID string) (projectContext, error) {
+func Load(ctx context.Context, db querier, projectID string) (ProjectContext, error) {
 	sections, err := listContextSections(ctx, db, projectID)
 	if err != nil {
-		return projectContext{}, err
+		return ProjectContext{}, err
 	}
 	competitors, err := listContextCompetitors(ctx, db, projectID)
 	if err != nil {
-		return projectContext{}, err
+		return ProjectContext{}, err
 	}
 	keyPages, err := listContextKeyPages(ctx, db, projectID)
 	if err != nil {
-		return projectContext{}, err
+		return ProjectContext{}, err
 	}
 	researchLog, err := listContextResearchLog(ctx, db, projectID)
 	if err != nil {
-		return projectContext{}, err
+		return ProjectContext{}, err
 	}
 	templates, err := listContextTemplates(ctx, db, projectID)
 	if err != nil {
-		return projectContext{}, err
+		return ProjectContext{}, err
 	}
 
 	stored := make(map[string]contextSectionRow, len(sections))
@@ -112,11 +116,11 @@ func loadProjectContext(ctx context.Context, db *pgxpool.Pool, projectID string)
 		stored[s.Key] = s
 	}
 
-	ordered := make([]contextSection, 0, len(typedSectionKeys))
+	ordered := make([]ContextSection, 0, len(typedSectionKeys))
 	missing := make([]string, 0, len(typedSectionKeys))
 	for _, key := range typedSectionKeys {
 		if row, ok := stored[key]; ok {
-			ordered = append(ordered, contextSection{
+			ordered = append(ordered, ContextSection{
 				Key:       row.Key,
 				Content:   row.Content,
 				UpdatedAt: row.UpdatedAt,
@@ -127,7 +131,7 @@ func loadProjectContext(ctx context.Context, db *pgxpool.Pool, projectID string)
 		}
 	}
 
-	custom := make([]customSection, 0)
+	custom := make([]CustomSection, 0)
 	for _, s := range sections {
 		if !strings.HasPrefix(s.Key, customSectionKeyPrefix) {
 			continue
@@ -137,7 +141,7 @@ func loadProjectContext(ctx context.Context, db *pgxpool.Pool, projectID string)
 			t := *s.Title
 			title = &t
 		}
-		custom = append(custom, customSection{
+		custom = append(custom, CustomSection{
 			Slug:      strings.TrimPrefix(s.Key, customSectionKeyPrefix),
 			Title:     title,
 			Content:   s.Content,
@@ -146,7 +150,7 @@ func loadProjectContext(ctx context.Context, db *pgxpool.Pool, projectID string)
 		})
 	}
 
-	return projectContext{
+	return ProjectContext{
 		Sections:        ordered,
 		MissingSections: missing,
 		CustomSections:  custom,
@@ -165,7 +169,7 @@ type contextSectionRow struct {
 	UpdatedBy string
 }
 
-func listContextSections(ctx context.Context, db *pgxpool.Pool, projectID string) ([]contextSectionRow, error) {
+func listContextSections(ctx context.Context, db querier, projectID string) ([]contextSectionRow, error) {
 	rows, err := db.Query(ctx, `
 		SELECT key, title, content, updated_at, updated_by
 		FROM project_context_sections WHERE project_id = $1 ORDER BY key ASC`, projectID)
@@ -184,7 +188,7 @@ func listContextSections(ctx context.Context, db *pgxpool.Pool, projectID string
 	return out, rows.Err()
 }
 
-func listContextCompetitors(ctx context.Context, db *pgxpool.Pool, projectID string) ([]contextCompetitor, error) {
+func listContextCompetitors(ctx context.Context, db querier, projectID string) ([]ContextCompetitor, error) {
 	rows, err := db.Query(ctx, `
 		SELECT id, project_id, domain, name, notes, updated_at, updated_by
 		FROM project_competitors WHERE project_id = $1 ORDER BY domain ASC`, projectID)
@@ -192,9 +196,9 @@ func listContextCompetitors(ctx context.Context, db *pgxpool.Pool, projectID str
 		return nil, fmt.Errorf("list competitors: %w", err)
 	}
 	defer rows.Close()
-	out := []contextCompetitor{}
+	out := []ContextCompetitor{}
 	for rows.Next() {
-		var c contextCompetitor
+		var c ContextCompetitor
 		if err := rows.Scan(&c.ID, &c.ProjectID, &c.Domain, &c.Name, &c.Notes, &c.UpdatedAt, &c.UpdatedBy); err != nil {
 			return nil, fmt.Errorf("scan competitor: %w", err)
 		}
@@ -203,7 +207,7 @@ func listContextCompetitors(ctx context.Context, db *pgxpool.Pool, projectID str
 	return out, rows.Err()
 }
 
-func listContextKeyPages(ctx context.Context, db *pgxpool.Pool, projectID string) ([]contextKeyPage, error) {
+func listContextKeyPages(ctx context.Context, db querier, projectID string) ([]ContextKeyPage, error) {
 	rows, err := db.Query(ctx, `
 		SELECT id, project_id, url, role, topic, notes, updated_at, updated_by
 		FROM project_key_pages WHERE project_id = $1 ORDER BY url ASC`, projectID)
@@ -211,9 +215,9 @@ func listContextKeyPages(ctx context.Context, db *pgxpool.Pool, projectID string
 		return nil, fmt.Errorf("list key pages: %w", err)
 	}
 	defer rows.Close()
-	out := []contextKeyPage{}
+	out := []ContextKeyPage{}
 	for rows.Next() {
-		var p contextKeyPage
+		var p ContextKeyPage
 		if err := rows.Scan(&p.ID, &p.ProjectID, &p.URL, &p.Role, &p.Topic, &p.Notes, &p.UpdatedAt, &p.UpdatedBy); err != nil {
 			return nil, fmt.Errorf("scan key page: %w", err)
 		}
@@ -222,7 +226,7 @@ func listContextKeyPages(ctx context.Context, db *pgxpool.Pool, projectID string
 	return out, rows.Err()
 }
 
-func listContextResearchLog(ctx context.Context, db *pgxpool.Pool, projectID string) ([]contextResearch, error) {
+func listContextResearchLog(ctx context.Context, db querier, projectID string) ([]ContextResearch, error) {
 	rows, err := db.Query(ctx, `
 		SELECT id, entry_date, summary, created_by
 		FROM project_research_log WHERE project_id = $1
@@ -231,9 +235,9 @@ func listContextResearchLog(ctx context.Context, db *pgxpool.Pool, projectID str
 		return nil, fmt.Errorf("list research log: %w", err)
 	}
 	defer rows.Close()
-	out := []contextResearch{}
+	out := []ContextResearch{}
 	for rows.Next() {
-		var r contextResearch
+		var r ContextResearch
 		if err := rows.Scan(&r.ID, &r.EntryDate, &r.Summary, &r.CreatedBy); err != nil {
 			return nil, fmt.Errorf("scan research log: %w", err)
 		}
@@ -242,7 +246,7 @@ func listContextResearchLog(ctx context.Context, db *pgxpool.Pool, projectID str
 	return out, rows.Err()
 }
 
-func listContextTemplates(ctx context.Context, db *pgxpool.Pool, projectID string) ([]contextTemplate, error) {
+func listContextTemplates(ctx context.Context, db querier, projectID string) ([]ContextTemplate, error) {
 	rows, err := db.Query(ctx, `
 		SELECT name, description FROM report_templates
 		WHERE project_id = $1 ORDER BY name ASC, id ASC`, projectID)
@@ -250,9 +254,9 @@ func listContextTemplates(ctx context.Context, db *pgxpool.Pool, projectID strin
 		return nil, fmt.Errorf("list report templates: %w", err)
 	}
 	defer rows.Close()
-	out := []contextTemplate{}
+	out := []ContextTemplate{}
 	for rows.Next() {
-		var t contextTemplate
+		var t ContextTemplate
 		if err := rows.Scan(&t.Name, &t.Description); err != nil {
 			return nil, fmt.Errorf("scan report template: %w", err)
 		}
@@ -263,10 +267,10 @@ func listContextTemplates(ctx context.Context, db *pgxpool.Pool, projectID strin
 
 // renderProjectContextMarkdown is a byte-for-byte port of the legacy digest so
 // the text block a cached client already renders stays identical.
-func renderProjectContextMarkdown(c projectContext) string {
+func RenderMarkdown(c ProjectContext) string {
 	lines := []string{"# Project context", ""}
 
-	byKey := make(map[string]contextSection, len(c.Sections))
+	byKey := make(map[string]ContextSection, len(c.Sections))
 	for _, s := range c.Sections {
 		byKey[s.Key] = s
 	}

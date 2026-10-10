@@ -39,6 +39,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
@@ -186,10 +187,11 @@ func run(logger *slog.Logger) error {
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
 	gscService := buildGSCService(db, googleAPIClient)
+	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
-		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
+		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, ProjectContext: projectContextSvc,
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService,
 	}
@@ -226,6 +228,7 @@ func run(logger *slog.Logger) error {
 			PublicURL:         cfg.PublicURL,
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,
+			ProjectContext:    projectContextSvc,
 			KeywordResearch:   keywordResearch,
 			Site:              pages,
 			Upstream:          cfg.UpstreamAppURL,
