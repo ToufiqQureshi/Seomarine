@@ -79,6 +79,10 @@ func registry() []*tool {
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
+		getSearchConsolePerformanceTool(),
+		getRankTrackerTool(),
+		addRankTrackingKeywordsTool(),
+		removeRankTrackingKeywordsTool(),
 	}
 	return append(tools, reportTools()...)
 }
