@@ -57,6 +57,7 @@ type Deps struct {
 	Domain         *domain.Service
 	Locations      *keywords.LocationService
 	SavedKeywords  *keywords.SavedService
+	KeywordResearch *keywords.ResearchService
 	GA4            *ga4.Service
 	Reports        *reports.Service
 	GSC            *gsc.Service

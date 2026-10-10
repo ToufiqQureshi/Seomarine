@@ -23,3 +23,9 @@
 ## Migration status
 
 Market tables and resolution are in `platform/market`. Domain analysis now reads the project market server-side. Keyword research, saved keywords, SERP analysis and SERP location API are being ported here; legacy TypeScript remains active until each response contract and caller is switched.
+
+
+The Go MCP `get_serp_results` tool uses the shared keyword SERP provider for
+market and canonical local-location validation. It returns bounded live result
+rows per query and captures individual query failures without discarding
+successful results. Tool-contract tests are deferred to the final test phase.

@@ -311,3 +311,26 @@ func (s *ResearchService) RefreshSavedMetrics(ctx context.Context, org, projectI
 type SavedLister interface {
 	List(ctx context.Context, q ListQuery) (ListResult, error)
 }
+
+
+// SerpResultsLive fetches the complete live SERP result set for an MCP batch.
+// The API's SERP analysis cache intentionally keeps only organic rows, while
+// this tool preserves all result types returned by the provider.
+func (s *ResearchService) SerpResultsLive(ctx context.Context, in SerpAnalysisInput) ([]SerpItem, error) {
+	keyword := NormalizeKeyword(in.Keyword)
+	if keyword == "" {
+		return nil, ValidationError("Enter a keyword.")
+	}
+	if in.Depth < 10 || in.Depth > 100 || in.Depth%10 != 0 {
+		return nil, ValidationError("SERP depth must be a multiple of 10 from 10 to 100.")
+	}
+	if in.LocationName != nil {
+		if err := s.assertLocalLocation(ctx, in.OrganizationID, in.LocationCode, *in.LocationName); err != nil {
+			return nil, err
+		}
+	}
+	return s.Data.SerpLive(ctx, in.OrganizationID, SerpRequest{
+		Keyword: keyword, LocationCode: in.LocationCode, LanguageCode: in.LanguageCode,
+		LocationName: in.LocationName, Depth: in.Depth,
+	})
+}
