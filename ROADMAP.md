@@ -20,9 +20,9 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                                           | in progress |
 | 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                     | in progress |
 | 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                          | in progress |
-| 0.5h | GA4 reporting, organic overview, measurement-health and Search Opportunity APIs in Go; property setup, MCP and React switch pending        | in progress |
-| 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                        | in progress |
-| 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending  | in progress |
+| 0.5h | GA4 reporting, organic overview, measurement-health and Search Opportunity APIs in Go; property setup, MCP and React switch pending            | in progress |
+| 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                          | in progress |
+| 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending   | in progress |
 | 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                         | in progress |
 
 ## Phase 1: Rebrand + new UI
