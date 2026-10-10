@@ -59,3 +59,9 @@ creation never starts future credit spend.
 The Go API-key MCP registry also owns `estimate_rank_tracker_cost`. It reads
 the project-scoped tracker and calculates live and scheduled estimates without
 starting a check or spending provider credits.
+
+
+The Go API-key MCP registry also owns `run_rank_tracker`. It requires an
+explicit positive credit ceiling, rechecks the live estimate in the Go check
+service, and queues the run through the shared background jobs path. Active runs
+return their blocking run ID without creating another run.
