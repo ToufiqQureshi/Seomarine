@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"fmt"
 	"log/slog"
 	"net/http"
