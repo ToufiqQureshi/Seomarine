@@ -3,12 +3,14 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
 	"sync"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 )
 
 const (
@@ -158,7 +160,7 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 	points := buildLocalRankGridPoints(*args.Center.Latitude, *args.Center.Longitude, gridSize, spacing)
 	grid := make([]localRankGridResult, len(points))
 	matchedRows := make([]*localRankGridBusiness, len(points))
-	var firstErr error
+	pointErrors := make([]error, len(points))
 	for start := 0; start < len(points); start += rankGridConcurrency {
 		end := min(start+rankGridConcurrency, len(points))
 		var wg sync.WaitGroup
@@ -173,6 +175,7 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 					SearchType: "maps", Device: device, Depth: rankGridDepth,
 				})
 				if callErr != nil {
+					pointErrors[index] = callErr
 					grid[index] = localRankGridResult{localRankGridPoint: point, Error: true}
 					return
 				}
@@ -204,10 +207,10 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 			}(i)
 		}
 		wg.Wait()
-	}
-	for _, point := range grid {
-		if point.Error && firstErr == nil {
-			firstErr = fmt.Errorf("one or more Google Maps grid searches failed")
+		for i := start; i < end; i++ {
+			if code, message := localRankGridFatalError(pointErrors[i]); code != "" {
+				return nil, newAppErrorf(code, message)
+			}
 		}
 	}
 	allFailed := len(grid) > 0
@@ -218,7 +221,12 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 		}
 	}
 	if allFailed {
-		return nil, newAppErrorf("UPSTREAM_ERROR", firstErr.Error())
+		for _, callErr := range pointErrors {
+			if callErr != nil {
+				return nil, newAppErrorf("UPSTREAM_ERROR", callErr.Error())
+			}
+		}
+		return nil, newAppErrorf("UPSTREAM_ERROR", "Google Maps rank grid failed.")
 	}
 
 	found := 0
@@ -362,4 +370,27 @@ func formatAverageRank(value *float64) string {
 		return "—"
 	}
 	return fmt.Sprintf("%.2f", *value)
+}
+
+func localRankGridFatalError(err error) (string, string) {
+	if err == nil {
+		return "", ""
+	}
+	if errors.Is(err, dataforseo.ErrBillingIssue) {
+		return "INSUFFICIENT_CREDITS", "DataForSEO reports a billing or credit balance issue. The remaining rank grid points were not requested."
+	}
+	var httpErr *dataforseo.HTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.StatusCode == 401 || httpErr.StatusCode == 403 {
+			return "DATAFORSEO_AUTH_FAILED", "DataForSEO rejected the configured credentials. The remaining rank grid points were not requested."
+		}
+		if httpErr.StatusCode == 402 {
+			return "INSUFFICIENT_CREDITS", "DataForSEO rejected the request because of a billing or credit balance issue. The remaining rank grid points were not requested."
+		}
+	}
+	var taskErr *dataforseo.TaskError
+	if errors.As(err, &taskErr) && (taskErr.StatusCode == 40100 || taskErr.StatusCode == 40102) {
+		return "DATAFORSEO_AUTH_FAILED", "DataForSEO rejected the configured credentials. The remaining rank grid points were not requested."
+	}
+	return "", ""
 }
