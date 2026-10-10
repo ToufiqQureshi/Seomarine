@@ -36,6 +36,19 @@ func MountOrganization(mux *http.ServeMux, service *Service, withSession func(ht
 			"organizations":    memberships,
 		})
 	})))
+	mux.Handle("GET /api/v1/organization/team", withSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := UserFromContext(r.Context())
+		if !ok || user.OrganizationID == "" {
+			httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
+			return
+		}
+		team, err := service.OrganizationTeam(r.Context(), user.OrganizationID, user.Role)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Could not load your team.")
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, team)
+	})))
 	mux.Handle("POST /api/v1/organization/switch", withSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := UserFromContext(r.Context())
 		if !ok {
@@ -65,5 +78,43 @@ func MountOrganization(mux *http.ServeMux, service *Service, withSession func(ht
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"organizationId": body.OrganizationID})
+	})))
+	mux.Handle("POST /api/v1/organization/ownership/transfer", withSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := UserFromContext(r.Context())
+		if !ok || user.OrganizationID == "" {
+			httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
+			return
+		}
+		if !hasRole(user.Role, "owner") {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the owner can transfer workspace ownership.")
+			return
+		}
+		var body struct {
+			MemberID string `json:"memberId"`
+		}
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&body); err != nil || body.MemberID == "" {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid team member.")
+			return
+		}
+		var extra any
+		if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "The request must contain exactly one JSON value.")
+			return
+		}
+		err := service.TransferOrganizationOwnership(r.Context(), user.OrganizationID, user.ID, body.MemberID)
+		switch {
+		case errors.Is(err, ErrProjectNotFound):
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "That team member is no longer available.")
+		case errors.Is(err, ErrOrganizationConflict):
+			httpx.WriteError(w, http.StatusConflict, "conflict", "You already own this workspace.")
+		case errors.Is(err, ErrOrganizationForbidden):
+			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the owner can transfer workspace ownership.")
+		case err != nil:
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Could not transfer workspace ownership.")
+		default:
+			httpx.WriteJSON(w, http.StatusOK, map[string]string{"memberId": body.MemberID})
+		}
 	})))
 }

@@ -6,44 +6,10 @@ import { getAuth, getHostedBaseUrl } from "@/lib/auth";
 import { hasOrgPermission } from "@/lib/org-permissions";
 import { consumeInvitationSendBudget } from "@/server/auth/invitation-send-limit";
 import { requireOrgPermission } from "@/server/auth/org-gate";
-import { transferOrganizationOwnership } from "@/server/auth/ownership-transfer";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { sendHostedInvitationEmail } from "@/server/email/loops";
 import { AppError } from "@/server/lib/errors";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
-
-// Team data for the organization settings tab. Pending invitations are
-// sensitive (invitee emails, inviter ids) and should only be visible to callers
-// who can manage invitations; the server filters them here so the client cannot
-// bypass the gate by calling the underlying endpoint directly.
-export const getTeam = createServerFn({ method: "GET" })
-  .middleware(requireAuthenticatedContext)
-  .handler(async ({ context }) => {
-    const fullOrganization = await getAuth().api.getFullOrganization({
-      headers: getRequest().headers,
-      query: { organizationId: context.organizationId },
-    });
-    if (!fullOrganization) {
-      throw new AppError("NOT_FOUND");
-    }
-
-    const canViewInvitations = hasOrgPermission(context.role, {
-      invitation: ["create"],
-    });
-    const now = Date.now();
-    const pendingInvitations = canViewInvitations
-      ? (fullOrganization.invitations ?? []).filter(
-          (invitation) =>
-            invitation.status === "pending" &&
-            new Date(invitation.expiresAt).getTime() > now,
-        )
-      : [];
-
-    return {
-      members: fullOrganization.members ?? [],
-      pendingInvitations,
-    };
-  });
 
 const sendInvitationSchema = z.object({ email: z.string().email() });
 
@@ -113,17 +79,4 @@ export const sendTeamInvitation = createServerFn({ method: "POST" })
     }
 
     return { invitationId: invitation.id };
-  });
-
-const transferOwnershipSchema = z.object({ memberId: z.string().min(1) });
-
-// Owner-only. Runs here rather than through better-auth's update-member-role,
-// which can't swap two roles atomically and refuses owner grants (see the
-// beforeUpdateMemberRole hook in auth.ts).
-export const transferOwnership = createServerFn({ method: "POST" })
-  .middleware(requireAuthenticatedContext)
-  .validator(transferOwnershipSchema)
-  .handler(async ({ data, context }) => {
-    await transferOrganizationOwnership(context, data.memberId);
-    return { memberId: data.memberId };
   });

@@ -22,7 +22,9 @@ var (
 	// ErrProjectNotFound means the project does not exist, is archived, or
 	// belongs to an organization the user is not a member of. The cases are
 	// indistinguishable so project ids from other organizations don't leak.
-	ErrProjectNotFound = errors.New("project not found")
+	ErrProjectNotFound       = errors.New("project not found")
+	ErrOrganizationForbidden = errors.New("organization operation forbidden")
+	ErrOrganizationConflict  = errors.New("organization operation conflicts with current state")
 )
 
 // better-auth names the cookie with a __Secure- prefix when its base URL is
@@ -100,6 +102,60 @@ func (s *Service) AuthorizeProject(ctx context.Context, userID, projectID string
 // OrganizationMemberships returns the organizations the user may switch to.
 func (s *Service) OrganizationMemberships(ctx context.Context, userID string) ([]OrganizationMembership, error) {
 	return s.repo.memberships(ctx, userID)
+}
+
+// OrganizationTeam returns members and, for workspace admins, current invitations.
+func (s *Service) OrganizationTeam(ctx context.Context, organizationID, role string) (OrganizationTeam, error) {
+	return s.repo.team(ctx, organizationID, hasRole(role, "owner") || hasRole(role, "admin"))
+}
+
+func hasRole(roles, target string) bool {
+	for _, role := range strings.Split(roles, ",") {
+		if strings.TrimSpace(role) == target {
+			return true
+		}
+	}
+	return false
+}
+
+// TransferOrganizationOwnership promotes a current member and demotes the
+// current owner in one transaction.
+func (s *Service) TransferOrganizationOwnership(ctx context.Context, organizationID, ownerUserID, newOwnerMemberID string) error {
+	tx, err := s.repo.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin ownership transfer: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	var ownerRole string
+	if err := tx.QueryRow(ctx, `SELECT role FROM member WHERE organization_id=$1 AND user_id=$2 FOR UPDATE`, organizationID, ownerUserID).Scan(&ownerRole); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrProjectNotFound
+		}
+		return fmt.Errorf("lock current owner membership: %w", err)
+	}
+	if ownerRole != "owner" {
+		return ErrOrganizationForbidden
+	}
+	var nextUserID string
+	if err := tx.QueryRow(ctx, `SELECT user_id FROM member WHERE organization_id=$1 AND id=$2 FOR UPDATE`, organizationID, newOwnerMemberID).Scan(&nextUserID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrProjectNotFound
+		}
+		return fmt.Errorf("lock new owner membership: %w", err)
+	}
+	if nextUserID == ownerUserID {
+		return ErrOrganizationConflict
+	}
+	if _, err := tx.Exec(ctx, `UPDATE member SET role='owner' WHERE organization_id=$1 AND id=$2`, organizationID, newOwnerMemberID); err != nil {
+		return fmt.Errorf("promote new organization owner: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE member SET role='admin' WHERE organization_id=$1 AND user_id=$2 AND role='owner'`, organizationID, ownerUserID); err != nil {
+		return fmt.Errorf("demote previous organization owner: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit ownership transfer: %w", err)
+	}
+	return nil
 }
 
 // SwitchOrganization changes the active organization only when the user has

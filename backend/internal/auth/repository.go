@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,6 +21,28 @@ type OrganizationMembership struct {
 	OrganizationID   string `json:"organizationId"`
 	OrganizationName string `json:"organizationName"`
 	Role             string `json:"role"`
+}
+
+type OrganizationMember struct {
+	ID     string `json:"id"`
+	UserID string `json:"userId"`
+	Role   string `json:"role"`
+	User   struct {
+		Name  *string `json:"name"`
+		Email string  `json:"email"`
+	} `json:"user"`
+}
+
+type OrganizationInvitation struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Role      *string   `json:"role"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+type OrganizationTeam struct {
+	Members            []OrganizationMember     `json:"members"`
+	PendingInvitations []OrganizationInvitation `json:"pendingInvitations"`
 }
 
 // userBySessionToken returns the user of the unexpired session with token,
@@ -84,6 +107,46 @@ func (r repository) memberships(ctx context.Context, userID string) ([]Organizat
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate organization memberships: %w", err)
+	}
+	return out, nil
+}
+
+func (r repository) team(ctx context.Context, organizationID string, includeInvitations bool) (OrganizationTeam, error) {
+	rows, err := r.db.Query(ctx, `SELECT m.id,m.user_id,m.role,u.name,u.email FROM member m JOIN "user" u ON u.id=m.user_id WHERE m.organization_id=$1 ORDER BY m.created_at`, organizationID)
+	if err != nil {
+		return OrganizationTeam{}, fmt.Errorf("list organization members: %w", err)
+	}
+	out := OrganizationTeam{Members: []OrganizationMember{}, PendingInvitations: []OrganizationInvitation{}}
+	for rows.Next() {
+		var item OrganizationMember
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Role, &item.User.Name, &item.User.Email); err != nil {
+			rows.Close()
+			return OrganizationTeam{}, fmt.Errorf("scan organization member: %w", err)
+		}
+		out.Members = append(out.Members, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return OrganizationTeam{}, fmt.Errorf("iterate organization members: %w", err)
+	}
+	rows.Close()
+	if !includeInvitations {
+		return out, nil
+	}
+	invites, err := r.db.Query(ctx, `SELECT id,email,role,expires_at FROM invitation WHERE organization_id=$1 AND status='pending' AND expires_at>now() ORDER BY created_at`, organizationID)
+	if err != nil {
+		return OrganizationTeam{}, fmt.Errorf("list organization invitations: %w", err)
+	}
+	defer invites.Close()
+	for invites.Next() {
+		var item OrganizationInvitation
+		if err := invites.Scan(&item.ID, &item.Email, &item.Role, &item.ExpiresAt); err != nil {
+			return OrganizationTeam{}, fmt.Errorf("scan organization invitation: %w", err)
+		}
+		out.PendingInvitations = append(out.PendingInvitations, item)
+	}
+	if err := invites.Err(); err != nil {
+		return OrganizationTeam{}, fmt.Errorf("iterate organization invitations: %w", err)
 	}
 	return out, nil
 }
