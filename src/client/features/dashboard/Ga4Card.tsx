@@ -12,7 +12,7 @@ import {
   formatCount,
   formatCtr,
 } from "@/client/features/search-performance/SearchPerformanceColumns";
-import { getGa4DashboardReport } from "@/serverFunctions/ga4";
+import { getGa4DashboardReport } from "./ga4DashboardApi";
 import { Skeleton } from "@/client/components/ui/skeleton";
 import {
   ChartContainer,
@@ -51,7 +51,7 @@ export function Ga4Card({
 }) {
   const reportQuery = useQuery({
     queryKey: ["dashboardGa4Report", projectId],
-    queryFn: () => getGa4DashboardReport({ data: { projectId } }),
+    queryFn: () => getGa4DashboardReport(projectId),
     enabled: connected,
   });
   const report = reportQuery.data;
