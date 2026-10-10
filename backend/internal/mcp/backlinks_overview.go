@@ -40,6 +40,8 @@ func handleBacklinksOverview(ctx context.Context, raw json.RawMessage, env *call
 	default:
 		return nil, newAppErrorf("VALIDATION_ERROR", "scope must be exact_url, subfolder, domain, or subdomains")
 	}
+	scope := args.Scope
+	if scope == "page" { scope = string(backlinks.ScopeExactURL) }
 	if env.deps.Backlinks == nil {
 		return nil, newAppErrorf("SERVICE_UNAVAILABLE", "Backlinks are not configured on this server.")
 	}
@@ -47,7 +49,7 @@ func handleBacklinksOverview(ctx context.Context, raw json.RawMessage, env *call
 	if err != nil { return nil, err }
 	hideSpam := true
 	if args.HideSpam != nil { hideSpam = *args.HideSpam }
-	overview, err := env.deps.Backlinks.MCPOverview(ctx, access.Auth.OrganizationID, args.Target, args.Scope)
+	overview, err := env.deps.Backlinks.MCPOverview(ctx, access.Auth.OrganizationID, args.Target, scope)
 	if err != nil { return nil, err }
 	var referring *backlinks.Page[backlinks.ReferringDomainRow]
 	if overview.Scope != backlinks.ScopeSubfolder {
