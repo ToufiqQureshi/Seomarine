@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 	"unicode/utf16"
@@ -30,7 +29,7 @@ func handleCreateRankTracker(ctx context.Context, raw json.RawMessage, env *call
 	var args struct {
 		ProjectID string `json:"projectId"`
 		Domain string `json:"domain"`
-		LocationCode int `json:"locationCode"`
+		LocationCode *int `json:"locationCode"`
 		LanguageCode string `json:"languageCode"`
 		LocationName *string `json:"locationName"`
 		Devices string `json:"devices"`
@@ -46,7 +45,7 @@ func handleCreateRankTracker(ctx context.Context, raw json.RawMessage, env *call
 	if err := json.Unmarshal(raw, &args); err != nil || strings.TrimSpace(args.ProjectID) == "" {
 		return nil, newAppErrorf("VALIDATION_ERROR", "projectId is required")
 	}
-	if args.LocationCode < 0 || args.LocationCode == 0 && strings.Contains(string(raw), `"locationCode":0`) {
+	if args.LocationCode != nil && *args.LocationCode < 1 {
 		return nil, newAppErrorf("VALIDATION_ERROR", "locationCode must be positive")
 	}
 	if args.LanguageCode != "" && (len(strings.TrimSpace(args.LanguageCode)) < 2 || len(strings.TrimSpace(args.LanguageCode)) > 8) {
@@ -98,7 +97,11 @@ func handleCreateRankTracker(ctx context.Context, raw json.RawMessage, env *call
 		}
 		domainName = *access.Project.Domain
 	}
-	pair, err := keywords.ResolveMarket(args.LocationCode, strings.TrimSpace(args.LanguageCode), market.Pair{
+	locationCode := 0
+	if args.LocationCode != nil {
+		locationCode = *args.LocationCode
+	}
+	pair, err := keywords.ResolveMarket(locationCode, strings.TrimSpace(args.LanguageCode), market.Pair{
 		LocationCode: access.Project.LocationCode, LanguageCode: access.Project.LanguageCode,
 	})
 	if err != nil { return nil, newAppErrorf("VALIDATION_ERROR", err.Error()) }
