@@ -37,7 +37,7 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   exportSearchPerformanceTable,
   getSearchPerformanceReport,
-} from "@/serverFunctions/searchPerformance";
+} from "@/client/features/search-performance/searchPerformanceApi";
 import {
   SEARCH_PERFORMANCE_DEFAULT_PAGE_SIZE,
   SEARCH_PERFORMANCE_TABS,

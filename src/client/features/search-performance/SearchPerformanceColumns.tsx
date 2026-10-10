@@ -7,7 +7,7 @@ import type { SelectionAnchor } from "@/client/components/table/tableSelection";
 import type {
   getSearchPerformanceReport,
   getSearchPerformanceTable,
-} from "@/serverFunctions/searchPerformance";
+} from "@/client/features/search-performance/searchPerformanceApi";
 
 export type Report = Extract<
   Awaited<ReturnType<typeof getSearchPerformanceReport>>,

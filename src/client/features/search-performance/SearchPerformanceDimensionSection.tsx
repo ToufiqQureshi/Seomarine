@@ -4,7 +4,7 @@ import { TablePagination } from "@/client/components/table/TablePagination";
 import { SkeletonTableRows } from "@/client/components/SkeletonPresets";
 import { GoogleConnectionCard } from "@/client/features/integrations/GoogleConnectionCard";
 import { DimensionTable } from "@/client/features/search-performance/SearchPerformanceParts";
-import type { getSearchPerformanceTable } from "@/serverFunctions/searchPerformance";
+import type { getSearchPerformanceTable } from "@/client/features/search-performance/searchPerformanceApi";
 import { SEARCH_PERFORMANCE_PAGE_SIZES } from "@/types/schemas/search-performance";
 
 /** The Queries or Pages tab body: loading, error with retry, reconnect, or the paged table. */

@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { z } from "zod";
-import { getSearchPerformanceTable } from "@/serverFunctions/searchPerformance";
+import { getSearchPerformanceTable } from "@/client/features/search-performance/searchPerformanceApi";
 import type {
   searchPerformanceInputSchema,
   SearchPerformanceTableDimension,
