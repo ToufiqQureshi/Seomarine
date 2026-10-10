@@ -94,6 +94,7 @@ func registry() []*tool {
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
 		getSearchConsolePerformanceTool(),
+		inspectURLsTool(),
 		getRankTrackerTool(),
 		addRankTrackingKeywordsTool(),
 		removeRankTrackingKeywordsTool(),
