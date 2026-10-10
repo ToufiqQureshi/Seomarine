@@ -21,8 +21,34 @@ type Deps struct {
 func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	mux.Handle("POST /api/v1/projects/{projectId}/activation/click", protect(http.HandlerFunc(d.click)))
+	mux.Handle("POST /api/v1/projects/{projectId}/activation/get", protect(http.HandlerFunc(d.get)))
 	mux.Handle("POST /api/v1/projects/{projectId}/activation/ga4-dismiss", protect(http.HandlerFunc(d.ga4Dismiss)))
 	mux.Handle("POST /api/v1/projects/{projectId}/activation/dismiss", protect(http.HandlerFunc(d.dismiss)))
+}
+func (d Deps) get(w http.ResponseWriter, r *http.Request) {
+	if !empty(w, r) {
+		return
+	}
+	u, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthenticated", "Sign in to continue.")
+		return
+	}
+	organizationID, ok := auth.ProjectOrganizationFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong.")
+		return
+	}
+	if d.Service == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "activation_unavailable", "Dashboard activation is not available.")
+		return
+	}
+	result, err := d.Service.GetDashboardActivation(r.Context(), u.ID, r.PathValue("projectId"), organizationID)
+	if err != nil {
+		d.fail(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, result)
 }
 func (d Deps) click(w http.ResponseWriter, r *http.Request) {
 	var in struct {

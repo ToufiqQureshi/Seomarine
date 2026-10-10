@@ -9,6 +9,41 @@ import (
 
 type Repository struct{ DB *pgxpool.Pool }
 
+func (r Repository) GetDashboardActivation(ctx context.Context, userID, projectID, organizationID string) (DashboardActivation, error) {
+	var result DashboardActivation
+	var projectCount int
+	var memberCount int
+	var pendingInvite bool
+	err := r.DB.QueryRow(ctx, `SELECT
+		p.domain,
+		(SELECT property_display_name FROM ga4_connections WHERE project_id=p.id),
+		(SELECT site_url FROM gsc_connections WHERE project_id=p.id),
+		(SELECT first_mcp_authorized_at FROM organization_activation_state WHERE organization_id=p.organization_id),
+		(SELECT first_mcp_tool_call_at FROM organization_activation_state WHERE organization_id=p.organization_id),
+		(SELECT ga4_card_dismissed_at FROM project_activation_state WHERE project_id=p.id),
+		(SELECT mcp_card_dismissed_at FROM project_activation_state WHERE project_id=p.id),
+		(SELECT competitor_step_clicked_at FROM project_activation_state WHERE project_id=p.id),
+		(SELECT keyword_step_clicked_at FROM project_activation_state WHERE project_id=p.id),
+		(SELECT count(*) FROM projects WHERE organization_id=p.organization_id AND archived_at IS NULL),
+		(SELECT count(*) FROM member WHERE organization_id=p.organization_id),
+		EXISTS(SELECT 1 FROM invitation WHERE organization_id=p.organization_id AND status='pending' AND expires_at>now()),
+		EXISTS(SELECT 1 FROM audits WHERE project_id=p.id),
+		ARRAY(SELECT step FROM dashboard_step_dismissals WHERE user_id=$2 AND project_id=p.id ORDER BY step)
+		FROM projects p WHERE p.id=$1 AND p.organization_id=$3 AND p.archived_at IS NULL`, projectID, userID, organizationID).
+		Scan(&result.Domain, &result.GA4.PropertyDisplayName, &result.GSC.SiteURL, &result.MCP.AuthorizedAt, &result.MCP.FirstToolCallAt, &result.GA4.CardDismissedAt, &result.MCP.CardDismissedAt, &result.CompetitorClickedAt, &result.KeywordsClickedAt, &projectCount, &memberCount, &pendingInvite, &result.HasAudit, &result.DismissedSteps)
+	if err != nil {
+		return DashboardActivation{}, fmt.Errorf("read dashboard activation: %w", err)
+	}
+	result.HasMultipleProjects = projectCount > 1
+	result.GA4.Connected = result.GA4.PropertyDisplayName != nil
+	result.GSC.Connected = result.GSC.SiteURL != nil
+	result.HasTeammate = memberCount > 1 || pendingInvite
+	if result.DismissedSteps == nil {
+		result.DismissedSteps = []string{}
+	}
+	return result, nil
+}
+
 func (r Repository) MarkClicked(ctx context.Context, project, step, stamp string) error {
 	column := "competitor_step_clicked_at"
 	if step == "keywords" {

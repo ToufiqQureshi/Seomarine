@@ -18,6 +18,14 @@ type storeFake struct {
 	step, stamp, user string
 	dismissed         bool
 	calls             int
+	activation        DashboardActivation
+}
+
+func (s *storeFake) GetDashboardActivation(_ context.Context, user, project, organization string) (DashboardActivation, error) {
+	if user != "user-1" || project != "p" || organization != "org-1" {
+		return DashboardActivation{}, context.Canceled
+	}
+	return s.activation, nil
 }
 
 func (s *storeFake) MarkClicked(_ context.Context, _, step, stamp string) error {
@@ -81,3 +89,26 @@ func TestDismissRouteScopesCaller(t *testing.T) {
 		t.Fatalf("invalid step status=%d", bad.Code)
 	}
 }
+
+func TestDashboardActivationRouteReturnsProjectScopedState(t *testing.T) {
+	store := &storeFake{activation: DashboardActivation{Domain: stringPtr("example.com"), GA4: DashboardGA4{Connected: true}, DismissedSteps: []string{"audit"}}}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	withSession := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), auth.User{ID: "user-1"})))
+		})
+	}
+	withProject := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1")))
+		})
+	}
+	mux := http.NewServeMux()
+	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/activation/get", strings.NewReader(`{}`)))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"hasAudit":false`) || !strings.Contains(response.Body.String(), `"domain":"example.com"`) || !strings.Contains(response.Body.String(), `"dismissedSteps":["audit"]`) {
+		t.Fatalf("response = %d %s", response.Code, response.Body.String())
+	}
+}
+func stringPtr(value string) *string { return &value }
