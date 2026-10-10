@@ -71,3 +71,6 @@ The Go API-key MCP registry also owns `get_keyword_metrics`. It resolves the pro
 
 
 The Go API-key MCP registry also owns `research_keywords`. It runs each seed independently through the shared Go research service and preserves per-seed failures and result metadata. OAuth requests still use the TypeScript fallback for tools not yet ported.
+
+
+The Go API-key MCP registry also owns `inspect_urls`. It checks project authorization, uses the saved Search Console property, and returns per-URL inspection outcomes without running a live crawl.
