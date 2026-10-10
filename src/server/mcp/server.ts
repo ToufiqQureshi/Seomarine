@@ -86,6 +86,7 @@ import {
   deleteSiteAuditTool,
   listSiteAuditsTool,
 } from "@/server/mcp/tools/site-audit-cleanup-tools";
+import { whoamiTool } from "@/server/mcp/tools/whoami";
 
 type ToolSchema = z.ZodType | z.ZodRawShape;
 
@@ -169,6 +170,7 @@ export function createSeomarineMcpServer(authProps: McpProps) {
     tool: SeomarineToolDefinition<Input>,
   ) => registerSeomarineTool(server, tool, authProps);
 
+  register(whoamiTool);
   register(listProjectsTool);
   register(createProjectTool);
   register(getProjectContextTool);
