@@ -4,6 +4,9 @@ import (
  "context"
  "encoding/json"
  "errors"
+ "fmt"
+ "math"
+ "strings"
 
  "github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 )
