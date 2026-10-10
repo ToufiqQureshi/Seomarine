@@ -17,9 +17,9 @@ requests.
 
 ## Rules and edge cases
 
-- The connection table is still owned by the legacy GA4 setup flow; this read
-  path does not create or alter it. The project-access middleware is the
-  authorization boundary for that lookup.
+- The connection table remains TypeScript/Drizzle schema-owned; Go setup reads
+  and writes its existing shape without introducing a schema migration. The
+  project-access middleware is the authorization boundary for report reads.
 - A report defaults to organic search and the last 28 complete days in the
   property's IANA timezone. Future end dates clamp to yesterday in that zone;
   partial, malformed, or reversed date ranges fail before contacting Google.
@@ -36,8 +36,8 @@ requests.
   allowlisted `SERVICE_DISABLED` reason and numeric `Retry-After` value; it
   never includes provider error text in logs or responses.
 - Property listing, connection setup/removal are available in Go. MCP wrappers
-  and the React call-site switch remain on the legacy implementation for later
-  roadmap items. No legacy code is deleted by this API port.
+  and GA4 report/measurement-health/Search Opportunity React call-sites remain
+  on the legacy implementation for later roadmap items.
 
 ## Property setup
 
@@ -54,8 +54,8 @@ the legacy flow. Property discovery is capped at 100 pages of 200 account
 summaries.
 
 Deliberate difference: the Go routes do not emit the legacy PostHog
-`ga4:property_select` and `ga4:disconnect` events. The UI remains on the
-legacy server functions until its dedicated switch.
+`ga4:property_select` and `ga4:disconnect` events. The setup UI calls these Go
+routes now; those two analytics events are not emitted.
 
 ## Organic overview
 
