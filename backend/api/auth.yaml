@@ -42,6 +42,7 @@ paths:
                           image: { type: [string, "null"] }
                           createdAt: { type: string, format: date-time }
                           updatedAt: { type: string, format: date-time }
+                          analyticsOptedOut: { type: boolean }
                   - type: "null"
         "404":
           description: Auth mode does not enable hosted sign-in.

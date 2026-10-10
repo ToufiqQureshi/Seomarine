@@ -2,9 +2,11 @@
 
 The Go API reads Better Auth's existing `session` table and verifies its
 signed session cookie. The hosted `GET /api/auth/get-session` endpoint returns
-the Better Auth session and user JSON contract, or JSON `null` for a missing,
-invalid, revoked or expired session. It does not trust the client-side cached
-session cookie.
+the Better Auth session and user JSON contract, including the configured
+`analyticsOptedOut` field, or JSON `null` for a missing, invalid, revoked or
+expired session. It does not trust the client-side cached session cookie.
+After Better Auth's one-day update age, it extends the session by seven days
+and refreshes the matching secure or local cookie.
 
 The hosted `POST /api/auth/sign-out` handler deletes the matching session
 immediately and expires both HTTPS and local cookie names. Missing or invalid

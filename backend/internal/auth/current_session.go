@@ -11,6 +11,11 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 )
 
+const (
+	sessionLifetime  = 7 * 24 * time.Hour
+	sessionUpdateAge = 24 * time.Hour
+)
+
 // SessionSnapshot is the Better Auth get-session response shape used by the
 // hosted React client.
 type SessionSnapshot struct {
@@ -27,34 +32,36 @@ type SessionSnapshot struct {
 
 // AuthenticatedUser is the public user object returned by Better Auth.
 type AuthenticatedUser struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	EmailVerified bool      `json:"emailVerified"`
-	Image         *string   `json:"image"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID                string    `json:"id"`
+	Name              string    `json:"name"`
+	Email             string    `json:"email"`
+	EmailVerified     bool      `json:"emailVerified"`
+	Image             *string   `json:"image"`
+	AnalyticsOptedOut bool      `json:"analyticsOptedOut"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
 // CurrentSession is the payload returned for an authenticated browser session.
 type CurrentSession struct {
-	Session SessionSnapshot    `json:"session"`
+	Session SessionSnapshot   `json:"session"`
 	User    AuthenticatedUser `json:"user"`
 }
 
 // GetCurrentSession reads the current valid Better Auth session. A missing,
-// invalid, revoked or expired cookie returns ErrUnauthenticated.
-func (s *Service) GetCurrentSession(r *http.Request) (CurrentSession, error) {
+// invalid, revoked or expired cookie returns ErrUnauthenticated. Sessions are
+// extended after Better Auth's one-day update age, with the cookie refreshed.
+func (s *Service) GetCurrentSession(r *http.Request) (CurrentSession, bool, error) {
 	cookie, err := r.Cookie(secureSessionCookie)
 	if errors.Is(err, http.ErrNoCookie) {
 		cookie, err = r.Cookie(sessionCookie)
 	}
 	if err != nil {
-		return CurrentSession{}, ErrUnauthenticated
+		return CurrentSession{}, false, ErrUnauthenticated
 	}
 	token, ok := verifySignedValue(cookie.Value, s.secret)
 	if !ok {
-		return CurrentSession{}, ErrUnauthenticated
+		return CurrentSession{}, false, ErrUnauthenticated
 	}
 
 	var result CurrentSession
@@ -64,7 +71,7 @@ func (s *Service) GetCurrentSession(r *http.Request) (CurrentSession, error) {
 		       coalesce(s.ip_address, ''), coalesce(s.user_agent, ''),
 		       s.user_id, coalesce(s.active_organization_id, ''),
 		       u.id, u.name, u.email, u.email_verified, coalesce(u.image, ''),
-		       u.created_at, u.updated_at
+		       coalesce(u.analytics_opted_out, false), u.created_at, u.updated_at
 		FROM session s
 		JOIN "user" u ON u.id = s.user_id
 		WHERE s.token = $1 AND s.expires_at > now()`, token,
@@ -73,19 +80,41 @@ func (s *Service) GetCurrentSession(r *http.Request) (CurrentSession, error) {
 		&result.Session.CreatedAt, &result.Session.UpdatedAt,
 		&ipAddress, &userAgent, &result.Session.UserID, &activeOrganizationID,
 		&result.User.ID, &result.User.Name, &result.User.Email, &result.User.EmailVerified,
-		&image, &result.User.CreatedAt, &result.User.UpdatedAt,
+		&image, &result.User.AnalyticsOptedOut, &result.User.CreatedAt, &result.User.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return CurrentSession{}, ErrUnauthenticated
+		return CurrentSession{}, false, ErrUnauthenticated
 	}
 	if err != nil {
-		return CurrentSession{}, fmt.Errorf("load current auth session: %w", err)
+		return CurrentSession{}, false, fmt.Errorf("load current auth session: %w", err)
 	}
 	result.Session.IPAddress = optionalString(ipAddress)
 	result.Session.UserAgent = optionalString(userAgent)
 	result.Session.ActiveOrganizationID = optionalString(activeOrganizationID)
 	result.User.Image = optionalString(image)
-	return result, nil
+
+	if time.Since(result.Session.UpdatedAt) < sessionUpdateAge {
+		return result, false, nil
+	}
+	var expiresAt, updatedAt time.Time
+	err = s.repo.db.QueryRow(r.Context(), `
+		UPDATE session
+		SET expires_at = now() + interval '7 days', updated_at = now()
+		WHERE token = $1 AND expires_at > now()
+		  AND updated_at <= now() - interval '1 day'
+		RETURNING expires_at, updated_at`, token,
+	).Scan(&expiresAt, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Another request refreshed the session or it was revoked after the
+		// read. The current response remains valid for this request.
+		return result, false, nil
+	}
+	if err != nil {
+		return CurrentSession{}, false, fmt.Errorf("refresh current auth session: %w", err)
+	}
+	result.Session.ExpiresAt = expiresAt
+	result.Session.UpdatedAt = updatedAt
+	return result, true, nil
 }
 
 func optionalString(value string) *string {
@@ -105,7 +134,7 @@ func MountCurrentSession(mux *http.ServeMux, service *Service, logger *slog.Logg
 			httpx.WriteError(w, http.StatusServiceUnavailable, "auth_unavailable", "Session lookup is temporarily unavailable.")
 			return
 		}
-		session, err := service.GetCurrentSession(r)
+		session, refreshed, err := service.GetCurrentSession(r)
 		if errors.Is(err, ErrUnauthenticated) {
 			httpx.WriteJSON(w, http.StatusOK, nil)
 			return
@@ -115,6 +144,26 @@ func MountCurrentSession(mux *http.ServeMux, service *Service, logger *slog.Logg
 			httpx.WriteError(w, http.StatusInternalServerError, "auth_session_failed", "Could not load the current session.")
 			return
 		}
+		if refreshed {
+			refreshSessionCookie(w, r, session.Session.ExpiresAt)
+		}
 		httpx.WriteJSON(w, http.StatusOK, session)
+	})
+}
+
+func refreshSessionCookie(w http.ResponseWriter, r *http.Request, expiresAt time.Time) {
+	name, secure := secureSessionCookie, true
+	cookie, err := r.Cookie(name)
+	if err != nil {
+		name, secure = sessionCookie, false
+		cookie, err = r.Cookie(name)
+	}
+	if err != nil {
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: cookie.Value, Path: "/", Expires: expiresAt,
+		MaxAge: int(sessionLifetime.Seconds()), HttpOnly: true,
+		Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }
