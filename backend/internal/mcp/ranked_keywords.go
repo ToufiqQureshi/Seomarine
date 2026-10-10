@@ -46,6 +46,8 @@ func handleRankedKeywords(ctx context.Context, raw json.RawMessage, env *callEnv
 	case "", string(domain.ScopeExactURL), string(domain.ScopeSubfolder), string(domain.ScopeDomain), string(domain.ScopeSubdomains):
 	default: return nil, newAppErrorf("VALIDATION_ERROR", "scope is invalid")
 	}
+	if args.ResultTypes != nil && len(args.ResultTypes) == 0 { return nil, newAppErrorf("VALIDATION_ERROR", "resultTypes must contain at least 1 value") }
+	if args.ExcludeBrandTerms != nil && len(args.ExcludeBrandTerms) == 0 { return nil, newAppErrorf("VALIDATION_ERROR", "excludeBrandTerms must contain at least 1 value") }
 	if args.LocationCode != nil && *args.LocationCode < 1 { return nil, newAppErrorf("VALIDATION_ERROR", "locationCode must be positive") }
 	if args.LanguageCode != nil && (len(strings.TrimSpace(*args.LanguageCode)) < 2 || len(strings.TrimSpace(*args.LanguageCode)) > 8) { return nil, newAppErrorf("VALIDATION_ERROR", "languageCode must be 2 to 8 characters") }
 	if args.Market != nil && args.Market.Country != nil {
