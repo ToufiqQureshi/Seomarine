@@ -143,9 +143,9 @@ that have no Go service stay on the proxy and are marked "pending" below.
 
 - Legacy OAuth grants and access tokens live in Cloudflare KV
   (`workers-oauth-provider`), which a Go server cannot read. The Go OAuth
-  provider stores its own grants in Postgres `go_mcp_oauth_*` tables. Existing
+  provider is not active yet; `go_mcp_oauth_*` tables are reserved for its grants. Existing
   **API keys keep working** (same `apikey` table, same SHA-256/base64url hash);
-  existing **OAuth clients re-authorize once** against the Go provider. See
+  existing **OAuth clients will re-authorize once** against the Go provider. See
   `docs/maintainers/mcp-auth-design.md` (PR 1).
 - Legacy rate limiting uses a Cloudflare rate-limit binding (per-colo,
   best-effort). Go uses Redis so the limit holds across instances.
