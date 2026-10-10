@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Archive, Plus, X } from "lucide-react";
-import { archiveSamSession } from "@/serverFunctions/sam";
+import { archiveSamSession } from "@/client/features/sam/samApi";
 import {
   invalidateSamSessions,
   samSessionsQueryOptions,
@@ -109,7 +109,7 @@ export function SamSidebarPanel({
 
   const archiveSession = useMutation({
     mutationFn: (sessionId: string) =>
-      archiveSamSession({ data: { sessionId } }),
+      archiveSamSession({ data: { projectId, sessionId } }),
     onSuccess: (_result, sessionId) => {
       // Drop the chat from the cached list before leaving it, so the chat
       // route cannot pick it again as the most recent chat.

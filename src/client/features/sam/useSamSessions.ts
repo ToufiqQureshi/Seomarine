@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { createSamSession } from "@/serverFunctions/sam";
+import { createSamSession } from "@/client/features/sam/samApi";
 import {
   invalidateSamSessions,
   samSessionsQueryOptions,
