@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
@@ -46,11 +47,13 @@ func (f PingFunc) Ping(ctx context.Context) error { return f(ctx) }
 
 // Deps are the dependencies of the root handler.
 type Deps struct {
-	Logger    *slog.Logger
-	DB        Pinger
-	Redis     Pinger
-	Auth      *auth.Service
-	Analytics *analytics.Service
+	Logger *slog.Logger
+	DB     Pinger
+	Redis  Pinger
+	Auth   *auth.Service
+	// Activation records dashboard setup progress.
+	Activation *activation.Service
+	Analytics  *analytics.Service
 	// Billing is nil when Razorpay is not configured; billing routes then
 	// answer 503.
 	Billing *billing.Service
@@ -221,6 +224,7 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.RankTracking, Checks: d.RankChecks, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	activation.Mount(mux, activation.Deps{Logger: d.Logger, Service: d.Activation, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	reports.Mount(mux, reports.Deps{Logger: d.Logger, Service: d.Reports, PublicURL: d.PublicURL, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
