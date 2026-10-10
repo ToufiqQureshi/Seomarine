@@ -27,9 +27,7 @@ var supportedProtocolVersions = []string{"2025-11-25", "2025-06-18", "2025-03-26
 
 const defaultProtocolVersion = "2025-06-18"
 
-// serveRPC answers one JSON-RPC request or batch on the API-key lane. A batch
-// or a call the registry does not own is proxied to the legacy app whole, so
-// the client always talks to one coherent tool list.
+// serveRPC answers JSON-RPC requests locally on the API-key lane.
 func (h *handler) serveRPC(ctx context.Context, w http.ResponseWriter, r *http.Request, auth Auth) {
 	if r.Method != http.MethodPost && r.Method != http.MethodGet && r.Method != http.MethodDelete {
 		h.writeJSON(w, http.StatusMethodNotAllowed, errorResponse(json.RawMessage("null"), codeServerError, "Method not allowed."))
@@ -68,10 +66,6 @@ func (h *handler) serveRPC(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if h.needsProxy(requests) {
-		h.proxyBody(w, r, body)
-		return
-	}
 
 	responses := make([]rpcResponse, 0, len(requests))
 	for _, req := range requests {
@@ -121,27 +115,6 @@ func decodeRequests(body []byte) (requests []rpcRequest, isBatch bool, ok bool) 
 	return []rpcRequest{single}, false, true
 }
 
-// needsProxy reports whether any request must be answered by the legacy app:
-// a tools/call for a tool Go does not own, or a method outside the local set.
-func (h *handler) needsProxy(requests []rpcRequest) bool {
-	index := h.registryIndex()
-	for _, req := range requests {
-		switch req.Method {
-		case "initialize", "ping":
-		case "notifications/initialized", "notifications/cancelled", "notifications/progress":
-		case "tools/list":
-		case "tools/call":
-			name := toolCallName(req.Params)
-			if _, ok := index[name]; !ok {
-				return true
-			}
-		default:
-			return true
-		}
-	}
-	return false
-}
-
 // executeNotification runs a notification's side effects. The Go server has
 // none today beyond accepting the handshake.
 func (h *handler) executeNotification(_ context.Context, _ rpcRequest, _ Auth) {}
@@ -164,7 +137,7 @@ func (h *handler) execute(ctx context.Context, r *http.Request, req rpcRequest, 
 	case "notifications/initialized", "notifications/cancelled", "notifications/progress":
 		return resultResponse(req.ID, map[string]any{})
 	case "tools/list":
-		tools, err := h.listTools(ctx, r, req)
+		tools, err := h.listTools()
 		if err != nil {
 			h.deps.Logger.ErrorContext(ctx, "merge tools list failed", "err", err)
 			return errorResponse(req.ID, codeServerError, "Could not load the Seomarine tool list.")

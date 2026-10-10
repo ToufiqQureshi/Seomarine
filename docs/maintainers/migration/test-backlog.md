@@ -100,3 +100,6 @@ files.
 These are baseline counts, not files to rewrite automatically. During the final
 test phase, review existing TypeScript coverage against the Go implementations
 and add or move tests only where needed to cover migrated behavior.
+
+
+The existing Go `backend/internal/mcp/registry_test.go` needs its legacy-tool merge expectations moved to a Go-only API-key registry, and the transport tests should assert that unknown tools/methods are answered locally. This is a final-phase update to existing tests and does not add a test file.
