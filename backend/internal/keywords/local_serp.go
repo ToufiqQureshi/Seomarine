@@ -5,7 +5,6 @@ import (
  "encoding/json"
  "errors"
  "fmt"
- "net/http"
  "strings"
 
  "github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
@@ -33,11 +32,6 @@ func (p DataForSEOProvider) LocalSERP(ctx context.Context,org string,in LocalSER
  if response.Items==nil{return []map[string]any{},nil};return response.Items,nil
 }
 func FormatLocalSERPCoordinate(lat,lon float64,zoom *int)string{
- coordinate:=strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.5f,%.5f",lat,lon),"0"),".")
- // Trim each coordinate independently so a trailing zero on the longitude is
- // not consumed across the comma separator.
- _=coordinate
  format:=func(v float64)string{return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.5f",v),"0"),".")}
  coordinate=format(lat)+","+format(lon);if zoom!=nil{coordinate+=fmt.Sprintf(",%dz",*zoom)};return coordinate
 }
-var _ = http.MethodPost
