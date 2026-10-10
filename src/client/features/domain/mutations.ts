@@ -1,5 +1,5 @@
 import { useMutation, type QueryClient } from "@tanstack/react-query";
-import { saveKeywords } from "@/serverFunctions/keywords";
+import { saveKeywords } from "@/client/features/keywords/keywordsApi";
 
 export function useSaveKeywordsMutation({
   projectId,
@@ -19,7 +19,7 @@ export function useSaveKeywordsMutation({
         cpc?: number | null;
         keywordDifficulty?: number | null;
       }>;
-    }) => saveKeywords({ data }),
+    }) => saveKeywords(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["savedKeywords", projectId],
