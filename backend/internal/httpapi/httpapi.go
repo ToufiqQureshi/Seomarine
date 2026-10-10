@@ -191,6 +191,7 @@ func NewHandler(d Deps) http.Handler {
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
 	if d.AuthMode == "hosted" {
+		auth.MountCurrentSession(mux, d.Auth, d.Logger)
 		auth.MountSession(mux, d.Auth, d.Logger)
 	}
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)

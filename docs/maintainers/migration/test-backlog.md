@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **29 files**.
+Current confirmed count: **30 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -27,7 +27,7 @@ Current confirmed count: **29 files**.
 | Organization context API cutover | `src/client/features/team/organizationApi.test.ts`                    | Covers active organization context, membership listing, switching requests, and response parsing.                                                  |
 | Workspace merge API cutover      | `src/client/features/dashboard/workspaceApi.test.ts`                  | Covers status hiding outside Cloudflare Access mode, legacy counts, merge results, and errors.                                                     |
 | Team API cutover                 | `src/client/features/team/teamApi.test.ts`                            | Covers team member/invitation visibility, ownership transfer, invite rate limits, and email-provider errors.                                       |
-| Crawler access API cutover       | `src/client/features/crawler-access/crawlerAccessApi.test.ts`         | Covers credential list/save/delete, Shopify signature problems, project authorization, and secret-free responses.                                  |
+| Crawler access API cutover       | `src/client/features/crawler-access/crawlerAccessApi.test.ts`          | Covers credential list/save/delete, Shopify signature problems, project authorization, and secret-free responses.                                  |
 | Ahrefs Go service                | `backend/internal/ahrefs/service_test.go`                             | Covers normalization, cache hits including null ratings, batching, provider failures, and result key preservation.                                 |
 | Ahrefs Go handler                | `backend/internal/ahrefs/handler_test.go`                             | Covers session/project authorization, request validation, and responses.                                                                           |
 | Autumn usage Go handler          | `backend/internal/billing/usage_test.go`                              | Covers hosted/self-hosted behavior, pagination, 429 retries, range validation, and provider errors.                                                |
@@ -35,6 +35,7 @@ Current confirmed count: **29 files**.
 | MCP whoami credit lookup         | `backend/internal/mcp/whoami_test.go`                                  | Covers hosted/self-hosted mode, zero and unknown balances, scopes, and upstream failures without charging credits.                                     |
 | Organization Go API              | `backend/internal/auth/organization_handler_test.go`                  | Covers membership context, active organization switching, team listing permissions, and ownership transfer.                                        |
 | Hosted Go sign-out endpoint      | `backend/internal/auth/session_handler_test.go`                       | Covers hosted route ownership, valid/revoked/invalid cookies, cookie expiry, and database failure responses.                                          |
+| Hosted Go get-session endpoint   | `backend/internal/auth/current_session_test.go`                      | Covers the Better Auth JSON shape and analyticsOptedOut field, secure/local cookie refresh after one day, invalid, expired and revoked sessions, null optional fields, and DB failures. |
 | Workspace merge Go service       | `backend/internal/workspace/merge_test.go`                            | Covers disabled auth modes, idempotency, project renaming, record repointing, and earliest activation milestones.                                  |
 | Team invitation Go service       | `backend/internal/team/invitations_test.go`                           | Covers permissions, deduped pending invitations, daily limits, email payloads, and failed delivery.                                                |
 | Crawler credential Go service    | `backend/internal/crawleraccess/service_test.go`                      | Covers Better Auth encryption compatibility, Shopify key verification, organization scoping, and audit resolution.                                 |

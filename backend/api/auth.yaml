@@ -3,6 +3,53 @@ info:
   title: Seomarine authentication
   version: 1.0.0
 paths:
+  /api/auth/get-session:
+    get:
+      summary: Read the current browser session
+      description: Hosted-only Better Auth compatible session lookup. Missing, invalid, expired or revoked cookies return null.
+      operationId: getCurrentSession
+      responses:
+        "200":
+          description: Session and user data, or null when signed out.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [session, user]
+                    properties:
+                      session:
+                        type: object
+                        required: [id, expiresAt, token, createdAt, updatedAt, userId]
+                        properties:
+                          id: { type: string }
+                          expiresAt: { type: string, format: date-time }
+                          token: { type: string }
+                          createdAt: { type: string, format: date-time }
+                          updatedAt: { type: string, format: date-time }
+                          ipAddress: { type: [string, "null"] }
+                          userAgent: { type: [string, "null"] }
+                          userId: { type: string }
+                          activeOrganizationId: { type: [string, "null"] }
+                      user:
+                        type: object
+                        required: [id, name, email, emailVerified, createdAt, updatedAt]
+                        properties:
+                          id: { type: string }
+                          name: { type: string }
+                          email: { type: string, format: email }
+                          emailVerified: { type: boolean }
+                          image: { type: [string, "null"] }
+                          createdAt: { type: string, format: date-time }
+                          updatedAt: { type: string, format: date-time }
+                          analyticsOptedOut: { type: boolean }
+                  - type: "null"
+        "404":
+          description: Auth mode does not enable hosted sign-in.
+        "500":
+          description: Session lookup failed.
+        "503":
+          description: Auth service is unavailable.
   /api/auth/sign-out:
     post:
       summary: Sign out the current session
