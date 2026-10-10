@@ -3,8 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, RotateCcw } from "lucide-react";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { setDashboardStepDismissed } from "@/serverFunctions/dashboard";
-import type { DashboardActivation } from "@/server/features/dashboard/services/DashboardService";
+import {
+  setDashboardStepDismissed,
+  type DashboardActivation,
+} from "@/client/features/dashboard/dashboardApi";
 import type { DashboardSetupStep } from "@/types/schemas/dashboard";
 import { getStepStatus, setupSteps } from "./dashboardSteps";
 import { DashboardSetupAction } from "./DashboardSetupAction";
