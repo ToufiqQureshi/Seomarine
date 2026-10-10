@@ -1,7 +1,7 @@
 # Legacy data copy
 
 `copy-legacy-data.ts` copies rows from the configured D1 database into the
-PostgreSQL schema created by the Goose baseline. It uses Wrangler's remote D1
+PostgreSQL schema matching the staged Goose baseline. It uses Wrangler's remote D1
 JSON query mode and the `TARGET_DATABASE_URL` environment variable. The script
 is dry-run by default; pass `--apply` only during an approved migration window.
 It never deploys or modifies the D1 source. Copy runs require legacy writes to

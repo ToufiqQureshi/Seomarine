@@ -13,7 +13,7 @@ from clients. The legacy list is capped at 4 MiB. The API-key request lane has
 a 30-second deadline; legacy fallback preserves the caller's credential and
 the upstream response.
 
-Postgres stores API-key usage and OAuth grants; Redis applies the hosted
+Postgres stores API-key usage and reserves tables for future OAuth grants; Redis applies the hosted
 per-user rate limit. Keep tool names and schemas compatible with cached MCP
 clients. When a tool is ported, register its Go handler and remove its
 TypeScript duplicate only after contract tests cover the public behavior.

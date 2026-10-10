@@ -119,7 +119,11 @@ func (h *handler) proxyBodyRequest(ctx context.Context, w http.ResponseWriter, r
 		h.writeJSON(w, http.StatusBadGateway, errorResponse(json.RawMessage("null"), codeServerError, "The app is temporarily unavailable. Please try again."))
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			h.deps.Logger.WarnContext(ctx, "close proxied MCP response", "err", err)
+		}
+	}()
 
 	// Preserve CORS headers on the proxied response too.
 	for name, value := range corsHeaders {

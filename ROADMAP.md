@@ -14,7 +14,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                            | ✅          |
 | 0.4  | Go server serves the React SPA (Vite build) as static files                                                                                             | ⏳          |
 | 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP)                         | 🔧          |
-| 0.5a | MCP Go dispatcher and TypeScript fallback; tool catalog, read-only and billed tool ports remain                                                        | in progress |
+| 0.5a | MCP Go dispatcher and TypeScript fallback; tool catalog, read-only and billed tool ports remain                                                         | in progress |
 | 0.5d | Port keyword/rank-tracking market tables and resolution to Go; API and jobs remain pending                                                              | in progress |
 | 0.5f | Rank tracking in Go: tables, rules, configs, keywords, results, manual/scheduled checks and metrics refresh done; credit holds and React switch pending | in progress |
 | 0.5g | Keywords in Go: saved keywords, tags, research (Labs/Ads, local), SERP analysis, metrics refresh; React switch pending                                  | in progress |
@@ -25,7 +25,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                                   | in progress |
 | 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending            | in progress |
 | 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                                  | in progress |
-| 0.5l | Goose version 1 baseline for the current Drizzle PostgreSQL schema; apply at schema cutover                                                                  | ready       |
+| 0.5l | Staged Goose version 1 baseline for Drizzle PostgreSQL schema; activate at cutover                                                                      | staged      |
 
 ## Phase 1: Rebrand + new UI
 
