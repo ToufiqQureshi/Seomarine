@@ -14,6 +14,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 )
 
 const (
@@ -35,16 +36,17 @@ var corsHeaders = map[string]string{
 
 // Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger        *slog.Logger
-	DB            *pgxpool.Pool
-	Redis         *redis.Client
-	Auth          *auth.Service
-	Billing       *billing.Service
-	Upstream      *url.URL
-	PublicURL     *url.URL
-	Audit         *audit.Service
-	Locations     *keywords.LocationService
-	SavedKeywords *keywords.SavedService
+	Logger         *slog.Logger
+	DB             *pgxpool.Pool
+	Redis          *redis.Client
+	Auth           *auth.Service
+	Billing        *billing.Service
+	Upstream       *url.URL
+	PublicURL      *url.URL
+	Audit          *audit.Service
+	Locations      *keywords.LocationService
+	SavedKeywords  *keywords.SavedService
+	ProjectContext *projectcontext.Service
 }
 
 // Mount registers the MCP dispatcher on mux.

@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
@@ -82,7 +83,8 @@ type Deps struct {
 	// SERP and refresh routes then answer 503.
 	KeywordResearch *keywords.ResearchService
 	// SavedKeywords serves saved keywords, their metrics and tags.
-	SavedKeywords *keywords.SavedService
+	SavedKeywords  *keywords.SavedService
+	ProjectContext *projectcontext.Service
 	// RankTracking serves rank tracking configs and keywords. City-level
 	// configs answer 503 until the provider city check is wired in.
 	RankTracking *ranktracking.Service
@@ -246,6 +248,11 @@ func NewHandler(d Deps) http.Handler {
 	}
 
 	api := http.NewServeMux()
+	projectcontext.Mount(api, projectcontext.HandlerDeps{
+		Logger: d.Logger, Service: d.ProjectContext,
+		WithSession:       func(next http.Handler) http.Handler { return next },
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	api.HandleFunc("/", notFound())
 	mux.Handle("/api/v1/", requireSession(d.Logger, d.Auth, api))
 
