@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
