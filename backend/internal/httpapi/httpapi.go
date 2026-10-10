@@ -190,6 +190,9 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
+	if d.AuthMode == "hosted" {
+		auth.MountSession(mux, d.Auth, d.Logger)
+	}
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)
 	team.Mount(mux, d.Team, withSession)
 	crawleraccess.Mount(mux, d.CrawlerAccess, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
