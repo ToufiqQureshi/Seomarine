@@ -19,7 +19,6 @@ package mcp
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -94,11 +93,4 @@ func randomToken(n int) (string, error) {
 func tokenHash(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return fmt.Sprintf("%x", sum)
-}
-
-func constantTimeEqual(a string, b string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
