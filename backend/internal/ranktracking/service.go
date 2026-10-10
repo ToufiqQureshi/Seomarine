@@ -194,6 +194,18 @@ func (s *Service) ListConfigs(ctx context.Context, projectID string) ([]Config, 
 	return s.Repo.ListActiveConfigs(ctx, projectID)
 }
 
+// ListConfigSummaries returns active configs with the keyword count and latest
+// run summary required by the rank-tracking domain list.
+func (s *Service) ListConfigSummaries(ctx context.Context, projectID string) ([]ConfigSummary, error) {
+	store, ok := s.Repo.(interface {
+		ListConfigSummaries(context.Context, string) ([]ConfigSummary, error)
+	})
+	if !ok {
+		return nil, errors.New("rank tracking config summary store unavailable")
+	}
+	return store.ListConfigSummaries(ctx, projectID)
+}
+
 // CreateConfig starts tracking a domain. Re-adding an archived domain brings
 // the old row back with its keywords and history, using the new settings.
 func (s *Service) CreateConfig(ctx context.Context, in CreateInput) (Config, error) {

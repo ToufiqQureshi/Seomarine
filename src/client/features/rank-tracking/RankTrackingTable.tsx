@@ -11,7 +11,7 @@ import {
 } from "@/client/components/table/TableBulkActionBar";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SortingState } from "@tanstack/react-table";
-import { removeTrackingKeywords } from "@/serverFunctions/rank-tracking";
+import { removeTrackingKeywords } from "./rankTrackingApi";
 import type { RankTrackingRow } from "@/types/schemas/rank-tracking";
 import { useRankTrackingColumns } from "./RankTrackingColumns";
 import { exportRankTracking } from "./RankTrackingTableParts";

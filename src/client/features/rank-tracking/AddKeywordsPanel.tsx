@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import { addTrackingKeywords } from "@/serverFunctions/rank-tracking";
+import { addTrackingKeywords } from "./rankTrackingApi";
 import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
 import { Button } from "@/client/components/ui/button";
 import { Checkbox } from "@/client/components/ui/checkbox";

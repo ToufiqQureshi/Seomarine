@@ -37,6 +37,15 @@ type Config struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 }
 
+// ConfigSummary adds the tracked keyword count and most recent run state shown
+// in the project domain list.
+type ConfigSummary struct {
+	Config
+	KeywordCount       int        `json:"keywordCount"`
+	LastRunStatus      *string    `json:"lastRunStatus"`
+	LastRunCompletedAt *time.Time `json:"lastRunCompletedAt"`
+}
+
 // Keyword is one tracked search term of a config.
 type Keyword struct {
 	ID                string     `json:"id"`

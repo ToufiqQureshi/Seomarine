@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { getDomainKeywordSuggestions } from "@/client/features/domain/domainApi";
-import { addTrackingKeywords } from "@/serverFunctions/rank-tracking";
+import { addTrackingKeywords } from "./rankTrackingApi";
 import { isLabsLocationCode } from "@/client/features/keywords/locations";
 import { Spinner } from "@/client/components/Spinner";
 import {

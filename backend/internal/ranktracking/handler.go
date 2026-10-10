@@ -40,6 +40,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	base := "POST /api/v1/projects/{projectId}/rank-tracking/"
 	mux.Handle(base+"configs/list", protect(handle(d, listConfigs)))
+	mux.Handle(base+"configs/summaries", protect(handle(d, listConfigSummaries)))
 	mux.Handle(base+"configs/create", protect(handle(d, createConfig)))
 	mux.Handle(base+"configs/update", protect(handle(d, updateConfig)))
 	mux.Handle(base+"keywords/list", protect(handle(d, listKeywords)))
@@ -195,6 +196,21 @@ func listConfigs(q request) (any, error) {
 		configs = []Config{}
 	}
 	return map[string]any{"configs": configs}, nil
+}
+
+func listConfigSummaries(q request) (any, error) {
+	var body struct{}
+	if err := q.decode(&body); err != nil {
+		return nil, err
+	}
+	summaries, err := q.d.Service.ListConfigSummaries(q.r.Context(), q.projectID)
+	if err != nil {
+		return nil, err
+	}
+	if summaries == nil {
+		summaries = []ConfigSummary{}
+	}
+	return map[string]any{"summaries": summaries}, nil
 }
 
 func createConfig(q request) (any, error) {
