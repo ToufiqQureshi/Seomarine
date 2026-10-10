@@ -157,8 +157,12 @@ func run(logger *slog.Logger) error {
 		googleAPIClient = &google.APIClient{Tokens: tokenService}
 	}
 	var ga4Svc *ga4.Service
+	ga4Setup := &ga4.ConnectionOperations{Store: ga4.SetupRepository{DB: db}, OAuthReady: cfg.GoogleClientID != "" && cfg.GoogleClientSecret != ""}
 	if googleOAuthSvc != nil {
 		ga4Svc = &ga4.Service{Connections: ga4.ConnectionRepository{DB: db}, Google: &google.APIClient{Tokens: googleOAuthSvc.Tokens}}
+		ga4Setup.NewAdmin = func(userID, accountID string) ga4.PropertyAdmin {
+			return ga4.GooglePropertyAdmin{API: googleAPIClient, UserID: userID, AccountID: accountID}
+		}
 	}
 
 	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
@@ -190,6 +194,7 @@ func run(logger *slog.Logger) error {
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,
+			GA4Setup:          ga4Setup,
 			GSC:               buildGSCService(db, googleAPIClient),
 			GSCConnections:    buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},

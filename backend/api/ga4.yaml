@@ -3,6 +3,88 @@ info:
   title: Seomarine GA4 reports
   version: 1.0.0
 paths:
+  /api/v1/projects/{projectId}/ga4/connection/status:
+    post:
+      operationId: ga4ConnectionStatus
+      summary: Get the selected property and current user's grant/permission state
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, maxProperties: 0, additionalProperties: false }
+      responses:
+        "200": { description: Connection and setup status }
+        "401": { description: Authentication required }
+        "404": { description: Project not found }
+        "503": { description: GA4 setup repository is not available }
+  /api/v1/projects/{projectId}/ga4/properties/list:
+    post:
+      operationId: ga4ListProperties
+      summary: List GA4 properties visible to the signed-in user's Google grants
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, maxProperties: 0, additionalProperties: false }
+      responses:
+        "200": { description: Per-account properties and reconnect/unavailable status }
+        "401": { description: Authentication required }
+        "502": { description: Google provider unavailable }
+        "503": { description: GA4 setup is not configured }
+  /api/v1/projects/{projectId}/ga4/connection/set:
+    post:
+      operationId: ga4SetProperty
+      summary: Verify and select a GA4 property for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [accountId, propertyId]
+              properties:
+                accountId: { type: string, minLength: 1, maxLength: 256 }
+                propertyId: { type: string, pattern: '^properties/[0-9]+$' }
+      responses:
+        "200": { description: Selected property metadata }
+        "400": { description: Invalid property selection }
+        "403": { description: Integration management permission required }
+        "404": { description: Google grant or property is not available to the user }
+        "502": { description: Google provider unavailable }
+  /api/v1/projects/{projectId}/ga4/connection/disconnect:
+    post:
+      operationId: ga4DisconnectProperty
+      summary: Remove the selected GA4 property from a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, maxProperties: 0, additionalProperties: false }
+      responses:
+        "200": { description: Connection removed }
+        "403": { description: Integration management permission required }
+        "503": { description: GA4 setup repository is not available }
   /api/v1/projects/{projectId}/ga4/search-opportunities:
     post:
       operationId: ga4SearchOpportunities

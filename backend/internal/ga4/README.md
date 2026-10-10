@@ -35,9 +35,27 @@ requests.
   `ga4_*` error codes. The shared Google API client only retains Google's
   allowlisted `SERVICE_DISABLED` reason and numeric `Retry-After` value; it
   never includes provider error text in logs or responses.
-- Property listing, connection setup/removal, MCP wrappers, and the React
-  call-site switch remain on the legacy implementation for later roadmap
-  items. No legacy code is deleted by this API port.
+- Property listing, connection setup/removal are available in Go. MCP wrappers
+  and the React call-site switch remain on the legacy implementation for later
+  roadmap items. No legacy code is deleted by this API port.
+
+## Property setup
+
+`POST /api/v1/projects/{projectId}/ga4/connection/status` reports the selected
+property, current user's Google grant, integration-management permission, and
+OAuth configuration. `properties/list` lists properties from each of the
+user's grants with isolated reconnect/unavailable states. `connection/set`
+requires an owner/admin, confirms the grant belongs to the user, verifies the
+property from Google's account summaries, then reads canonical property
+metadata before saving. `connection/disconnect` has the same role gate. The
+existing `ga4_connections` table and account grants remain TypeScript-owned;
+no migration is introduced. User-info email lookup remains optional, matching
+the legacy flow. Property discovery is capped at 100 pages of 200 account
+summaries.
+
+Deliberate difference: the Go routes do not emit the legacy PostHog
+`ga4:property_select` and `ga4:disconnect` events. The UI remains on the
+legacy server functions until its dedicated switch.
 
 ## Organic overview
 

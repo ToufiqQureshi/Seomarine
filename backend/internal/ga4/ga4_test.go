@@ -367,7 +367,7 @@ func TestReportHandlerRejectsUnknownFields(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: slog.Default(), Service: service, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return next }})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/ga4/reports/run", strings.NewReader(`{"kind":"landing_pages","unknown":true}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/project-1/ga4/reports/run", strings.NewReader(`{"kind":"landing_pages","unknown":true}`))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -397,7 +397,7 @@ func TestNewHandlersRejectUnknownFields(t *testing.T) {
 		{"/api/v1/projects/project-1/ga4/search-opportunities", `{"limit":null}`},
 	} {
 		t.Run(test.path, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.body))
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, test.path, strings.NewReader(test.body))
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, req)
 			if recorder.Code != http.StatusBadRequest {

@@ -64,7 +64,8 @@ type Deps struct {
 	// GoogleOAuth owns consent start and callback routes.
 	GoogleOAuth *google.OAuthService
 	// GA4 serves read-only Google Analytics reports; nil answers 503.
-	GA4 *ga4.Service
+	GA4      *ga4.Service
+	GA4Setup *ga4.ConnectionOperations
 	// GSC serves read-only Search Console performance reports.
 	GSC *gsc.Service
 	// GSCConnections serves project property selection and status.
@@ -220,7 +221,7 @@ func NewHandler(d Deps) http.Handler {
 		WithSession: withSession,
 	})
 	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
-	ga4.Mount(mux, ga4.Deps{Logger: d.Logger, Service: d.GA4, WithSession: withSession,
+	ga4.Mount(mux, ga4.Deps{Logger: d.Logger, Service: d.GA4, Setup: d.GA4Setup, WithSession: withSession,
 		SearchConsole:     d.GSC,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
