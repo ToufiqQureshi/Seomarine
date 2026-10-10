@@ -79,6 +79,9 @@ func registry() []*tool {
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
+		getRankTrackerTool(),
+		addRankTrackingKeywordsTool(),
+		removeRankTrackingKeywordsTool(),
 	}
 }
 
