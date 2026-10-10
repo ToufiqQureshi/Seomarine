@@ -3,7 +3,7 @@
 ## PR
 
 - Consolidated migration PR [#35](https://github.com/ToufiqQureshi/Seomarine/pull/35) merged on 2026-10-10 (`638b937`).
-- GA4 setup React switch is being prepared as a follow-up from the merged `main`.
+- GA4 setup React switch follow-up draft: [#38](https://github.com/ToufiqQureshi/Seomarine/pull/38), based on merged `main`.
 - Purane drafts [#31 GA4](https://github.com/ToufiqQureshi/Seomarine/pull/31), [#32 GSC](https://github.com/ToufiqQureshi/Seomarine/pull/32), [#33 SAM](https://github.com/ToufiqQureshi/Seomarine/pull/33), [#34 audit fixtures](https://github.com/ToufiqQureshi/Seomarine/pull/34) consolidate karke close hue.
 
 ## Is pass mein
