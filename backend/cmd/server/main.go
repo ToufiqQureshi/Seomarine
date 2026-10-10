@@ -233,6 +233,7 @@ func run(logger *slog.Logger) error {
 			PublicURL:            cfg.PublicURL,
 			DataForSEOConfigured: strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
 			OpenRouterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
+			AutumnSecretKey:      cfg.AutumnSecretKey,
 			HostedMode:           cfg.AuthMode == "hosted",
 			MCP:                  mcpDeps,
 			SavedKeywords:        savedKeywordsSvc,

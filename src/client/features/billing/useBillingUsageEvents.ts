@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getBillingUsageEvents } from "@/serverFunctions/billing";
+import { getBillingUsageEvents } from "@/client/features/billing/billingApi";
 
 export const BILLING_USAGE_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;

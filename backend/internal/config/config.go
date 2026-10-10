@@ -42,6 +42,8 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey enables the self-hosted SAM agent.
 	OpenRouterAPIKey string
+	// AutumnSecretKey enables hosted billing-usage event history.
+	AutumnSecretKey string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -138,6 +140,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Razorpay:                 rzp,
 		DataForSEOAPIKey:         strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
 		OpenRouterAPIKey:         strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		AutumnSecretKey:          strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
 		TrustedProxyCIDRs:        trusted,
 	}, nil
 }

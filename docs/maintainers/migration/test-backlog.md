@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **12 files**.
+Current confirmed count: **13 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,6 +23,7 @@ Current confirmed count: **12 files**.
 | Onboarding API cutover           | `src/client/features/onboarding/onboardingApi.test.ts`                | Covers saved-answer reads/writes, completion, and Search Console nudge dismissal.                                                                  |
 | Runtime setup API cutover        | `src/client/lib/appConfigApi.test.ts`                                 | Covers SEO provider-key status and SAM access setup status from Go.                                                                                |
 | Ahrefs domain-rating API cutover | `src/client/features/backlinks/ahrefsApi.test.ts`                     | Covers project-scoped Go requests, original-domain result keys, unknown ratings, and API errors.                                                   |
+| Billing usage API cutover        | `src/client/features/billing/billingApi.test.ts`                      | Covers hosted usage-event date ranges, event properties, self-hosted empty results, and upstream errors.                                           |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed
@@ -33,6 +34,9 @@ its server-function mock updated to mock `dashboardApi`, and
 `src/client/features/dashboard/dashboardSteps.test.ts` needs its type import
 moved to `dashboardApi` in the final test phase. These do not add new test files
 to the count.
+
+The existing `src/client/features/billing/BillingFeatureBreakdown.test.ts`
+needs its server-function mock moved to `billingApi` in the final test phase.
 
 ## Existing test inventory at migration start
 

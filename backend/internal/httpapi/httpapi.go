@@ -113,6 +113,7 @@ type Deps struct {
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
+	AutumnSecretKey      string
 	HostedMode           bool
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
@@ -206,7 +207,7 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession})
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
