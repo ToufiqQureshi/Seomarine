@@ -38,3 +38,6 @@ The Go MCP `research_keywords` tool calls the shared Go research service per see
 
 
 The shared Go DataForSEO keyword provider also owns the MCP Maps and Local Finder SERP paths. It preserves coordinate formatting, device/OS selection, depth and trimmed local-result fields. Contract tests are deferred to the final migration phase.
+
+
+The Go keyword/DataForSEO provider also supports Google Business Profile Q&A lookups, including `cid:` and `place_id:` identifiers and the provider's billed empty-result response. Contract tests are deferred to the final migration test phase.

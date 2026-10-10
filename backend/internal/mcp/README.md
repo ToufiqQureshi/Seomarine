@@ -80,3 +80,6 @@ The Go API-key MCP registry also owns `find_serp_competitors`, using the Go doma
 
 
 The Go API-key MCP registry also owns `get_local_serp_results`. It queries the Go Maps or Local Finder provider near the supplied coordinate and returns a bounded, trimmed row shape.
+
+
+The Go API-key MCP registry also owns `get_google_business_questions`. It validates one business identifier and a coordinate scope, then returns trimmed questions and answers from the Go DataForSEO provider.
