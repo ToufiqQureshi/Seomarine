@@ -12,7 +12,7 @@ import {
   getGa4Connection,
   listGa4Properties,
   setGa4Property,
-} from "@/serverFunctions/ga4";
+} from "@/client/features/integrations/ga4ConnectionsApi";
 import {
   disconnectGsc,
   getGscConnection,
@@ -150,7 +150,7 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
     Logo: GoogleAnalyticsLogo,
     docsUrl: GA4_SELF_HOSTED_SETUP_DOCS_URL,
     getConnection: async (projectId) => {
-      const connection = await getGa4Connection({ data: { projectId } });
+      const connection = await getGa4Connection(projectId);
       return {
         ...connection,
         property: connection.propertyDisplayName,
@@ -159,11 +159,9 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
     },
     accountsKey: "ga4Properties",
     listAccounts: async (projectId) =>
-      ga4PickerOptions(
-        (await listGa4Properties({ data: { projectId } })).accounts,
-      ),
+      ga4PickerOptions((await listGa4Properties(projectId)).accounts),
     save: async (projectId, selection) => {
-      const saved = await setGa4Property({ data: { projectId, ...selection } });
+      const saved = await setGa4Property(projectId, selection);
       return {
         connected: true,
         connectedByEmail: saved.connectedByEmail,
@@ -171,7 +169,7 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
         propertyDetail: saved.propertyId,
       };
     },
-    disconnect: (projectId) => disconnectGa4({ data: { projectId } }),
+    disconnect: (projectId) => disconnectGa4(projectId),
     dependentKeys: (projectId) => [
       ["dashboardActivation", projectId],
       ["dashboardGa4Report", projectId],

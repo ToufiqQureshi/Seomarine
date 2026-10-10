@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 )
 
 type setupStoreFake struct {
@@ -68,6 +70,20 @@ func TestListGA4PropertiesWithoutOAuthGrantReturnsEmptyList(t *testing.T) {
 	got, err := ops.ListProperties(context.Background(), "user", "org", "project")
 	if err != nil || len(got) != 0 {
 		t.Fatalf("accounts=%+v err=%v", got, err)
+	}
+}
+
+func TestListGA4PropertiesMarksRevokedGrantForReconnect(t *testing.T) {
+	store := &setupStoreFake{grants: []PropertyGrant{{AccountID: "revoked"}}}
+	ops := &ConnectionOperations{Store: store, NewAdmin: func(string, string) PropertyAdmin {
+		return propertyAdminFake{listErr: google.APIError{Status: 401}}
+	}}
+	got, err := ops.ListProperties(context.Background(), "user", "org", "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !got[0].RequiresReconnect || got[0].PropertiesUnavailable {
+		t.Fatalf("account state = %+v", got)
 	}
 }
 

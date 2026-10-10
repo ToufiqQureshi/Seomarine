@@ -11,7 +11,7 @@ vi.mock("@/serverFunctions/gsc", () => ({
   setGscSite: vi.fn(),
   disconnectGsc: vi.fn(),
 }));
-vi.mock("@/serverFunctions/ga4", () => ({
+vi.mock("@/client/features/integrations/ga4ConnectionsApi", () => ({
   getGa4Connection: vi.fn(),
   listGa4Properties: vi.fn(),
   setGa4Property: vi.fn(),
