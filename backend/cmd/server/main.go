@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
+	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -201,6 +202,7 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
+			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}},
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,
