@@ -15,8 +15,8 @@ import { QueryError } from "@/client/components/QueryState";
 import {
   getDashboardActivation,
   getDashboardOverview,
-  refreshDashboardBacklinkSnapshot,
-} from "@/serverFunctions/dashboard";
+} from "@/client/features/dashboard/dashboardApi";
+import { refreshDashboardBacklinkSnapshot } from "@/serverFunctions/dashboard";
 import { Skeleton } from "@/client/components/ui/skeleton";
 
 export function DashboardPage({ projectId }: { projectId: string }) {
