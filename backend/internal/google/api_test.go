@@ -73,3 +73,32 @@ func TestAPIClientDoesNotRetryNonIdempotentRequest(t *testing.T) {
 		t.Fatalf("error=%v, calls=%d", err, serverCalls)
 	}
 }
+
+func TestAPIErrorExposesOnlyKnownReasonAndRetryDelay(t *testing.T) {
+	for _, test := range []struct {
+		name, body, retryAfter string
+		status, wantRetry      int
+		wantReason             string
+	}{
+		{name: "disabled service", body: `{"error":{"errors":[{"reason":"SERVICE_DISABLED"}]}}`, status: http.StatusForbidden, wantReason: "SERVICE_DISABLED"},
+		{name: "quota retry", body: `{"error":{"message":"private provider text"}}`, retryAfter: "60", status: http.StatusTooManyRequests, wantRetry: 60},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if test.retryAfter != "" {
+					w.Header().Set("Retry-After", test.retryAfter)
+				}
+				w.WriteHeader(test.status)
+				_, _ = w.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			client := &APIClient{Tokens: &fakeTokenSource{}, Client: server.Client()}
+			var response any
+			err := client.DoJSON(t.Context(), APIRequest{UserID: "user", Provider: "ga4", Method: http.MethodGet, URL: server.URL, Response: &response})
+			apiErr, ok := errors.AsType[APIError](err)
+			if !ok || apiErr.Status != test.status || apiErr.Reason != test.wantReason || apiErr.RetryAfterSeconds != test.wantRetry {
+				t.Fatalf("error = %#v, want status=%d reason=%q retry=%d", err, test.status, test.wantReason, test.wantRetry)
+			}
+		})
+	}
+}

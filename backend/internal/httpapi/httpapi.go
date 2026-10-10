@@ -19,6 +19,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
@@ -60,6 +61,8 @@ type Deps struct {
 	GoogleAccounts google.AccountRepository
 	// GoogleOAuth owns consent start and callback routes.
 	GoogleOAuth *google.OAuthService
+	// GA4 serves read-only Google Analytics reports; nil answers 503.
+	GA4 *ga4.Service
 	// ProjectMarkets reads the authorized project's default market for domain lookups.
 	ProjectMarkets domain.ProjectMarkets
 	// Locations serves the authenticated city and region picker.
@@ -205,6 +208,9 @@ func NewHandler(d Deps) http.Handler {
 		WithSession: withSession,
 	})
 	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
+	ga4.Mount(mux, ga4.Deps{Logger: d.Logger, Service: d.GA4, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 
 	api := http.NewServeMux()
 	api.HandleFunc("/", notFound())

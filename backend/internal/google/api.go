@@ -20,8 +20,16 @@ const (
 	maxAPIAttempts   = 3
 )
 
+// ErrInvalidAPIResponse indicates a successful Google response was not valid
+// JSON for the requested response type.
+var ErrInvalidAPIResponse = errors.New("invalid google api response")
+
 // APIError carries an HTTP status without exposing Google's response body.
-type APIError struct{ Status int }
+type APIError struct {
+	Status            int
+	Reason            string
+	RetryAfterSeconds int
+}
 
 // Error implements error without including provider data or credentials.
 func (e APIError) Error() string { return "google api request failed" }
@@ -153,7 +161,7 @@ func (c *APIClient) DoJSON(ctx context.Context, input APIRequest) error {
 		}
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
 			retryAfter := resp.Header.Get("Retry-After")
-			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+			providerError := readAPIError(resp)
 			_ = resp.Body.Close()
 			cancel()
 			if resp.StatusCode >= 500 {
@@ -166,13 +174,16 @@ func (c *APIClient) DoJSON(ctx context.Context, input APIRequest) error {
 				attempt++
 				continue
 			}
-			return APIError{Status: resp.StatusCode}
+			providerError.Status = resp.StatusCode
+			providerError.RetryAfterSeconds = parseRetryAfterSeconds(retryAfter)
+			return providerError
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+			providerError := readAPIError(resp)
 			_ = resp.Body.Close()
 			cancel()
-			return APIError{Status: resp.StatusCode}
+			providerError.Status = resp.StatusCode
+			return providerError
 		}
 		limited := io.LimitReader(resp.Body, maxBytes+1)
 		data, readErr := io.ReadAll(limited)
@@ -182,12 +193,45 @@ func (c *APIClient) DoJSON(ctx context.Context, input APIRequest) error {
 			return errors.New("google api response unavailable")
 		}
 		if err := json.Unmarshal(data, input.Response); err != nil {
-			return errors.New("invalid google api response")
+			return fmt.Errorf("%w: %w", ErrInvalidAPIResponse, err)
 		}
 		c.recordSuccess()
 		return nil
 	}
 	return errors.New("google api retry limit reached")
+}
+
+func readAPIError(resp *http.Response) APIError {
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return APIError{}
+	}
+	var body struct {
+		Error struct {
+			Errors []struct {
+				Reason string `json:"reason"`
+			} `json:"errors"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(data, &body); err != nil {
+		return APIError{}
+	}
+	result := APIError{}
+	for _, item := range body.Error.Errors {
+		if item.Reason == "SERVICE_DISABLED" {
+			result.Reason = item.Reason
+			break
+		}
+	}
+	return result
+}
+
+func parseRetryAfterSeconds(raw string) int {
+	seconds, err := strconv.Atoi(raw)
+	if err != nil || seconds < 0 {
+		return 0
+	}
+	return seconds
 }
 
 func parseRetryAfter(raw string) time.Duration {

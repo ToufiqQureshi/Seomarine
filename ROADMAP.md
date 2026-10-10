@@ -20,6 +20,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                                           | in progress |
 | 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                     | in progress |
 | 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                          | in progress |
+| 0.5h | GA4 reporting API in Go (seven report types, paging, comparisons and diagnostics); legacy setup/overview and React switch pending              | in progress |
 
 ## Phase 1: Rebrand + new UI
 
