@@ -24,5 +24,7 @@ The read/free tools currently owned here include saved keyword list/save/remove,
 SERP location search, and site audit history/status/pages/deletion. Audit deletion
 checks owner/admin membership and uses the same stop-and-delete service as the
 dashboard. Tools whose backing Go service or response contract is not ported yet
-(including reports, templates/sharing, Search Console, GA4, rank tracker reads,
-and audit issue formatting) continue through the TypeScript fallback.
+(including reports, templates/sharing, Search Console, rank tracker reads, and
+audit issue formatting) continue through the TypeScript fallback. GA4 report,
+overview, measurement-health, and Search Opportunities tools are registered in
+Go and call the existing GA4 services.

@@ -180,10 +180,12 @@ func run(logger *slog.Logger) error {
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
+	gscService := buildGSCService(db, googleAPIClient)
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
+		GA4: ga4Svc, GSC: gscService,
 	}
 	srv := &http.Server{
 		Addr: cfg.Addr,
@@ -203,7 +205,7 @@ func run(logger *slog.Logger) error {
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,
 			GA4Setup:          ga4Setup,
-			GSC:               buildGSCService(db, googleAPIClient),
+			GSC:               gscService,
 			GSCConnections:    buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
 			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
 			Locations:         locationSvc,
