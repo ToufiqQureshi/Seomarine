@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart } from "recharts";
-import { getRankConfigTrend } from "@/serverFunctions/rank-tracking";
+import { getRankConfigTrend } from "./rankTrackingApi";
 import { QueryState } from "@/client/components/QueryState";
 import { Skeleton } from "@/client/components/ui/skeleton";
 import {

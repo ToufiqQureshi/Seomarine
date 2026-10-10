@@ -44,8 +44,8 @@ const (
 // Estimate is a pre-flight cost. Credits are summed per provider call because
 // metering rounds each call on its own.
 type Estimate struct {
-	CostUSD     float64
-	CostCredits int
+	CostUSD     float64 `json:"costUsd"`
+	CostCredits int     `json:"costCredits"`
 }
 
 // serpOperator matches advanced search operators. Google Organic bills these at

@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { refreshTrackingKeywordMetrics } from "@/serverFunctions/rank-tracking";
+import { refreshTrackingKeywordMetrics } from "./rankTrackingApi";
 
 export function useMetricsRefresh(projectId: string, configId: string) {
   const queryClient = useQueryClient();

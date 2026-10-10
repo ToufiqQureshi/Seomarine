@@ -9,7 +9,7 @@ import {
   getLatestRankResults,
   getRankPositionMatrix,
   estimateRankCheckCost,
-} from "@/serverFunctions/rank-tracking";
+} from "./rankTrackingApi";
 import { AlertTriangle } from "lucide-react";
 import { QueryState } from "@/client/components/QueryState";
 import { SkeletonCard } from "@/client/components/SkeletonPresets";

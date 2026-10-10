@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { sort } from "remeda";
-import type { RankPositionMatrixCell } from "@/serverFunctions/rank-tracking";
+import type { RankPositionMatrixCell } from "./rankTrackingApi";
 import { EmptyState } from "@/client/components/EmptyState";
 import { Button } from "@/client/components/ui/button";
 import {

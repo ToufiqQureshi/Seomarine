@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **7 files**.
+Current confirmed count: **8 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -18,6 +18,7 @@ Current confirmed count: **7 files**.
 | GSC performance API cutover      | `src/client/features/search-performance/searchPerformanceApi.test.ts` | Covers report/table/export payload normalization and connected/disconnected response parsing.                                                      |
 | Dashboard activation API cutover | `src/client/features/dashboard/dashboardApi.test.ts`                  | Covers activation/overview parsing, click and dismiss requests, GA4-card dismissal, and daily backlink snapshot refresh.                           |
 | SAM session API cutover          | `src/client/features/sam/samApi.test.ts`                              | Covers session listing, creation, archive payloads, and response parsing.                                                                          |
+| Rank tracking API cutover        | `src/client/features/rank-tracking/rankTrackingApi.test.ts`           | Covers Go route payloads, config summaries, ranking results/history, and mutation response mapping.                                                |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

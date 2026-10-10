@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRankTrackingConfigs } from "@/serverFunctions/rank-tracking";
+import { getRankTrackingConfigs } from "@/client/features/rank-tracking/rankTrackingApi";
 import { RankTrackingDomainDetail } from "@/client/features/rank-tracking/RankTrackingDomainDetail";
 import { SkeletonPage } from "@/client/components/SkeletonPresets";
 import { QueryError } from "@/client/components/QueryState";
