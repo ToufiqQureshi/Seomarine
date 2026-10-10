@@ -35,6 +35,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
 
 // Pinger reports whether a dependency is reachable. *pgxpool.Pool satisfies it.
@@ -107,13 +108,15 @@ type Deps struct {
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
-	Onboarding *onboarding.Service
+	Onboarding     *onboarding.Service
+	WorkspaceMerge *workspace.Service
 	// Reports owns project report documents, templates, and sharing.
 	Reports              *reports.Service
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
 	AutumnSecretKey      string
+	AuthMode             string
 	HostedMode           bool
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
@@ -177,6 +180,7 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
+	workspace.Mount(mux, d.WorkspaceMerge, withSession)
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
 	})))

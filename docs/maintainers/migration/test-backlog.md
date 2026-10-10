@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **14 files**.
+Current confirmed count: **15 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -25,6 +25,7 @@ Current confirmed count: **14 files**.
 | Ahrefs domain-rating API cutover | `src/client/features/backlinks/ahrefsApi.test.ts`                     | Covers project-scoped Go requests, original-domain result keys, unknown ratings, and API errors.                                                   |
 | Billing usage API cutover        | `src/client/features/billing/billingApi.test.ts`                      | Covers hosted usage-event date ranges, event properties, self-hosted empty results, and upstream errors.                                           |
 | Organization context API cutover | `src/client/features/team/organizationApi.test.ts`                    | Covers active organization context, membership listing, switching requests, and response parsing.                                                  |
+| Workspace merge API cutover      | `src/client/features/dashboard/workspaceApi.test.ts`                  | Covers status hiding outside Cloudflare Access mode, legacy counts, merge results, and errors.                                                     |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

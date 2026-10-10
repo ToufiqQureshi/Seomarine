@@ -49,6 +49,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
 
 const (
@@ -228,12 +229,14 @@ func run(logger *slog.Logger) error {
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
+			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Activation:           &activation.Service{Store: activation.Repository{DB: db}},
 			Reports:              reportsSvc,
 			PublicURL:            cfg.PublicURL,
 			DataForSEOConfigured: strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
 			OpenRouterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
 			AutumnSecretKey:      cfg.AutumnSecretKey,
+			AuthMode:             cfg.AuthMode,
 			HostedMode:           cfg.AuthMode == "hosted",
 			MCP:                  mcpDeps,
 			SavedKeywords:        savedKeywordsSvc,
