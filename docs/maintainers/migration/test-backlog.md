@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **11 files**.
+Current confirmed count: **12 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,6 +22,7 @@ Current confirmed count: **11 files**.
 | Reports API cutover              | `src/client/features/reports/reportApi.test.ts`                       | Covers report metadata, template names, sharing state, template list/save/delete, and errors.                                                      |
 | Onboarding API cutover           | `src/client/features/onboarding/onboardingApi.test.ts`                | Covers saved-answer reads/writes, completion, and Search Console nudge dismissal.                                                                  |
 | Runtime setup API cutover        | `src/client/lib/appConfigApi.test.ts`                                 | Covers SEO provider-key status and SAM access setup status from Go.                                                                                |
+| Ahrefs domain-rating API cutover | `src/client/features/backlinks/ahrefsApi.test.ts`                     | Covers project-scoped Go requests, original-domain result keys, unknown ratings, and API errors.                                                   |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

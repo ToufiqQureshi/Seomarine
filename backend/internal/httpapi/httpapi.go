@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
@@ -64,6 +65,8 @@ type Deps struct {
 	// AISearch is nil when no DataForSEO key is configured; its routes then
 	// answer 503.
 	AISearch *aisearch.Service
+	// Ahrefs serves optional, free domain-rating lookups.
+	Ahrefs *ahrefs.Service
 	// Backlinks is nil when no DataForSEO key is configured.
 	Backlinks *backlinks.Service
 	// Domain is nil when no DataForSEO key is configured.
@@ -226,6 +229,9 @@ func NewHandler(d Deps) http.Handler {
 	backlinks.Mount(mux, backlinks.Deps{
 		Logger: d.Logger, Service: d.Backlinks, Plans: backlinkPlans, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	ahrefs.Mount(mux, d.Ahrefs, withSession, func(next http.Handler) http.Handler {
+		return requireProjectAccess(d.Logger, d.Auth, next)
 	})
 	var domainPlans domain.PaidPlans
 	if d.Billing != nil {

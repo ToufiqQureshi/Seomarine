@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
@@ -209,6 +210,7 @@ func run(logger *slog.Logger) error {
 			Billing:              billingSvc,
 			Branding:             branding.NewService(db),
 			AISearch:             aiSearchSvc,
+			Ahrefs:               ahrefs.New(rdb),
 			Backlinks:            backlinksSvc,
 			Domain:               domainSvc,
 			DashboardOverview:    &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}, Backlinks: backlinksSvc},
