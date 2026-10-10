@@ -1,5 +1,6 @@
 import { FREE_MAX_AUDIT_PAGES } from "@/shared/audit-limits";
 import { isErrorCode, type ErrorCode } from "@/shared/error-codes";
+import { ApiError } from "@/client/lib/seomarineApi";
 
 const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   UNAUTHENTICATED: "Please sign in and try again.",
@@ -46,5 +47,7 @@ export function getStandardErrorMessage(
 
 export function getErrorCode(error: unknown): ErrorCode | null {
   if (!(error instanceof Error)) return null;
-  return isErrorCode(error.message) ? error.message : null;
+  const code =
+    error instanceof ApiError ? error.code.toUpperCase() : error.message;
+  return isErrorCode(code) ? code : null;
 }
