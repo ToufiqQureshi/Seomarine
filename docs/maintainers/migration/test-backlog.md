@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **42 files**.
+Current confirmed count: **43 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -41,6 +41,7 @@ Current confirmed count: **42 files**.
 | Go MCP estimate rank tracker cost tool | `backend/internal/mcp/rank_tracker_cost_test.go` | Covers project auth, tracker scoping, count/keyword precedence, bounded additions, live and scheduled cost shapes, and no-check behavior. |
 | Go MCP run rank tracker tool | `backend/internal/mcp/rank_tracker_run_test.go` | Covers authorization, positive cost approval, live estimate recheck, paid-plan gates, queued job start, active-run response, and failures. |
 | Go MCP keyword metrics tool | `backend/internal/mcp/keyword_metrics_test.go` | Covers project auth, 1-700 keyword bounds, market and language resolution, Labs versus Ads provider selection, clickstream trends, nullable fields, sorting, and provider failures. |
+| Go MCP keyword research tool | `backend/internal/mcp/research_keywords_test.go` | Covers authorization, 1-5 independent seeds, market/language selection, local locations, limit defaults, clickstream/group options, and per-seed failures. |
 | Go MCP domain overview tool       | `backend/internal/mcp/domain_overview_test.go`                      | Covers project auth, project-market fallback, language/location validation, scope aliases, organic metrics, backlink summary, and provider errors. |
 | Go MCP backlinks profile tool     | `backend/internal/mcp/backlinks_profile_test.go`                    | Covers project auth, target scope, defaults, pagination, sort mapping, filters, spam threshold, grouping mode, row summaries, and provider errors. |
 | Go MCP backlinks overview tool   | `backend/internal/mcp/backlinks_overview_test.go`                   | Covers project auth, scope normalization, summary/trend payloads, subfolder behavior, spam filtering, top referring domains, and provider errors. |

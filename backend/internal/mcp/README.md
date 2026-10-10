@@ -68,3 +68,6 @@ return their blocking run ID without creating another run.
 
 
 The Go API-key MCP registry also owns `get_keyword_metrics`. It resolves the project market, selects Labs or Google Ads, supports optional clickstream refinement and monthly trend omission, and preserves nullable metric fields. OAuth calls still use the TypeScript fallback for tools not yet ported.
+
+
+The Go API-key MCP registry also owns `research_keywords`. It runs each seed independently through the shared Go research service and preserves per-seed failures and result metadata. OAuth requests still use the TypeScript fallback for tools not yet ported.
