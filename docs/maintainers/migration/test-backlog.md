@@ -7,11 +7,13 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **1 file**.
+Current confirmed count: **3 files**.
 
-| Feature / slice              | Test file to add at the end                             | Coverage to add                                                                                                                                    |
-| ---------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GA4 dashboard Go API cutover | `src/client/features/dashboard/ga4DashboardApi.test.ts` | Maps Go overview totals and trend rows, fills missing dates with zero sessions, and handles disconnected / expired / inaccessible GA4 connections. |
+| Feature / slice              | Test file to add at the end                              | Coverage to add                                                                                                                                    |
+| ---------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GA4 dashboard Go API cutover | `src/client/features/dashboard/ga4DashboardApi.test.ts`  | Maps Go overview totals and trend rows, fills missing dates with zero sessions, and handles disconnected / expired / inaccessible GA4 connections. |
+| Projects API cutover         | `src/client/features/projects/projectApi.test.ts`        | Covers project list/create/update/archive/restore/access request mapping and response parsing.                                                     |
+| Project context API cutover  | `src/client/features/projects/projectContextApi.test.ts` | Covers context read/update paths, payloads, and response parsing.                                                                                  |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed
