@@ -13,7 +13,7 @@ import {
 import { captureClientEvent } from "@/client/lib/posthog";
 import { queryClient } from "@/client/tanstack-db";
 import { useSession } from "@/lib/auth-client";
-import { saveOnboardingAnswers } from "@/serverFunctions/onboarding";
+import { saveOnboardingAnswers } from "@/client/features/onboarding/onboardingApi";
 
 const clampStep = (step: number) =>
   Math.min(Math.max(0, Math.trunc(step)), ONBOARDING_LAST_STEP);

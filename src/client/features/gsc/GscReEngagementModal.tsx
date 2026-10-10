@@ -15,7 +15,7 @@ import { onboardingAnswersQueryOptions } from "@/client/features/onboarding/onbo
 import { captureClientEvent } from "@/client/lib/posthog";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { getGscGrantStatus } from "@/client/features/integrations/gscApi";
-import { dismissGscNudge } from "@/serverFunctions/onboarding";
+import { dismissGscNudge } from "@/client/features/onboarding/onboardingApi";
 
 /**
  * One-time re-engagement prompt nudging users who finished onboarding *before*
