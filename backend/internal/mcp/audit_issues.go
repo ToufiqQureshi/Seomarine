@@ -55,7 +55,7 @@ func handleAuditIssues(ctx context.Context, raw json.RawMessage, env *callEnv) (
 		severity, title, howToFix := string(issue.Severity), issue.IssueType, any(nil)
 		if descriptor, ok := audit.DescribeIssueType(issue.IssueType); ok {
 			severity, title, howToFix = string(descriptor.Severity), descriptor.Title, descriptor.HowToFix
-		} else if severity == "" { severity = "info" }
+		} else { severity = "info" }
 		if args.Severity != "" && severity != args.Severity { continue }
 		if args.IssueType != "" && issue.IssueType != args.IssueType { continue }
 		counts[issue.IssueType]++
