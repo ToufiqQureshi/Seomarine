@@ -44,7 +44,7 @@ func (s *Service) SerpCompetitorsForMCP(ctx context.Context,org string,in MCPSer
  if response.Items==nil{return []MCPSerpCompetitor{},nil};return response.Items,nil
 }
 func ValidMCPCompetitorDomain(domain string)bool{
- v:=strings.ToLower(strings.TrimPrefix(strings.TrimSpace(domain),"www."));return competitorDomainPattern.MatchString(v)
+ raw:=strings.TrimSpace(domain);if strings.HasPrefix(strings.ToLower(raw),"www."){return false};v:=strings.ToLower(raw);return competitorDomainPattern.MatchString(v)
 }
 
 // IsBadRequest reports service validation errors safe to show to MCP callers.
