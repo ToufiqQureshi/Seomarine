@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GoogleConnectionCard } from "@/client/features/integrations/GoogleConnectionCard";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { dismissDashboardGa4Card } from "@/serverFunctions/dashboard";
+import { dismissDashboardGa4Card } from "@/client/features/dashboard/dashboardApi";
 
 export function Ga4ConnectCard({
   projectId,
