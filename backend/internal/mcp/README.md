@@ -74,3 +74,6 @@ The Go API-key MCP registry also owns `research_keywords`. It runs each seed ind
 
 
 The Go API-key MCP registry also owns `inspect_urls`. It checks project authorization, uses the saved Search Console property, and returns per-URL inspection outcomes without running a live crawl.
+
+
+The Go API-key MCP registry also owns `find_serp_competitors`, using the Go domain provider's Labs lookup with market validation, domain exclusions, and the legacy sort choices.
