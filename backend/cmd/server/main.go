@@ -16,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
@@ -211,6 +212,7 @@ func run(logger *slog.Logger) error {
 			RankTracking:      rankTrackingService,
 			RankChecks:        rankChecks,
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
+			Activation:        &activation.Service{Store: activation.Repository{DB: db}},
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,
 			KeywordResearch:   keywordResearch,
