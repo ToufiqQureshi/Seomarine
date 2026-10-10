@@ -91,6 +91,7 @@ func registry() []*tool {
 		estimateRankTrackerCostTool(),
 		runRankTrackerTool(),
 		getSerpResultsTool(),
+		getLocalSerpResultsTool(),
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
