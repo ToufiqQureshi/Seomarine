@@ -135,7 +135,8 @@ func (h *handler) callTool(ctx context.Context, t *tool, params json.RawMessage,
 	env := callEnv{h: h, deps: h.deps, auth: auth}
 	result, err := t.Handler(ctx, params, &env)
 	if err != nil {
-		if appErr, ok := err.(*appError); ok {
+		var appErr *appError
+		if errors.As(err, &appErr) {
 			outcome.errorCode = appErr.code
 		} else {
 			outcome.errorCode = "INTERNAL_ERROR"
@@ -152,7 +153,7 @@ func (h *handler) callTool(ctx context.Context, t *tool, params json.RawMessage,
 	outcome.durationMs = time.Since(started).Milliseconds()
 	if result.Meta != nil {
 		if pid, ok := result.Meta["projectId"].(string); ok {
-			outcome.projectId = pid
+			outcome.projectID = pid
 		}
 		if quota, ok := result.Meta["quota"].(map[string]any); ok {
 			if tokensPerDay, ok := quota["tokensPerDay"].(map[string]any); ok {
@@ -170,13 +171,13 @@ type toolOutcome struct {
 	success        bool
 	errorCode      string
 	durationMs     int64
-	projectId      string
+	projectID      string
 	quotaRemaining int
 }
 
 // recordToolCall emits the usage event (mcp:tool_call) and the activation
 // milestone for external clients. It is non-blocking.
-func (h *handler) recordToolCall(ctx context.Context, toolName string, auth Auth, started time.Time, outcome toolOutcome) {
+func (h *handler) recordToolCall(_ context.Context, _ string, auth Auth, _ time.Time, outcome toolOutcome) {
 	if h.deps.Billing == nil {
 		// Self-hosted: no telemetry.
 		return

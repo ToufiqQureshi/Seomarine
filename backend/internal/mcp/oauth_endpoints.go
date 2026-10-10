@@ -23,7 +23,7 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 	writeOAuthJSON(w, http.StatusBadRequest, map[string]string{"error": "unsupported_grant_type"})
 }
 
-func (h *oauthHandler) consent(w http.ResponseWriter, r *http.Request) {
+func (h *oauthHandler) consent(w http.ResponseWriter, _ *http.Request) {
 	writeOAuthJSON(w, http.StatusNotImplemented, map[string]string{"error": "not_implemented"})
 }
 
