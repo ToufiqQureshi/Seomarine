@@ -31,7 +31,7 @@ type localRankGridResult struct {
 	localRankGridPoint
 	Rank         *float64                `json:"rank"`
 	ResultsCount *int                    `json:"resultsCount,omitempty"`
-	TopResult    *localRankGridTopResult `json:"topResult,omitempty"`
+	TopResult    json.RawMessage          `json:"topResult,omitempty"`
 	Error        bool                    `json:"error,omitempty"`
 }
 
@@ -180,10 +180,13 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 				count := len(items)
 				result.ResultsCount = &count
 				if len(items) > 0 {
-					result.TopResult = &localRankGridTopResult{
+					top := localRankGridTopResult{
 						Title: gridString(items[0], "title"),
 						CID: gridString(items[0], "cid"),
 					}
+					result.TopResult, _ = json.Marshal(top)
+				} else {
+					result.TopResult = json.RawMessage("null")
 				}
 				matched := matchLocalRankGridItem(items, args.Target.CID, args.Target.PlaceID, args.Target.Name)
 				if matched != nil {
