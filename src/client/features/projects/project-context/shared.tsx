@@ -2,14 +2,15 @@ import { formatRelativeTime } from "@/client/lib/relative-time";
 import type { ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { updateProjectContext } from "@/serverFunctions/projectContext";
-import type { getProjectContext } from "@/serverFunctions/projectContext";
+import {
+  updateProjectContext,
+  type ProjectContextData,
+} from "@/client/features/projects/projectContextApi";
 import type {
   ContextAuthor,
   ProjectContextUpdate,
 } from "@/types/schemas/projectContext";
 
-export type ProjectContextData = Awaited<ReturnType<typeof getProjectContext>>;
 export type ContextCompetitor = ProjectContextData["competitors"][number];
 export type ContextKeyPage = ProjectContextData["keyPages"][number];
 
@@ -19,7 +20,7 @@ export function projectContextQueryKey(projectId: string) {
 
 /**
  * Every edit on this page is a patch op against the same endpoint, so all of
- * them share one mutation. The server function returns the context as it
+ * them share one mutation. The Go API returns the context as it
  * stands after the patch, which becomes the new cache entry — no refetch.
  */
 export function useContextUpdate(projectId: string) {
