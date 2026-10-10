@@ -1,10 +1,10 @@
 # MCP server
 
 The Go MCP handler owns the `/mcp` route for Seomarine API-key callers. It
-authenticates the existing `oseo_` API key format, runs registered Go tools,
-and proxies OAuth credentials and tools that are not ported yet to the legacy
-server. `tools/list` merges both registries and keeps Go definitions on name
-collisions.
+authenticates the existing `oseo_` API key format and serves the complete
+registered tool set from Go. Tool discovery and API-key tool calls do not use
+the legacy server. Browser/OAuth-authenticated MCP requests still proxy to the
+legacy server while the Go OAuth provider is migrated.
 
 The Go API-key lane includes the account `whoami` tool and the `run_site_audit` tool. Audit starts reuse Go's project authorization, plan/capacity checks, SSRF guard, background job queue, and optional Lighthouse/rendering controls. Hosted mode comes from
 `AUTH_MODE`, and the Go tool reads the active organization's Autumn usage and
