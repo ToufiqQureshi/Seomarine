@@ -39,3 +39,6 @@ totals, while resolving country/language from the project when omitted.
 The Go API-key MCP registry owns `get_domain_keyword_suggestions`, using the
 Go Domain service, project market defaults, and supported Labs location and
 language validation.
+
+
+The Go API-key MCP registry also owns `get_ranked_keywords`. It uses the Go Domain service for scoped, filtered, market-specific ranked keyword rows and preserves the legacy sorting and pagination contract. OAuth requests still use the TypeScript fallback for tools not yet ported.
