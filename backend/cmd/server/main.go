@@ -37,6 +37,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
@@ -210,6 +211,7 @@ func run(logger *slog.Logger) error {
 			Audit:             auditSvc,
 			RankTracking:      rankTrackingService,
 			RankChecks:        rankChecks,
+			Projects:          &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,
