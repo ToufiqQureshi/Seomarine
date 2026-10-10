@@ -42,3 +42,9 @@ language validation.
 
 
 The Go API-key MCP registry also owns `get_ranked_keywords`. It uses the Go Domain service for scoped, filtered, market-specific ranked keyword rows and preserves the legacy sorting and pagination contract. OAuth requests still use the TypeScript fallback for tools not yet ported.
+
+
+The Go API-key MCP registry also owns `get_serp_results`. Each query resolves
+its own market and optional canonical local location, while individual provider
+errors are returned alongside successful query rows. OAuth requests still use
+the TypeScript fallback for tools not yet ported.
