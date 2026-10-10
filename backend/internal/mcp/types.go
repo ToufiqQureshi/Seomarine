@@ -79,11 +79,13 @@ func registry() []*tool {
 		listSavedKeywordsTool(),
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
+		getSearchConsolePerformanceTool(),
 		getRankTrackerTool(),
 		addRankTrackingKeywordsTool(),
 		removeRankTrackingKeywordsTool(),
 	}
-	return append(tools, ga4Tools()...)
+	tools = append(tools, ga4Tools()...)
+	return append(tools, reportTools()...)
 }
 
 // registryIndex maps a tool name to its handler for the dispatcher.

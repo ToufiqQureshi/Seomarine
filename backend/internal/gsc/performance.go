@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -79,6 +80,22 @@ func (v *OptionalPageInt) UnmarshalJSON(data []byte) error {
 type ExportInput struct {
 	PerformanceInput
 	Dimension string `json:"dimension"`
+}
+
+// MCPPerformanceInput preserves the public MCP Search Console query contract.
+type MCPPerformanceInput struct {
+	Dimensions     []string          `json:"dimensions"`
+	DateRange      string            `json:"dateRange"`
+	StartDate      string            `json:"startDate"`
+	EndDate        string            `json:"endDate"`
+	Filters        []DimensionFilter `json:"filters"`
+	RowLimit       *int              `json:"rowLimit"`
+	StartRow       *int              `json:"startRow"`
+	MinPosition    *float64          `json:"minPosition"`
+	MaxPosition    *float64          `json:"maxPosition"`
+	MinImpressions *int              `json:"minImpressions"`
+	Type           string            `json:"type"`
+	DataState      string            `json:"dataState"`
 }
 
 // SearchClient is the read-only part of the Search Console client.
@@ -267,6 +284,136 @@ func (s *Service) GetPerformance(ctx context.Context, organizationID, projectID 
 	}
 	currentRows, previousRows, queryRows, countryRows := rowsByRequest[0], rowsByRequest[1], rowsByRequest[2], rowsByRequest[3]
 	return map[string]any{"connected": true, "range": map[string]string{"startDate": window.StartDate, "endDate": window.EndDate, "prevStartDate": previous.StartDate, "prevEndDate": previous.EndDate}, "totals": sumSearchTotals(currentRows), "prevTotals": sumSearchTotals(previousRows), "strikingDistance": buildStrikingDistanceRows(queryRows, 100), "countries": toDimensionRows(countryRows)}, nil
+}
+
+// GetMCPPerformance runs one bounded Search Analytics query for the MCP tool.
+func (s *Service) GetMCPPerformance(ctx context.Context, organizationID, projectID string, input MCPPerformanceInput) (map[string]any, error) {
+	if len(input.Dimensions) == 0 {
+		input.Dimensions = []string{"query"}
+	}
+	if len(input.Dimensions) > 4 {
+		return nil, validationError("dimensions must contain between 1 and 4 values.")
+	}
+	for _, dimension := range input.Dimensions {
+		if !validDimension(dimension) {
+			return nil, validationError("dimensions contains an unsupported value.")
+		}
+	}
+	for _, dimension := range input.Dimensions {
+		if dimension == "searchAppearance" && len(input.Dimensions) != 1 {
+			return nil, validationError("searchAppearance must be the only dimension when used.")
+		}
+	}
+	if len(input.Filters) > 5 {
+		return nil, validationError("filters must contain at most 5 values.")
+	}
+	filters := append([]DimensionFilter(nil), input.Filters...)
+	for i := range filters {
+		if filters[i].Operator == "" {
+			filters[i].Operator = "equals"
+		}
+	}
+	for _, filter := range filters {
+		if !validFilter(filter) {
+			return nil, validationError("filters contain an unsupported dimension, operator, or expression.")
+		}
+	}
+	if (input.StartDate == "") != (input.EndDate == "") {
+		return nil, validationError("Provide both startDate and endDate, or neither (use dateRange instead).")
+	}
+	dateInput := PerformanceInput{StartDate: input.StartDate, EndDate: input.EndDate, DateRange: dateRange(input.DateRange)}
+	window, err := resolveDateRange(dateInput, s.now())
+	if err != nil {
+		return nil, err
+	}
+	rowLimit := defaultSearchRowLimit
+	if input.RowLimit != nil {
+		rowLimit = *input.RowLimit
+	}
+	if rowLimit < 1 || rowLimit > maxSearchRowLimit {
+		return nil, validationError("rowLimit must be an integer from 1 to 1000.")
+	}
+	startRow := 0
+	if input.StartRow != nil {
+		startRow = *input.StartRow
+	}
+	if startRow < 0 || startRow > 1_000_000 {
+		return nil, validationError("startRow must be a non-negative integer.")
+	}
+	if input.MinPosition != nil && *input.MinPosition < 1 || input.MaxPosition != nil && *input.MaxPosition < 1 || input.MinImpressions != nil && *input.MinImpressions < 0 {
+		return nil, validationError("Metric filters must use positions of at least 1 and non-negative impressions.")
+	}
+	typeValue := input.Type
+	if typeValue == "" {
+		typeValue = "web"
+	}
+	dataState := input.DataState
+	if dataState == "" {
+		dataState = "all"
+	}
+	request := SearchRequest{StartDate: window.StartDate, EndDate: window.EndDate, Dimensions: input.Dimensions, RowLimit: rowLimit, StartRow: startRow, Type: typeValue, DataState: dataState}
+	if len(filters) > 0 {
+		request.DimensionFilterGroups = []FilterGroup{{GroupType: "and", Filters: filters}}
+	}
+	if err := ValidateSearchRequest(request); err != nil {
+		return nil, validationError("Search Console request is not valid.")
+	}
+	connection, client, err := s.client(ctx, organizationID, projectID)
+	if err != nil {
+		if errors.Is(err, ErrConnectionNotFound) {
+			return map[string]any{"connected": false}, nil
+		}
+		return nil, err
+	}
+	fetchLimit := rowLimit
+	metricFilter := input.MinPosition != nil || input.MaxPosition != nil || input.MinImpressions != nil
+	if metricFilter {
+		fetchLimit = maxSearchRowLimit
+	}
+	request.RowLimit = fetchLimit
+	fetched, err := client.QuerySearchAnalytics(ctx, connection.SiteURL, request)
+	if err != nil {
+		return nil, mapProviderError(err)
+	}
+	kept := make([]SearchRow, 0, len(fetched))
+	keptIndices := make([]int, 0, len(fetched))
+	for index, row := range fetched {
+		if input.MinImpressions != nil && row.Impressions < float64(*input.MinImpressions) {
+			continue
+		}
+		if input.MinPosition != nil && (typeValue == "discover" || typeValue == "googleNews" || row.Position < *input.MinPosition) {
+			continue
+		}
+		if input.MaxPosition != nil && (typeValue == "discover" || typeValue == "googleNews" || row.Position > *input.MaxPosition) {
+			continue
+		}
+		kept = append(kept, row)
+		keptIndices = append(keptIndices, index)
+	}
+	rows := kept
+	if len(rows) > rowLimit {
+		rows = rows[:rowLimit]
+	}
+	serialized := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		item := map[string]any{"keys": row.Keys, "clicks": row.Clicks, "impressions": row.Impressions, "ctr": mathRound(row.CTR, 4)}
+		if typeValue != "discover" && typeValue != "googleNews" {
+			item["position"] = mathRound(row.Position, 1)
+		}
+		serialized = append(serialized, item)
+	}
+	truncated := len(kept) > len(rows)
+	hasMore := truncated || len(fetched) >= fetchLimit
+	nextStartRow := startRow + len(fetched)
+	if truncated {
+		nextStartRow = startRow + keptIndices[len(rows)-1] + 1
+	}
+	return map[string]any{"connected": true, "siteUrl": connection.SiteURL, "startDate": window.StartDate, "endDate": window.EndDate, "dimensions": input.Dimensions, "rowCount": len(serialized), "rows": serialized, "hasMore": hasMore, "nextStartRow": nextStartRow}, nil
+}
+
+func mathRound(value float64, digits int) float64 {
+	factor := math.Pow10(digits)
+	return math.Round(value*factor) / factor
 }
 
 func (s *Service) fetchFour(ctx context.Context, client SearchClient, siteURL string, requests ...SearchRequest) ([][]SearchRow, error) {

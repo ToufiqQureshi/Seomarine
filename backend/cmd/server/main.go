@@ -41,6 +41,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
+	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -179,6 +180,7 @@ func run(logger *slog.Logger) error {
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
 	rankTrackingService.Plans = billingSvc
+	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}, Hosted: cfg.AuthMode == "hosted"}
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
@@ -187,7 +189,7 @@ func run(logger *slog.Logger) error {
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
 		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
-		GA4: ga4Svc, GSC: gscService,
+		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService,
 	}
 	srv := &http.Server{
@@ -218,6 +220,8 @@ func run(logger *slog.Logger) error {
 			RankChecks:        rankChecks,
 			Projects:          &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
+			Reports:           reportsSvc,
+			PublicURL:         cfg.PublicURL,
 			MCP:               mcpDeps,
 			SavedKeywords:     savedKeywordsSvc,
 			KeywordResearch:   keywordResearch,

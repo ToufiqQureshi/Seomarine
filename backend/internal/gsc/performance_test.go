@@ -85,6 +85,46 @@ func TestGetPageRowsBuildsBoundedFinalWebPageRequest(t *testing.T) {
 	}
 }
 
+func TestGetMCPPerformanceFiltersPaginatesAndPreservesRequest(t *testing.T) {
+	client := &performanceClientStub{rows: []SearchRow{
+		{Keys: []string{"ignored"}, Clicks: 1, Impressions: 10, CTR: 0.1, Position: 2.25},
+		{Keys: []string{"kept-1"}, Clicks: 2, Impressions: 100, CTR: 0.12555, Position: 5.25},
+		{Keys: []string{"kept-2"}, Clicks: 3, Impressions: 200, CTR: 0.15, Position: 9.95},
+	}}
+	service := &Service{Connections: performanceConnectionStub{connection: Connection{SiteURL: "https://example.test/"}},
+		NewClient: func(string, string) SearchClient { return client }, Now: func() time.Time { return time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC) }}
+	limit, offset, minimum := 1, 2, 50
+	position := 5.0
+	result, err := service.GetMCPPerformance(context.Background(), "org-1", "project-1", MCPPerformanceInput{
+		Dimensions: []string{"query"}, DateRange: "last_7_days", Filters: []DimensionFilter{{Dimension: "page", Expression: "https://example.test/blog"}},
+		RowLimit: &limit, StartRow: &offset, MinImpressions: &minimum, MinPosition: &position,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := client.requestSnapshot()[0]
+	if request.RowLimit != 1000 || request.StartRow != 2 || request.Type != "web" || request.DataState != "all" || request.DimensionFilterGroups[0].Filters[0].Operator != "equals" {
+		t.Fatalf("provider request = %+v", request)
+	}
+	rows := result["rows"].([]map[string]any)
+	if len(rows) != 1 || rows[0]["keys"].([]string)[0] != "kept-1" || rows[0]["ctr"] != 0.1256 || rows[0]["position"] != 5.3 {
+		t.Fatalf("rows = %#v", rows)
+	}
+	if result["hasMore"] != true || result["nextStartRow"] != 4 {
+		t.Fatalf("pagination = hasMore:%v nextStartRow:%v", result["hasMore"], result["nextStartRow"])
+	}
+}
+
+func TestGetMCPPerformanceRejectsInvalidDimensionsBeforeProviderCall(t *testing.T) {
+	client := &performanceClientStub{}
+	service := &Service{Connections: performanceConnectionStub{connection: Connection{SiteURL: "https://example.test/"}},
+		NewClient: func(string, string) SearchClient { return client }}
+	_, err := service.GetMCPPerformance(context.Background(), "org-1", "project-1", MCPPerformanceInput{Dimensions: []string{"searchAppearance", "query"}})
+	if err == nil || len(client.requestSnapshot()) != 0 {
+		t.Fatalf("err = %v, provider requests = %d; want validation error before I/O", err, len(client.requestSnapshot()))
+	}
+}
+
 func TestValidatePerformanceInputAcceptsOnlyThreeAsciiLettersForCountry(t *testing.T) {
 	valid := PerformanceInput{Country: "USA"}
 	if err := validatePerformanceInput(&valid); err != nil || valid.Country != "usa" {

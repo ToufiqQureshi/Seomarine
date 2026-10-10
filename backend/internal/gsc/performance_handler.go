@@ -195,3 +195,22 @@ func writePerformanceError(logger *slog.Logger, w http.ResponseWriter, r *http.R
 type validationError string
 
 func (e validationError) Error() string { return string(e) }
+
+// IsValidationError reports whether err is a safe invalid-input message.
+func IsValidationError(err error) bool {
+	var target validationError
+	return errors.As(err, &target)
+}
+
+// PublicError returns a provider failure that is safe to include in a tool response.
+func PublicError(err error) (code, message string, ok bool) {
+	var report reportError
+	if errors.As(err, &report) {
+		return report.code, report.message, true
+	}
+	var connection ConnectionProviderError
+	if errors.As(err, &connection) {
+		return connection.Code, connection.Message, true
+	}
+	return "", "", false
+}

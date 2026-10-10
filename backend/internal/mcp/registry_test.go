@@ -125,6 +125,34 @@ func TestGA4ReportToolRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestSearchConsolePerformanceToolIsRegisteredReadOnly(t *testing.T) {
+	for _, candidate := range registry() {
+		if candidate.Name != "get_search_console_performance" {
+			continue
+		}
+		if candidate.Annotations["readOnlyHint"] != true || candidate.Annotations["destructiveHint"] != false {
+			t.Fatalf("tool annotations = %#v", candidate.Annotations)
+		}
+		var schema map[string]any
+		if err := json.Unmarshal(candidate.InputSchema, &schema); err != nil {
+			t.Fatalf("decode input schema: %v", err)
+		}
+		if schema["additionalProperties"] != false {
+			t.Fatal("input schema must reject unknown fields")
+		}
+		return
+	}
+	t.Fatal("get_search_console_performance is not registered")
+}
+
+func TestSearchConsoleToolRejectsMalformedArguments(t *testing.T) {
+	_, err := handleSearchConsolePerformance(context.Background(), json.RawMessage(`{`), &callEnv{})
+	appErr, ok := err.(*appError)
+	if !ok || appErr.code != "VALIDATION_ERROR" {
+		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
+	}
+}
+
 func TestDispatcherForwardsUnownedToolCallsWithCallerCredentials(t *testing.T) {
 	requestBody := `{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"legacy_tool","arguments":{"projectId":"project-a"}}}`
 	seenRequest := make(chan string, 1)
