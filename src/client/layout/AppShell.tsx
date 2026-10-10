@@ -9,7 +9,7 @@ import {
 import { GscReEngagementModal } from "@/client/features/gsc/GscReEngagementModal";
 import { Sidebar } from "@/client/components/Sidebar";
 import { BILLING_ROUTE } from "@/shared/billing";
-import { getSeoApiKeyStatus } from "@/serverFunctions/config";
+import { getSeoApiKeyStatus } from "@/client/lib/appConfigApi";
 import { getLastProjectId } from "@/client/lib/active-project";
 import {
   accountNavGroup,

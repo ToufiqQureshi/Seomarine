@@ -40,6 +40,8 @@ type Config struct {
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
 	// account behind AI search. Empty turns those endpoints off.
 	DataForSEOAPIKey string
+	// OpenRouterAPIKey enables the self-hosted SAM agent.
+	OpenRouterAPIKey string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -135,6 +137,7 @@ func Load(getenv func(string) string) (Config, error) {
 		PublicURL:                public,
 		Razorpay:                 rzp,
 		DataForSEOAPIKey:         strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
+		OpenRouterAPIKey:         strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
 		TrustedProxyCIDRs:        trusted,
 	}, nil
 }
