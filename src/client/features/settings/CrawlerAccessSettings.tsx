@@ -9,7 +9,7 @@ import {
 import {
   deleteCrawlerCredential,
   listCrawlerCredentials,
-} from "@/serverFunctions/crawlerAccess";
+} from "@/client/features/crawler-access/crawlerAccessApi";
 import { isCrawlerAccessExpired } from "@/shared/crawler-access";
 import { Button } from "@/client/components/ui/button";
 import {

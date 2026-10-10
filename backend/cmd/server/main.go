@@ -28,6 +28,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/config"
+	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
@@ -49,6 +50,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/team"
 	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
 
@@ -179,7 +181,8 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient)
+	crawlerAccessSvc := &crawleraccess.Service{DB: db, Secret: cfg.BetterAuthSecret}
+	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient, crawlerAccessSvc)
 	if err != nil {
 		return err
 	}
@@ -230,6 +233,8 @@ func run(logger *slog.Logger) error {
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
 			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
+			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
+			CrawlerAccess:        crawlerAccessSvc,
 			Activation:           &activation.Service{Store: activation.Repository{DB: db}},
 			Reports:              reportsSvc,
 			PublicURL:            cfg.PublicURL,
@@ -363,7 +368,7 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 	return checks, nil
 }
 
-func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client) (*audit.Service, error) {
+func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
 	progress := audit.NewProgress(rdb)
 	guard := audit.NewGuard()
@@ -389,20 +394,21 @@ func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Poo
 	service := audit.NewService(audit.ServiceConfig{
 		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
 		Lighthouse: lighthouseProvider, Scheduler: audit.NewQueueScheduler(queue), Plans: plans,
-		Hosted: billingSvc != nil, Env: os.Getenv, Logger: logger,
+		Resolver: crawlerAccess,
+		Hosted:   billingSvc != nil, Env: os.Getenv, Logger: logger,
 	})
 
-	startAuditWorker(ctx, logger, queue, repository, progress, guard, crawler, lighthouseProvider)
+	startAuditWorker(ctx, logger, queue, repository, progress, guard, crawler, lighthouseProvider, crawlerAccess)
 	return service, nil
 }
 
 // startAuditWorker consumes audits from the jobs queue until ctx ends. The
 // worker's jobs are at-least-once, so a crashed worker's audit is retried and
 // its deterministic row ids keep the retry idempotent.
-func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider) {
+func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider, crawlerAccess audit.CrawlerAccessResolver) {
 	runner := audit.NewRunner(audit.RunnerConfig{
 		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
-		Lighthouse: lighthouseProvider, Logger: logger,
+		Lighthouse: lighthouseProvider, Logger: logger, Resolver: crawlerAccess,
 	})
 	worker := jobs.Worker{
 		Queue: queue, QueueName: audit.AuditQueueName, Handle: audit.RunnerHandler(runner),

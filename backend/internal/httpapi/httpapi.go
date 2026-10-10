@@ -20,6 +20,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -35,6 +36,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/seomarine/backend/internal/team"
 	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
 )
 
@@ -110,6 +112,8 @@ type Deps struct {
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
 	Onboarding     *onboarding.Service
 	WorkspaceMerge *workspace.Service
+	Team           *team.Service
+	CrawlerAccess  *crawleraccess.Service
 	// Reports owns project report documents, templates, and sharing.
 	Reports              *reports.Service
 	PublicURL            *url.URL
@@ -181,6 +185,8 @@ func NewHandler(d Deps) http.Handler {
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)
+	team.Mount(mux, d.Team, withSession)
+	crawleraccess.Mount(mux, d.CrawlerAccess, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
 	})))

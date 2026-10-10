@@ -32,3 +32,12 @@ export function transferOwnership({ data }: { data: { memberId: string } }) {
     data,
   );
 }
+
+export function sendTeamInvitation({ data }: { data: { email: string } }) {
+  return apiRequest(
+    "/api/v1/organization/invitations",
+    z.object({ invitationId: z.string() }),
+    "POST",
+    data,
+  );
+}

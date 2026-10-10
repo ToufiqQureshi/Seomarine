@@ -22,6 +22,7 @@ type Runner struct {
 	rendering  RenderingMeter
 	logger     *slog.Logger
 	now        func() time.Time
+	resolver   CrawlerAccessResolver
 }
 
 // RunnerConfig configures a Runner.
@@ -34,6 +35,7 @@ type RunnerConfig struct {
 	Rendering  RenderingMeter
 	Logger     *slog.Logger
 	Now        func() time.Time
+	Resolver   CrawlerAccessResolver
 }
 
 // NewRunner builds a Runner.
@@ -57,6 +59,7 @@ func NewRunner(config RunnerConfig) *Runner {
 	return &Runner{
 		repo: config.Repository, progress: config.Progress, guard: guard, crawler: crawler,
 		lighthouse: config.Lighthouse, rendering: config.Rendering, logger: logger, now: now,
+		resolver: config.Resolver,
 	}
 }
 
@@ -90,8 +93,9 @@ func (r *Runner) run(ctx context.Context, job JobPayload) error {
 		return ErrStartURLInvalid
 	}
 
-	discoverer := discoverer{guard: r.guard, client: r.guard.NewClient(0), now: r.now}
-	seedURLs, robotsText := discoverer.DiscoverURLs(ctx, origin, maxPages, nil)
+	access := r.resolveCrawlerAccess(ctx, job, origin)
+	discoverer := discoverer{guard: r.guard, client: r.guard.NewClient(0), access: access, now: r.now}
+	seedURLs, robotsText := discoverer.DiscoverURLs(ctx, origin, maxPages, access)
 	robots := parseRobotsTxt(origin, robotsText)
 
 	pagesCrawled, err := r.crawl(ctx, job, origin, seedURLs, robots, maxPages)
@@ -166,7 +170,7 @@ func (r *Runner) crawl(ctx context.Context, job JobPayload, _ string, seedURLs [
 				continue
 			}
 			visited[item.url] = struct{}{}
-			results[i] = r.fetchWithRetry(ctx, throttle, item.url)
+			results[i] = r.fetchWithRetry(ctx, throttle, job, item.url)
 		}
 
 		pages := make([]CrawledPageResult, 0, len(batch))
@@ -249,10 +253,12 @@ func (r *Runner) crawl(ctx context.Context, job JobPayload, _ string, seedURLs [
 }
 
 // fetchWithRetry fetches a URL, retrying a 429 while the throttle allows.
-func (r *Runner) fetchWithRetry(ctx context.Context, throttle *CrawlThrottle, rawURL string) CrawlResult {
+func (r *Runner) fetchWithRetry(ctx context.Context, throttle *CrawlThrottle, job JobPayload, rawURL string) CrawlResult {
 	attempt := 0
 	for {
-		result := r.crawler.FetchPage(ctx, rawURL)
+		crawler := *r.crawler
+		crawler.access = r.resolveCrawlerAccess(ctx, job, rawURL)
+		result := crawler.FetchPage(ctx, rawURL)
 		if result.FetchClass != FetchRateLimited {
 			if result.FetchClass != FetchError {
 				_ = throttle.Recovered(ctx)
@@ -274,6 +280,22 @@ func (r *Runner) fetchWithRetry(ctx context.Context, throttle *CrawlThrottle, ra
 		attempt++
 		result.RateLimited = true
 	}
+}
+
+func (r *Runner) resolveCrawlerAccess(ctx context.Context, job JobPayload, rawURL string) *CrawlerAccess {
+	if r.resolver == nil {
+		return nil
+	}
+	host := hostOf(rawURL)
+	if host == "" {
+		return nil
+	}
+	access, _, err := r.resolver.Resolve(ctx, job.OrganizationID, job.ProjectID, host)
+	if err != nil {
+		r.logger.WarnContext(ctx, "resolve crawler access", "host", host, "err", err)
+		return nil
+	}
+	return access
 }
 
 // finalizeChecks runs the cross-page checks and persists their issues.

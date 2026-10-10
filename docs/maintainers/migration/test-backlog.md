@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **16 files**.
+Current confirmed count: **25 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,7 +26,16 @@ Current confirmed count: **16 files**.
 | Billing usage API cutover        | `src/client/features/billing/billingApi.test.ts`                      | Covers hosted usage-event date ranges, event properties, self-hosted empty results, and upstream errors.                                           |
 | Organization context API cutover | `src/client/features/team/organizationApi.test.ts`                    | Covers active organization context, membership listing, switching requests, and response parsing.                                                  |
 | Workspace merge API cutover      | `src/client/features/dashboard/workspaceApi.test.ts`                  | Covers status hiding outside Cloudflare Access mode, legacy counts, merge results, and errors.                                                     |
-| Team API cutover                 | `src/client/features/team/teamApi.test.ts`                            | Covers team member/invitation visibility, ownership transfer payloads, and conflict handling.                                                      |
+| Team API cutover                 | `src/client/features/team/teamApi.test.ts`                            | Covers team member/invitation visibility, ownership transfer, invite rate limits, and email-provider errors.                                       |
+| Crawler access API cutover       | `src/client/features/crawler-access/crawlerAccessApi.test.ts`         | Covers credential list/save/delete, Shopify signature problems, project authorization, and secret-free responses.                                  |
+| Ahrefs Go service                | `backend/internal/ahrefs/service_test.go`                             | Covers normalization, cache hits including null ratings, batching, provider failures, and result key preservation.                                 |
+| Ahrefs Go handler                | `backend/internal/ahrefs/handler_test.go`                             | Covers session/project authorization, request validation, and responses.                                                                           |
+| Autumn usage Go handler          | `backend/internal/billing/usage_test.go`                              | Covers hosted/self-hosted behavior, pagination, 429 retries, range validation, and provider errors.                                                |
+| Organization Go API              | `backend/internal/auth/organization_handler_test.go`                  | Covers membership context, active organization switching, team listing permissions, and ownership transfer.                                        |
+| Workspace merge Go service       | `backend/internal/workspace/merge_test.go`                            | Covers disabled auth modes, idempotency, project renaming, record repointing, and earliest activation milestones.                                  |
+| Team invitation Go service       | `backend/internal/team/invitations_test.go`                           | Covers permissions, deduped pending invitations, daily limits, email payloads, and failed delivery.                                                |
+| Crawler credential Go service    | `backend/internal/crawleraccess/service_test.go`                      | Covers Better Auth encryption compatibility, Shopify key verification, organization scoping, and audit resolution.                                 |
+| Crawler credential Go handlers   | `backend/internal/crawleraccess/handler_test.go`                      | Covers permissions, secret-free list/save results, validation problems, and delete scoping.                                                        |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed
@@ -40,6 +49,16 @@ to the count.
 
 The existing `src/client/features/billing/BillingFeatureBreakdown.test.ts`
 needs its server-function mock moved to `billingApi` in the final test phase.
+
+The existing Go `backend/internal/audit/runner_test.go` and
+`backend/internal/config/config_test.go` need cases for crawler credential
+replay and hosted invitation URL configuration in the final test phase.
+
+The existing `src/serverFunctions/searchPerformance.test.ts` and
+`src/server/features/audit/services/CrawlerCredentialService.test.ts` cover
+TypeScript implementations now served through Go. Move their behavior checks
+into the listed Go tests and client API tests before removing those old test
+files.
 
 ## Existing test inventory at migration start
 
