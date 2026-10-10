@@ -39,6 +39,12 @@ one extra row to compute `hasNextPage`. Export is capped at 1000 rows.
 
 Routes and request/response contracts are in `backend/api/gsc.yaml`.
 
+The MCP `get_search_console_performance` tool uses the same connection and
+Google client. It accepts up to four dimensions, one AND-combined filter list,
+bounded pagination, and optional position/impression thresholds. Thresholds
+are applied to at most 1,000 provider rows because Search Console cannot filter
+those metrics server-side. `searchAppearance` must be the only dimension.
+
 ## URL inspection
 
 `POST /api/v1/projects/{projectId}/gsc/url-inspection/inspect` inspects 1–10

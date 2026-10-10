@@ -79,6 +79,80 @@ func TestListToolsFailsWhenLegacyListIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestGA4ToolsAreRegisteredWithStrictReadOnlyContracts(t *testing.T) {
+	want := map[string]bool{
+		"get_google_analytics_organic_landing_pages": true,
+		"get_google_analytics_page_performance":      true,
+		"get_google_analytics_key_events":            true,
+		"get_google_analytics_traffic_acquisition":   true,
+		"get_google_analytics_ecommerce_performance": true,
+		"get_google_analytics_site_search":           true,
+		"get_google_analytics_audience_breakdown":    true,
+		"get_google_analytics_organic_overview":      true,
+		"get_search_opportunities":                   true,
+		"get_google_analytics_measurement_health":    true,
+	}
+	for _, candidate := range registry() {
+		if _, ok := want[candidate.Name]; !ok {
+			continue
+		}
+		if candidate.Annotations["readOnlyHint"] != true || candidate.Annotations["destructiveHint"] != false {
+			t.Errorf("%s annotations = %#v", candidate.Name, candidate.Annotations)
+		}
+		var input, output map[string]any
+		if err := json.Unmarshal(candidate.InputSchema, &input); err != nil {
+			t.Errorf("%s input schema: %v", candidate.Name, err)
+		} else if input["additionalProperties"] != false {
+			t.Errorf("%s input schema accepts unknown properties", candidate.Name)
+		}
+		if err := json.Unmarshal(candidate.OutputSchema, &output); err != nil {
+			t.Errorf("%s output schema: %v", candidate.Name, err)
+		} else if output["type"] != "object" {
+			t.Errorf("%s output schema is not an object", candidate.Name)
+		}
+		delete(want, candidate.Name)
+	}
+	for name := range want {
+		t.Errorf("%s is not registered", name)
+	}
+}
+
+func TestGA4ReportToolRejectsUnknownFields(t *testing.T) {
+	_, err := handleGA4Report(context.Background(), json.RawMessage(`{"projectId":"p","notInSchema":true}`), &callEnv{}, ga4ReportToolSpec{Name: "test", Kind: "landing_pages"})
+	appErr, ok := err.(*appError)
+	if !ok || appErr.code != "VALIDATION_ERROR" {
+		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
+	}
+}
+
+func TestSearchConsolePerformanceToolIsRegisteredReadOnly(t *testing.T) {
+	for _, candidate := range registry() {
+		if candidate.Name != "get_search_console_performance" {
+			continue
+		}
+		if candidate.Annotations["readOnlyHint"] != true || candidate.Annotations["destructiveHint"] != false {
+			t.Fatalf("tool annotations = %#v", candidate.Annotations)
+		}
+		var schema map[string]any
+		if err := json.Unmarshal(candidate.InputSchema, &schema); err != nil {
+			t.Fatalf("decode input schema: %v", err)
+		}
+		if schema["additionalProperties"] != false {
+			t.Fatal("input schema must reject unknown fields")
+		}
+		return
+	}
+	t.Fatal("get_search_console_performance is not registered")
+}
+
+func TestSearchConsoleToolRejectsMalformedArguments(t *testing.T) {
+	_, err := handleSearchConsolePerformance(context.Background(), json.RawMessage(`{`), &callEnv{})
+	appErr, ok := err.(*appError)
+	if !ok || appErr.code != "VALIDATION_ERROR" {
+		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
+	}
+}
+
 func TestDispatcherForwardsUnownedToolCallsWithCallerCredentials(t *testing.T) {
 	requestBody := `{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"legacy_tool","arguments":{"projectId":"project-a"}}}`
 	seenRequest := make(chan string, 1)
