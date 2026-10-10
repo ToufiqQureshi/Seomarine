@@ -44,3 +44,6 @@ The Go keyword/DataForSEO provider also supports Google Business Profile Q&A loo
 
 
 The Go DataForSEO provider exposes the free business-category index using its unmetered HTTP path. The MCP handler caches the normalized category list for seven days and filters it locally.
+
+
+The shared Go DataForSEO provider supports Business Listings search with coordinate radius, categories, title, rating/review filters, claimed status, sorting, and bounded pages. Contract tests are deferred to the final migration test phase.

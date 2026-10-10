@@ -86,3 +86,6 @@ The Go API-key MCP registry also owns `get_google_business_questions`. It valida
 
 
 The Go API-key MCP registry also owns `list_business_categories`. It reads and caches the free provider category index, then applies substring filtering and bounded pagination in memory.
+
+
+The Go API-key MCP registry also owns `search_local_businesses`. It validates coordinate scope and provider filters, then returns the legacy compact business identity/contact rows.
