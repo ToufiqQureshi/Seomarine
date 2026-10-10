@@ -47,3 +47,6 @@ The Go DataForSEO provider exposes the free business-category index using its un
 
 
 The shared Go DataForSEO provider supports Business Listings search with coordinate radius, categories, title, rating/review filters, claimed status, sorting, and bounded pages. Contract tests are deferred to the final migration test phase.
+
+
+The Go DataForSEO provider also reads a single `my_business_info` record by name, CID, or place ID with a project-market or coordinate selector, merging the provider's check URL into the profile. Contract tests are deferred to the final migration test phase.
