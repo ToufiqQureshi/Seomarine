@@ -68,3 +68,15 @@ func (r Repository) LatestBacklinkSnapshot(ctx context.Context, projectID string
 	}
 	return item, true, nil
 }
+
+func (r Repository) InsertBacklinkSnapshot(ctx context.Context, projectID string, item BacklinkSummary) error {
+	_, err := r.DB.Exec(ctx, `INSERT INTO backlink_snapshots
+		(project_id,domain,rank,backlinks,referring_domains,new_backlinks,lost_backlinks,new_referring_domains,lost_referring_domains,captured_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, projectID, item.Domain, item.Rank, item.Backlinks,
+		item.ReferringDomains, item.NewBacklinks, item.LostBacklinks, item.NewReferringDomains,
+		item.LostReferringDomains, item.CapturedAt)
+	if err != nil {
+		return fmt.Errorf("insert dashboard backlink snapshot: %w", err)
+	}
+	return nil
+}

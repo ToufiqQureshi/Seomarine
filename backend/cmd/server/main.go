@@ -209,7 +209,7 @@ func run(logger *slog.Logger) error {
 			AISearch:          aiSearchSvc,
 			Backlinks:         backlinksSvc,
 			Domain:            domainSvc,
-			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}},
+			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}, Backlinks: backlinksSvc},
 			GoogleAccounts:    google.AccountRepository{Pool: db},
 			GoogleOAuth:       googleOAuthSvc,
 			GA4:               ga4Svc,

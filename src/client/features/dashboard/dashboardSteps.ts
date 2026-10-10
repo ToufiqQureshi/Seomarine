@@ -6,7 +6,7 @@ import {
   Lightbulb,
   Users,
 } from "lucide-react";
-import type { DashboardActivation } from "@/server/features/dashboard/services/DashboardService";
+import type { DashboardActivation } from "@/client/features/dashboard/dashboardApi";
 import type { DashboardSetupStep } from "@/types/schemas/dashboard";
 
 export const setupSteps: {

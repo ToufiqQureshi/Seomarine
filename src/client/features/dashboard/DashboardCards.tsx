@@ -23,7 +23,7 @@ import { StatTile } from "@/client/components/StatTile";
 import type {
   DashboardAuditSummary,
   DashboardBacklinkSummary,
-} from "@/server/features/dashboard/services/DashboardService";
+} from "@/client/features/dashboard/dashboardApi";
 
 // Plain string-keyed view of the registry: issue types from the DB are not
 // statically guaranteed to be registry keys.

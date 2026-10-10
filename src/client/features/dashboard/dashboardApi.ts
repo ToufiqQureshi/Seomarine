@@ -57,9 +57,11 @@ const dashboardBacklinksSchema = z.object({
 });
 
 export type DashboardActivation = z.infer<typeof dashboardActivationSchema>;
+export type DashboardAuditSummary = z.infer<typeof dashboardAuditSchema>;
+export type DashboardBacklinkSummary = z.infer<typeof dashboardBacklinksSchema>;
 export type DashboardOverview = {
-  audit: z.infer<typeof dashboardAuditSchema> | null;
-  backlinks: z.infer<typeof dashboardBacklinksSchema> | null;
+  audit: DashboardAuditSummary | null;
+  backlinks: DashboardBacklinkSummary | null;
 };
 
 export async function getDashboardActivation({ data }: ProjectInput) {
@@ -80,6 +82,16 @@ export async function getDashboardOverview({ data }: ProjectInput) {
       audit: dashboardAuditSchema.nullable(),
       backlinks: dashboardBacklinksSchema.nullable(),
     }),
+    "POST",
+    {},
+  );
+}
+
+export async function refreshDashboardBacklinkSnapshot({ data }: ProjectInput) {
+  projectInput.projectId.parse(data.projectId);
+  return apiRequest(
+    `/api/v1/projects/${encodeURIComponent(data.projectId)}/dashboard/backlinks/refresh`,
+    z.object({ ok: z.literal(true) }),
     "POST",
     {},
   );
