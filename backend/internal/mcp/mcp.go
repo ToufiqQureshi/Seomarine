@@ -13,6 +13,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
@@ -48,6 +49,7 @@ type Deps struct {
 	Audit         *audit.Service
 	Locations     *keywords.LocationService
 	SavedKeywords *keywords.SavedService
+	GA4           *ga4.Service
 	Reports       *reports.Service
 	GSC           *gsc.Service
 	RankTracking  *ranktracking.Service

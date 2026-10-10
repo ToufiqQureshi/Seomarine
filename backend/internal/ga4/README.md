@@ -35,9 +35,10 @@ requests.
   `ga4_*` error codes. The shared Google API client only retains Google's
   allowlisted `SERVICE_DISABLED` reason and numeric `Retry-After` value; it
   never includes provider error text in logs or responses.
-- Property listing, connection setup/removal are available in Go. MCP wrappers
-  and GA4 report/measurement-health/Search Opportunity React call-sites remain
-  on the legacy implementation for later roadmap items.
+- Property listing, connection setup/removal, MCP reports/overview/measurement
+  health/Search Opportunities, and their backing services are available in Go.
+  The React call-sites remain on the legacy implementation for later roadmap
+  work.
 
 ## Property setup
 

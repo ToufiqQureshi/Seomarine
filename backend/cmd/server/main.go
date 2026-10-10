@@ -188,7 +188,8 @@ func run(logger *slog.Logger) error {
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
-		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, GSC: gscService, Reports: reportsSvc,
+		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc,
+		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService,
 	}
 	srv := &http.Server{

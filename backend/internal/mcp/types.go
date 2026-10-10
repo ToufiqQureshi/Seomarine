@@ -84,6 +84,7 @@ func registry() []*tool {
 		addRankTrackingKeywordsTool(),
 		removeRankTrackingKeywordsTool(),
 	}
+	tools = append(tools, ga4Tools()...)
 	return append(tools, reportTools()...)
 }
 
