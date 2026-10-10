@@ -26,6 +26,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
 	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -91,6 +92,9 @@ type Deps struct {
 	RankChecks *ranktracking.Checks
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// Reports owns project report documents, templates, and sharing.
+	Reports   *reports.Service
+	PublicURL *url.URL
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
 	MCP *mcp.Deps
@@ -209,6 +213,9 @@ func NewHandler(d Deps) http.Handler {
 	keywords.MountLocations(mux, keywords.LocationDeps{Logger: d.Logger, Service: d.Locations, WithSession: withSession})
 	ranktracking.Mount(mux, ranktracking.Deps{
 		Logger: d.Logger, Service: d.RankTracking, Checks: d.RankChecks, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
+	reports.Mount(mux, reports.Deps{Logger: d.Logger, Service: d.Reports, PublicURL: d.PublicURL, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	sam.Mount(mux, sam.Deps{
