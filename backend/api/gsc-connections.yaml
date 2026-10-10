@@ -1,0 +1,120 @@
+openapi: 3.1.0
+info:
+  title: Seomarine Search Console connections
+  version: 1.0.0
+  description: |
+    Project Search Console grant status and property selection. Every API call is
+    POST with a strict JSON object. Project routes need a session and project access;
+    only organization owners and admins can set or disconnect a property.
+servers:
+  - url: /api/v1
+paths:
+  /gsc/grant/status:
+    post:
+      operationId: gsc_grant_status
+      summary: Check whether the signed-in user linked a Search Console grant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/connection/status:
+    post:
+      operationId: gsc_connection_status
+      summary: Read selected property and management status
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/sites/list:
+    post:
+      operationId: gsc_sites_list
+      summary: List Search Console properties for the signed-in user's grants
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/connection/set:
+    post:
+      operationId: gsc_connection_set
+      summary: Set a verified Search Console property for the project
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [accountId, siteUrl]
+              properties:
+                accountId: { type: string, minLength: 1, maxLength: 256 }
+                siteUrl: { type: string, minLength: 1, maxLength: 2048 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/gsc/connection/disconnect:
+    post:
+      operationId: gsc_connection_disconnect
+      summary: Disconnect the project's Search Console property
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  schemas:
+    EmptyInput:
+      type: object
+      additionalProperties: false
+  responses:
+    Json:
+      description: JSON result
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema: { type: object }

@@ -149,6 +149,29 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/rank-tracking/keywords/metrics/refresh:
+    post:
+      operationId: refreshRankKeywordMetrics
+      summary: Refresh volume, difficulty and CPC for a config's keywords
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [configId]
+              properties:
+                configId: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "402": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /projects/{projectId}/rank-tracking/estimate-cost:
     post:
       operationId: estimateRankCost

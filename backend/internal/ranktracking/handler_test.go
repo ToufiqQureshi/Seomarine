@@ -126,6 +126,33 @@ func TestHandlerConfigAndKeywordFlow(t *testing.T) {
 	}
 }
 
+func TestHandlerRefreshesConfigKeywordMetrics(t *testing.T) {
+	provider := &fakeRankMetricProvider{metrics: []KeywordMetric{{Keyword: "nodex"}}}
+	srv, project := newTestServerWith(t, func(service *Service) *Checks {
+		service.Metrics = provider
+		service.Plans = fakePlans{paid: true}
+		return nil
+	})
+	status, body := post(t, srv, project, "configs/create", `{"domain":"metrics.example.com","serpDepth":10,"scheduleInterval":"manual"}`)
+	if status != http.StatusOK {
+		t.Fatalf("create config = %d %v", status, body)
+	}
+	config := body["config"].(map[string]any)
+	configID := config["id"].(string)
+	status, body = post(t, srv, project, "keywords/add", `{"configId":"`+configID+`","keywords":["Nodex","nodex"],"matchCase":true}`)
+	if status != http.StatusOK {
+		t.Fatalf("add keywords = %d %v", status, body)
+	}
+	status, body = post(t, srv, project, "keywords/metrics/refresh", `{"configId":"`+configID+`"}`)
+	if status != http.StatusOK || body["updated"] != float64(2) {
+		t.Fatalf("refresh metrics = %d %v; want 200 updated=2", status, body)
+	}
+	status, body = post(t, srv, project, "keywords/metrics/refresh", `{"configId":"`+configID+`","unexpected":true}`)
+	if status != http.StatusBadRequest || errorCode(body) != "invalid_request" {
+		t.Fatalf("unknown field response = %d %v; want 400 invalid_request", status, body)
+	}
+}
+
 func TestHandlerRejectsBadRequests(t *testing.T) {
 	srv, project := newTestServer(t)
 	missing := "00000000-0000-4000-8000-000000000000"

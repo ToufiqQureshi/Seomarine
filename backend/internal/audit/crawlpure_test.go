@@ -118,12 +118,6 @@ func (c *fakeClock) Now() time.Time {
 	return c.at
 }
 
-func (c *fakeClock) Advance(d time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.at = c.at.Add(d)
-}
-
 func TestCrawlThrottleRefusesAfterDeadline(t *testing.T) {
 	clock := &fakeClock{at: time.Unix(1_000_000, 0)}
 	throttle := NewCrawlThrottle(clock.at.Add(-time.Second), nil, nil)

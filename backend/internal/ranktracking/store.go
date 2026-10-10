@@ -2,6 +2,7 @@ package ranktracking
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -168,6 +169,32 @@ func (s Store) Keywords(ctx context.Context, configID string) ([]Keyword, error)
 		return nil, fmt.Errorf("read rank tracking keywords: %w", err)
 	}
 	return keywords, nil
+}
+
+// UpdateKeywordMetrics atomically updates metric fields for rows still owned
+// by the requested config. A deleted or moved row is not counted as updated.
+func (s Store) UpdateKeywordMetrics(ctx context.Context, configID string, updates []KeywordMetricUpdate) (int, error) {
+	if len(updates) == 0 {
+		return 0, nil
+	}
+	body, err := json.Marshal(updates)
+	if err != nil {
+		return 0, fmt.Errorf("encode rank tracking metrics: %w", err)
+	}
+	tag, err := s.DB.Exec(ctx, `WITH updates AS (
+		SELECT * FROM jsonb_to_recordset($2::jsonb) AS x(
+			id text, search_volume integer, keyword_difficulty integer, cpc double precision, fetched_at timestamptz))
+		UPDATE go_rank_tracking_keywords AS k SET
+			search_volume = u.search_volume,
+			keyword_difficulty = u.keyword_difficulty,
+			cpc = u.cpc,
+			metrics_fetched_at = u.fetched_at
+		FROM updates AS u
+		WHERE k.config_id = $1 AND k.id = u.id`, configID, body)
+	if err != nil {
+		return 0, fmt.Errorf("update rank tracking keyword metrics: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
 }
 
 // AddKeywords inserts keywords that are not stored yet and returns the ids it

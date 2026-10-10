@@ -45,6 +45,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle(base+"keywords/list", protect(handle(d, listKeywords)))
 	mux.Handle(base+"keywords/add", protect(handle(d, addKeywords)))
 	mux.Handle(base+"keywords/remove", protect(handle(d, removeKeywords)))
+	mux.Handle(base+"keywords/metrics/refresh", protect(handle(d, refreshKeywordMetrics)))
 	mux.Handle(base+"estimate-cost", protect(handle(d, estimateCost)))
 	mux.Handle(base+"checks/start", protect(handle(d, startCheck)))
 	mux.Handle(base+"results/latest", protect(handle(d, latestResults)))
@@ -88,6 +89,8 @@ func writeResult(logger *slog.Logger, w http.ResponseWriter, r *http.Request, re
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", invalid.Error())
 	case errors.Is(err, ErrChecksUnavailable):
 		httpx.WriteError(w, http.StatusServiceUnavailable, "checks_unavailable", "Rank checks are not available on this server.")
+	case errors.Is(err, ErrMetricsUnavailable):
+		httpx.WriteError(w, http.StatusServiceUnavailable, "metrics_unavailable", "Rank tracking metrics are not available on this server.")
 	case errors.Is(err, ErrPaymentRequired):
 		httpx.WriteError(w, http.StatusPaymentRequired, "payment_required", "Upgrade to the paid plan to run rank checks.")
 	case errors.Is(err, ErrRunActive):
@@ -317,6 +320,21 @@ func removeKeywords(q request) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"removed": len(removed), "removedIds": removed}, nil
+}
+
+func refreshKeywordMetrics(q request) (any, error) {
+	var body configIDBody
+	if err := q.decode(&body); err != nil {
+		return nil, err
+	}
+	if err := validID(body.ConfigID); err != nil {
+		return nil, err
+	}
+	updated, err := q.d.Service.RefreshKeywordMetrics(q.r.Context(), q.organizationID, q.projectID, body.ConfigID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{"updated": updated}, nil
 }
 
 func estimateCost(q request) (any, error) {

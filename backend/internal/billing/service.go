@@ -116,7 +116,12 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 	if slices.Contains(proStatuses, sub.Status) {
 		plan = sub.Plan
 	}
-	return Status{Plan: plan, Status: sub.Status, CurrentPeriodEnd: sub.CurrentPeriodEnd}, nil
+	periodEnd := sub.CurrentPeriodEnd
+	if periodEnd != nil {
+		utc := periodEnd.UTC()
+		periodEnd = &utc
+	}
+	return Status{Plan: plan, Status: sub.Status, CurrentPeriodEnd: periodEnd}, nil
 }
 
 // HasPaidPlan reports whether orgID is on a paid plan.
@@ -195,7 +200,7 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 
 	var periodEnd *time.Time
 	if sub.CurrentEnd != nil {
-		end := time.Unix(*sub.CurrentEnd, 0)
+		end := time.Unix(*sub.CurrentEnd, 0).UTC()
 		periodEnd = &end
 	}
 	firstDelivery, err := s.repo.applyEvent(ctx, eventID, subscription{
@@ -204,7 +209,7 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 		Plan:             PlanPro,
 		Status:           sub.Status,
 		CurrentPeriodEnd: periodEnd,
-		EventAt:          time.Unix(event.CreatedAt, 0),
+		EventAt:          time.Unix(event.CreatedAt, 0).UTC(),
 	}, liveStatuses)
 	if err != nil {
 		return "", fmt.Errorf("apply %s event %s: %w", event.Event, eventID, err)

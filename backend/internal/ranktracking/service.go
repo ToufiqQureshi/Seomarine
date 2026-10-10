@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -22,6 +23,12 @@ type Repository interface {
 	Keywords(ctx context.Context, configID string) ([]Keyword, error)
 	AddKeywords(ctx context.Context, configID string, keywords []NewKeyword, maxKeywords int) ([]string, error)
 	RemoveKeywords(ctx context.Context, configID string, ids []string) ([]string, error)
+	UpdateKeywordMetrics(ctx context.Context, configID string, updates []KeywordMetricUpdate) (int, error)
+}
+
+// KeywordMetricProvider fetches already tracked terms from DataForSEO.
+type KeywordMetricProvider interface {
+	RankTrackingMetrics(ctx context.Context, organizationID string, keywords []string, locationCode int, languageCode string, locationName *string) ([]KeywordMetric, error)
 }
 
 // LocationChecker confirms the provider accepts a city name for a market.
@@ -60,6 +67,8 @@ type Service struct {
 	Results   ResultsRepository
 	Locations LocationChecker // nil means city-level configs are refused
 	Schedule  Scheduler
+	Metrics   KeywordMetricProvider
+	Plans     PaidPlans // nil allows metric refresh on self-hosted installs
 }
 
 // NewService builds a Service that schedules with the real clock.
@@ -68,6 +77,86 @@ func NewService(repo Repository, results ResultsRepository, locations LocationCh
 		Now:  time.Now,
 		Rand: CryptoRand,
 	}}
+}
+
+// RefreshKeywordMetrics re-fetches volume, difficulty and CPC for one config.
+// Lowercased terms are sent once because DataForSEO is case-insensitive and
+// echoes normalized terms; returned values are applied to every matching
+// case-sensitive keyword row.
+func (s *Service) RefreshKeywordMetrics(ctx context.Context, organizationID, projectID, configID string) (int, error) {
+	if s.Metrics == nil {
+		return 0, ErrMetricsUnavailable
+	}
+	config, err := s.Repo.GetConfig(ctx, projectID, configID)
+	if err != nil {
+		return 0, err
+	}
+	if s.Plans != nil {
+		paid, err := s.Plans.HasPaidPlan(ctx, organizationID)
+		if err != nil {
+			return 0, fmt.Errorf("check rank tracking plan: %w", err)
+		}
+		if !paid {
+			return 0, ErrPaymentRequired
+		}
+	}
+	keywords, err := s.Repo.Keywords(ctx, config.ID)
+	if err != nil {
+		return 0, err
+	}
+	if len(keywords) == 0 {
+		return 0, nil
+	}
+	unique, seen := make([]string, 0, len(keywords)), make(map[string]bool, len(keywords))
+	for _, keyword := range keywords {
+		lower := strings.ToLower(keyword.Keyword)
+		if !seen[lower] {
+			seen[lower] = true
+			unique = append(unique, lower)
+		}
+	}
+	metrics, err := s.Metrics.RankTrackingMetrics(ctx, organizationID, unique, config.LocationCode, config.LanguageCode, config.LocationName)
+	if err != nil {
+		return 0, fmt.Errorf("fetch rank tracking keyword metrics: %w", err)
+	}
+	byKeyword := make(map[string]KeywordMetric, len(metrics))
+	for _, metric := range metrics {
+		key := strings.ToLower(metric.Keyword)
+		if key == "" || !seen[key] || invalidKeywordMetric(metric) {
+			return 0, errors.New("DataForSEO returned invalid rank tracking metrics")
+		}
+		byKeyword[key] = metric
+	}
+	updates := make([]KeywordMetricUpdate, 0, len(keywords))
+	fetchedAt := time.Now().UTC()
+	for _, keyword := range keywords {
+		metric, ok := byKeyword[strings.ToLower(keyword.Keyword)]
+		if !ok {
+			continue
+		}
+		updates = append(updates, KeywordMetricUpdate{
+			ID: keyword.ID, SearchVolume: metric.SearchVolume, KeywordDifficulty: metric.KeywordDifficulty,
+			CPC: metric.CPC, FetchedAt: fetchedAt,
+		})
+	}
+	if len(updates) == 0 {
+		return 0, nil
+	}
+	updated, err := s.Repo.UpdateKeywordMetrics(ctx, config.ID, updates)
+	if err != nil {
+		return 0, err
+	}
+	return updated, nil
+}
+
+func invalidKeywordMetric(metric KeywordMetric) bool {
+	if metric.SearchVolume != nil && *metric.SearchVolume < 0 {
+		return true
+	}
+	if metric.KeywordDifficulty != nil && (*metric.KeywordDifficulty < 0 || *metric.KeywordDifficulty > 100) {
+		return true
+	}
+	return metric.CPC != nil && (math.IsNaN(*metric.CPC) || math.IsInf(*metric.CPC, 0) || *metric.CPC < 0)
 }
 
 // CreateInput is a request to track a domain.
