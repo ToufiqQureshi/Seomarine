@@ -29,3 +29,6 @@ The Go MCP `get_serp_results` tool uses the shared keyword SERP provider for
 market and canonical local-location validation. It returns bounded live result
 rows per query and captures individual query failures without discarding
 successful results. Tool-contract tests are deferred to the final test phase.
+
+
+The Go MCP `get_keyword_metrics` tool fetches known terms from Labs or Google Ads by market, supports optional clickstream refinement and monthly trends, and returns nullable metrics sorted by the requested field. Its contract tests are deferred to the final test phase.

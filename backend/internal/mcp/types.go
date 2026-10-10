@@ -84,6 +84,7 @@ func registry() []*tool {
 		getDomainOverviewTool(),
 		getDomainKeywordSuggestionsTool(),
 		getRankedKeywordsTool(),
+		getKeywordMetricsTool(),
 		createRankTrackerTool(),
 		estimateRankTrackerCostTool(),
 		runRankTrackerTool(),

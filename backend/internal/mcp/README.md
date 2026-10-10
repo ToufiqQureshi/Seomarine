@@ -65,3 +65,6 @@ The Go API-key MCP registry also owns `run_rank_tracker`. It requires an
 explicit positive credit ceiling, rechecks the live estimate in the Go check
 service, and queues the run through the shared background jobs path. Active runs
 return their blocking run ID without creating another run.
+
+
+The Go API-key MCP registry also owns `get_keyword_metrics`. It resolves the project market, selects Labs or Google Ads, supports optional clickstream refinement and monthly trend omission, and preserves nullable metric fields. OAuth calls still use the TypeScript fallback for tools not yet ported.
