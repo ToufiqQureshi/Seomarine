@@ -80,6 +80,9 @@ func registry() []*tool {
 		saveKeywordsTool(),
 		removeSavedKeywordsTool(),
 		getSearchConsolePerformanceTool(),
+		getRankTrackerTool(),
+		addRankTrackingKeywordsTool(),
+		removeRankTrackingKeywordsTool(),
 	}
 }
 

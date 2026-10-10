@@ -26,4 +26,9 @@ history/status/pages/deletion. Audit deletion checks owner/admin membership and
 uses the same stop-and-delete service as the dashboard. Tools whose backing Go
 service or response contract is not ported yet (including reports,
 templates/sharing, GA4, rank tracker tools, and audit issue formatting) continue
+SERP location search, rank tracker list/latest results/add/remove, and site audit
+history/status/pages/deletion. Audit deletion checks owner/admin membership and
+uses the same stop-and-delete service as the dashboard. Tools whose backing Go
+service or response contract is not ported yet (including reports,
+templates/sharing, Search Console, GA4, and audit issue formatting) continue
 through the TypeScript fallback.

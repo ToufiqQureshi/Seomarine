@@ -15,6 +15,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
 )
 
 const (
@@ -47,6 +48,7 @@ type Deps struct {
 	Locations     *keywords.LocationService
 	SavedKeywords *keywords.SavedService
 	GSC           *gsc.Service
+	RankTracking  *ranktracking.Service
 }
 
 // Mount registers the MCP dispatcher on mux.
