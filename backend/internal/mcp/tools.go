@@ -91,7 +91,7 @@ func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callRe
 	if hosted {
 		creditText := "unknown"
 		if creditsRemaining != nil {
-			creditText = fmt.Sprintf("%g", *creditsRemaining)
+			creditText = fmt.Sprintf("%d", *creditsRemaining)
 		}
 		lines = append(lines, "Credits remaining: "+creditText)
 	}
