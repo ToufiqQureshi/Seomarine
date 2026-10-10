@@ -14,7 +14,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                            | ✅          |
 | 0.4  | Go server serves the React SPA (Vite build) as static files                                                                                             | ⏳          |
 | 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP)                         | 🔧          |
-| 0.5a | MCP Go dispatcher and TypeScript fallback; tool catalog, read-only and billed tool ports remain                                                        | in progress |
+| 0.5a | MCP Go dispatcher and TypeScript fallback; tool catalog, read-only and billed tool ports remain                                                         | in progress |
 | 0.5d | Port keyword/rank-tracking market tables and resolution to Go; API and jobs remain pending                                                              | in progress |
 | 0.5f | Rank tracking in Go: tables, rules, configs, keywords, results, manual/scheduled checks and metrics refresh done; credit holds and React switch pending | in progress |
 | 0.5g | Keywords in Go: saved keywords, tags, research (Labs/Ads, local), SERP analysis, metrics refresh; React switch pending                                  | in progress |
