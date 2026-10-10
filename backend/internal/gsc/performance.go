@@ -201,7 +201,7 @@ func BuildSearchAnalyticsRequest(input PerformanceInput, dimensions []string, ro
 
 func (s *Service) client(ctx context.Context, organizationID, projectID string) (Connection, SearchClient, error) {
 	if s == nil || s.Connections == nil || s.NewClient == nil {
-		return Connection{}, nil, errors.New("Search Console reporting is not configured.")
+		return Connection{}, nil, errors.New("search console reporting is not configured")
 	}
 	connection, err := s.Connections.GetByProjectID(ctx, organizationID, projectID)
 	if err != nil {
@@ -378,7 +378,7 @@ func previousPeriod(startDate, endDate string) (dateWindow, error) {
 	start, ok1 := parseDate(startDate)
 	end, ok2 := parseDate(endDate)
 	if !ok1 || !ok2 {
-		return dateWindow{}, errors.New("invalid Search Console date range.")
+		return dateWindow{}, errors.New("invalid Search Console date range")
 	}
 	length := end.Sub(start)
 	if length < 0 {

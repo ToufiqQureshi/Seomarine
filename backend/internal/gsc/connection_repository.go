@@ -10,7 +10,8 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
 )
 
-var ErrProjectPropertyNotFound = errors.New("Search Console connection not found")
+// ErrProjectPropertyNotFound means the project has no selected Search Console property.
+var ErrProjectPropertyNotFound = errors.New("search console connection not found")
 
 type propertyRowQuerier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
@@ -22,7 +23,7 @@ type connectionQuerier interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-// Connection is the property and grant selected for a project.
+// ProjectProperty is the property and grant selected for a project.
 type ProjectProperty struct {
 	SiteURL               string
 	ConnectedByUserID     string

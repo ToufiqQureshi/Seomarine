@@ -7,7 +7,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var ErrConnectionNotFound = errors.New("Search Console connection not found")
+// ErrConnectionNotFound means the project has no selected Search Console property.
+var ErrConnectionNotFound = errors.New("search console connection not found")
 
 type connectionRowQuerier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
@@ -29,6 +30,7 @@ type ConnectionReader interface {
 // ConnectionRepository reads the existing GA4-owned GSC mapping table.
 type ConnectionRepository struct{ DB connectionRowQuerier }
 
+// GetByProjectID loads the mapping only when the project belongs to the organization.
 func (r ConnectionRepository) GetByProjectID(ctx context.Context, organizationID, projectID string) (Connection, error) {
 	var c Connection
 	err := r.DB.QueryRow(ctx, `SELECT g.site_url, g.connected_by_user_id, g.gsc_account_id, g.connected_account_email

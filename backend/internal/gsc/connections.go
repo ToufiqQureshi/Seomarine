@@ -9,11 +9,16 @@ import (
 )
 
 var (
-	ErrManageForbidden   = errors.New("organization integration manage permission required")
-	ErrGrantNotFound     = errors.New("Search Console Google grant not found")
-	ErrSiteNotFound      = errors.New("Search Console property not found on selected grant")
-	ErrSiteUnverified    = errors.New("Search Console property access is unverified")
-	ErrGoogleUnavailable = errors.New("Google Search Console is not configured")
+	// ErrManageForbidden means the caller cannot manage project integrations.
+	ErrManageForbidden = errors.New("organization integration manage permission required")
+	// ErrGrantNotFound means the current user does not own the requested Google grant.
+	ErrGrantNotFound = errors.New("search console Google grant not found")
+	// ErrSiteNotFound means the selected grant does not expose the requested property.
+	ErrSiteNotFound = errors.New("search console property not found on selected grant")
+	// ErrSiteUnverified means Google has not verified the property for this grant.
+	ErrSiteUnverified = errors.New("search console property access is unverified")
+	// ErrGoogleUnavailable means Google OAuth credentials are not configured.
+	ErrGoogleUnavailable = errors.New("search console is not configured")
 )
 
 // SearchConsoleClient contains the provider operations used by GSC routes.

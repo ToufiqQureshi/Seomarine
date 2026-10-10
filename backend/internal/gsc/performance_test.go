@@ -61,6 +61,21 @@ func TestResolveDateRangePresetsAndFloor(t *testing.T) {
 	}
 }
 
+func TestValidatePerformanceInputAcceptsOnlyThreeAsciiLettersForCountry(t *testing.T) {
+	valid := PerformanceInput{Country: "USA"}
+	if err := validatePerformanceInput(&valid); err != nil || valid.Country != "usa" {
+		t.Fatalf("valid country = %q, %v; want lowercase country code", valid.Country, err)
+	}
+	for _, country := range []string{"us1", "u$a"} {
+		t.Run(country, func(t *testing.T) {
+			input := PerformanceInput{Country: country}
+			if err := validatePerformanceInput(&input); err == nil {
+				t.Fatalf("country %q passed validation", country)
+			}
+		})
+	}
+}
+
 func TestBuildSearchAnalyticsRequestUsesConjunctiveDimensionFilters(t *testing.T) {
 	filter := PerformanceInput{
 		StartDate: "2026-04-01", EndDate: "2026-04-30", Device: "MOBILE", Country: "usa",

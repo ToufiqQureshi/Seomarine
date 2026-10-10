@@ -143,7 +143,7 @@ func validatePerformanceInput(input *PerformanceInput) error {
 			return validationError("country must be a three-letter country code.")
 		}
 		for _, c := range input.Country {
-			if !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z') {
+			if (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') {
 				return validationError("country must be a three-letter country code.")
 			}
 		}
