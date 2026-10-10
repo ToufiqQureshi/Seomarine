@@ -20,6 +20,16 @@ Update it in every PR.
   working through the proxy; it is removed from the proxy only when its Go
   handler lands.
 
+### PR 2 implementation status
+
+The Go registry currently owns saved keyword list/save/remove, SERP location
+search, and site audit history/status/pages/delete. Audit delete enforces the
+owner/admin project-delete gate and uses the Go audit service's workflow cleanup.
+Search Console, GA4, report/template/sharing, rank-tracker reads, and audit issue
+formatting still use the TypeScript fallback because their public contract has
+not yet been ported to Go. Keep the fallback until each corresponding Go handler
+has a contract test.
+
 ## Auth and gates (legacy)
 
 - A request reaches a tool through one of: an **API key** (`oseo_` prefix,

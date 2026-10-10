@@ -19,3 +19,10 @@ clients. When a tool is ported, register its Go handler and remove its
 TypeScript duplicate only after contract tests cover the public behavior.
 OAuth authorization remains on the TypeScript fallback until the Go OAuth
 flow is complete.
+
+The read/free tools currently owned here include saved keyword list/save/remove,
+SERP location search, and site audit history/status/pages/deletion. Audit deletion
+checks owner/admin membership and uses the same stop-and-delete service as the
+dashboard. Tools whose backing Go service or response contract is not ported yet
+(including reports, templates/sharing, Search Console, GA4, rank tracker reads,
+and audit issue formatting) continue through the TypeScript fallback.
