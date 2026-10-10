@@ -32,3 +32,6 @@ successful results. Tool-contract tests are deferred to the final test phase.
 
 
 The Go MCP `get_keyword_metrics` tool fetches known terms from Labs or Google Ads by market, supports optional clickstream refinement and monthly trends, and returns nullable metrics sorted by the requested field. Its contract tests are deferred to the final test phase.
+
+
+The Go MCP `research_keywords` tool calls the shared Go research service per seed, honors local-area markets and the requested research options, and returns a separate result for each seed. Its contract tests are deferred to the final test phase.
