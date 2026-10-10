@@ -42,6 +42,20 @@ type searchConsoleClientStub struct {
 	err   error
 }
 
+type inspectingConsoleClient struct {
+	searchConsoleClientStub
+	seen []string
+	err  map[string]error
+}
+
+func (s *inspectingConsoleClient) InspectURL(_ context.Context, _, target, _ string) (map[string]any, error) {
+	s.seen = append(s.seen, target)
+	if err := s.err[target]; err != nil {
+		return nil, err
+	}
+	return map[string]any{"status": "PASS"}, nil
+}
+
 func (s searchConsoleClientStub) QuerySearchAnalytics(context.Context, string, SearchRequest) ([]SearchRow, error) {
 	return nil, nil
 }
@@ -125,5 +139,30 @@ func TestDisconnectRequiresManagerRole(t *testing.T) {
 	}
 	if storage.deleted {
 		t.Fatal("member disconnected the integration")
+	}
+}
+
+func TestInspectURLsKeepsIndividualFailuresAndSelectedGrantScope(t *testing.T) {
+	storage := &connectionOpsStub{connection: ProjectProperty{
+		SiteURL: "https://example.test/", ConnectedByUserID: "connector", GSCAccountID: stringPointer("grant-a"),
+		ConnectedAccountEmail: stringPointer("owner@example.test"),
+	}}
+	client := &inspectingConsoleClient{err: map[string]error{"https://example.test/bad": errors.New("provider error")}}
+	ops := &ConnectionOperations{Connections: storage, NewClient: func(userID, accountID string) SearchConsoleClient {
+		if userID != "connector" || accountID != "grant-a" {
+			t.Fatalf("client scope = %q/%q", userID, accountID)
+		}
+		return client
+	}}
+	got, err := ops.InspectURLs(context.Background(), "org", "project", []string{"https://example.test/good", "https://example.test/bad"}, "en-US")
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := got["results"].([]map[string]any)
+	if len(results) != 2 || results[0]["result"] == nil || results[1]["result"] != nil || results[1]["error"] != "Inspection failed" {
+		t.Fatalf("results = %#v", results)
+	}
+	if len(client.seen) != 2 {
+		t.Fatalf("inspected URLs = %#v", client.seen)
 	}
 }

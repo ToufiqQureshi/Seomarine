@@ -28,6 +28,10 @@ type SearchConsoleClient interface {
 	UserInfoEmail(context.Context) (string, error)
 }
 
+type urlInspector interface {
+	InspectURL(context.Context, string, string, string) (map[string]any, error)
+}
+
 // GrantReader reads OAuth grants owned by a user.
 type GrantReader interface {
 	HasGrant(context.Context, string) (bool, error)
@@ -227,6 +231,39 @@ func (s *ConnectionOperations) Disconnect(ctx context.Context, userID, organizat
 		return ErrGoogleUnavailable
 	}
 	return s.Manager.Delete(ctx, organizationID, projectID)
+}
+
+// InspectURLs runs bounded URL inspections for the project's selected property.
+// Individual URL failures are returned inline; revoked grants fail the batch.
+func (s *ConnectionOperations) InspectURLs(ctx context.Context, organizationID, projectID string, urls []string, languageCode string) (map[string]any, error) {
+	if s == nil || s.Connections == nil || s.NewClient == nil || len(urls) == 0 || len(urls) > 10 || len(languageCode) > 35 {
+		return nil, validationError("Send 1 to 10 URLs and a valid language code.")
+	}
+	connection, err := s.Connections.GetByProjectID(ctx, organizationID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	accountID := ""
+	if connection.GSCAccountID != nil {
+		accountID = *connection.GSCAccountID
+	}
+	client, ok := s.NewClient(connection.ConnectedByUserID, accountID).(urlInspector)
+	if !ok {
+		return nil, ErrGoogleUnavailable
+	}
+	results := make([]map[string]any, 0, len(urls))
+	for _, target := range urls {
+		result, inspectErr := client.InspectURL(ctx, connection.SiteURL, target, languageCode)
+		if inspectErr != nil {
+			if isGrantFailure(inspectErr) {
+				return nil, mapConnectionProviderError(inspectErr)
+			}
+			results = append(results, map[string]any{"url": target, "result": nil, "error": "Inspection failed"})
+			continue
+		}
+		results = append(results, map[string]any{"url": target, "result": result})
+	}
+	return map[string]any{"siteUrl": connection.SiteURL, "connectedBy": connection.ConnectedAccountEmail, "results": results}, nil
 }
 
 func (s *ConnectionOperations) canManage(ctx context.Context, userID, organizationID, projectID string) error {

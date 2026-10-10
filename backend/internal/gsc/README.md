@@ -15,10 +15,10 @@
 ## Status
 
 The Go backend serves Search Console grant status, property listing and
-selection, disconnect, and Search Performance report/table/export routes. It
-reads the existing `gsc_connections` mapping and uses the shared Google API
-client. GSC consent, URL inspection, MCP wrappers and the React call-site switch
-remain on the TypeScript side.
+selection, disconnect, URL inspection, and Search Performance
+report/table/export routes. It reads the existing `gsc_connections` mapping
+and uses the shared Google API client. GSC consent, MCP wrappers and the React
+call-site switch remain on the TypeScript side.
 
 Property selection and disconnect require an owner or admin role. Selecting a
 property verifies that the chosen Google grant belongs to the user, that the
@@ -38,6 +38,14 @@ The table accepts `query` or `page`, pages 1-based at sizes 25/50/100, and uses
 one extra row to compute `hasNextPage`. Export is capped at 1000 rows.
 
 Routes and request/response contracts are in `backend/api/gsc.yaml`.
+
+## URL inspection
+
+`POST /api/v1/projects/{projectId}/gsc/url-inspection/inspect` inspects 1–10
+URLs against the project's selected property. Each URL's result or a safe
+generic per-URL error is returned in input order; revoked grants fail the
+request so the client can prompt reconnection. Provider calls use the Google
+API client's request timeout and bounded read-only retry policy.
 
 ## Deliberate differences
 

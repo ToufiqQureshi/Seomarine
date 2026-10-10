@@ -11,7 +11,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 )
 
-const maxConnectionBody = 16 << 10
+const maxConnectionBody = 32 << 10
 
 // ConnectionDeps supplies dependencies and access middleware for setup routes.
 type ConnectionDeps struct {
@@ -27,9 +27,43 @@ func MountConnections(mux *http.ServeMux, d ConnectionDeps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	base := "POST /api/v1/projects/{projectId}/gsc/"
 	mux.Handle(base+"connection/status", protect(http.HandlerFunc(d.connectionStatus)))
+	mux.Handle(base+"url-inspection/inspect", protect(http.HandlerFunc(d.inspectURLs)))
 	mux.Handle(base+"sites/list", protect(http.HandlerFunc(d.listSites)))
 	mux.Handle(base+"connection/set", protect(http.HandlerFunc(d.setSite)))
 	mux.Handle(base+"connection/disconnect", protect(http.HandlerFunc(d.disconnect)))
+}
+
+type inspectURLsRequest struct {
+	URLs         []string `json:"urls"`
+	LanguageCode string   `json:"languageCode,omitempty"`
+}
+
+func (d ConnectionDeps) inspectURLs(w http.ResponseWriter, r *http.Request) {
+	var input inspectURLsRequest
+	if !decodeConnectionJSON(w, r, &input) || len(input.URLs) == 0 || len(input.URLs) > 10 || len(input.LanguageCode) > 35 {
+		writeConnectionInvalid(w)
+		return
+	}
+	orgID, ok := auth.ProjectOrganizationFromContext(r.Context())
+	if !ok || d.Operations == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "gsc_unavailable", "Google Search Console is not configured.")
+		return
+	}
+	result, err := d.Operations.InspectURLs(r.Context(), orgID, r.PathValue("projectId"), input.URLs, input.LanguageCode)
+	if err != nil {
+		if errors.Is(err, ErrProjectPropertyNotFound) {
+			httpx.WriteError(w, http.StatusNotFound, "gsc_not_connected", "Search Console is not connected for this project.")
+			return
+		}
+		var invalid validationError
+		if errors.As(err, &invalid) {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", invalid.Error())
+			return
+		}
+		d.fail(w, r, "inspect GSC URLs", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, result)
 }
 
 func (d ConnectionDeps) grantStatus(w http.ResponseWriter, r *http.Request) {
