@@ -1,15 +1,11 @@
 package mcp
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
 )
 
@@ -103,31 +99,4 @@ func normalizeAuthMethod(method string, redirectURIs []string) string {
 		}
 	}
 	return "none"
-}
-
-type storedClient struct {
-	id         string
-	clientID   string
-	secretHash string
-	redirects  []string
-	authMethod string
-}
-
-func (h *oauthHandler) loadClient(ctx context.Context, clientID string) (storedClient, bool, error) {
-	var c storedClient
-	err := h.deps.DB.QueryRow(ctx, `
-		SELECT id, client_id, client_secret, redirect_uris, token_endpoint_auth_method
-		FROM go_mcp_oauth_clients WHERE client_id = $1 AND expires_at > now()`, clientID,
-	).Scan(&c.id, &c.clientID, &c.secretHash, &c.redirects, &c.authMethod)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return storedClient{}, false, nil
-	}
-	if err != nil {
-		return storedClient{}, false, fmt.Errorf("load oauth client: %w", err)
-	}
-	return c, true, nil
-}
-
-func (h *oauthHandler) checkClientSecret(client storedClient, provided string) bool {
-	return constantTimeEqual(tokenHash(provided), client.secretHash)
 }

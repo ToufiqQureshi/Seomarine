@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/site"
 )
@@ -182,6 +183,44 @@ func TestProxyRoutesUnownedPaths(t *testing.T) {
 		if rec.Code != http.StatusTeapot {
 			t.Errorf("%s %s: status = %d, want the upstream's %d", route.method, route.target, rec.Code, http.StatusTeapot)
 		}
+	}
+}
+
+func TestMCPRouteUsesGoDispatcherAndKeepsLegacyFallback(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mcp" {
+			t.Errorf("upstream path = %q, want /mcp", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	parsed, err := url.Parse(upstream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewHandler(Deps{
+		Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(nil, testSecret), Site: pages,
+		Upstream: parsed,
+		MCP:      &mcp.Deps{Logger: discardLogger, Upstream: parsed},
+	})
+
+	legacy := httptest.NewRecorder()
+	legacyReq := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+	handler.ServeHTTP(legacy, legacyReq)
+	if legacy.Code != http.StatusTeapot {
+		t.Fatalf("request without API key status = %d, want legacy %d", legacy.Code, http.StatusTeapot)
+	}
+
+	goLane := httptest.NewRecorder()
+	goReq := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+	goReq.Header.Set("x-api-key", "oseo_invalid")
+	handler.ServeHTTP(goLane, goReq)
+	if goLane.Code == http.StatusTeapot {
+		t.Fatal("API key request reached legacy fallback; expected Go dispatcher auth")
 	}
 }
 
