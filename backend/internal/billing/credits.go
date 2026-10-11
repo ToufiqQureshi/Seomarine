@@ -213,12 +213,12 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 		return CreditReservation{}, fmt.Errorf("commit reservation: %w", err)
 	}
 	return CreditReservation{
-		ID: resID,
+		ID:             resID,
 		OrganizationID: orgID,
-		AmountCredits: amount,
-		Status: "reserved",
+		AmountCredits:  amount,
+		Status:         "reserved",
 		IdempotencyKey: idempotencyKey,
-		CreatedAt: now,
+		CreatedAt:      now,
 	}, nil
 }
 
