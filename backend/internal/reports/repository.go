@@ -21,6 +21,7 @@ type Store interface {
 	Delete(context.Context, string, string) (bool, error)
 	SetShare(context.Context, string, string, *string, *string) (bool, error)
 	GetShared(context.Context, string) (SharedReport, error)
+	ReportProject(context.Context, string) (string, error)
 	ListTemplates(context.Context, string) ([]Template, error)
 	GetTemplate(context.Context, string, string) (Template, error)
 	InsertTemplate(context.Context, Template) error
@@ -224,4 +225,18 @@ func scanMetadataWithHTML(row scanner, item *Metadata, html *string) error {
 }
 func scanTemplate(row scanner, item *Template) error {
 	return row.Scan(&item.ID, &item.ProjectID, &item.Name, &item.Description, &item.Instructions, &item.CreatedBy, &item.CreatedByUserID, &item.CreatedAt, &item.UpdatedAt)
+}
+
+// ReportProject finds the project a report belongs to, so the viewer can
+// authorize before touching the html column.
+func (r Repository) ReportProject(ctx context.Context, id string) (string, error) {
+	var projectID string
+	err := r.DB.QueryRow(ctx, `SELECT project_id FROM reports WHERE id=$1`, id).Scan(&projectID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("find report project: %w", err)
+	}
+	return projectID, nil
 }

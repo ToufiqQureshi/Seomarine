@@ -49,7 +49,7 @@ type Deps struct {
 	Billing *billing.Service
 	// Hosted follows AUTH_MODE, independently of Razorpay configuration.
 	Hosted          bool
-	AutumnCredits   *billing.AutumnCreditClient
+	Credits         CreditBalances
 	PublicURL       *url.URL
 	Audit           *audit.Service
 	Backlinks       *backlinks.Service
@@ -134,4 +134,9 @@ func (h *handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		h.deps.Logger.Error("write json response", "err", err)
 	}
+}
+
+// CreditBalances reads an organization's remaining credits.
+type CreditBalances interface {
+	GetBalance(ctx context.Context, organizationID string) (int64, error)
 }

@@ -37,7 +37,7 @@ export type ReportListItem = z.infer<typeof metadataSchema> & {
   createdByName: string | null;
   templateName: string | null;
 };
-export type ReportTemplate = z.infer<typeof templateSchema>;
+type ReportTemplate = z.infer<typeof templateSchema>;
 
 const reportPath = (projectId: string, suffix: string) =>
   `/api/v1/projects/${encodeURIComponent(projectId)}/reports/${suffix}`;

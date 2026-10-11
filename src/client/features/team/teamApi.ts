@@ -15,7 +15,7 @@ const invitationSchema = z.object({
   expiresAt: z.string(),
 });
 
-export const teamSchema = z.object({
+const teamSchema = z.object({
   members: z.array(memberSchema),
   pendingInvitations: z.array(invitationSchema),
 });

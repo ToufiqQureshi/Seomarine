@@ -19,7 +19,7 @@ interface RankableSerpLocation {
  * Region abbreviations users write after a city name, per country. Keyed by
  * ISO country so "Rio de Janeiro" in Brazil never reads "de" as Delaware.
  */
-export const REGION_ABBREVIATIONS: Record<string, Record<string, string>> = {
+const REGION_ABBREVIATIONS: Record<string, Record<string, string>> = {
   us: {
     al: "Alabama",
     ak: "Alaska",
@@ -103,7 +103,7 @@ export const REGION_ABBREVIATIONS: Record<string, Record<string, string>> = {
  * first. Postal codes, airports and universities are absent on purpose: they
  * are never what "City, ST" means.
  */
-export const LOCATION_TYPE_RANK: Record<string, number> = {
+const LOCATION_TYPE_RANK: Record<string, number> = {
   City: 0,
   Municipality: 1,
   "City Region": 2,
@@ -119,7 +119,7 @@ export const LOCATION_TYPE_RANK: Record<string, number> = {
 };
 
 /** Lowercase, strip accents, collapse whitespace. */
-export function foldLocationText(value: string): string {
+function foldLocationText(value: string): string {
   return value
     .normalize("NFD")
     .replace(/\p{M}/gu, "")

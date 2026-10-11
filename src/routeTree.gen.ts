@@ -16,7 +16,6 @@ import { Route as AuthErrorRouteImport } from './routes/auth-error'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from './routes/[.well-known]/openai-apps-challenge'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAiRouteImport } from './routes/_app/ai'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
@@ -29,22 +28,13 @@ import { Route as AuthenticatedOauthConsentRouteImport } from './routes/_authent
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated.subscribe'
 import { Route as AuthenticatedYcRouteImport } from './routes/_authenticated.yc'
 import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitation.$id'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as RReportIdRouteImport } from './routes/r/$reportId'
 import { Route as AppBillingFixPaymentRouteImport } from './routes/_app/billing_.fix-payment'
 import { Route as AppBillingPlanRouteImport } from './routes/_app/billing_.plan'
-import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
-import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppPProjectIdRouteRouteImport } from './routes/_app/p/$projectId/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsBrandingRouteImport } from './routes/_app/settings/branding'
 import { Route as AppSettingsOrganizationRouteImport } from './routes/_app/settings/organization'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated.onboarding.index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
-import { Route as STokenIndexRouteImport } from './routes/s/$token/index'
-import { Route as STokenOgDotpngRouteImport } from './routes/s/$token/og[.]png'
-import { Route as STokenRawRouteImport } from './routes/s/$token/raw'
 import { Route as AppPProjectIdIndexRouteImport } from './routes/_app/p/$projectId/index'
 import { Route as AppPProjectIdAnalyticsRouteImport } from './routes/_app/p/$projectId/analytics'
 import { Route as AppPProjectIdBacklinksRouteImport } from './routes/_app/p/$projectId/backlinks'
@@ -101,12 +91,6 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OpenaiAppsChallengeRoute =
-  Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport.update({
-    id: '/.well-known/openai-apps-challenge',
-    path: '/.well-known/openai-apps-challenge',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -168,16 +152,6 @@ const AcceptInvitationIdRoute = AcceptInvitationIdRouteImport.update({
   path: '/accept-invitation/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RReportIdRoute = RReportIdRouteImport.update({
-  id: '/r/$reportId',
-  path: '/r/$reportId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppBillingFixPaymentRoute = AppBillingFixPaymentRouteImport.update({
   id: '/billing_/fix-payment',
   path: '/billing/fix-payment',
@@ -186,16 +160,6 @@ const AppBillingFixPaymentRoute = AppBillingFixPaymentRouteImport.update({
 const AppBillingPlanRoute = AppBillingPlanRouteImport.update({
   id: '/billing_/plan',
   path: '/billing/plan',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppHelpDataforseoApiKeyRoute = AppHelpDataforseoApiKeyRouteImport.update({
-  id: '/help/dataforseo-api-key',
-  path: '/help/dataforseo-api-key',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppHelpOpenrouterApiKeyRoute = AppHelpOpenrouterApiKeyRouteImport.update({
-  id: '/help/openrouter-api-key',
-  path: '/help/openrouter-api-key',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppPProjectIdRouteRoute = AppPProjectIdRouteRouteImport.update({
@@ -224,31 +188,6 @@ const AuthenticatedOnboardingIndexRoute =
     path: '/onboarding/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAutumnSplatRoute = ApiAutumnSplatRouteImport.update({
-  id: '/api/autumn/$',
-  path: '/api/autumn/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const STokenIndexRoute = STokenIndexRouteImport.update({
-  id: '/s/$token/',
-  path: '/s/$token/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const STokenOgDotpngRoute = STokenOgDotpngRouteImport.update({
-  id: '/s/$token/og.png',
-  path: '/s/$token/og.png',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const STokenRawRoute = STokenRawRouteImport.update({
-  id: '/s/$token/raw',
-  path: '/s/$token/raw',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppPProjectIdIndexRoute = AppPProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -384,7 +323,6 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
   '/projects': typeof AppProjectsRoute
@@ -396,22 +334,13 @@ export interface FileRoutesByFullPath {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/yc': typeof AuthenticatedYcRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/api/health': typeof ApiHealthRoute
-  '/r/$reportId': typeof RReportIdRoute
   '/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/billing/plan': typeof AppBillingPlanRoute
-  '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/branding': typeof AppSettingsBrandingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/autumn/$': typeof ApiAutumnSplatRoute
-  '/s/$token/og.png': typeof STokenOgDotpngRoute
-  '/s/$token/raw': typeof STokenRawRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/s/$token/': typeof STokenIndexRoute
   '/p/$projectId/analytics': typeof AppPProjectIdAnalyticsRoute
   '/p/$projectId/backlinks': typeof AppPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof AppPProjectIdBrandLookupRoute
@@ -442,7 +371,6 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
   '/projects': typeof AppProjectsRoute
@@ -453,21 +381,12 @@ export interface FileRoutesByTo {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/yc': typeof AuthenticatedYcRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/api/health': typeof ApiHealthRoute
-  '/r/$reportId': typeof RReportIdRoute
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/billing/plan': typeof AppBillingPlanRoute
-  '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/branding': typeof AppSettingsBrandingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/autumn/$': typeof ApiAutumnSplatRoute
-  '/s/$token/og.png': typeof STokenOgDotpngRoute
-  '/s/$token/raw': typeof STokenRawRoute
   '/settings': typeof AppSettingsIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
-  '/s/$token': typeof STokenIndexRoute
   '/p/$projectId/analytics': typeof AppPProjectIdAnalyticsRoute
   '/p/$projectId/backlinks': typeof AppPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof AppPProjectIdBrandLookupRoute
@@ -499,7 +418,6 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/billing': typeof AppBillingRoute
   '/_app/projects': typeof AppProjectsRoute
@@ -511,23 +429,14 @@ export interface FileRoutesById {
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/_authenticated/yc': typeof AuthenticatedYcRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
-  '/api/health': typeof ApiHealthRoute
-  '/r/$reportId': typeof RReportIdRoute
   '/_app/': typeof AppIndexRoute
   '/_app/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/_app/billing_/fix-payment': typeof AppBillingFixPaymentRoute
   '/_app/billing_/plan': typeof AppBillingPlanRoute
-  '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/_app/settings/branding': typeof AppSettingsBrandingRoute
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/autumn/$': typeof ApiAutumnSplatRoute
-  '/s/$token/og.png': typeof STokenOgDotpngRoute
-  '/s/$token/raw': typeof STokenRawRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/s/$token/': typeof STokenIndexRoute
   '/_app/p/$projectId/analytics': typeof AppPProjectIdAnalyticsRoute
   '/_app/p/$projectId/backlinks': typeof AppPProjectIdBacklinksRoute
   '/_app/p/$projectId/brand-lookup': typeof AppPProjectIdBrandLookupRoute
@@ -560,7 +469,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
-    | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
     | '/projects'
@@ -572,22 +480,13 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/yc'
     | '/accept-invitation/$id'
-    | '/api/health'
-    | '/r/$reportId'
     | '/p/$projectId'
     | '/billing/fix-payment'
     | '/billing/plan'
-    | '/help/dataforseo-api-key'
-    | '/help/openrouter-api-key'
     | '/settings/branding'
     | '/settings/organization'
-    | '/api/auth/$'
-    | '/api/autumn/$'
-    | '/s/$token/og.png'
-    | '/s/$token/raw'
     | '/settings/'
     | '/onboarding/'
-    | '/s/$token/'
     | '/p/$projectId/analytics'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -618,7 +517,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
-    | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
     | '/projects'
@@ -629,21 +527,12 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/yc'
     | '/accept-invitation/$id'
-    | '/api/health'
-    | '/r/$reportId'
     | '/billing/fix-payment'
     | '/billing/plan'
-    | '/help/dataforseo-api-key'
-    | '/help/openrouter-api-key'
     | '/settings/branding'
     | '/settings/organization'
-    | '/api/auth/$'
-    | '/api/autumn/$'
-    | '/s/$token/og.png'
-    | '/s/$token/raw'
     | '/settings'
     | '/onboarding'
-    | '/s/$token'
     | '/p/$projectId/analytics'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -674,7 +563,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
-    | '/.well-known/openai-apps-challenge'
     | '/_app/ai'
     | '/_app/billing'
     | '/_app/projects'
@@ -686,23 +574,14 @@ export interface FileRouteTypes {
     | '/_authenticated/subscribe'
     | '/_authenticated/yc'
     | '/accept-invitation/$id'
-    | '/api/health'
-    | '/r/$reportId'
     | '/_app/'
     | '/_app/p/$projectId'
     | '/_app/billing_/fix-payment'
     | '/_app/billing_/plan'
-    | '/_app/help/dataforseo-api-key'
-    | '/_app/help/openrouter-api-key'
     | '/_app/settings/branding'
     | '/_app/settings/organization'
-    | '/api/auth/$'
-    | '/api/autumn/$'
-    | '/s/$token/og.png'
-    | '/s/$token/raw'
     | '/_app/settings/'
     | '/_authenticated/onboarding/'
-    | '/s/$token/'
     | '/_app/p/$projectId/analytics'
     | '/_app/p/$projectId/backlinks'
     | '/_app/p/$projectId/brand-lookup'
@@ -736,15 +615,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
-  Char91DotwellKnownChar93OpenaiAppsChallengeRoute: typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   AcceptInvitationIdRoute: typeof AcceptInvitationIdRoute
-  ApiHealthRoute: typeof ApiHealthRoute
-  RReportIdRoute: typeof RReportIdRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
-  STokenOgDotpngRoute: typeof STokenOgDotpngRoute
-  STokenRawRoute: typeof STokenRawRoute
-  STokenIndexRoute: typeof STokenIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -796,13 +667,6 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/openai-apps-challenge': {
-      id: '/.well-known/openai-apps-challenge'
-      path: '/.well-known/openai-apps-challenge'
-      fullPath: '/.well-known/openai-apps-challenge'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -889,20 +753,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcceptInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r/$reportId': {
-      id: '/r/$reportId'
-      path: '/r/$reportId'
-      fullPath: '/r/$reportId'
-      preLoaderRoute: typeof RReportIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app/billing_/fix-payment': {
       id: '/_app/billing_/fix-payment'
       path: '/billing/fix-payment'
@@ -915,20 +765,6 @@ declare module '@tanstack/react-router' {
       path: '/billing/plan'
       fullPath: '/billing/plan'
       preLoaderRoute: typeof AppBillingPlanRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/help/dataforseo-api-key': {
-      id: '/_app/help/dataforseo-api-key'
-      path: '/help/dataforseo-api-key'
-      fullPath: '/help/dataforseo-api-key'
-      preLoaderRoute: typeof AppHelpDataforseoApiKeyRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/help/openrouter-api-key': {
-      id: '/_app/help/openrouter-api-key'
-      path: '/help/openrouter-api-key'
-      fullPath: '/help/openrouter-api-key'
-      preLoaderRoute: typeof AppHelpOpenrouterApiKeyRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/p/$projectId': {
@@ -965,41 +801,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/'
       preLoaderRoute: typeof AuthenticatedOnboardingIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/autumn/$': {
-      id: '/api/autumn/$'
-      path: '/api/autumn/$'
-      fullPath: '/api/autumn/$'
-      preLoaderRoute: typeof ApiAutumnSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$token/': {
-      id: '/s/$token/'
-      path: '/s/$token'
-      fullPath: '/s/$token/'
-      preLoaderRoute: typeof STokenIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$token/og.png': {
-      id: '/s/$token/og.png'
-      path: '/s/$token/og.png'
-      fullPath: '/s/$token/og.png'
-      preLoaderRoute: typeof STokenOgDotpngRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$token/raw': {
-      id: '/s/$token/raw'
-      path: '/s/$token/raw'
-      fullPath: '/s/$token/raw'
-      preLoaderRoute: typeof STokenRawRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_app/p/$projectId/': {
       id: '/_app/p/$projectId/'
@@ -1271,8 +1072,6 @@ interface AppRouteRouteChildren {
   AppPProjectIdRouteRoute: typeof AppPProjectIdRouteRouteWithChildren
   AppBillingFixPaymentRoute: typeof AppBillingFixPaymentRoute
   AppBillingPlanRoute: typeof AppBillingPlanRoute
-  AppHelpDataforseoApiKeyRoute: typeof AppHelpDataforseoApiKeyRoute
-  AppHelpOpenrouterApiKeyRoute: typeof AppHelpOpenrouterApiKeyRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -1285,8 +1084,6 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppPProjectIdRouteRoute: AppPProjectIdRouteRouteWithChildren,
   AppBillingFixPaymentRoute: AppBillingFixPaymentRoute,
   AppBillingPlanRoute: AppBillingPlanRoute,
-  AppHelpDataforseoApiKeyRoute: AppHelpDataforseoApiKeyRoute,
-  AppHelpOpenrouterApiKeyRoute: AppHelpOpenrouterApiKeyRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
@@ -1331,27 +1128,8 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyEmailRoute: VerifyEmailRoute,
-  Char91DotwellKnownChar93OpenaiAppsChallengeRoute:
-    Char91DotwellKnownChar93OpenaiAppsChallengeRoute,
   AcceptInvitationIdRoute: AcceptInvitationIdRoute,
-  ApiHealthRoute: ApiHealthRoute,
-  RReportIdRoute: RReportIdRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiAutumnSplatRoute: ApiAutumnSplatRoute,
-  STokenOgDotpngRoute: STokenOgDotpngRoute,
-  STokenRawRoute: STokenRawRoute,
-  STokenIndexRoute: STokenIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
-	"sync"
-
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 )
 
@@ -58,28 +55,9 @@ func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callRe
 	}
 
 	var creditsRemaining *int
-	if hosted && env.deps.AutumnCredits != nil && auth.OrganizationID != "" {
-		var base, topup *float64
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			base, _ = env.deps.AutumnCredits.Balance(ctx, auth.OrganizationID, billing.AutumnSEODataBalanceFeatureID)
-		}()
-		go func() {
-			defer wg.Done()
-			topup, _ = env.deps.AutumnCredits.Balance(ctx, auth.OrganizationID, billing.AutumnSEOTopupBalanceFeatureID)
-		}()
-		wg.Wait()
-		if base != nil || topup != nil {
-			total := 0.0
-			if base != nil {
-				total += *base
-			}
-			if topup != nil {
-				total += *topup
-			}
-			credits := int(total)
+	if hosted && env.deps.Credits != nil && auth.OrganizationID != "" {
+		if balance, err := env.deps.Credits.GetBalance(ctx, auth.OrganizationID); err == nil {
+			credits := int(balance)
 			creditsRemaining = &credits
 		}
 	}

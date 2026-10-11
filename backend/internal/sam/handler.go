@@ -6,12 +6,21 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 )
 
-const maxBodyBytes = 8 << 10
+const (
+	maxBodyBytes = 8 << 10
+	// maxChatBodyBytes bounds one chat message request.
+	maxChatBodyBytes = 64 << 10
+	maxMessageChars  = 20_000
+	maxIDChars       = 128
+	// rewindWait is how long a rewind waits for a running turn to stop.
+	rewindWait = 5 * time.Second
+)
 
 // Deps supplies the session service and authentication/project middleware.
 type Deps struct {
@@ -19,6 +28,8 @@ type Deps struct {
 	Service           *Service
 	WithSession       func(http.Handler) http.Handler
 	WithProjectAccess func(http.Handler) http.Handler
+	// Chat serves the conversation routes; nil answers 503.
+	Chat *Chat
 }
 
 // Mount registers SAM session list, create and archive endpoints.
@@ -28,6 +39,9 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle(base+"list", protect(http.HandlerFunc(d.list)))
 	mux.Handle(base+"create", protect(http.HandlerFunc(d.create)))
 	mux.Handle(base+"archive", protect(http.HandlerFunc(d.archive)))
+	mux.Handle(base+"messages", protect(http.HandlerFunc(d.messages)))
+	mux.Handle(base+"chat", protect(http.HandlerFunc(d.chat)))
+	mux.Handle(base+"rewind", protect(http.HandlerFunc(d.rewind)))
 }
 
 func (d Deps) list(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +120,11 @@ func decodeEmptyObject(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	return decodeJSONLimit(w, r, dst, maxBodyBytes)
+}
+
+func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dst any, limit int64) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {
 		return false

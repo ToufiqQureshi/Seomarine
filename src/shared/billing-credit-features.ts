@@ -1,4 +1,4 @@
-export type CreditFeature =
+type CreditFeature =
   | "keyword_research"
   | "domain_overview"
   | "backlinks"

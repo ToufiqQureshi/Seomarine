@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -21,7 +20,7 @@ import (
 )
 
 func TestTrackerScriptIsCacheable(t *testing.T) {
-	handler := newTestHandler(t, nil, healthy, healthy, "http://127.0.0.1:1")
+	handler := newTestHandler(t, nil, healthy, healthy)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/t.js", nil))
 
@@ -72,7 +71,6 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 		Redis:     healthy,
 		Auth:      auth.NewService(pool, testSecret),
 		Analytics: analytics.NewService(pool, rdb, lookup),
-		Upstream:  &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
 	})
 
 	id := rand.Text()

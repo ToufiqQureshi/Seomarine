@@ -200,7 +200,7 @@ export function SamChat({
         </Link>
       </div>
       <div className="flex min-h-0 flex-1">
-        {/* useAgentChat suspends while it fetches the session's history; this
+        {/* SamConversation suspends while it fetches the session's history; this
             boundary keeps that suspension inside the chat panel instead of
             letting it bubble up and swap out the whole shell — which read as
             a full page refresh on every session switch. */}

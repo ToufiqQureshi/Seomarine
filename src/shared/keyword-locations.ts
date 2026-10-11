@@ -731,7 +731,7 @@ export function resolveMarket(
  * locations have authoritative per-location language lists; Google Ads
  * locations are left to the metering safety net.
  */
-export function isLanguageServedForLocation(
+function isLanguageServedForLocation(
   locationCode: number,
   languageCode: string,
 ): boolean {

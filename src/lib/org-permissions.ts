@@ -43,7 +43,7 @@ export const orgRoles = {
   }),
 };
 
-export type OrgPermissionRequest = Partial<{
+type OrgPermissionRequest = Partial<{
   [K in keyof typeof statement]: Array<(typeof statement)[K][number]>;
 }>;
 

@@ -21,3 +21,18 @@ export async function getBillingUsageEvents({
     data,
   );
 }
+
+const creditsSchema = z.object({
+  plan: z.string(),
+  status: z.string(),
+  currentPeriodEnd: z.string().nullable(),
+  balanceCredits: z.number(),
+  balanceUsd: z.number(),
+  monthlyGrantCredits: z.number(),
+});
+
+export type BillingCredits = z.infer<typeof creditsSchema>;
+
+export function getBillingCredits() {
+  return apiRequest("/api/v1/billing/credits", creditsSchema);
+}

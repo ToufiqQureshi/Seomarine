@@ -61,4 +61,59 @@ CREATE TABLE IF NOT EXISTS projects (
     archived_at text
 );
 
+-- Columns and tables the email and password flows use. The ALTERs keep a test
+-- database created from an older version of this file working.
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS image text;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS analytics_opted_out boolean;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS last_active_organization_id text;
+ALTER TABLE session ADD COLUMN IF NOT EXISTS ip_address text;
+ALTER TABLE session ADD COLUMN IF NOT EXISTS user_agent text;
+
+CREATE TABLE IF NOT EXISTS account (
+    id text PRIMARY KEY,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    user_id text NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+    access_token text,
+    refresh_token text,
+    id_token text,
+    access_token_expires_at timestamptz,
+    refresh_token_expires_at timestamptz,
+    scope text,
+    password text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS verification (
+    id text PRIMARY KEY,
+    identifier text NOT NULL,
+    value text NOT NULL,
+    expires_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS verification_identifier_idx ON verification (identifier);
+
+CREATE TABLE IF NOT EXISTS invitation (
+    id text PRIMARY KEY,
+    organization_id text NOT NULL REFERENCES organization (id) ON DELETE CASCADE,
+    email text NOT NULL,
+    role text,
+    status text NOT NULL DEFAULT 'pending',
+    expires_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    inviter_id text NOT NULL REFERENCES "user" (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS sam_sessions (
+    id text PRIMARY KEY,
+    project_id text NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
+    user_id text NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+    title text NOT NULL DEFAULT 'New chat',
+    created_at text NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    updated_at text NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    archived_at text
+);
+
 COMMIT;

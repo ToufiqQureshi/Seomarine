@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { useCustomer } from "autumn-js/react";
+import { useBillingCustomer } from "@/client/features/billing/useBillingCustomer";
 import { useState } from "react";
 import { ArrowRight, Tag } from "lucide-react";
 import { QueryError } from "@/client/components/QueryState";
@@ -47,11 +47,7 @@ function YcPlanPage() {
   const [error, setError] = useState<string | null>(null);
 
   const hasSession = Boolean(session?.user?.id);
-  const customerQuery = useCustomer({
-    queryOptions: {
-      enabled: hasSession,
-    },
-  });
+  const customerQuery = useBillingCustomer({ enabled: hasSession });
 
   // Checkout is owner-only; other members are pointed at their organization
   // owner instead of a button that would 403.

@@ -29,9 +29,9 @@ type Config struct {
 	// GoogleTokenEncryptionKey is an optional base64 AES-256 key. When empty,
 	// the server derives a domain-separated key from BETTER_AUTH_SECRET.
 	GoogleTokenEncryptionKey string
-	// UpstreamAppURL is the legacy TypeScript app that receives every request
-	// the Go server does not route itself.
-	UpstreamAppURL *url.URL
+	// StaticDir is the built React app (Vite output) the server serves for
+	// every page it does not render itself. Default: dist.
+	StaticDir string
 	// PublicURL is the site's public origin, e.g. https://seomarine.com. The
 	// landing and pricing pages build canonical and Open Graph URLs from it.
 	PublicURL *url.URL
@@ -42,13 +42,26 @@ type Config struct {
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
 	// account behind AI search. Empty turns those endpoints off.
 	DataForSEOAPIKey string
-	// OpenRouterAPIKey enables the self-hosted SAM agent.
+	// OpenRouterAPIKey is Seomarine's own model key for SAM.
 	OpenRouterAPIKey string
-	// AutumnSecretKey enables hosted billing-usage event history.
-	AutumnSecretKey string
+	// BillingMonthlyCreditsUSD is granted to an organization on each paid
+	// subscription charge. Zero grants nothing; the owner sets the amount.
+	BillingMonthlyCreditsUSD float64
+	// OpenRouterModel overrides the SAM chat model (OPENROUTER_MODEL).
+	OpenRouterModel string
 	// Loops configures hosted teammate invitation email.
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
+	// Loops templates for the sign-up verification and password reset emails.
+	LoopsVerifyEmailTemplateID   string
+	LoopsResetPasswordTemplateID string
+	// TurnstileSecretKey turns on the sign-up captcha when set.
+	TurnstileSecretKey string
+	// OpenAIAppsChallenge is the public verification token served at
+	// /.well-known/openai-apps-challenge; unset means the path is a 404.
+	OpenAIAppsChallenge string
+	// BypassEmailVerification skips email verification (development only).
+	BypassEmailVerification bool
 	// Self-host setup values are shown only as configuration status, never as secrets.
 	TeamDomain     string
 	PolicyAudience string
@@ -96,9 +109,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("AUTH_MODE must be cloudflare_access, local_noauth, or hosted")
 	}
 
-	upstream, err := url.Parse(getenv("UPSTREAM_APP_URL"))
-	if err != nil || (upstream.Scheme != "http" && upstream.Scheme != "https") || upstream.Host == "" {
-		return Config{}, errors.New("UPSTREAM_APP_URL must be an absolute http or https URL")
+	staticDir := strings.TrimSpace(getenv("STATIC_DIR"))
+	if staticDir == "" {
+		staticDir = "dist"
 	}
 
 	public, err := url.Parse(getenv("PUBLIC_URL"))
@@ -144,28 +157,43 @@ func Load(getenv func(string) string) (Config, error) {
 		port = parsed
 	}
 
+	var monthlyCredits float64
+	if raw := getenv("BILLING_MONTHLY_CREDITS_USD"); raw != "" {
+		parsed, err := strconv.ParseFloat(raw, 64)
+		if err != nil || parsed < 0 || parsed > 10000 {
+			return Config{}, fmt.Errorf("BILLING_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
+		}
+		monthlyCredits = parsed
+	}
+
 	return Config{
-		AuthMode:                  authMode,
-		Addr:                      fmt.Sprintf(":%d", port),
-		DatabaseURL:               databaseURL,
-		RedisURL:                  redisURL,
-		BetterAuthSecret:          secret,
-		GoogleClientID:            strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret:        strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleTokenEncryptionKey:  strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		UpstreamAppURL:            upstream,
-		PublicURL:                 public,
-		BetterAuthURL:             betterAuthURL,
-		Razorpay:                  rzp,
-		DataForSEOAPIKey:          strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
-		OpenRouterAPIKey:          strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
-		AutumnSecretKey:           strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
-		LoopsAPIKey:               strings.TrimSpace(getenv("LOOPS_API_KEY")),
-		LoopsInvitationTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
-		TeamDomain:                strings.TrimSpace(getenv("TEAM_DOMAIN")),
-		PolicyAudience:            strings.TrimSpace(getenv("POLICY_AUD")),
-		ContextAPIKey:             strings.TrimSpace(getenv("CONTEXT_API_KEY")),
-		TrustedProxyCIDRs:         trusted,
+		BillingMonthlyCreditsUSD:     monthlyCredits,
+		AuthMode:                     authMode,
+		Addr:                         fmt.Sprintf(":%d", port),
+		DatabaseURL:                  databaseURL,
+		RedisURL:                     redisURL,
+		BetterAuthSecret:             secret,
+		GoogleClientID:               strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:           strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey:     strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		StaticDir:                    staticDir,
+		PublicURL:                    public,
+		BetterAuthURL:                betterAuthURL,
+		Razorpay:                     rzp,
+		DataForSEOAPIKey:             strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
+		OpenRouterAPIKey:             strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
+		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
+		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
+		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
+		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
+		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
+		BypassEmailVerification:      strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true",
+		TeamDomain:                   strings.TrimSpace(getenv("TEAM_DOMAIN")),
+		PolicyAudience:               strings.TrimSpace(getenv("POLICY_AUD")),
+		ContextAPIKey:                strings.TrimSpace(getenv("CONTEXT_API_KEY")),
+		TrustedProxyCIDRs:            trusted,
 	}, nil
 }
 

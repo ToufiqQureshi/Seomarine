@@ -2,12 +2,12 @@ import { z } from "zod";
 import { GA4_OAUTH_PROVIDER_ID } from "./ga4";
 import { GSC_OAUTH_PROVIDER_ID } from "./gsc";
 
-export const GDPR_STORAGE_ERASURE_PATH = "/api/internal/gdpr-erasure/storage";
+const GDPR_STORAGE_ERASURE_PATH = "/api/internal/gdpr-erasure/storage";
 
 const MAX_ITEMS_PER_KIND = 10_000;
 const boundedIds = z.array(z.string().min(1).max(512)).max(MAX_ITEMS_PER_KIND);
 
-export const gdprStorageErasurePayloadSchema = z
+const gdprStorageErasurePayloadSchema = z
   .object({
     userId: z.string().min(1).max(512),
     email: z.string().email().max(512),
@@ -28,7 +28,7 @@ export const gdprStorageErasurePayloadSchema = z
   })
   .strict();
 
-export type GdprStorageErasurePayload = z.infer<
+type GdprStorageErasurePayload = z.infer<
   typeof gdprStorageErasurePayloadSchema
 >;
 

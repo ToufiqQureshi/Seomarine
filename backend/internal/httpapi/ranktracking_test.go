@@ -47,7 +47,6 @@ func TestRankTrackingIsScopedToTheSignedInOrganizationAndUsesProjectMarket(t *te
 		Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret),
 		RankTracking:   ranktracking.NewService(ranktracking.Store{DB: pool}, ranktracking.Store{DB: pool}, nil),
 		ProjectMarkets: domain.ProjectMarketRepository{DB: pool}, Site: pages,
-		Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
 	})
 	call := func(project, path, body string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/rank-tracking/"+path, strings.NewReader(body))
@@ -114,7 +113,6 @@ func TestSavedKeywordsAreScopedToTheSignedInOrganization(t *testing.T) {
 		Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret),
 		SavedKeywords:  &keywords.SavedService{Store: keywords.SavedRepository{DB: pool}},
 		ProjectMarkets: domain.ProjectMarketRepository{DB: pool}, Site: pages,
-		Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
 	})
 	call := func(project, path, body string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/keywords/saved/"+path, strings.NewReader(body))

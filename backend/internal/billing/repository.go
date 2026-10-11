@@ -80,7 +80,7 @@ func (r repository) startSubscription(ctx context.Context, orgID, plan, subID, s
 // The state is stored when it is at least as new as the stored state, and
 // is either the same subscription or replaces one that is not in
 // liveStatuses. An organization that no longer exists gets no row.
-func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string) (bool, error) {
+func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string, grantCredits int64) (bool, error) {
 	var firstDelivery bool
 	err := pgdb.InTx(ctx, r.db, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `
@@ -112,6 +112,13 @@ func (r repository) applyEvent(ctx context.Context, eventID string, s subscripti
 		)
 		if err != nil {
 			return fmt.Errorf("store subscription %s: %w", s.ID, err)
+		}
+		if grantCredits > 0 {
+			// Same transaction as the event record, so a failed grant is
+			// retried by Razorpay's redelivery instead of being lost.
+			if err := grantCreditsTx(ctx, tx, s.OrganizationID, grantCredits, "monthly plan credits"); err != nil {
+				return err
+			}
 		}
 		firstDelivery = true
 		return nil

@@ -75,7 +75,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret), Domain: domain.NewService(client, rdb, discardLogger), ProjectMarkets: domain.ProjectMarketRepository{DB: pool}, Site: pages, Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"}})
+	h := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(pool, testSecret), Domain: domain.NewService(client, rdb, discardLogger), ProjectMarkets: domain.ProjectMarketRepository{DB: pool}, Site: pages})
 	lookup := func(project string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/domain/overview", strings.NewReader(`{"domain":"example.com","scope":"domain"}`))
 		if signed {

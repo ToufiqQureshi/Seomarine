@@ -10,7 +10,7 @@ export const userAdditionalFields = {
   },
 };
 
-export const baseAuthOptions = {
+const baseAuthOptions = {
   emailAndPassword: {
     enabled: true,
     disableSignUp: false,

@@ -30,7 +30,7 @@ const CSP_TAIL =
 // REPORT_IFRAME_SANDBOX, and add `script-src 'unsafe-inline'` here. Reports
 // saved while JS is blocked keep working after the flip; the reverse is not
 // true, which is why blocking is the V1 default.
-export const REPORT_CSP = `sandbox ${REPORT_IFRAME_SANDBOX}; ${CSP_TAIL}`;
+const REPORT_CSP = `sandbox ${REPORT_IFRAME_SANDBOX}; ${CSP_TAIL}`;
 
 /**
  * The script print mode appends, and the only script authorized to run in a
@@ -72,7 +72,7 @@ export function reportCsp(print?: boolean): string {
  * The plain-text response both report routes answer errors with: the sandbox
  * headers belong to the document, and these bodies are ours.
  */
-export function textResponse(body: string, status: number): Response {
+function textResponse(body: string, status: number): Response {
   return new Response(body, {
     status,
     headers: {
@@ -107,7 +107,7 @@ function withPrintScript(html: string): string {
  * and the robots tag differ: the public document is the one search engines
  * could reach.
  */
-export function reportDocumentResponse(
+function reportDocumentResponse(
   html: string,
   options: { print?: boolean; cacheControl: string; noindex?: boolean },
 ): Response {

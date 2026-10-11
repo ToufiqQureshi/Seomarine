@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/http/httputil"
 	"net/netip"
 	"net/url"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/apikeys"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/emailauth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
@@ -67,6 +68,8 @@ type Deps struct {
 	Billing *billing.Service
 	// Branding is the active organization's white-label report branding.
 	Branding *branding.Service
+	// OpenAIAppsChallenge is served at /.well-known/openai-apps-challenge.
+	OpenAIAppsChallenge string
 	// AISearch is nil when no DataForSEO key is configured; its routes then
 	// answer 503.
 	AISearch *aisearch.Service
@@ -111,6 +114,13 @@ type Deps struct {
 	Projects *projects.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
+	// leaves those routes with the legacy app.
+	EmailAuth *emailauth.Service
+	// APIKeys manages MCP API keys; nil leaves those routes with the legacy app.
+	APIKeys *apikeys.Service
+	// SAMChat serves SAM conversations; nil answers 503 (no OpenRouter key).
+	SAMChat *sam.Chat
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
 	Onboarding     *onboarding.Service
 	WorkspaceMerge *workspace.Service
@@ -121,7 +131,7 @@ type Deps struct {
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
-	AutumnSecretKey      string
+	Credits              *billing.CreditLedgerService
 	AuthMode             string
 	HostedMode           bool
 	// MCP serves API-key and Go-issued OAuth requests through the Go dispatcher.
@@ -130,16 +140,13 @@ type Deps struct {
 	HealthStatus http.Handler
 	// Site is the public landing and pricing pages.
 	Site *site.Site
-	// Upstream is the legacy app that serves every route not listed here.
-	Upstream          *url.URL
+	// StaticDir is the built React app that serves every route not listed here.
+	StaticDir         string
 	TrustedProxyCIDRs []netip.Prefix
 }
 
 const (
 	readinessTimeout = 2 * time.Second
-	// upstreamHeaderTimeout bounds how long the legacy app may take to start
-	// answering; it matches the server's write timeout.
-	upstreamHeaderTimeout = 30 * time.Second
 )
 
 // NewHandler returns the root handler.
@@ -182,18 +189,33 @@ func NewHandler(d Deps) http.Handler {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	app := newUpstreamProxy(d.Logger, d.Upstream)
+	app := spaHandler(d.StaticDir)
 
 	mux.HandleFunc("GET /{$}", landing(d.Logger, d.Auth, d.Site, app))
 	mux.HandleFunc("GET /pricing", d.Site.ServePricing)
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
 
 	mux.HandleFunc("GET /t.js", serveTracker())
+	mux.HandleFunc("GET /.well-known/openai-apps-challenge", func(w http.ResponseWriter, r *http.Request) {
+		if d.OpenAIAppsChallenge == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = io.WriteString(w, d.OpenAIAppsChallenge)
+	})
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
 	if d.AuthMode == "hosted" {
 		auth.MountCurrentSession(mux, d.Auth, d.Logger)
 		auth.MountSession(mux, d.Auth, d.Logger)
+		auth.MountBetterAuthOrganization(mux, d.Auth, d.Logger)
+		if d.EmailAuth != nil {
+			emailauth.Mount(mux, d.EmailAuth)
+		}
+		if d.APIKeys != nil {
+			apikeys.Mount(mux, d.APIKeys)
+		}
 	}
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)
 	team.Mount(mux, d.Team, withSession)
@@ -212,10 +234,10 @@ func NewHandler(d Deps) http.Handler {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid SAM setup request.")
 			return
 		}
-		enabled := d.HostedMode || d.OpenRouterConfigured
+		enabled := d.OpenRouterConfigured
 		var message *string
 		if !enabled {
-			text := "OPENROUTER_API_KEY is not set for this deployment yet. Add it to your environment, restart Seomarine, then confirm here."
+			text := "SAM is temporarily unavailable. Please try again in a few minutes."
 			message = &text
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"enabled": enabled, "errorMessage": message})
@@ -229,7 +251,7 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, Credits: d.Credits})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
@@ -285,11 +307,12 @@ func NewHandler(d Deps) http.Handler {
 	})
 	activation.Mount(mux, activation.Deps{Logger: d.Logger, Service: d.Activation, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	reports.Mount(mux, reports.Deps{Logger: d.Logger, Service: d.Reports, PublicURL: d.PublicURL, WithSession: withSession,
+		View:              reportViewDeps(d),
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	sam.Mount(mux, sam.Deps{
-		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession,
+		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession, Chat: d.SAMChat,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	onboarding.Mount(mux, onboarding.Deps{Logger: d.Logger, Service: d.Onboarding, WithSession: withSession})
@@ -403,27 +426,12 @@ func notFound() http.HandlerFunc {
 	}
 }
 
-// newUpstreamProxy forwards requests to the legacy app unchanged: same Host
-// (the legacy app builds absolute URLs and cookies from it), cookies, path
-// and query. Railway's edge sets X-Forwarded-For and X-Forwarded-Proto; they
-// are passed through so the legacy app sees the real client and scheme.
-func newUpstreamProxy(logger *slog.Logger, upstream *url.URL) *httputil.ReverseProxy {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.ResponseHeaderTimeout = upstreamHeaderTimeout
-	return &httputil.ReverseProxy{
-		Rewrite: func(pr *httputil.ProxyRequest) {
-			pr.SetURL(upstream)
-			pr.Out.Host = pr.In.Host
-			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
-			pr.SetXForwarded()
-			if proto := pr.In.Header.Get("X-Forwarded-Proto"); proto != "" {
-				pr.Out.Header.Set("X-Forwarded-Proto", proto)
-			}
-		},
-		Transport: transport,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			logger.ErrorContext(r.Context(), "proxy to legacy app", "err", err)
-			httpx.WriteError(w, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
-		},
+// reportViewDeps wires the member report viewer and share page to the session,
+// project authorization and branding services.
+func reportViewDeps(d Deps) reports.ViewDeps {
+	v := reports.ViewDeps{Authenticate: d.Auth.Authenticate, AuthorizeProject: d.Auth.AuthorizeProject}
+	if d.Branding != nil {
+		v.Branding = d.Branding.Get
 	}
+	return v
 }

@@ -1,6 +1,4 @@
-import type { InferSelectModel } from "drizzle-orm";
 import { z } from "zod";
-import { rankTrackingConfigs } from "@/db/schema";
 import { isSupportedLanguageCode } from "@/shared/keyword-locations";
 import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
 import { comparePeriodSchema } from "@/types/schemas/rank-tracking-search";
@@ -10,13 +8,28 @@ import { domainField } from "@/types/schemas/domain";
 // DB-derived types
 // ---------------------------------------------------------------------------
 
-export type RankTrackingConfig = InferSelectModel<typeof rankTrackingConfigs>;
+export type RankTrackingConfig = {
+  id: string;
+  projectId: string;
+  domain: string;
+  locationCode: number;
+  languageCode: string;
+  devices: "both" | "desktop" | "mobile";
+  serpDepth: number;
+  scheduleInterval: "daily" | "weekly" | "monthly" | "manual";
+  locationName: string | null;
+  isActive: boolean;
+  lastCheckedAt: string | null;
+  nextCheckAt: string | null;
+  lastSkipReason: string | null;
+  createdAt: string;
+};
 
 // ---------------------------------------------------------------------------
 // API / UI types
 // ---------------------------------------------------------------------------
 
-export type RankCheckTriggerResult =
+type RankCheckTriggerResult =
   | {
       ok: true;
       runId: string;
@@ -49,8 +62,8 @@ export interface RankTrackingRow {
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-const devicesEnum = z.enum(rankTrackingConfigs.devices.enumValues);
-const scheduleEnum = z.enum(rankTrackingConfigs.scheduleInterval.enumValues);
+const devicesEnum = z.enum(["both", "desktop", "mobile"]);
+const scheduleEnum = z.enum(["daily", "weekly", "monthly", "manual"]);
 // Rank tracking runs against the SERP API, which serves any language in any
 // country — but an unknown code is a *charged* DataForSEO failure, so reject
 // it here at cost 0.
@@ -93,11 +106,11 @@ export const scheduleTimeSchema = z.object({
 });
 export type RankCheckScheduleTime = z.infer<typeof scheduleTimeSchema>;
 
-export const getConfigsSchema = z.object({
+const getConfigsSchema = z.object({
   projectId: z.string().uuid(),
 });
 
-export const createConfigSchema = z.object({
+const createConfigSchema = z.object({
   projectId: z.string().uuid(),
   domain: domainField,
   locationCode: z.number().int().positive().optional(),
@@ -109,7 +122,7 @@ export const createConfigSchema = z.object({
   scheduleTime: scheduleTimeSchema.optional(),
 });
 
-export const updateConfigSchema = z.object({
+const updateConfigSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   domain: domainField.optional(),
@@ -123,29 +136,29 @@ export const updateConfigSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export const triggerCheckSchema = z.object({
+const triggerCheckSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   keywordIds: z.array(z.string().uuid()).max(2000).optional(),
 });
 
-export const getLatestResultsSchema = z.object({
+const getLatestResultsSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   comparePeriod: comparePeriodSchema.optional(),
 });
 
-export const getLatestRunSchema = z.object({
+const getLatestRunSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
 });
 
-export const estimateCostSchema = z.object({
+const estimateCostSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
 });
 
-export const addKeywordsSchema = z.object({
+const addKeywordsSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   keywords: z
@@ -155,13 +168,13 @@ export const addKeywordsSchema = z.object({
   matchCase: z.boolean().optional(),
 });
 
-export const removeKeywordsSchema = z.object({
+const removeKeywordsSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   keywordIds: z.array(z.string().uuid()).min(1).max(2000),
 });
 
-export const refreshMetricsSchema = z.object({
+const refreshMetricsSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
 });
@@ -169,21 +182,21 @@ export const refreshMetricsSchema = z.object({
 const deviceEnum = z.enum(["desktop", "mobile"]);
 const sinceDaysField = z.number().int().positive().max(730).default(365);
 
-export const getKeywordHistorySchema = z.object({
+const getKeywordHistorySchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   trackingKeywordId: z.string().uuid(),
   sinceDays: sinceDaysField,
 });
 
-export const getConfigTrendSchema = z.object({
+const getConfigTrendSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   device: deviceEnum,
   sinceDays: sinceDaysField,
 });
 
-export const getPositionMatrixSchema = z.object({
+const getPositionMatrixSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
   device: deviceEnum,

@@ -149,7 +149,7 @@ func (h *handler) execute(ctx context.Context, r *http.Request, req rpcRequest, 
 			return errorResponse(req.ID, codeMethodNotFound, "Method not found.")
 		}
 		started := time.Now()
-		result, outcome := h.callTool(ctx, t, req.Params, auth)
+		result, outcome := h.callTool(ctx, t, toolCallArguments(req.Params), auth)
 		h.recordToolCall(ctx, name, auth, started, outcome)
 		return resultResponse(req.ID, result)
 	default:

@@ -11,7 +11,7 @@
  */
 
 /** Constant Shopify expects, quotes included. We supply it; users never see it. */
-export const SHOPIFY_SIGNATURE_AGENT = '"https://shopify.com"';
+const SHOPIFY_SIGNATURE_AGENT = '"https://shopify.com"';
 
 export const SHOPIFY_CRAWLER_ACCESS_DOC_URL =
   "https://help.shopify.com/en/manual/promoting-marketing/seo/crawling-your-store";
@@ -23,7 +23,7 @@ export const MAX_SIGNATURE_VALUE_LENGTH = 4096;
  * the security boundary: these values are bot-protection credentials and must
  * never be sent to another site, including across a redirect hop.
  */
-export interface CrawlerAccess {
+interface CrawlerAccess {
   host: string;
   headers: Record<string, string>;
   /** Checked on every request: a long crawl can outlive the signature. */

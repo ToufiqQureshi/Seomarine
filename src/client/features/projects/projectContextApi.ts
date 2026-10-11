@@ -84,5 +84,3 @@ export async function updateProjectContext({ data }: UpdateInput) {
     data,
   );
 }
-
-export type { ContextAuthor };

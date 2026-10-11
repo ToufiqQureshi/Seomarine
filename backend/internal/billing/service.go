@@ -95,6 +95,9 @@ type Service struct {
 	razorpay      *razorpay.Client
 	planID        string
 	webhookSecret string
+	// MonthlyGrantCredits is added to the organization's credit balance on
+	// every successful subscription charge. Zero grants nothing.
+	MonthlyGrantCredits int64
 }
 
 // NewService returns a Service that sells the Razorpay plan planID through
@@ -210,7 +213,7 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 		Status:           sub.Status,
 		CurrentPeriodEnd: periodEnd,
 		EventAt:          time.Unix(event.CreatedAt, 0).UTC(),
-	}, liveStatuses)
+	}, liveStatuses, s.grantFor(event.Event, sub.Status))
 	if err != nil {
 		return "", fmt.Errorf("apply %s event %s: %w", event.Event, eventID, err)
 	}
@@ -218,4 +221,13 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 		return WebhookDuplicate, nil
 	}
 	return WebhookProcessed, nil
+}
+
+// grantFor is the credits a webhook delivery earns: one monthly grant per
+// charge of a live subscription.
+func (s *Service) grantFor(event, status string) int64 {
+	if event != "subscription.charged" || !slices.Contains(liveStatuses, status) {
+		return 0
+	}
+	return s.MonthlyGrantCredits
 }

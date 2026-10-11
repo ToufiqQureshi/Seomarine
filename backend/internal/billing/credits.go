@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 )
 
 var (
@@ -71,13 +73,15 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 	if amount <= 0 {
 		return errors.New("amount must be positive")
 	}
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	return pgdb.InTx(ctx, s.db, func(tx pgx.Tx) error {
+		return grantCreditsTx(ctx, tx, orgID, amount, reason)
+	})
+}
 
-	_, err = tx.Exec(ctx, `
+// grantCreditsTx adds amount to the balance and writes the ledger row inside
+// the caller's transaction.
+func grantCreditsTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, reason string) error {
+	_, err := tx.Exec(ctx, `
 		INSERT INTO go_billing_credits (organization_id, balance_credits, updated_at)
 		VALUES ($1, $2, now())
 		ON CONFLICT (organization_id)
@@ -86,17 +90,50 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 	if err != nil {
 		return fmt.Errorf("upsert credits: %w", err)
 	}
-
-	ledgerID := generateID("led")
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, 'grant', $4, now())
-	`, ledgerID, orgID, amount, reason)
+	`, generateID("led"), orgID, amount, reason)
 	if err != nil {
 		return fmt.Errorf("insert ledger grant: %w", err)
 	}
+	return nil
+}
 
-	return tx.Commit(ctx)
+// UsageEvent is one settled spend, shaped for the billing usage chart.
+type UsageEvent struct {
+	Timestamp  float64        `json:"timestamp"`
+	Value      float64        `json:"value"`
+	Properties map[string]any `json:"properties"`
+}
+
+// UsageEvents lists the organization's settled spends between two Unix
+// millisecond timestamps, oldest first.
+func (s *CreditLedgerService) UsageEvents(ctx context.Context, orgID string, startMs, endMs float64) ([]UsageEvent, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT (extract(epoch FROM created_at) * 1000)::float8, (-amount_credits)::float8
+		FROM go_billing_credit_ledger
+		WHERE organization_id = $1 AND type = 'settle' AND amount_credits < 0
+			AND created_at >= to_timestamp($2 / 1000.0) AND created_at <= to_timestamp($3 / 1000.0)
+		ORDER BY created_at ASC, id ASC
+		LIMIT 5000
+	`, orgID, startMs, endMs)
+	if err != nil {
+		return nil, fmt.Errorf("list usage events: %w", err)
+	}
+	defer rows.Close()
+	events := make([]UsageEvent, 0)
+	for rows.Next() {
+		e := UsageEvent{Properties: map[string]any{}}
+		if err := rows.Scan(&e.Timestamp, &e.Value); err != nil {
+			return nil, fmt.Errorf("scan usage event: %w", err)
+		}
+		events = append(events, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate usage events: %w", err)
+	}
+	return events, nil
 }
 
 // Reserve atomically reserves credits for an operation using idempotency key.

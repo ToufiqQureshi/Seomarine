@@ -45,7 +45,7 @@ const researchKeywordsSchema = z.object({
   groupKeywords: z.boolean().optional().default(false),
 });
 
-export const savedKeywordMetricSchema = z.object({
+const savedKeywordMetricSchema = z.object({
   keyword: z.string().min(1),
   searchVolume: z.number().int().nonnegative().nullable().optional(),
   cpc: z.number().nonnegative().nullable().optional(),
@@ -87,7 +87,7 @@ export const saveKeywordsSchema = z
     "Replacement tags are required when tagMode is replace.",
   );
 
-export const removeSavedKeywordsSchema = z.object({
+const removeSavedKeywordsSchema = z.object({
   projectId: z.string().min(1),
   savedKeywordIds: z.array(z.string().min(1)).min(1).max(2000),
 });
@@ -142,7 +142,7 @@ export const exportSavedKeywordsSchema = getSavedKeywordsSchema.omit({
   pageSize: true,
 });
 
-export const updateSavedKeywordTagsSchema = z
+const updateSavedKeywordTagsSchema = z
   .object({
     projectId: z.string().min(1),
     savedKeywordIds: z.array(z.string().min(1)).min(1).max(2000),
@@ -155,7 +155,7 @@ export const updateSavedKeywordTagsSchema = z
     "Add or remove at least one tag.",
   );
 
-export const updateSavedKeywordTagSchema = z
+const updateSavedKeywordTagSchema = z
   .object({
     projectId: z.string().min(1),
     tagId: z.string().min(1),
@@ -167,12 +167,12 @@ export const updateSavedKeywordTagSchema = z
     "Provide a name or color to update.",
   );
 
-export const deleteSavedKeywordTagSchema = z.object({
+const deleteSavedKeywordTagSchema = z.object({
   projectId: z.string().min(1),
   tagId: z.string().min(1),
 });
 
-export const refreshSavedKeywordMetricsSchema = z.object({
+const refreshSavedKeywordMetricsSchema = z.object({
   projectId: z.string().min(1),
 });
 
@@ -184,29 +184,18 @@ export type ResolvedResearchKeywordsInput = Omit<
   keyof ResolvedMarket
 > &
   ResolvedMarket;
-export type ResolvedSaveKeywordsInput = Omit<
-  SaveKeywordsInput,
-  keyof ResolvedMarket
-> &
+type ResolvedSaveKeywordsInput = Omit<SaveKeywordsInput, keyof ResolvedMarket> &
   ResolvedMarket;
-export type RemoveSavedKeywordsInput = z.infer<
-  typeof removeSavedKeywordsSchema
->;
+type RemoveSavedKeywordsInput = z.infer<typeof removeSavedKeywordsSchema>;
 export type GetSavedKeywordsInput = z.infer<typeof getSavedKeywordsSchema>;
 export type ExportSavedKeywordsInput = z.infer<
   typeof exportSavedKeywordsSchema
 >;
-export type UpdateSavedKeywordTagsInput = z.infer<
-  typeof updateSavedKeywordTagsSchema
->;
-export type UpdateSavedKeywordTagInput = z.infer<
-  typeof updateSavedKeywordTagSchema
->;
-export type DeleteSavedKeywordTagInput = z.infer<
-  typeof deleteSavedKeywordTagSchema
->;
+type UpdateSavedKeywordTagsInput = z.infer<typeof updateSavedKeywordTagsSchema>;
+type UpdateSavedKeywordTagInput = z.infer<typeof updateSavedKeywordTagSchema>;
+type DeleteSavedKeywordTagInput = z.infer<typeof deleteSavedKeywordTagSchema>;
 
-export type RefreshSavedKeywordMetricsInput = z.infer<
+type RefreshSavedKeywordMetricsInput = z.infer<
   typeof refreshSavedKeywordMetricsSchema
 >;
 const serpAnalysisSchema = z.object({

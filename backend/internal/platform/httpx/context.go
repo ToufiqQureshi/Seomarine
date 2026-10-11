@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"runtime/debug"
 	"strconv"
@@ -193,4 +195,38 @@ func newRequestID() string {
 		return "request" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	}
 	return hex.EncodeToString(b[:])
+}
+
+// ClientIP returns the caller's address. It accepts forwarding headers only from
+// an explicitly trusted peer, so a client cannot choose the address it is seen as.
+func ClientIP(r *http.Request, trusted []netip.Prefix) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
+		return host
+	}
+	allowed := false
+	for _, prefix := range trusted {
+		if prefix.Contains(peer) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return peer.String()
+	}
+	if cf, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))); err == nil {
+		return cf.String()
+	}
+	xff := strings.Join(r.Header.Values("X-Forwarded-For"), ",")
+	entries := strings.Split(xff, ",")
+	for i := len(entries) - 1; i >= 0; i-- {
+		if ip, err := netip.ParseAddr(strings.TrimSpace(entries[i])); err == nil {
+			return ip.String()
+		}
+	}
+	return peer.String()
 }

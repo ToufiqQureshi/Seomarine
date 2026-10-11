@@ -1,12 +1,16 @@
-import { useAgent } from "agents/react";
-// Think speaks the same chat protocol as @cloudflare/ai-chat, but its hook
-// variant skips the client->server transcript sync Think doesn't support.
-import { useAgentChat } from "@cloudflare/think/react";
-import { useEffect, useRef, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
+import { useEffect, useMemo, useRef } from "react";
 import { findLast } from "remeda";
 import { toast } from "sonner";
 import { ChatComposer } from "@/client/features/sam/ChatComposer";
-import { invalidateSamSessions } from "@/client/features/sam/samQueries";
+import { rewindSamSession, samChatUrl } from "@/client/features/sam/samApi";
+import {
+  invalidateSamSessions,
+  samMessagesQueryOptions,
+} from "@/client/features/sam/samQueries";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { ErrorState } from "@/client/components/ErrorState";
 import { Button } from "@/client/components/ui/button";
@@ -23,6 +27,18 @@ const SUGGESTIONS = [
   "Find quick-win keywords I already rank for",
 ];
 
+function messageText(message: UIMessage): string {
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n");
+}
+
+/**
+ * Loads the stored transcript, then hands it to the live chat. useChat needs
+ * its initial messages at mount, so the load suspends here (the route wraps
+ * this in a Suspense boundary) instead of inside the chat.
+ */
 export function SamConversation({
   projectId,
   sessionId,
@@ -30,33 +46,63 @@ export function SamConversation({
   projectId: string;
   sessionId: string;
 }) {
-  // The conversation lives in the SamChatAgent Durable Object, keyed by the
-  // session id. The WebSocket is authorized in the Worker (src/server.ts) before
-  // it reaches the DO; billing gates come back as normal assistant messages.
-  const agent = useAgent({ agent: "sam-chat", name: sessionId });
-  // SAM streams dense tool-input deltas; unthrottled per-chunk store fanout
-  // re-renders the transcript per delta and trips React #185 (cloudflare/agents#1361).
-  const {
-    messages,
-    sendMessage,
-    setMessages,
-    clearHistory,
-    status,
-    stop,
-    isRecovering,
-    connectionError,
-  } = useAgentChat({ agent, experimental_throttle: 50 });
+  const { data: initialMessages } = useSuspenseQuery(
+    samMessagesQueryOptions(projectId, sessionId),
+  );
+  return (
+    <SamChatView
+      projectId={projectId}
+      sessionId={sessionId}
+      initialMessages={initialMessages}
+    />
+  );
+}
 
-  // isRecovering: the DO is settling a turn a reset interrupted (persisting
-  // the partial reply). Nothing can be sent into it until that lands.
-  const isBusy =
-    status === "submitted" || status === "streaming" || isRecovering;
+function SamChatView({
+  projectId,
+  sessionId,
+  initialMessages,
+}: {
+  projectId: string;
+  sessionId: string;
+  initialMessages: UIMessage[];
+}) {
+  const queryClient = useQueryClient();
+  // The conversation lives on the Go server; each send is one HTTP request
+  // whose response streams the reply. The server keeps the transcript, so the
+  // request carries only the new message, not the history.
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: samChatUrl(projectId),
+        prepareSendMessagesRequest: ({ messages }) => {
+          const last = messages[messages.length - 1];
+          return {
+            body: {
+              sessionId,
+              message: { id: last.id, text: messageText(last) },
+            },
+          };
+        },
+      }),
+    [projectId, sessionId],
+  );
+  // SAM streams dense tool-input deltas; unthrottled per-chunk store fanout
+  // re-renders the transcript per delta.
+  const { messages, sendMessage, setMessages, status, stop } = useChat({
+    id: sessionId,
+    messages: initialMessages,
+    transport,
+    experimental_throttle: 50,
+  });
+
+  const isBusy = status === "submitted" || status === "streaming";
   const { scrollRef, onScroll, pinToBottom } = useStickToBottom(
     messages,
     status,
   );
-  // Client-side send counts, to set against the server's sam:turn events: a
-  // send with no matching turn is a message that never reached the DO.
+  // Client-side send counts, to set against the server's turns: a send with
+  // no matching turn is a message that never reached the server.
   const sendText = (
     text: string,
     source: "composer" | "suggestion" | "edit" | "retry" = "composer",
@@ -71,50 +117,32 @@ export function SamConversation({
     void sendMessage({ text });
   };
 
-  // What the user sees as a failure: the turn-level error banner below, or
-  // the socket dropping (code/reason from the close frame). The server side
-  // of the same failure is the sam:turn event with status "error".
   useEffect(() => {
-    if (status !== "error" && !connectionError) return;
+    if (status !== "error") return;
     captureClientEvent("sam:client_error", {
       session_id: sessionId,
       project_id: projectId,
-      kind: connectionError ? "connection" : "turn",
-      code: connectionError?.code,
-      reason: connectionError?.reason,
+      kind: "turn",
     });
-  }, [status, connectionError, sessionId, projectId]);
+  }, [status, sessionId, projectId]);
 
-  // The socket reconnects on its own after a drop; a close the server marks
-  // terminal sets connectionError and stops retrying until the user asks.
-  // `identified` is false before the first connect too, so "reconnecting"
-  // waits until one connect has succeeded.
-  const [hasConnected, setHasConnected] = useState(false);
-  useEffect(() => {
-    if (agent.identified) setHasConnected(true);
-  }, [agent.identified]);
-  const isReconnecting = hasConnected && !agent.identified && !connectionError;
-
-  // Rewind the server-side conversation to before `messageId`: the DO aborts
-  // any in-flight turn, then deletes the message and everything after it. Sync
-  // the local view from the server afterwards rather than slicing locally —
-  // an aborted turn may have persisted (or removed) more than we can see, and
-  // on Think setMessages is local-only, so this is a pure view update.
+  // Rewind the server-side conversation to before `messageId`: the server
+  // stops any in-flight turn, then deletes the message and everything after
+  // it. Sync the local view from the server afterwards rather than slicing
+  // locally: a stopped turn may have stored (or removed) more than we can see.
   const rewindTo = async (messageId: string) => {
-    const response = await fetch(`/agents/sam-chat/${sessionId}/rewind`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messageId }),
-    }).catch(() => null);
-    if (!response?.ok) {
+    void stop();
+    try {
+      await rewindSamSession({ data: { projectId, sessionId, messageId } });
+      const fresh = await queryClient.fetchQuery(
+        samMessagesQueryOptions(projectId, sessionId),
+      );
+      setMessages(fresh);
+      return true;
+    } catch {
       toast.error("Couldn't change the conversation. Try again.");
       return false;
     }
-    const fresh = await fetch(
-      `/agents/sam-chat/${sessionId}/get-messages`,
-    ).then((res) => (res.ok ? res.json() : null));
-    if (Array.isArray(fresh)) setMessages(fresh);
-    return true;
   };
 
   const undoFrom = (messageId: string) => void rewindTo(messageId);
@@ -127,19 +155,19 @@ export function SamConversation({
   };
   // Retry after a failed turn goes through the same rewind-then-resend path
   // as edit, so the failed partial reply is deleted server-side before the
-  // new one streams in. Each click is one human-gated turn, metered per step;
-  // the DO never re-runs a turn on its own (see onChatRecovery).
+  // new one streams in. Each click is one human-gated turn; the server never
+  // re-runs a turn on its own.
   const lastUserMessage = findLast(messages, (m) => m.role === "user");
   const retryLast = () => {
     if (!lastUserMessage) return;
-    const text = lastUserMessage.parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .join("\n");
-    void editAndResend(lastUserMessage.id, text, "retry");
+    void editAndResend(
+      lastUserMessage.id,
+      messageText(lastUserMessage),
+      "retry",
+    );
   };
 
-  // The DO names the session from its first message during the turn, so refresh
+  // The server names the session from its first message during the turn, so refresh
   // the side-panel once the turn settles (busy -> idle) to pick up the title.
   const wasBusyRef = useRef(false);
   useEffect(() => {
@@ -162,19 +190,6 @@ export function SamConversation({
 
   return (
     <div className="relative flex min-w-0 flex-1 flex-col">
-      {import.meta.env.DEV ? (
-        // Dev-only escape hatch: wipes this session's persisted transcript on
-        // the server (Think's cf_agent_chat_clear), for testing fresh-session
-        // behavior without creating a new chat.
-        <Button
-          variant="ghost"
-          size="xs"
-          className="absolute top-2 right-3 z-10 text-muted-foreground"
-          onClick={() => clearHistory()}
-        >
-          Clear history (dev)
-        </Button>
-      ) : null}
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -225,12 +240,6 @@ export function SamConversation({
             </div>
           ) : null}
 
-          {isRecovering ? (
-            <p className="text-xs text-muted-foreground">
-              Saving the reply that got cut off…
-            </p>
-          ) : null}
-
           {status === "error" ? (
             <ErrorState
               variant="inline"
@@ -260,25 +269,6 @@ export function SamConversation({
 
       <div className="flex-shrink-0 border-t border-border px-5 py-3">
         <div className="mx-auto w-full max-w-2xl">
-          {connectionError ? (
-            <div className="mb-2">
-              <ErrorState
-                variant="inline"
-                message="Lost the connection to SAM."
-                action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => agent.reconnect()}
-                  >
-                    Reconnect
-                  </Button>
-                }
-              />
-            </div>
-          ) : isReconnecting ? (
-            <p className="mb-2 text-xs text-muted-foreground">Reconnecting…</p>
-          ) : null}
           <ChatComposer
             busy={isBusy}
             onSend={sendText}

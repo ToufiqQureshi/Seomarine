@@ -5,7 +5,7 @@ type NormalizedSavedKeywordTag = {
   normalizedName: string;
 };
 
-export function normalizeSavedKeywordTag(
+function normalizeSavedKeywordTag(
   value: string,
 ): NormalizedSavedKeywordTag | null {
   const name = value.trim().replace(/\s+/g, " ");

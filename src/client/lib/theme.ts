@@ -128,7 +128,7 @@ export function useThemePreference() {
   return { themePreference, setThemePreference };
 }
 
-export const themePreferenceInitScript = `(() => {
+const themePreferenceInitScript = `(() => {
   try {
     var p = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
     var t;

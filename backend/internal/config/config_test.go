@@ -14,7 +14,6 @@ func TestLoad(t *testing.T) {
 		"DATABASE_URL":       "postgres://localhost/seomarine",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"UPSTREAM_APP_URL":   "http://legacy.internal:3000",
 		"PUBLIC_URL":         "https://seomarine.com",
 	}
 	with := func(key, value string) map[string]string {
@@ -35,7 +34,6 @@ func TestLoad(t *testing.T) {
 		{name: "rejects invalid auth mode", env: with("AUTH_MODE", "Hosted"), wantErr: true},
 		{name: "uses PORT", env: with("PORT", "3000"), wantAddr: ":3000"},
 		{name: "accepts the highest port", env: with("PORT", "65535"), wantAddr: ":65535"},
-		{name: "accepts an https upstream", env: with("UPSTREAM_APP_URL", "https://app.example.com"), wantAddr: ":8080"},
 		{name: "accepts trusted proxy CIDRs", env: with("TRUSTED_PROXY_CIDRS", "10.0.0.0/8, 2001:db8::/32"), wantAddr: ":8080"},
 		{name: "rejects malformed trusted proxy CIDR", env: with("TRUSTED_PROXY_CIDRS", "10.0.0.1"), wantErr: true},
 		{name: "rejects trusting all clients", env: with("TRUSTED_PROXY_CIDRS", "0.0.0.0/0"), wantErr: true},
@@ -43,11 +41,6 @@ func TestLoad(t *testing.T) {
 		{name: "requires REDIS_URL", env: with("REDIS_URL", ""), wantErr: true},
 		{name: "requires BETTER_AUTH_SECRET", env: with("BETTER_AUTH_SECRET", ""), wantErr: true},
 		{name: "rejects a 31-character secret", env: with("BETTER_AUTH_SECRET", secret[:31]), wantErr: true},
-		{name: "requires UPSTREAM_APP_URL", env: with("UPSTREAM_APP_URL", ""), wantErr: true},
-		{name: "rejects a relative upstream", env: with("UPSTREAM_APP_URL", "/app"), wantErr: true},
-		{name: "rejects an upstream without a host", env: with("UPSTREAM_APP_URL", "http://"), wantErr: true},
-		{name: "rejects a non-http upstream", env: with("UPSTREAM_APP_URL", "ftp://legacy.internal"), wantErr: true},
-		{name: "rejects a malformed upstream", env: with("UPSTREAM_APP_URL", "http://[::1"), wantErr: true},
 		{name: "rejects a non-numeric port", env: with("PORT", "http"), wantErr: true},
 		{name: "rejects port zero", env: with("PORT", "0"), wantErr: true},
 		{name: "rejects a port above 65535", env: with("PORT", "65536"), wantErr: true},
@@ -76,7 +69,7 @@ func TestLoad(t *testing.T) {
 				t.Errorf("AuthMode = %q, want hosted", cfg.AuthMode)
 			}
 			if cfg.DatabaseURL != tt.env["DATABASE_URL"] || cfg.RedisURL != tt.env["REDIS_URL"] ||
-				cfg.BetterAuthSecret != secret || cfg.UpstreamAppURL.String() != tt.env["UPSTREAM_APP_URL"] {
+				cfg.BetterAuthSecret != secret {
 				t.Errorf("Load() = %+v, does not carry the environment through", cfg)
 			}
 		})
@@ -88,7 +81,6 @@ func TestLoadPublicURL(t *testing.T) {
 		"DATABASE_URL":       "postgres://localhost/seomarine",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"UPSTREAM_APP_URL":   "http://legacy.internal:3000",
 	}
 	tests := []struct {
 		value, want string // want "" means an error
@@ -125,7 +117,6 @@ func TestLoadRazorpay(t *testing.T) {
 		"DATABASE_URL":       "postgres://localhost/seomarine",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"UPSTREAM_APP_URL":   "http://legacy.internal:3000",
 		"PUBLIC_URL":         "https://seomarine.com",
 	}
 	full := maps.Clone(base)
@@ -167,7 +158,6 @@ func TestLoadDataForSEOKey(t *testing.T) {
 		"DATABASE_URL":       "postgres://localhost/seomarine",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"UPSTREAM_APP_URL":   "http://legacy.internal:3000",
 		"PUBLIC_URL":         "https://seomarine.com",
 	}
 	load := func() Config {

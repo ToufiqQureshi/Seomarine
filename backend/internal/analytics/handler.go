@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
@@ -87,7 +85,7 @@ func collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.Han
 			Page:        page,
 			Referrer:    req.Referrer,
 			ScreenWidth: req.ScreenWidth,
-			IP:          clientIP(r, trusted),
+			IP:          httpx.ClientIP(r, trusted),
 			UserAgent:   r.UserAgent(),
 		})
 		switch {
@@ -127,39 +125,6 @@ func validateCollect(req struct {
 		return nil, fmt.Sprintf("w must be a screen width from 0 to %d.", maxScreenWidth)
 	}
 	return page, ""
-}
-
-// clientIP accepts forwarding headers only from an explicitly trusted peer.
-func clientIP(r *http.Request, trusted []netip.Prefix) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	peer, err := netip.ParseAddr(host)
-	if err != nil {
-		return host
-	}
-	allowed := false
-	for _, prefix := range trusted {
-		if prefix.Contains(peer) {
-			allowed = true
-			break
-		}
-	}
-	if !allowed {
-		return peer.String()
-	}
-	if cf, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))); err == nil {
-		return cf.String()
-	}
-	xff := strings.Join(r.Header.Values("X-Forwarded-For"), ",")
-	entries := strings.Split(xff, ",")
-	for i := len(entries) - 1; i >= 0; i-- {
-		if ip, err := netip.ParseAddr(strings.TrimSpace(entries[i])); err == nil {
-			return ip.String()
-		}
-	}
-	return peer.String()
 }
 
 // ensureSiteHandler returns the project's site key and tracker snippet.

@@ -11,9 +11,8 @@ Proprietary software. See [`LICENSE`](./LICENSE).
 | Path                         | What                                                     |
 | ---------------------------- | -------------------------------------------------------- |
 | `backend/`                   | Go server: API, analytics ingest, billing, landing pages |
-| `src/client/`, `src/routes/` | React app (Vite)                                         |
-| `src/server/`                | Legacy TypeScript backend, being ported to Go            |
-| `docs/`                      | Setup and self-hosting guides                            |
+| `src/client/`, `src/routes/` | React + TypeScript app (Vite, static SPA)                |
+| `docs/`                      | Setup guides                                             |
 | `CLAUDE.md`, `AGENTS.md`     | Rules for coding agents and contributors                 |
 | `ROADMAP.md`                 | Feature status and priorities                            |
 
@@ -22,10 +21,11 @@ Proprietary software. See [`LICENSE`](./LICENSE).
 - Go backend: [`backend/README.md`](./backend/README.md)
 - App: [`docs/LOCAL_DEVELOPMENT.md`](./docs/LOCAL_DEVELOPMENT.md)
 
-SEO data comes from [DataForSEO](https://dataforseo.com/). Setup:
-[`docs/DATAFORSEO_API_KEY.md`](./docs/DATAFORSEO_API_KEY.md).
+SEO data comes from [DataForSEO](https://dataforseo.com/) through Seomarine's
+own account; customers never bring their own keys.
 
 ## Hosting
 
-Production runs on Railway (Go server, Postgres, Redis). Secrets live in
+Production runs on Railway (one Go server that also serves the built React
+app, plus Postgres and Redis). The root `Dockerfile` builds both. Secrets live in
 Railway variables, never in this repository.
