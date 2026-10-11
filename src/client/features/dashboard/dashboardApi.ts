@@ -59,7 +59,7 @@ const dashboardBacklinksSchema = z.object({
 export type DashboardActivation = z.infer<typeof dashboardActivationSchema>;
 export type DashboardAuditSummary = z.infer<typeof dashboardAuditSchema>;
 export type DashboardBacklinkSummary = z.infer<typeof dashboardBacklinksSchema>;
-export type DashboardOverview = {
+type DashboardOverview = {
   audit: DashboardAuditSummary | null;
   backlinks: DashboardBacklinkSummary | null;
 };

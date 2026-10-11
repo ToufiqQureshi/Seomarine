@@ -3,8 +3,9 @@ info:
   title: Seomarine SAM sessions
   version: 1.0.0
   description: |
-    Project-scoped SAM session registry. Every route is POST with a strict JSON
+    Project-scoped SAM sessions and chat. Every route is POST with a strict JSON
     body, requires a session and project access, and scopes sessions to the caller.
+    Chat replies stream as server-sent events in the AI SDK UI message stream format.
 servers:
   - url: /api/v1
 paths:
@@ -61,6 +62,93 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/sam/sessions/messages:
+    post:
+      operationId: sam_sessions_messages
+      summary: List a session's stored messages, oldest first
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionInput" }
+      responses:
+        "200":
+          description: Messages with AI SDK UIMessage parts
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Message" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/sam/sessions/chat:
+    post:
+      operationId: sam_sessions_chat
+      summary: Send a message and stream SAM's reply
+      description: |
+        Stores the user message, then streams the reply. The stream carries the
+        `x-vercel-ai-ui-message-stream: v1` header and ends with `data: [DONE]`.
+        One reply may run per session at a time. A client that disconnects stops
+        the reply; what was produced so far is stored and billed.
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sessionId, message]
+              properties:
+                sessionId: { type: string, minLength: 1, maxLength: 128 }
+                message:
+                  type: object
+                  additionalProperties: false
+                  required: [id, text]
+                  properties:
+                    id: { type: string, minLength: 1, maxLength: 128 }
+                    text: { type: string, minLength: 1, maxLength: 20000 }
+      responses:
+        "200":
+          description: Server-sent events
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: A reply is already running for this session, or the message id was already used
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+        "503": { $ref: "#/components/responses/Error" }
+  /projects/{projectId}/sam/sessions/rewind:
+    post:
+      operationId: sam_sessions_rewind
+      summary: Delete a message and everything after it
+      description: Stops a running reply first. Backs undo and edit-and-resend.
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sessionId, messageId]
+              properties:
+                sessionId: { type: string, minLength: 1, maxLength: 128 }
+                messageId: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { $ref: "#/components/responses/Json" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 components:
   parameters:
     ProjectId:
@@ -72,6 +160,39 @@ components:
     EmptyInput:
       type: object
       additionalProperties: false
+    SessionInput:
+      type: object
+      additionalProperties: false
+      required: [sessionId]
+      properties:
+        sessionId: { type: string, minLength: 1, maxLength: 128 }
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+    Message:
+      type: object
+      required: [id, role, parts]
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant] }
+        parts:
+          type: array
+          items:
+            type: object
+            required: [type]
+            properties:
+              type: { type: string, description: "text, reasoning, step-start or tool-<name>" }
+              text: { type: string }
+              state: { type: string }
+              toolCallId: { type: string }
+              input: {}
+              output: {}
+              errorText: { type: string }
   responses:
     Json:
       description: JSON result

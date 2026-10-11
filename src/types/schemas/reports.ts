@@ -10,13 +10,13 @@
  * whose P90 heap already sits near its limit. Reports should aim well under
  * 80,000 bytes; this is the refusal line, not the target.
  */
-export const REPORT_MAX_HTML_BYTES = 500_000;
+const REPORT_MAX_HTML_BYTES = 500_000;
 /**
  * Runaway-storage guard per project, enforced on create only. It is not a
  * product limit: no real project writes ten thousand reports, so the number a
  * user hits is a loop that got stuck, not a workflow.
  */
-export const REPORT_MAX_PER_PROJECT = 10_000;
+const REPORT_MAX_PER_PROJECT = 10_000;
 /**
  * Runaway-storage guard for a whole organization, across every project it
  * owns. Projects are unlimited, so the per-project guard bounds nothing on its
@@ -24,17 +24,17 @@ export const REPORT_MAX_PER_PROJECT = 10_000;
  * the per-project guard times the 500 KB per-report cap, which no workspace
  * writing reports by hand will approach.
  */
-export const REPORT_MAX_BYTES_PER_ORG = 5_000_000_000;
+const REPORT_MAX_BYTES_PER_ORG = 5_000_000_000;
 /** Page size for a list read when the caller does not ask for one. */
-export const REPORT_DEFAULT_LIST_LIMIT = 20;
+const REPORT_DEFAULT_LIST_LIMIT = 20;
 /** Ceiling on a single list page, for the MCP tool's payload budget. */
-export const REPORT_MAX_LIST_LIMIT = 50;
+const REPORT_MAX_LIST_LIMIT = 50;
 /** The Reports page shows the most recent 100. */
 export const REPORT_APP_LIST_LIMIT = 100;
-export const REPORT_MAX_TITLE_CHARS = 120;
+const REPORT_MAX_TITLE_CHARS = 120;
 /** A skill slug is a directory name; anything longer is not one. */
-export const REPORT_MAX_SKILL_CHARS = 60;
-export const REPORT_MAX_SUMMARY_CHARS = 2_500;
+const REPORT_MAX_SKILL_CHARS = 60;
+const REPORT_MAX_SUMMARY_CHARS = 2_500;
 
 /**
  * Everything a list or detail read returns. `html` is deliberately absent: it
@@ -44,7 +44,7 @@ export const REPORT_MAX_SUMMARY_CHARS = 2_500;
  * A plain type, not a Zod schema: these rows are built by the repository from
  * its own column selection, so there is no trust boundary here to validate.
  */
-export type ReportMetadata = {
+type ReportMetadata = {
   id: string;
   projectId: string;
   title: string;

@@ -37,18 +37,18 @@ export const KEYWORDS_PER_BATCH = 10;
 export const SECONDS_PER_BATCH = 6;
 
 /** Soft application limit for keywords per rank tracking config */
-export const MAX_KEYWORDS_PER_CONFIG = 1000;
+const MAX_KEYWORDS_PER_CONFIG = 1000;
 
 /** Maximum length of a single tracked keyword */
 export const MAX_TRACKED_KEYWORD_LENGTH = 200;
 
 /** Maximum configs (domain+location combos) per project */
-export const MAX_CONFIGS_PER_PROJECT = 500;
+const MAX_CONFIGS_PER_PROJECT = 500;
 
 /** Maximum queued rank-check tasks DataForSEO accepts in one task_post. */
-export const MAX_TASKS_PER_POST = 100;
+const MAX_TASKS_PER_POST = 100;
 
-export const rankCheckCostApprovalError = (
+const rankCheckCostApprovalError = (
   costCredits: number,
   maxCostCredits: number,
 ) => {
@@ -60,10 +60,7 @@ export const rankCheckCostApprovalError = (
 // ---------------------------------------------------------------------------
 
 /** DataForSEO cost for a single SERP request at the given depth. */
-export function costPerSerpAtDepth(
-  depth: number,
-  method: RankCheckMethod,
-): number {
+function costPerSerpAtDepth(depth: number, method: RankCheckMethod): number {
   const pages = depth / 10;
   return method === "queued"
     ? QUEUED_BASE_PAGE_COST_USD + (pages - 1) * QUEUED_EXTRA_PAGE_COST_USD
@@ -80,7 +77,7 @@ export function pagesToDepth(pages: number): number {
 const SERP_OPERATOR_KEYWORD =
   /(allinanchor|allintext|allintitle|allinurl|cache|define|definition|filetype|id|inanchor|info|intext|intitle|inurl|link|site):/i;
 
-export function serpKeywordCostMultiplier(keyword: string) {
+function serpKeywordCostMultiplier(keyword: string) {
   return SERP_OPERATOR_KEYWORD.test(keyword) ? 5 : 1;
 }
 
@@ -135,12 +132,12 @@ type ScheduledRankTrackingInterval = Exclude<
 
 // Values written to rank_tracking_configs.last_skip_reason (free-form text in
 // the schema; this union keeps writers and UI comparisons in sync).
-export type RankTrackingSkipReason =
+type RankTrackingSkipReason =
   | "plan_required"
   | "no_keywords"
   | "insufficient_credits";
 
-export function estimateScheduledRankCheckCredits(
+function estimateScheduledRankCheckCredits(
   keywords: readonly string[],
   devices: RankTrackingConfig["devices"],
   depth: number,
@@ -164,7 +161,7 @@ export function estimateScheduledRankCheckCredits(
   };
 }
 
-export function isScheduledRankTrackingInterval(
+function isScheduledRankTrackingInterval(
   interval: RankTrackingConfig["scheduleInterval"],
 ): interval is ScheduledRankTrackingInterval {
   return interval !== "manual";

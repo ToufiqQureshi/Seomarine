@@ -1,10 +1,6 @@
 {
-  // Go toolchain binaries used by the backend workflow, not npm dependencies.
-  "ignoreBinaries": ["gofmt"],
   "entry": [
-    "src/main.tsx",
     "src/router.tsx",
-    "src/routes/**/*.ts",
     "src/routes/**/*.tsx",
     // shadcn components are copied in whole; pages use only some exports
     "src/client/components/ui/**",

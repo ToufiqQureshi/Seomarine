@@ -1,9 +1,11 @@
-import { Link } from "@tanstack/react-router";
 import { ShieldAlert, Wrench } from "lucide-react";
 import { GateCard } from "@/client/components/GateCard";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { Button } from "@/client/components/ui/button";
 
+// Shown when the server cannot run SAM right now. The model key belongs to
+// Seomarine, so there is nothing for the customer to configure: only wait and
+// retry.
 export function SamSetupGate({
   errorMessage,
   isRefetching,
@@ -17,47 +19,17 @@ export function SamSetupGate({
     <GateCard
       icon={Wrench}
       tone="warning"
-      title="Enable AI Features"
+      title="SAM is unavailable right now"
       description={
-        <>
-          <p>
-            SAM, Seomarine&apos;s in-app AI agent, needs an OpenRouter API key.
-            Create a key on OpenRouter, set it as the{" "}
-            <code>OPENROUTER_API_KEY</code> environment variable, restart
-            Seomarine, then confirm here.
-          </p>
-          <p className="text-xs">
-            Step-by-step instructions for every deployment are in the{" "}
-            <Link
-              className="underline underline-offset-2 hover:text-foreground"
-              to="/help/openrouter-api-key"
-            >
-              OpenRouter API key setup guide
-            </Link>
-            .
-          </p>
-        </>
+        <p>
+          SAM, Seomarine&apos;s in-app AI agent, can&apos;t start at the moment.
+          Try again in a few minutes.
+        </p>
       }
       actions={
-        <>
-          <Button size="lg" pending={isRefetching} onClick={onRetry}>
-            Confirm API Key
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            nativeButton={false}
-            render={
-              <a
-                href="https://openrouter.ai/settings/keys"
-                target="_blank"
-                rel="noreferrer"
-              />
-            }
-          >
-            Open OpenRouter Keys
-          </Button>
-        </>
+        <Button size="lg" pending={isRefetching} onClick={onRetry}>
+          Try again
+        </Button>
       }
     >
       {errorMessage ? (

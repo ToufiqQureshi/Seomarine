@@ -47,6 +47,8 @@ type Config struct {
 	// BillingMonthlyCreditsUSD is granted to an organization on each paid
 	// subscription charge. Zero grants nothing; the owner sets the amount.
 	BillingMonthlyCreditsUSD float64
+	// OpenRouterModel overrides the SAM chat model (OPENROUTER_MODEL).
+	OpenRouterModel string
 	// Loops configures hosted teammate invitation email.
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
@@ -180,6 +182,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Razorpay:                     rzp,
 		DataForSEOAPIKey:             strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
 		OpenRouterAPIKey:             strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
 		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
 		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
 		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),

@@ -8,7 +8,7 @@
  * The token IS the capability — there is no second factor on `/s/<token>` — so
  * it comes from `crypto.getRandomValues`, never `Math.random` or a uuid.
  */
-export function mintShareToken(): string {
+function mintShareToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   return btoa(String.fromCharCode(...bytes))
     .replaceAll("+", "-")

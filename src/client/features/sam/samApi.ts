@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import { apiRequest } from "@/client/lib/seomarineApi";
 import { z } from "zod";
 
@@ -10,7 +11,7 @@ const samSessionSchema = z.object({
   updatedAt: z.string(),
 });
 
-export type SamSession = z.infer<typeof samSessionSchema>;
+type SamSession = z.infer<typeof samSessionSchema>;
 
 export async function getSamAccessSetupStatus({
   data,
@@ -68,4 +69,51 @@ export async function archiveSamSession({
     "POST",
     { sessionId: parsed.sessionId },
   );
+}
+
+// Stored messages are AI SDK UIMessages: the server builds the parts from the
+// same events it streams, so the chat view renders history and live replies
+// the same way.
+const samMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant"]),
+  parts: z.array(z.looseObject({ type: z.string() })),
+});
+
+export async function listSamMessages({
+  data,
+}: {
+  data: { projectId: string; sessionId: string };
+}): Promise<UIMessage[]> {
+  const parsed = projectInput
+    .extend({ sessionId: z.string().min(1) })
+    .parse(data);
+  const messages = await apiRequest(
+    `/api/v1/projects/${encodeURIComponent(parsed.projectId)}/sam/sessions/messages`,
+    z.array(samMessageSchema),
+    "POST",
+    { sessionId: parsed.sessionId },
+  );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parts are the server's own UIMessage parts; the schema checks their envelope, not every tool shape
+  return messages as UIMessage[];
+}
+
+export async function rewindSamSession({
+  data,
+}: {
+  data: { projectId: string; sessionId: string; messageId: string };
+}) {
+  const parsed = projectInput
+    .extend({ sessionId: z.string().min(1), messageId: z.string().min(1) })
+    .parse(data);
+  return apiRequest(
+    `/api/v1/projects/${encodeURIComponent(parsed.projectId)}/sam/sessions/rewind`,
+    z.object({ ok: z.literal(true) }),
+    "POST",
+    { sessionId: parsed.sessionId, messageId: parsed.messageId },
+  );
+}
+
+export function samChatUrl(projectId: string): string {
+  return `/api/v1/projects/${encodeURIComponent(projectId)}/sam/sessions/chat`;
 }

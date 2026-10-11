@@ -59,7 +59,7 @@ export const RESEARCH_SCOPE_EXAMPLES: Record<ResearchScope, string> = {
   subdomains: "*.example.com/*",
 };
 
-export type ResearchTarget = {
+type ResearchTarget = {
   scope: ResearchScope;
   /** Lowercased hostname with a leading `www.` stripped. */
   hostname: string;

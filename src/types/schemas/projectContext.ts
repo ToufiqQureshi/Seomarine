@@ -51,7 +51,7 @@ const customSectionSlugSchema = z
     "Lowercase letters and digits separated by hyphens, e.g. 'launch-plan'. No underscores or spaces. Use the same slug to edit or delete the section.",
   );
 
-export const CUSTOM_SECTION_KEY_PREFIX = "custom:";
+const CUSTOM_SECTION_KEY_PREFIX = "custom:";
 
 const competitorInputSchema = z.object({
   domain: z.string().trim().min(1).max(255),
@@ -111,11 +111,11 @@ const projectContextUpdateSchema = z.union([
 
 export type ProjectContextUpdate = z.infer<typeof projectContextUpdateSchema>;
 
-export const getProjectContextSchema = z.object({
+const getProjectContextSchema = z.object({
   projectId: z.string().min(1),
 });
 
-export const updateProjectContextSchema = z.object({
+const updateProjectContextSchema = z.object({
   projectId: z.string().min(1),
   updates: z.array(projectContextUpdateSchema).min(1).max(50),
 });

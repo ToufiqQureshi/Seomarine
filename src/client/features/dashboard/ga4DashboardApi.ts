@@ -24,7 +24,7 @@ type Totals = {
   keyEvents: number | null;
 };
 
-export type Ga4DashboardReport =
+type Ga4DashboardReport =
   | { connected: false }
   | {
       connected: true;

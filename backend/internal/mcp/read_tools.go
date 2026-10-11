@@ -104,7 +104,7 @@ func handleAuditStatus(ctx context.Context, raw json.RawMessage, env *callEnv) (
 	if err != nil {
 		return nil, err
 	}
-	return mcpResponse(fmt.Sprintf("Audit %s (%s): %s â€” %d/%d pages", status.ID, status.StartURL, status.Status, status.PagesCrawled, status.PagesTotal), map[string]any{"status": status}, metaFields{ProjectID: access.Project.ID, URL: buildDashboardURL(env.auth.BaseURL, "/p/"+access.Project.ID+"/audit/"+id, nil)}), nil
+	return mcpResponse(fmt.Sprintf("Audit %s (%s): %s — %d/%d pages", status.ID, status.StartURL, status.Status, status.PagesCrawled, status.PagesTotal), map[string]any{"status": status}, metaFields{ProjectID: access.Project.ID, URL: buildDashboardURL(env.auth.BaseURL, "/p/"+access.Project.ID+"/audit/"+id, nil)}), nil
 }
 func handleAuditPages(ctx context.Context, raw json.RawMessage, env *callEnv) (*callResult, error) {
 	var a struct {

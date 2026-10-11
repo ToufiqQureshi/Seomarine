@@ -46,6 +46,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
@@ -211,6 +212,7 @@ func run(logger *slog.Logger) error {
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
 	emailAuthSvc := buildEmailAuth(cfg, logger, db, rdb, authService)
+	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps)
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -250,6 +252,7 @@ func run(logger *slog.Logger) error {
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
+			SAMChat:              samChat,
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
 			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
@@ -299,16 +302,9 @@ func run(logger *slog.Logger) error {
 	return nil
 }
 
-// buildAuditService wires the audit engine: the SSRF-guarded crawler, the
-// Lighthouse provider, the Postgres-backed job scheduler and the background
-// worker that runs audits.
 // rankTickInterval is how often the rank tracking scheduler looks for due checks.
 const rankTickInterval = 5 * time.Minute
 
-// buildRankChecks starts the rank check worker and returns the service that
-// queues checks. Without a DataForSEO key it returns nil and the check route
-// answers 503. Checks run ungated only when billing is not configured, as for
-// a self-hosted deployment.
 // buildEmailAuth wires the email and password routes. They exist only in
 // hosted mode and need the public URL; email verification and password reset
 // need Loops, and without it those two features answer "not enabled".
@@ -342,6 +338,33 @@ func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rd
 	return emailauth.New(svc)
 }
 
+// buildSAMChat wires the SAM agent. The model key is Seomarine's own, never the
+// customer's: it returns nil without OPENROUTER_API_KEY and the chat routes
+// then answer 503. Every turn is gated on and charged to the organization's
+// credits.
+func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps) *sam.Chat {
+	if cfg.OpenRouterAPIKey == "" {
+		return nil
+	}
+	model := cfg.OpenRouterModel
+	if model == "" {
+		model = openrouter.DefaultModel
+	}
+	agent := &sam.Agent{
+		LLM:     &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
+		Model:   model,
+		Store:   sam.MessageRepository{DB: db},
+		Titles:  sam.Repository{DB: db},
+		Memory:  sam.ProjectMemory{Service: memory},
+		Runner:  mcp.NewRunner(*mcpDeps),
+		Guard:   audit.NewGuard(),
+		BaseURL: cfg.PublicURL.String(),
+		Logger:  logger,
+	}
+	agent.Meter = sam.LedgerMeter{Ledger: billing.NewCreditLedgerService(db)}
+	return sam.NewChat(agent, sam.ContextLoader{DB: db}, sam.MessageRepository{DB: db})
+}
+
 func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {
 	if api == nil {
 		return nil
@@ -370,6 +393,9 @@ func buildGSCConnectionOperations(db *pgxpool.Pool, api *google.APIClient, oauth
 	return operations
 }
 
+// buildRankChecks starts the rank check worker and returns the service that
+// queues checks. Without a DataForSEO key it returns nil and the check route
+// answers 503. Checks run ungated only when billing is not configured.
 func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, billingSvc *billing.Service, dfClient *dataforseo.Client) (*ranktracking.Checks, error) {
 	if dfClient == nil {
 		return nil, nil
@@ -420,6 +446,9 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 	return checks, nil
 }
 
+// buildAuditService wires the audit engine: the SSRF-guarded crawler, the
+// Lighthouse provider, the Postgres-backed job scheduler and the background
+// worker that runs audits.
 func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
 	progress := audit.NewProgress(rdb)

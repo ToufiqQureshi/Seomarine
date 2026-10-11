@@ -10,5 +10,5 @@ export const LIGHTHOUSE_CATEGORY_TABS = [
   ...LIGHTHOUSE_CATEGORIES,
 ] as const;
 
-export type LighthouseCategory = (typeof LIGHTHOUSE_CATEGORIES)[number];
+type LighthouseCategory = (typeof LIGHTHOUSE_CATEGORIES)[number];
 export type LighthouseCategoryTab = (typeof LIGHTHOUSE_CATEGORY_TABS)[number];

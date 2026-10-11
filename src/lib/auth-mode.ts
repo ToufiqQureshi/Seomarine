@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-export const AUTH_MODES = [
-  "cloudflare_access",
-  "local_noauth",
-  "hosted",
-] as const;
+const AUTH_MODES = ["cloudflare_access", "local_noauth", "hosted"] as const;
 
 type AuthMode = (typeof AUTH_MODES)[number];
 

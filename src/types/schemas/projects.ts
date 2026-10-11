@@ -63,7 +63,7 @@ export const updateProjectSchema = z
   })
   .refine(hasLocationForLanguage, marketPairMessage);
 
-export const setProjectWebsiteSchema = z.object({
+const setProjectWebsiteSchema = z.object({
   projectId: z.string().min(1),
   domain: z.string().trim().min(1).max(255),
   locationCode: z
@@ -91,4 +91,4 @@ export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type ArchiveProjectInput = z.infer<typeof archiveProjectSchema>;
 export type RestoreProjectInput = z.infer<typeof restoreProjectSchema>;
 
-export type SetProjectWebsiteInput = z.infer<typeof setProjectWebsiteSchema>;
+type SetProjectWebsiteInput = z.infer<typeof setProjectWebsiteSchema>;

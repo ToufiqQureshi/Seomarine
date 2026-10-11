@@ -15,7 +15,7 @@ import {
 } from "@/shared/billing";
 
 /** The plan and credit shape the billing screens read. */
-export type BillingCustomer = {
+type BillingCustomer = {
   flags: Record<string, { planId: string | null } | undefined>;
   subscriptions: Array<{
     planId: string;
