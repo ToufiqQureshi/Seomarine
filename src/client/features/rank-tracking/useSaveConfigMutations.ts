@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import {
   createRankTrackingConfig,
   updateRankTrackingConfig,
-} from "@/serverFunctions/rank-tracking";
+} from "./rankTrackingApi";
 import { captureClientEvent } from "@/client/lib/posthog";
 import type {
   RankCheckScheduleTime,

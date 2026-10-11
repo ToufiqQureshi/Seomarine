@@ -13,7 +13,7 @@ import {
 import {
   getRankTrackingConfigSummaries,
   updateRankTrackingConfig,
-} from "@/serverFunctions/rank-tracking";
+} from "./rankTrackingApi";
 import { devicesLabel, scheduleLabel } from "@/shared/rank-tracking";
 import { formatNextCheck } from "./scheduleTime";
 import { formatLocationLabel } from "@/shared/keyword-locations";

@@ -25,8 +25,8 @@ import {
 import { buildCsv, type CsvValue } from "@/client/lib/csv";
 import { exportRows } from "@/client/lib/exportRows";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { getRankKeywordHistory } from "@/serverFunctions/rank-tracking";
-import type { RankKeywordHistoryPoint } from "@/serverFunctions/rank-tracking";
+import { getRankKeywordHistory } from "./rankTrackingApi";
+import type { RankKeywordHistoryPoint } from "./rankTrackingApi";
 import { LOCATIONS } from "@/client/features/keywords/locations";
 import { formatLocationLabel } from "@/shared/keyword-locations";
 import { csvChange, DeviceRankCell } from "./RankTrackingTableParts";

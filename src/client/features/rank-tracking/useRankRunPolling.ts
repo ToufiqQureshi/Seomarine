@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getLatestRankRun } from "@/serverFunctions/rank-tracking";
+import { getLatestRankRun } from "./rankTrackingApi";
 
 /**
  * Polls the latest rank check run for a config, auto-refreshing results

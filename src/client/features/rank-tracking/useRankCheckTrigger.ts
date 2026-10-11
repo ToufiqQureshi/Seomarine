@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { triggerRankCheck } from "@/serverFunctions/rank-tracking";
+import { triggerRankCheck } from "./rankTrackingApi";
 
 export function useRankCheckTrigger({
   configId,
