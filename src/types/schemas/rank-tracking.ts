@@ -1,6 +1,4 @@
-import type { InferSelectModel } from "drizzle-orm";
 import { z } from "zod";
-import { rankTrackingConfigs } from "@/db/schema";
 import { isSupportedLanguageCode } from "@/shared/keyword-locations";
 import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
 import { comparePeriodSchema } from "@/types/schemas/rank-tracking-search";
@@ -10,7 +8,22 @@ import { domainField } from "@/types/schemas/domain";
 // DB-derived types
 // ---------------------------------------------------------------------------
 
-export type RankTrackingConfig = InferSelectModel<typeof rankTrackingConfigs>;
+export type RankTrackingConfig = {
+  id: string;
+  projectId: string;
+  domain: string;
+  locationCode: number;
+  languageCode: string;
+  devices: "both" | "desktop" | "mobile";
+  serpDepth: number;
+  scheduleInterval: "daily" | "weekly" | "monthly" | "manual";
+  locationName: string | null;
+  isActive: boolean;
+  lastCheckedAt: string | null;
+  nextCheckAt: string | null;
+  lastSkipReason: string | null;
+  createdAt: string;
+};
 
 // ---------------------------------------------------------------------------
 // API / UI types
@@ -49,8 +62,8 @@ export interface RankTrackingRow {
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-const devicesEnum = z.enum(rankTrackingConfigs.devices.enumValues);
-const scheduleEnum = z.enum(rankTrackingConfigs.scheduleInterval.enumValues);
+const devicesEnum = z.enum(["both", "desktop", "mobile"]);
+const scheduleEnum = z.enum(["daily", "weekly", "monthly", "manual"]);
 // Rank tracking runs against the SERP API, which serves any language in any
 // country — but an unknown code is a *charged* DataForSEO failure, so reject
 // it here at cost 0.
