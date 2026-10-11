@@ -1,0 +1,29 @@
+openapi: 3.1.0
+info:
+  title: Seomarine billing
+  version: 1.0.0
+paths:
+  /api/v1/billing/credits:
+    get:
+      summary: Read available organization credits
+      operationId: getCreditBalance
+      description: Returns the signed-in user's active organization's available credit balance.
+      responses:
+        "200":
+          description: Available credits
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balanceCredits]
+                properties:
+                  balanceCredits:
+                    type: integer
+                    format: int64
+                    minimum: 0
+        "403":
+          description: No authenticated organization is active.
+        "500":
+          description: Balance lookup failed.
+        "503":
+          description: Credit ledger is unavailable.
