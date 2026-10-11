@@ -44,6 +44,8 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey enables the self-hosted SAM agent.
 	OpenRouterAPIKey string
+	// OpenRouterModel overrides the SAM chat model (OPENROUTER_MODEL).
+	OpenRouterModel string
 	// AutumnSecretKey enables hosted billing-usage event history.
 	AutumnSecretKey string
 	// Loops configures hosted teammate invitation email.
@@ -159,6 +161,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Razorpay:                  rzp,
 		DataForSEOAPIKey:          strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
 		OpenRouterAPIKey:          strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		OpenRouterModel:           strings.TrimSpace(getenv("OPENROUTER_MODEL")),
 		AutumnSecretKey:           strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
 		LoopsAPIKey:               strings.TrimSpace(getenv("LOOPS_API_KEY")),
 		LoopsInvitationTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),

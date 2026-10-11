@@ -42,6 +42,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
@@ -204,6 +205,7 @@ func run(logger *slog.Logger) error {
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
+	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps)
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -240,6 +242,7 @@ func run(logger *slog.Logger) error {
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
+			SAMChat:              samChat,
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
 			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
@@ -299,6 +302,37 @@ const rankTickInterval = 5 * time.Minute
 // queues checks. Without a DataForSEO key it returns nil and the check route
 // answers 503. Checks run ungated only when billing is not configured, as for
 // a self-hosted deployment.
+// buildSAMChat wires the SAM agent. It returns nil without an OpenRouter key,
+// and the chat routes then answer 503. Hosted deployments meter provider spend
+// against the organization's credits; self-hosted ones bring their own key and
+// are never metered.
+func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps) *sam.Chat {
+	if cfg.OpenRouterAPIKey == "" {
+		return nil
+	}
+	hosted := cfg.AuthMode == "hosted"
+	model := cfg.OpenRouterModel
+	if model == "" {
+		model = openrouter.DefaultModel
+	}
+	agent := &sam.Agent{
+		LLM:     &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
+		Model:   model,
+		Store:   sam.MessageRepository{DB: db},
+		Titles:  sam.Repository{DB: db},
+		Memory:  sam.ProjectMemory{Service: memory},
+		Runner:  mcp.NewRunner(*mcpDeps),
+		Guard:   audit.NewGuard(),
+		Hosted:  hosted,
+		BaseURL: cfg.PublicURL.String(),
+		Logger:  logger,
+	}
+	if hosted {
+		agent.Meter = sam.LedgerMeter{Ledger: billing.NewCreditLedgerService(db)}
+	}
+	return sam.NewChat(agent, sam.ContextLoader{DB: db, Hosted: hosted}, sam.MessageRepository{DB: db})
+}
+
 func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {
 	if api == nil {
 		return nil

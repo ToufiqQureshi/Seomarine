@@ -111,6 +111,8 @@ type Deps struct {
 	Projects *projects.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// SAMChat serves SAM conversations; nil answers 503 (no OpenRouter key).
+	SAMChat *sam.Chat
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
 	Onboarding     *onboarding.Service
 	WorkspaceMerge *workspace.Service
@@ -212,7 +214,7 @@ func NewHandler(d Deps) http.Handler {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid SAM setup request.")
 			return
 		}
-		enabled := d.HostedMode || d.OpenRouterConfigured
+		enabled := d.OpenRouterConfigured
 		var message *string
 		if !enabled {
 			text := "OPENROUTER_API_KEY is not set for this deployment yet. Add it to your environment, restart Seomarine, then confirm here."
@@ -289,7 +291,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	sam.Mount(mux, sam.Deps{
-		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession,
+		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession, Chat: d.SAMChat,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	onboarding.Mount(mux, onboarding.Deps{Logger: d.Logger, Service: d.Onboarding, WithSession: withSession})

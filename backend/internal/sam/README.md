@@ -1,31 +1,113 @@
-# SAM sessions
+# SAM
 
-## Status
+SAM is the in-app SEO agent: a project-bound chat that can call the same
+tools Seomarine exposes over MCP. This package owns the session registry, the
+conversation routes, the agent loop and its tool surface.
 
-Go now serves the SAM session registry: project-scoped list, create and soft
-archive routes. The code reads the existing `sam_sessions` table so session IDs
-and transcripts remain shared with the current chat runtime. No new table or
-migration is needed.
+## Flow of one turn
 
-The AI chat loop, streaming transcript storage, tools, skills, context blocks,
-credit metering and telemetry remain in the TypeScript Cloudflare Durable
-Object. The React client is not switched to these routes yet.
+1. `POST .../sam/sessions/chat` validates the body, loads the caller's own
+   active session (`ContextLoader`), claims the session (one turn at a time) and
+   stores the user message.
+2. `Agent.Run` opens the event stream and gates the turn: in hosted mode no
+   credits or no membership means a canned reply, with no provider call.
+3. The system prompt is rebuilt fresh: identity, the project's shared memory
+   (`projectcontext`), the skill catalog, and the rolling summary if the chat has
+   one. Context written by another session, the settings UI or an MCP client is
+   therefore current on every turn.
+4. Up to 40 steps: stream one OpenRouter completion, run the tool calls it asked
+   for, feed the results back. Every event goes out as an AI SDK UI message
+   stream chunk and is folded into the assistant message that gets stored.
+5. The assistant message is stored, unbilled spend is charged, the session is
+   named from its first message (or touched), and a long chat is compacted.
 
-## Behavior
+The reply streams as server-sent events in the AI SDK UI message stream format
+(`x-vercel-ai-ui-message-stream: v1`), so the React client keeps using `useChat`.
+A test parses the real output with the SDK's own parser.
 
-- Every route requires a signed-in project member. Lists only include the
-  caller's active sessions, ordered by `updated_at DESC, id DESC`.
-- Creating a session inserts the same `New chat` registry row used by the
-  current client.
-- Archiving is a soft update scoped by session ID, project ID and user ID.
-  Archived sessions disappear from the list; their transcript is retained.
-- Requests are POST JSON objects and reject unknown fields.
+## Endpoints
 
-Routes and request contracts are in `backend/api/sam.yaml`.
+All are `POST /api/v1/projects/{projectId}/sam/...`, need a session and project
+membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 
-## Deliberate differences
+- `sessions/list`, `sessions/create`, `sessions/archive`: the registry.
+- `sessions/messages`: the stored transcript, oldest first.
+- `sessions/chat`: send a message, stream the reply. `409` while a reply is
+  running or when the message id was already used.
+- `sessions/rewind`: delete a message and everything after it. Stops a running
+  turn first, otherwise its loop would store a reply to a message that is gone.
+- `access-setup-status` lives in `httpapi`.
 
-The legacy list/create server functions also emit product analytics events.
-These Go routes do not emit those events. The chat connection still uses the
-existing authorized Durable Object path until the agent runtime and UI are
-ported.
+## Tables
+
+- `sam_sessions` (legacy table): the registry row. `updated_at` is ISO text, so
+  title and touch updates write the same format.
+- `go_sam_messages`: the transcript. `parts` is jsonb in AI SDK `UIMessage` part
+  shape, so history and live replies render identically.
+- `go_sam_session_summaries`: one rolling summary per session.
+
+## Env vars
+
+- `OPENROUTER_API_KEY`: required. Without it the chat routes answer 503 and the
+  setup gate tells the user what to add.
+- `OPENROUTER_MODEL`: optional. Default `openai/gpt-5.6-luna` at reasoning
+  effort `max`.
+
+## Rules that must never break
+
+- **The project is bound server-side.** `projectId` is removed from every tool
+  schema the model sees and injected at call time. A `projectId` the model
+  supplies anyway is overwritten; a tool that takes none never receives one.
+- Sessions are loaded by `(session, project, user)` and a miss is "not found",
+  never "forbidden". Archived sessions and projects are not loadable.
+- The allowlist (`samMCPTools`) is explicit. A test builds it against the real
+  MCP registry, so a renamed or removed tool fails the build instead of silently
+  vanishing from SAM. `list_projects`, `create_project`, report tools and audit
+  history/delete are deliberately absent.
+- Tool results are capped (`capToolOutput`) before the model sees them; every
+  result is re-sent on each later step of its turn.
+- Reasoning is never sent back to the provider.
+- Spend is charged in chunks and flushed on every exit path (done, error,
+  client left), on a context that outlives the request. A stopped turn still
+  consumed what it consumed. The refusal replies are free.
+- Site reading goes through the audit `Guard` (private, loopback and link-local
+  addresses blocked at dial time); a redirect is followed one hop, after the
+  destination passes the same validation.
+
+## Edge cases
+
+- A message containing a NUL byte would make Postgres reject the whole jsonb
+  insert and lose the reply; `stripNULEscapes` removes them before the write.
+- A tool call with invalid JSON arguments gets `{}` as its stream input and an
+  error result, so the model can recover and the stream stays valid.
+- A tool that never returned (client left mid-tool) is stored as `output-error`,
+  never left "running".
+- Provider failures reach the client as a generic error chunk; provider text is
+  logged, not shown.
+- A removed member keeps no access: membership is read on every turn, and
+  hosted mode refuses a missing member row.
+
+## Production limits
+
+- The one-turn-per-session lock is in memory, so it assumes one server
+  instance. Running several replicas needs a Redis lock before it is safe.
+- Compaction runs between turns only. A single turn is bounded by 40 steps, 16k
+  output tokens per step and the tool output cap, not by a mid-turn guard.
+
+## Deliberate differences from the TypeScript version
+
+- **Transport.** HTTP + SSE replaces the Cloudflare Durable Object websocket.
+  Stopping the reply is aborting the request. There is no reconnect or
+  "recovering" state because no process holds a turn that can be reset.
+- **Credits.** Hosted turns are gated and charged against the Go credit ledger
+  (`go_billing_credits`), not Autumn. 1 credit = $0.001 of provider cost with the
+  usual 1.28 markup, rounded up. Self-hosted is never gated or metered.
+- **Telemetry.** The `sam:turn` PostHog events are not ported; failures are
+  logged with `slog`.
+- **Transcripts.** Existing Durable Object transcripts are not migrated.
+- **Model routing.** The MiniMax-specific provider pinning is not ported; any
+  `OPENROUTER_MODEL` is called with default routing.
+- **Dev tools.** The dev-only "clear history" button is gone; rewind covers it.
+- **Skills and fact sheet.** `skills/*.md` and `product_fact_sheet.md` are copies
+  of files outside the Go module. `TestEmbeddedCopiesMatchTheirSources` fails
+  when they drift. The legacy fact sheet is deleted at cutover.

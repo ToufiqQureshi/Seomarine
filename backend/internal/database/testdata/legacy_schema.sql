@@ -61,4 +61,14 @@ CREATE TABLE IF NOT EXISTS projects (
     archived_at text
 );
 
+CREATE TABLE IF NOT EXISTS sam_sessions (
+    id text PRIMARY KEY,
+    project_id text NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
+    user_id text NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+    title text NOT NULL DEFAULT 'New chat',
+    created_at text NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    updated_at text NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    archived_at text
+);
+
 COMMIT;
