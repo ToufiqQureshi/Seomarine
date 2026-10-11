@@ -137,3 +137,34 @@ func TestDispatcherDoesNotProxyUnknownTools(t *testing.T) {
 		t.Fatalf("response = %s, want method-not-found for an unknown tool", rec.Body.String())
 	}
 }
+
+func TestToolCallArgumentsUnwrapsArguments(t *testing.T) {
+	tests := []struct {
+		name   string
+		params string
+		want   string
+	}{
+		{"arguments object", `{"name":"x","arguments":{"projectId":"p"}}`, `{"projectId":"p"}`},
+		{"missing arguments", `{"name":"x"}`, `{}`},
+		{"null arguments", `{"name":"x","arguments":null}`, `{}`},
+		{"malformed params", `{`, `{}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := string(toolCallArguments(json.RawMessage(tt.params))); got != tt.want {
+				t.Fatalf("toolCallArguments(%s) = %s, want %s", tt.params, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDispatcherPassesArgumentsToHandler(t *testing.T) {
+	h := newHandler(Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_search_console_performance","arguments":{"projectId":"p"}}}`
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/mcp", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.serveRPC(context.Background(), rec, r, Auth{})
+	if strings.Contains(rec.Body.String(), "projectId is required") {
+		t.Fatalf("handler did not receive the call arguments: %s", rec.Body.String())
+	}
+}

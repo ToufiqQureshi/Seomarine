@@ -19,6 +19,22 @@ func toolCallName(params json.RawMessage) string {
 	return call.Name
 }
 
+// toolCallArguments extracts the tool's own arguments from tools/call params.
+// A missing or null value means no arguments, which handlers read as an empty
+// object.
+func toolCallArguments(params json.RawMessage) json.RawMessage {
+	var call struct {
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal(params, &call); err != nil {
+		return json.RawMessage(`{}`)
+	}
+	if len(call.Arguments) == 0 || string(call.Arguments) == "null" {
+		return json.RawMessage(`{}`)
+	}
+	return call.Arguments
+}
+
 // listTools returns the complete Go-owned MCP tool registry.
 func (h *handler) listTools() ([]json.RawMessage, error) {
 	local := make([]json.RawMessage, 0, len(registry()))
