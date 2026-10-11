@@ -38,7 +38,7 @@ rules: 1.28 markup over provider cost and 1,000 credits per USD.
 ## Implementation status
 
 The ledger correctness change and schema update are on the credits work branch.
-Authenticated balance HTTP wiring, DataForSEO/MCP reserve-before-call and
-settle/refund-after-call, Razorpay-plan integration in place of Autumn usage,
-and end-to-end validation remain pending. Do not consider credits migration
+The authenticated balance endpoint is wired. DataForSEO/MCP
+reserve-before-call and settle/refund-after-call, Razorpay-plan integration in
+place of Autumn usage, and end-to-end validation remain pending. Do not consider credits migration
 complete until those pieces and real PostgreSQL tests pass.
