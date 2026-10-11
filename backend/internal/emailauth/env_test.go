@@ -86,8 +86,6 @@ type fakeLimiter struct {
 func (l *fakeLimiter) Allow(_ context.Context, key string, _ int, _ time.Duration) (bool, time.Duration, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	l.keys = append(l.keys, key)
 	if l.err != nil {
 		return true, 0, l.err
