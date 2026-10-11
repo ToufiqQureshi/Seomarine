@@ -11,7 +11,7 @@ import {
   formatCtr,
   formatPosition,
 } from "@/client/features/search-performance/SearchPerformanceColumns";
-import { getSearchPerformanceReport } from "@/serverFunctions/searchPerformance";
+import { getSearchPerformanceReport } from "@/client/features/search-performance/searchPerformanceApi";
 import {
   EmptyCardBody,
   formatDay,

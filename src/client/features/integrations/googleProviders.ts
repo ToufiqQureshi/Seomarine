@@ -18,7 +18,7 @@ import {
   getGscConnection,
   listGscSites,
   setGscSite,
-} from "@/serverFunctions/gsc";
+} from "@/client/features/integrations/gscApi";
 import { GA4_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/ga4";
 import { GSC_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/gsc";
 

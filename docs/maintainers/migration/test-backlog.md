@@ -7,13 +7,15 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **3 files**.
+Current confirmed count: **5 files**.
 
-| Feature / slice              | Test file to add at the end                              | Coverage to add                                                                                                                                    |
-| ---------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GA4 dashboard Go API cutover | `src/client/features/dashboard/ga4DashboardApi.test.ts`  | Maps Go overview totals and trend rows, fills missing dates with zero sessions, and handles disconnected / expired / inaccessible GA4 connections. |
-| Projects API cutover         | `src/client/features/projects/projectApi.test.ts`        | Covers project list/create/update/archive/restore/access request mapping and response parsing.                                                     |
-| Project context API cutover  | `src/client/features/projects/projectContextApi.test.ts` | Covers context read/update paths, payloads, and response parsing.                                                                                  |
+| Feature / slice              | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GA4 dashboard Go API cutover | `src/client/features/dashboard/ga4DashboardApi.test.ts`               | Maps Go overview totals and trend rows, fills missing dates with zero sessions, and handles disconnected / expired / inaccessible GA4 connections. |
+| Projects API cutover         | `src/client/features/projects/projectApi.test.ts`                     | Covers project list/create/update/archive/restore/access request mapping and response parsing.                                                     |
+| Project context API cutover  | `src/client/features/projects/projectContextApi.test.ts`              | Covers context read/update paths, payloads, and response parsing.                                                                                  |
+| GSC connection API cutover   | `src/client/features/integrations/gscApi.test.ts`                     | Covers grant status, connection status, site listing/selection, and disconnect request mapping.                                                    |
+| GSC performance API cutover  | `src/client/features/search-performance/searchPerformanceApi.test.ts` | Covers report/table/export payload normalization and connected/disconnected response parsing.                                                      |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

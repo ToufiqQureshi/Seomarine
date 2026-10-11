@@ -14,7 +14,7 @@ import { startGoogleLink } from "@/client/features/integrations/startGoogleLink"
 import { onboardingAnswersQueryOptions } from "@/client/features/onboarding/onboardingModel";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
-import { getGscGrantStatus } from "@/serverFunctions/gsc";
+import { getGscGrantStatus } from "@/client/features/integrations/gscApi";
 import { dismissGscNudge } from "@/serverFunctions/onboarding";
 
 /**
