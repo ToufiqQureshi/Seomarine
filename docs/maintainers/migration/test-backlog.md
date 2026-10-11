@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **26 files**.
+Current confirmed count: **28 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,6 +31,8 @@ Current confirmed count: **26 files**.
 | Ahrefs Go service                | `backend/internal/ahrefs/service_test.go`                             | Covers normalization, cache hits including null ratings, batching, provider failures, and result key preservation.                                 |
 | Ahrefs Go handler                | `backend/internal/ahrefs/handler_test.go`                             | Covers session/project authorization, request validation, and responses.                                                                           |
 | Autumn usage Go handler          | `backend/internal/billing/usage_test.go`                              | Covers hosted/self-hosted behavior, pagination, 429 retries, range validation, and provider errors.                                                |
+| Autumn credit-balance Go client | `backend/internal/billing/autumn_test.go`                             | Covers missing configuration, request headers/payload, null balances, provider failures, timeouts, and response bounds.                                |
+| MCP whoami credit lookup         | `backend/internal/mcp/whoami_test.go`                                  | Covers hosted/self-hosted mode, zero and unknown balances, scopes, and upstream failures without charging credits.                                     |
 | Organization Go API              | `backend/internal/auth/organization_handler_test.go`                  | Covers membership context, active organization switching, team listing permissions, and ownership transfer.                                        |
 | Workspace merge Go service       | `backend/internal/workspace/merge_test.go`                            | Covers disabled auth modes, idempotency, project renaming, record repointing, and earliest activation milestones.                                  |
 | Team invitation Go service       | `backend/internal/team/invitations_test.go`                           | Covers permissions, deduped pending invitations, daily limits, email payloads, and failed delivery.                                                |

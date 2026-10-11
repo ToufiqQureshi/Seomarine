@@ -45,6 +45,9 @@ type Deps struct {
 	Redis          *redis.Client
 	Auth           *auth.Service
 	Billing        *billing.Service
+	// Hosted follows AUTH_MODE, independently of Razorpay configuration.
+	Hosted bool
+	AutumnCredits *billing.AutumnCreditClient
 	Upstream       *url.URL
 	PublicURL      *url.URL
 	Audit          *audit.Service
