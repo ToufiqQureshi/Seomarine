@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **53 files**.
+Current confirmed count: **54 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -52,6 +52,7 @@ Current confirmed count: **53 files**.
 | Go MCP business reviews tool | `backend/internal/mcp/business_reviews_test.go` | Covers auth, identifier/task ID validation, billed task creation, Google/extended endpoints, resumable polling, empty results, review projection/totals, and collection failures. |
 | Go MCP business updates tool | `backend/internal/mcp/business_updates_test.go` | Covers authorization, one identifier/task ID, location defaults, billed task posting, free resumable polling, empty results, output projection, and failures. |
 | Go MCP local rank grid tool | `backend/internal/mcp/local_rank_grid_test.go` | Covers authorization, grid geometry and zoom, provider concurrency and billing, identity matching, partial/all failures, fatal billing/auth aborts before later billed batches, rank summaries, and rendered output. |
+| Go MCP OAuth provider | `backend/internal/mcp/oauth_test.go` | Covers client registration, redirect URI validation, PKCE code exchange, refresh rotation, token auth, metadata, consent origin checks, and OAuth challenges. |
 | Go MCP domain overview tool       | `backend/internal/mcp/domain_overview_test.go`                      | Covers project auth, project-market fallback, language/location validation, scope aliases, organic metrics, backlink summary, and provider errors. |
 | Go MCP backlinks profile tool     | `backend/internal/mcp/backlinks_profile_test.go`                    | Covers project auth, target scope, defaults, pagination, sort mapping, filters, spam threshold, grouping mode, row summaries, and provider errors. |
 | Go MCP backlinks overview tool   | `backend/internal/mcp/backlinks_overview_test.go`                   | Covers project auth, scope normalization, summary/trend payloads, subfolder behavior, spam filtering, top referring domains, and provider errors. |
@@ -100,3 +101,8 @@ files.
 These are baseline counts, not files to rewrite automatically. During the final
 test phase, review existing TypeScript coverage against the Go implementations
 and add or move tests only where needed to cover migrated behavior.
+
+The existing `backend/internal/mcp/registry_test.go` still asserts the removed
+legacy proxy merge and calls its old `listTools` signature. Update these tests
+for the Go-only registry in the final test phase; this does not add a new test
+file to the pending count.

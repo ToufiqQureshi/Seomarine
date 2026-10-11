@@ -33,5 +33,5 @@ func (p DataForSEOProvider) LocalSERP(ctx context.Context,org string,in LocalSER
 }
 func FormatLocalSERPCoordinate(lat,lon float64,zoom *int)string{
  format:=func(v float64)string{return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.5f",v),"0"),".")}
- coordinate=format(lat)+","+format(lon);if zoom!=nil{coordinate+=fmt.Sprintf(",%dz",*zoom)};return coordinate
+ coordinate:=format(lat)+","+format(lon);if zoom!=nil{coordinate+=fmt.Sprintf(",%dz",*zoom)};return coordinate
 }

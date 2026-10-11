@@ -11,10 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
@@ -42,34 +42,34 @@ var corsHeaders = map[string]string{
 
 // Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger         *slog.Logger
-	DB             *pgxpool.Pool
-	Redis          *redis.Client
-	Auth           *auth.Service
-	Billing        *billing.Service
+	Logger  *slog.Logger
+	DB      *pgxpool.Pool
+	Redis   *redis.Client
+	Auth    *auth.Service
+	Billing *billing.Service
 	// Hosted follows AUTH_MODE, independently of Razorpay configuration.
-	Hosted bool
-	AutumnCredits *billing.AutumnCreditClient
-	Upstream       *url.URL
-	PublicURL      *url.URL
-	Audit          *audit.Service
-	Backlinks      *backlinks.Service
-	Domain         *domain.Service
-	Locations      *keywords.LocationService
-	SavedKeywords  *keywords.SavedService
+	Hosted          bool
+	AutumnCredits   *billing.AutumnCreditClient
+	PublicURL       *url.URL
+	Audit           *audit.Service
+	Backlinks       *backlinks.Service
+	Domain          *domain.Service
+	Locations       *keywords.LocationService
+	SavedKeywords   *keywords.SavedService
 	KeywordResearch *keywords.ResearchService
-	GA4            *ga4.Service
-	Reports        *reports.Service
-	GSC            *gsc.Service
-	RankTracking   *ranktracking.Service
-	RankChecks     *ranktracking.Checks
-	ProjectContext *projectcontext.Service
+	GA4             *ga4.Service
+	Reports         *reports.Service
+	GSC             *gsc.Service
+	RankTracking    *ranktracking.Service
+	RankChecks      *ranktracking.Checks
+	ProjectContext  *projectcontext.Service
 }
 
 // Mount registers the MCP dispatcher on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	h := newHandler(d)
 	mux.Handle(Route, h)
+	h.mountOAuth(mux)
 }
 
 func newHandler(d Deps) *handler {
@@ -91,15 +91,34 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
 
 	key := apiKeyFromRequest(r)
 	if key == "" {
-		h.proxy(w, r)
+		token := bearerTokenFromRequest(r)
+		if token == "" {
+			h.oauthChallenge(w, r, "")
+			return
+		}
+		auth, ok, err := h.authenticateOAuthToken(ctx, r, token)
+		if err != nil {
+			h.deps.Logger.ErrorContext(r.Context(), "mcp OAuth access token lookup failed", "err", err)
+			h.writeJSON(w, http.StatusInternalServerError, errorResponse(json.RawMessage("null"), codeServerError, "The authorization service is temporarily unavailable."))
+			return
+		}
+		if !ok {
+			h.oauthChallenge(w, r, "invalid_token")
+			return
+		}
+		if limited, retryAfter := h.rateLimited(ctx, auth.UserID); limited {
+			resp := rateLimitedResponse("rate_limited", "Rate limit exceeded: 5000 requests per minute", retryAfter)
+			h.writeJSON(w, resp.status, resp.body)
+			return
+		}
+		h.serveRPC(ctx, w, r, auth)
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
-	defer cancel()
 
 	session, errResp := h.authenticateAPIKey(ctx, r, key)
 	if errResp != nil {

@@ -1,4 +1,4 @@
-// Package mcp serves Go-owned MCP tools and proxies unported tools to the legacy server.
+// Package mcp serves Go-owned MCP tools and OAuth credentials.
 package mcp
 
 import (
@@ -25,7 +25,7 @@ type errResp struct {
 
 // apiKeyFromRequest extracts a Seomarine API key from the x-api-key header or
 // an Authorization: Bearer value. Only oseo_-prefixed credentials are treated
-// as API keys; everything else falls through to the legacy proxy.
+// as API keys; other bearer values are checked as Go-issued OAuth tokens.
 func apiKeyFromRequest(r *http.Request) string {
 	if header := r.Header.Get("x-api-key"); strings.HasPrefix(header, apiKeyPrefix) {
 		return header

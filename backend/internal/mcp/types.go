@@ -64,7 +64,7 @@ type tool struct {
 }
 
 // registry returns every tool the Go server owns, in the legacy registration
-// order. A tool not in this list is proxied to the legacy app.
+// order. The Go dispatcher rejects calls to names outside this list.
 func registry() []*tool {
 	tools := []*tool{
 		whoamiTool(),
