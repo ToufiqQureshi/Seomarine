@@ -9,8 +9,8 @@ conversation routes, the agent loop and its tool surface.
 1. `POST .../sam/sessions/chat` validates the body, loads the caller's own
    active session (`ContextLoader`), claims the session (one turn at a time) and
    stores the user message.
-2. `Agent.Run` opens the event stream and gates the turn: in hosted mode no
-   credits or no membership means a canned reply, with no provider call.
+2. `Agent.Run` opens the event stream and gates the turn: no credits or no
+   membership means a canned reply, with no provider call.
 3. The system prompt is rebuilt fresh: identity, the project's shared memory
    (`projectcontext`), the skill catalog, and the rolling summary if the chat has
    one. Context written by another session, the settings UI or an MCP client is
@@ -48,8 +48,9 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 
 ## Env vars
 
-- `OPENROUTER_API_KEY`: required. Without it the chat routes answer 503 and the
-  setup gate tells the user what to add.
+- `OPENROUTER_API_KEY`: Seomarine's own key, set in Railway. Customers never
+  supply one. Without it the chat routes answer 503 and the app shows "SAM is
+  unavailable right now".
 - `OPENROUTER_MODEL`: optional. Default `openai/gpt-5.6-luna` at reasoning
   effort `max`.
 
@@ -85,7 +86,7 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 - Provider failures reach the client as a generic error chunk; provider text is
   logged, not shown.
 - A removed member keeps no access: membership is read on every turn, and
-  hosted mode refuses a missing member row.
+  a missing member row is refused.
 
 ## Production limits
 
@@ -99,9 +100,10 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 - **Transport.** HTTP + SSE replaces the Cloudflare Durable Object websocket.
   Stopping the reply is aborting the request. There is no reconnect or
   "recovering" state because no process holds a turn that can be reset.
-- **Credits.** Hosted turns are gated and charged against the Go credit ledger
+- **Credits.** Every turn is gated and charged against the Go credit ledger
   (`go_billing_credits`), not Autumn. 1 credit = $0.001 of provider cost with the
-  usual 1.28 markup, rounded up. Self-hosted is never gated or metered.
+  usual 1.28 markup, rounded up. Seomarine is SaaS: there is no bring-your-own-key
+  or unmetered mode.
 - **Telemetry.** The `sam:turn` PostHog events are not ported; failures are
   logged with `slog`.
 - **Transcripts.** Existing Durable Object transcripts are not migrated.

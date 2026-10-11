@@ -32,7 +32,7 @@ func TestCompactionLeavesShortChatsAlone(t *testing.T) {
 
 func TestCompactionSummarizesOlderMessagesAndKeepsRecentOnes(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"They sell anvils; goal is sales."}, cost: 0.02})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	var messages []Message
 	for i := range 12 {
 		role := "user"

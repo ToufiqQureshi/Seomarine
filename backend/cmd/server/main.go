@@ -302,15 +302,14 @@ const rankTickInterval = 5 * time.Minute
 // queues checks. Without a DataForSEO key it returns nil and the check route
 // answers 503. Checks run ungated only when billing is not configured, as for
 // a self-hosted deployment.
-// buildSAMChat wires the SAM agent. It returns nil without an OpenRouter key,
-// and the chat routes then answer 503. Hosted deployments meter provider spend
-// against the organization's credits; self-hosted ones bring their own key and
-// are never metered.
+// buildSAMChat wires the SAM agent. The model key is Seomarine's own, never the
+// customer's: it returns nil without OPENROUTER_API_KEY and the chat routes
+// then answer 503. Every turn is gated on and charged to the organization's
+// credits.
 func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps) *sam.Chat {
 	if cfg.OpenRouterAPIKey == "" {
 		return nil
 	}
-	hosted := cfg.AuthMode == "hosted"
 	model := cfg.OpenRouterModel
 	if model == "" {
 		model = openrouter.DefaultModel
@@ -323,14 +322,11 @@ func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memo
 		Memory:  sam.ProjectMemory{Service: memory},
 		Runner:  mcp.NewRunner(*mcpDeps),
 		Guard:   audit.NewGuard(),
-		Hosted:  hosted,
 		BaseURL: cfg.PublicURL.String(),
 		Logger:  logger,
 	}
-	if hosted {
-		agent.Meter = sam.LedgerMeter{Ledger: billing.NewCreditLedgerService(db)}
-	}
-	return sam.NewChat(agent, sam.ContextLoader{DB: db, Hosted: hosted}, sam.MessageRepository{DB: db})
+	agent.Meter = sam.LedgerMeter{Ledger: billing.NewCreditLedgerService(db)}
+	return sam.NewChat(agent, sam.ContextLoader{DB: db}, sam.MessageRepository{DB: db})
 }
 
 func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {

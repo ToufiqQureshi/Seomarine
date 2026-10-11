@@ -37,12 +37,11 @@ func (r Repository) Touch(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-// ContextLoader is the Postgres SessionLoader.
+// ContextLoader is the Postgres SessionLoader. A user with no membership row
+// in the project's organization gets an empty role, which the agent refuses:
+// a removed member must lose access on their next message.
 type ContextLoader struct {
 	DB querier
-	// Hosted makes a missing membership row a refusal. Self-hosted and
-	// delegated organizations have no member rows; the user is the owner.
-	Hosted bool
 }
 
 // Load reads the session, its project, the creating user's email and role.
@@ -65,12 +64,7 @@ func (l ContextLoader) Load(ctx context.Context, projectID, userID, sessionID st
 		return SessionContext{}, fmt.Errorf("load SAM session: %w", err)
 	}
 	err = l.DB.QueryRow(ctx, `SELECT role FROM member WHERE organization_id=$1 AND user_id=$2`, sc.OrganizationID, userID).Scan(&sc.Role)
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		if !l.Hosted {
-			sc.Role = "owner"
-		}
-	case err != nil:
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return SessionContext{}, fmt.Errorf("load SAM membership: %w", err)
 	}
 	return sc, nil

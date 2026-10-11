@@ -50,8 +50,9 @@ type LLM interface {
 	Stream(ctx context.Context, req openrouter.Request, h openrouter.Handler) (openrouter.Result, error)
 }
 
-// Meter gates turns on credits and charges provider spend. A nil Meter means
-// the deployment is not metered (self-hosted).
+// Meter gates turns on credits and charges provider spend. Seomarine is a SaaS
+// product and the model key is the platform's, so production always sets one;
+// nil only exists for tests and local development.
 type Meter interface {
 	// HasCredits reports whether the organization may start a turn.
 	HasCredits(ctx context.Context, organizationID string) (bool, error)
@@ -86,19 +87,16 @@ type Memory interface {
 
 // Agent runs SAM chat turns.
 type Agent struct {
-	LLM     LLM
-	Model   string
-	Store   MessageStore
-	Titles  SessionTitler
-	Memory  Memory
-	Runner  ToolRunner
-	Guard   URLGuard
-	Meter   Meter
-	Logger  *slog.Logger
-	BaseURL string
-	// Hosted turns on the credit gate and metering.
-	Hosted bool
-
+	LLM        LLM
+	Model      string
+	Store      MessageStore
+	Titles     SessionTitler
+	Memory     Memory
+	Runner     ToolRunner
+	Guard      URLGuard
+	Meter      Meter
+	Logger     *slog.Logger
+	BaseURL    string
 	skillsOnce sync.Once
 	skillList  []skill
 }
@@ -153,7 +151,7 @@ func (a *Agent) Run(ctx context.Context, sc SessionContext, userMessage Message,
 // gate refuses a turn the organization cannot pay for. Depleted credits are
 // checked here, per turn, because a long-lived chat outlives plan changes.
 func (a *Agent) gate(ctx context.Context, sc SessionContext) string {
-	if !a.Hosted || a.Meter == nil {
+	if a.Meter == nil {
 		return ""
 	}
 	if sc.Role == "" {
@@ -463,7 +461,7 @@ func (t *turnState) recordSpend(ctx context.Context, costUSD float64) {
 
 func (t *turnState) flushSpend(ctx context.Context) {
 	a := t.agent
-	if !a.Hosted || a.Meter == nil || t.unbilled <= 0 {
+	if a.Meter == nil || t.unbilled <= 0 {
 		return
 	}
 	cost := t.unbilled

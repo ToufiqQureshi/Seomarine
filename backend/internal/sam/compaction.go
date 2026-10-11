@@ -55,7 +55,7 @@ func (a *Agent) compact(ctx context.Context, sc SessionContext) error {
 		ReasoningEffort: "low",
 	}, openrouter.Handler{})
 	// The call is billed even when its text turns out unusable.
-	if a.Hosted && a.Meter != nil && result.Usage.CostUSD > 0 {
+	if a.Meter != nil && result.Usage.CostUSD > 0 {
 		key := fmt.Sprintf("sam:compact:%s:%d", sc.SessionID, older[len(older)-1].Seq)
 		if chargeErr := a.Meter.Charge(ctx, sc.OrganizationID, result.Usage.CostUSD, key); chargeErr != nil {
 			a.logger().ErrorContext(ctx, "SAM compaction metering failed", "err", chargeErr)

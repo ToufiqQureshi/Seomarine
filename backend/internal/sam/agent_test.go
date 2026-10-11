@@ -201,7 +201,7 @@ func TestToolFailuresGoBackToTheModel(t *testing.T) {
 
 func TestOutOfCreditsRefusesWithoutCallingTheModel(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"should not run"}})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.meter.hasCred = false
 	sink := &recordingSink{}
 	h.run(t, context.Background(), "hi", sink)
@@ -220,7 +220,7 @@ func TestOutOfCreditsRefusesWithoutCallingTheModel(t *testing.T) {
 
 func TestRemovedMemberIsRefused(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"should not run"}})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.sc.Role = ""
 	h.run(t, context.Background(), "hi", &recordingSink{})
 	if h.llm.callCount() != 0 || h.lastAssistant(t).Parts[1].Text != refuseNoAccess {
@@ -228,19 +228,9 @@ func TestRemovedMemberIsRefused(t *testing.T) {
 	}
 }
 
-func TestSelfHostedIgnoresCreditsAndNeverMeters(t *testing.T) {
-	h := newHarness(t, scriptStep{text: []string{"ok"}, cost: 5})
-	h.agent.Hosted, h.agent.Meter = false, h.meter
-	h.meter.hasCred = false
-	h.run(t, context.Background(), "hi", &recordingSink{})
-	if h.llm.callCount() != 1 || len(h.meter.charges) != 0 {
-		t.Fatalf("calls = %d charges = %v", h.llm.callCount(), h.meter.charges)
-	}
-}
-
 func TestCreditCheckFailureDoesNotLockUsersOut(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.meter.credErr = errors.New("ledger down")
 	h.run(t, context.Background(), "hi", &recordingSink{})
 	if h.llm.callCount() != 1 {
@@ -254,7 +244,7 @@ func TestSpendIsMeteredInChunksAndFlushedAtTheEnd(t *testing.T) {
 		scriptStep{toolCalls: []openrouter.ToolCall{toolCall("2", "whoami", `{}`)}, cost: 0.04},
 		scriptStep{text: []string{"done"}, cost: 0.01},
 	)
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.run(t, context.Background(), "go", &recordingSink{})
 
 	// 0.03 stays unbilled; 0.03+0.04 crosses the chunk size; 0.01 flushes at the end.
@@ -274,7 +264,7 @@ func TestSpendIsMeteredInChunksAndFlushedAtTheEnd(t *testing.T) {
 
 func TestMeteringFailureDoesNotFailTheTurn(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}, cost: 0.2})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.meter.chargeFn = func() error { return errors.New("ledger down") }
 	sink := &recordingSink{}
 	h.run(t, context.Background(), "hi", sink)
@@ -286,7 +276,7 @@ func TestMeteringFailureDoesNotFailTheTurn(t *testing.T) {
 func TestStoppedTurnKeepsPartialReplyAndStillBills(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	h := newHarness(t, scriptStep{text: []string{"partial "}, cost: 0.02, err: context.Canceled})
-	h.agent.Hosted, h.agent.Meter = true, h.meter
+	h.agent.Meter = h.meter
 	h.llm.steps[0].err = nil
 	h.agent.LLM = cancelingLLM{inner: h.llm, cancel: cancel}
 	sink := &recordingSink{}

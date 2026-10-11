@@ -240,7 +240,7 @@ func TestSummaryUpsertAndCascade(t *testing.T) {
 
 func TestContextLoaderScopesToTheOwnersActiveSession(t *testing.T) {
 	pool := openSamTestDB(t)
-	loader := ContextLoader{DB: pool, Hosted: true}
+	loader := ContextLoader{DB: pool}
 	ctx := context.Background()
 
 	sc, err := loader.Load(ctx, "project-1", "user-1", "session-1")
@@ -276,19 +276,15 @@ func TestContextLoaderScopesToTheOwnersActiveSession(t *testing.T) {
 	}
 }
 
-func TestContextLoaderMembership(t *testing.T) {
+func TestContextLoaderGivesARemovedMemberNoRole(t *testing.T) {
 	pool := openSamTestDB(t)
 	ctx := context.Background()
 	if _, err := pool.Exec(ctx, `DELETE FROM member`); err != nil {
 		t.Fatal(err)
 	}
-	hosted, err := ContextLoader{DB: pool, Hosted: true}.Load(ctx, "project-1", "user-1", "session-1")
-	if err != nil || hosted.Role != "" {
-		t.Fatalf("a removed member has no role in hosted mode: role = %q err = %v", hosted.Role, err)
-	}
-	selfHosted, err := ContextLoader{DB: pool, Hosted: false}.Load(ctx, "project-1", "user-1", "session-1")
-	if err != nil || selfHosted.Role != "owner" {
-		t.Fatalf("self-hosted orgs have no member rows: role = %q err = %v", selfHosted.Role, err)
+	sc, err := ContextLoader{DB: pool}.Load(ctx, "project-1", "user-1", "session-1")
+	if err != nil || sc.Role != "" {
+		t.Fatalf("a removed member has no role: role = %q err = %v", sc.Role, err)
 	}
 }
 

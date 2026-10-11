@@ -217,7 +217,7 @@ func NewHandler(d Deps) http.Handler {
 		enabled := d.OpenRouterConfigured
 		var message *string
 		if !enabled {
-			text := "OPENROUTER_API_KEY is not set for this deployment yet. Add it to your environment, restart Seomarine, then confirm here."
+			text := "SAM is temporarily unavailable. Please try again in a few minutes."
 			message = &text
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"enabled": enabled, "errorMessage": message})
