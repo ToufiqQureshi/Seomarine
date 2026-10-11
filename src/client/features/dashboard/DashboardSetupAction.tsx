@@ -22,7 +22,7 @@ import { organizationContextQueryOptions } from "@/client/features/team/organiza
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { hasOrgPermission } from "@/lib/org-permissions";
-import { markDashboardStepClicked } from "@/serverFunctions/dashboard";
+import { markDashboardStepClicked } from "@/client/features/dashboard/dashboardApi";
 import type {
   DashboardClickStep,
   DashboardSetupStep,
