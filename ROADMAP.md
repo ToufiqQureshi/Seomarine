@@ -73,7 +73,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | #   | Task                                                              | Status |
 | --- | ----------------------------------------------------------------- | ------ |
 | 5.1 | Railway deploy: Dockerfile, `railway.json`, deploy guide, go live | ⏳     |
-| 5.2 | Domain, email, payments (Razorpay checkout + webhooks done in Go) | 🔨     |
+| 5.2 | Domain, email, payments (Razorpay checkout + webhooks and Go Loops transactional client started) | 🔨     |
 | 5.3 | One-click cancel, live usage, AI visibility in the base plan      | ⏳     |
 
 ## Next up (engineering)
