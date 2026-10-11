@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCustomer } from "autumn-js/react";
+import { useBillingCustomer } from "@/client/features/billing/useBillingCustomer";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { QueryError } from "@/client/components/QueryState";
@@ -57,11 +57,7 @@ function SubscribePage() {
   const checkoutCompleted = checkout === "success";
 
   const hasSession = Boolean(session?.user?.id);
-  const customerQuery = useCustomer({
-    queryOptions: {
-      enabled: hasSession,
-    },
-  });
+  const customerQuery = useBillingCustomer({ enabled: hasSession });
 
   // Checkout is owner-only; other members hitting the paywall are pointed at
   // their organization owner instead of a Subscribe button that would 403.

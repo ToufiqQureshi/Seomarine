@@ -44,8 +44,9 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey is Seomarine's own model key for SAM.
 	OpenRouterAPIKey string
-	// AutumnSecretKey enables hosted billing-usage event history.
-	AutumnSecretKey string
+	// BillingMonthlyCreditsUSD is granted to an organization on each paid
+	// subscription charge. Zero grants nothing; the owner sets the amount.
+	BillingMonthlyCreditsUSD float64
 	// Loops configures hosted teammate invitation email.
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
@@ -154,7 +155,17 @@ func Load(getenv func(string) string) (Config, error) {
 		port = parsed
 	}
 
+	var monthlyCredits float64
+	if raw := getenv("BILLING_MONTHLY_CREDITS_USD"); raw != "" {
+		parsed, err := strconv.ParseFloat(raw, 64)
+		if err != nil || parsed < 0 || parsed > 10000 {
+			return Config{}, fmt.Errorf("BILLING_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
+		}
+		monthlyCredits = parsed
+	}
+
 	return Config{
+		BillingMonthlyCreditsUSD:     monthlyCredits,
 		AuthMode:                     authMode,
 		Addr:                         fmt.Sprintf(":%d", port),
 		DatabaseURL:                  databaseURL,
@@ -169,7 +180,6 @@ func Load(getenv func(string) string) (Config, error) {
 		Razorpay:                     rzp,
 		DataForSEOAPIKey:             strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
 		OpenRouterAPIKey:             strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
-		AutumnSecretKey:              strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
 		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
 		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
 		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),

@@ -111,9 +111,11 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	credits := billing.NewCreditLedgerService(db)
 	var billingSvc *billing.Service
 	if rzp := cfg.Razorpay; rzp != nil {
 		billingSvc = billing.NewService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDPro, rzp.WebhookSecret)
+		billingSvc.MonthlyGrantCredits = int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD)
 	} else {
 		logger.Warn("RAZORPAY_* not set; billing endpoints answer 503")
 	}
@@ -202,7 +204,7 @@ func run(logger *slog.Logger) error {
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
-		Hosted: cfg.AuthMode == "hosted", AutumnCredits: billing.NewAutumnCreditClient(cfg.AutumnSecretKey),
+		Hosted: cfg.AuthMode == "hosted", Credits: credits,
 		PublicURL: cfg.PublicURL,
 		Audit:     auditSvc, Backlinks: backlinksSvc, Domain: domainSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, KeywordResearch: keywordResearch, ProjectContext: projectContextSvc,
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
@@ -257,7 +259,7 @@ func run(logger *slog.Logger) error {
 			PublicURL:            cfg.PublicURL,
 			DataForSEOConfigured: strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
 			OpenRouterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
-			AutumnSecretKey:      cfg.AutumnSecretKey,
+			Credits:              credits,
 			AuthMode:             cfg.AuthMode,
 			HostedMode:           cfg.AuthMode == "hosted",
 			MCP:                  mcpDeps,

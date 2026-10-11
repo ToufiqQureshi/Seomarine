@@ -130,7 +130,7 @@ type Deps struct {
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
-	AutumnSecretKey      string
+	Credits              *billing.CreditLedgerService
 	AuthMode             string
 	HostedMode           bool
 	// MCP serves API-key and Go-issued OAuth requests through the Go dispatcher.
@@ -253,7 +253,7 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, Credits: d.Credits})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans

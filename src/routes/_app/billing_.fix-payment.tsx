@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useCustomer } from "autumn-js/react";
+import { useBillingCustomer } from "@/client/features/billing/useBillingCustomer";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
@@ -45,8 +45,8 @@ function FixPaymentPage() {
   const [checkingTimedOut, setCheckingTimedOut] = useState(false);
   const viewCaptured = useRef(false);
 
-  const customerQuery = useCustomer({
-    queryOptions: { enabled: Boolean(session?.user?.id) },
+  const customerQuery = useBillingCustomer({
+    enabled: Boolean(session?.user?.id),
   });
   const canManageBilling = useCanManageBilling();
   // The hook above reports true while the role loads (a UI choice); the

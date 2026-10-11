@@ -1,4 +1,4 @@
-import { useCustomer } from "autumn-js/react";
+import { useBillingCustomer } from "@/client/features/billing/useBillingCustomer";
 import { useSession } from "@/lib/auth-client";
 import { getCustomerPlanStatus } from "@/client/features/billing/plan-detection";
 import {
@@ -8,18 +8,11 @@ import {
   autumnSeoDataCreditsToUsd,
 } from "@/shared/billing";
 
-type CustomerParams = NonNullable<Parameters<typeof useCustomer>[0]>;
-
 /** The signed-in organization's Autumn customer, plan, and remaining credits in USD. */
-export function useCreditBalance({
-  expand,
-}: { expand?: CustomerParams["expand"] } = {}) {
+export function useCreditBalance(_options: { expand?: string[] } = {}) {
   const session = useSession();
-  const customerQuery = useCustomer({
-    expand,
-    queryOptions: {
-      enabled: Boolean(session.data?.user?.id),
-    },
+  const customerQuery = useBillingCustomer({
+    enabled: Boolean(session.data?.user?.id),
   });
 
   const balances = customerQuery.data?.balances;

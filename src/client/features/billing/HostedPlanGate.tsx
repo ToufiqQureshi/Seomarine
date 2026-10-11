@@ -1,4 +1,4 @@
-import { useCustomer } from "autumn-js/react";
+import { useBillingCustomer } from "@/client/features/billing/useBillingCustomer";
 import { useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import {
@@ -14,8 +14,8 @@ export function useHostedPlanGate(): "loading" | PlanStatus {
   const isHostedMode = isHostedClientAuthMode();
   const { data: session, isPending: isSessionPending } = useSession();
   const hasSession = Boolean(session?.user?.id);
-  const customerQuery = useCustomer({
-    queryOptions: { enabled: isHostedMode && hasSession },
+  const customerQuery = useBillingCustomer({
+    enabled: isHostedMode && hasSession,
   });
 
   if (!isHostedMode) return "paid";
