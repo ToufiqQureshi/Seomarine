@@ -36,6 +36,11 @@ type CreditReservation struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// CreditBalanceReader reads an organization's available credit balance.
+type CreditBalanceReader interface {
+	GetBalance(ctx context.Context, orgID string) (int64, error)
+}
+
 type CreditLedgerService struct {
 	db *pgxpool.Pool
 }
