@@ -31,13 +31,11 @@ frontend/   React + Vite SPA (pnpm/npm). Built to frontend/dist, served by the G
 backend/    Go server: cmd/, internal/<feature>/, internal/platform/, api/ (OpenAPI).
 db/         migrations/ (goose SQL), schema/ (per-feature table docs, test fixtures), seed/.
 docs/       user-facing docs, plus docs/maintainers/ for engineering notes.
-legacy/     TEMPORARY. Today's TypeScript app. Shrinks per ported feature, then is deleted.
 ```
 
-Today the repo is mid-move: the React app and the legacy server still live in
-`src/`, and migrations in `backend/internal/database/migrations`. The plan and
-the order of moves are in `docs/maintainers/REPO-LAYOUT.md`. Never move
-folders outside that plan.
+Today the React app lives in `src/` and migrations in
+`backend/internal/database/migrations`. The plan for moving them is in
+`docs/maintainers/REPO-LAYOUT.md`. Never move folders outside that plan.
 
 Every feature folder (Go package or frontend feature) has a `README.md`: what
 it does, the flow, tables, env vars, the rules that must never break, edge
@@ -46,10 +44,9 @@ Code and README change in the same PR.
 
 ## 3. How to write code
 
-**Go is the core.** Every new backend feature is Go. No Next.js. No new
-TypeScript backend work: the legacy server only gets bug fixes and is ported
-out feature by feature. The Go server proxies every route it does not own yet
-to the legacy app.
+**Go is the core.** Every backend feature is Go. There is no TypeScript
+backend any more: the React app is a static SPA that the Go server serves and
+calls under `/api/v1/`. No Next.js.
 
 - **Inbuilt first.** Use the standard library (`net/http`, `log/slog`,
   `context`, `encoding/json`, `errors`, `slices`, `maps`, `strings`, `sync`,
@@ -82,8 +79,7 @@ to the legacy app.
 **Frontend** (`frontend/`, today `src/client` and `src/routes`): React with
 Vite, TanStack Query/Router/Form patterns, shadcn on Base UI (compose with the
 `render` prop, not `asChild`). New screens call the Go API under `/api/v1/`
-through `apiRequest` and validate responses with Zod. In the legacy TypeScript
-app, keep schema changes compatible with SQLite and Postgres.
+through `apiRequest` and validate responses with Zod. 
 
 ## 4. How to write tests
 
