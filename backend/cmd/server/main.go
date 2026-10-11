@@ -107,6 +107,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	creditLedger := billing.NewCreditLedgerService(db)
 	var billingSvc *billing.Service
 	if rzp := cfg.Razorpay; rzp != nil {
 		billingSvc = billing.NewService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDPro, rzp.WebhookSecret)
@@ -221,6 +222,7 @@ func run(logger *slog.Logger) error {
 			Analytics:            analytics.NewService(db, rdb, countryLookup),
 			TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
 			Billing:              billingSvc,
+			CreditLedger:         creditLedger,
 			Branding:             branding.NewService(db),
 			AISearch:             aiSearchSvc,
 			Ahrefs:               ahrefs.New(rdb),
