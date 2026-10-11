@@ -16,6 +16,7 @@ const maxWebhookBody = 256 << 10
 type Deps struct {
 	Logger          *slog.Logger
 	Service         *Service
+	Credits         CreditBalanceReader
 	WithSession     func(http.Handler) http.Handler
 	AutumnSecretKey string
 	Hosted          bool
@@ -25,8 +26,31 @@ type Deps struct {
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /webhooks/razorpay", webhookHandler(d.Logger, d.Service))
 	mux.Handle("GET /api/v1/billing/status", d.WithSession(statusHandler(d.Logger, d.Service)))
+	mux.Handle("GET /api/v1/billing/credits", d.WithSession(creditBalanceHandler(d.Logger, d.Credits)))
 	mux.Handle("POST /api/v1/billing/checkout", d.WithSession(checkoutHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/billing/usage-events", d.WithSession(usageEventsHandler(d.Logger, d.AutumnSecretKey, d.Hosted)))
+}
+
+// creditBalanceHandler returns the authenticated organization's available credits.
+func creditBalanceHandler(logger *slog.Logger, credits CreditBalanceReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if credits == nil {
+			httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Credit balance is not set up on this server.")
+			return
+		}
+		user, ok := auth.UserFromContext(r.Context())
+		if !ok || user.OrganizationID == "" {
+			httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
+			return
+		}
+		balance, err := credits.GetBalance(r.Context(), user.OrganizationID)
+		if err != nil {
+			logger.ErrorContext(r.Context(), "credit balance", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, map[string]int64{"balanceCredits": balance})
+	}
 }
 
 // statusHandler returns the plan of the signed-in user's active organization.
