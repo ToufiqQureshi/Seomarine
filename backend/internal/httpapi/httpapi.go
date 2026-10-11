@@ -17,6 +17,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
+	"github.com/toufiqqureshi/seomarine/backend/internal/apikeys"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
@@ -115,6 +116,8 @@ type Deps struct {
 	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
 	// leaves those routes with the legacy app.
 	EmailAuth *emailauth.Service
+	// APIKeys manages MCP API keys; nil leaves those routes with the legacy app.
+	APIKeys *apikeys.Service
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
 	Onboarding     *onboarding.Service
 	WorkspaceMerge *workspace.Service
@@ -198,8 +201,12 @@ func NewHandler(d Deps) http.Handler {
 	if d.AuthMode == "hosted" {
 		auth.MountCurrentSession(mux, d.Auth, d.Logger)
 		auth.MountSession(mux, d.Auth, d.Logger)
+		auth.MountBetterAuthOrganization(mux, d.Auth, d.Logger)
 		if d.EmailAuth != nil {
 			emailauth.Mount(mux, d.EmailAuth)
+		}
+		if d.APIKeys != nil {
+			apikeys.Mount(mux, d.APIKeys)
 		}
 	}
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)

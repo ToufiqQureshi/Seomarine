@@ -46,6 +46,8 @@ func Mount(mux *http.ServeMux, s *Service) {
 	route("GET /api/auth/reset-password/{token}", "reset-callback", 20, time.Minute, s.resetCallback)
 	route("POST /api/auth/reset-password", "reset-password", 10, time.Minute, s.resetPassword)
 	route("POST /api/auth/update-user", "update-user", 20, time.Minute, s.updateUser)
+	route("POST /api/auth/sign-in/social", "sign-in-social", 20, time.Minute, s.signInSocial)
+	route("GET /api/auth/callback/{provider}", "oauth-callback", 30, time.Minute, s.googleCallback)
 }
 
 // wrap adds rate limiting, the CSRF origin check and uniform error output.

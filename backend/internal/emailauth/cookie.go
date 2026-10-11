@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -91,4 +92,25 @@ func (j cookieJar) clearSessionData(w http.ResponseWriter) {
 		Name: j.name(sessionDataCookieName), Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, Secure: j.secure, SameSite: http.SameSiteLaxMode,
 	})
+}
+
+// verify checks a value signed by sign and returns it. The comparison is
+// constant time.
+func (j cookieJar) verify(raw string) (string, bool) {
+	value, err := url.PathUnescape(raw)
+	if err != nil {
+		return "", false
+	}
+	dot := strings.LastIndexByte(value, '.')
+	if dot < 1 {
+		return "", false
+	}
+	payload, signature := value[:dot], value[dot+1:]
+	mac := hmac.New(sha256.New, j.secret)
+	mac.Write([]byte(payload))
+	want := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(signature), []byte(want)) {
+		return "", false
+	}
+	return payload, true
 }

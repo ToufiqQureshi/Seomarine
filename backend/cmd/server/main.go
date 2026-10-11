@@ -22,6 +22,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
 	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
+	"github.com/toufiqqureshi/seomarine/backend/internal/apikeys"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
@@ -245,6 +246,7 @@ func run(logger *slog.Logger) error {
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
+			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
 			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
@@ -327,6 +329,9 @@ func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rd
 			VerifyTemplateID: cfg.LoopsVerifyEmailTemplateID,
 			ResetPasswordID:  cfg.LoopsResetPasswordTemplateID,
 		}
+	}
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		svc.Google = &emailauth.GoogleProvider{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret}
 	}
 	if cfg.TurnstileSecretKey != "" {
 		svc.Captcha = emailauth.Turnstile{Secret: cfg.TurnstileSecretKey}

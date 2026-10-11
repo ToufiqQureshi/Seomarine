@@ -16,6 +16,11 @@ account keep working. Only hosted mode mounts these routes.
   redirects to `callbackURL` (`?error=CODE` on a bad link).
 - `POST /api/auth/sign-in/email`: password first, then the verified-email check,
   so a wrong password never reveals that an account exists but is unverified.
+- `POST /api/auth/sign-in/social` and `GET /api/auth/callback/google`: Google
+  sign-in with PKCE. The state is single-use and bound to the browser by a signed
+  cookie. An existing account is linked to a Google identity only when Google
+  vouches for the address **and** the local address is verified; otherwise the
+  user is sent to the error page with `account_not_linked`.
 - `POST /api/auth/send-verification-email`, `request-password-reset`,
   `GET reset-password/{token}`, `POST reset-password`, `POST update-user`.
 
@@ -44,6 +49,8 @@ nothing is minted for someone with a pending invitation).
 
 `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (public origin), `LOOPS_API_KEY`,
 `LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID`, `LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID`,
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (turn on Google sign-in; the
+redirect URI is `${BETTER_AUTH_URL}/api/auth/callback/google`),
 `TURNSTILE_SECRET_KEY` (turns on the sign-up captcha), `BYPASS_EMAIL_VERIFICATION`
 (development only). Without Loops, verification and reset answer "not enabled".
 
@@ -54,5 +61,9 @@ nothing is minted for someone with a pending invitation).
 - Rate limits are Redis fixed windows per IP and route (sign-up 5/min, sign-in
   10/min, verification and reset emails 3/min); a Redis outage fails open.
 - Referral (Dub) capture on sign-up is not ported yet.
-- Not here yet: Google sign-in, organization invitations, API keys. Those stay
-  on the legacy route.
+- Google sign-in does not store Google's access or refresh tokens. They are not
+  needed to sign someone in again; the data grants for Search Console and
+  Analytics are a separate flow in `internal/google`.
+- The OAuth state lives in the `verification` table plus a signed cookie, not in
+  Better Auth's own state format. A sign-in started before a deploy of this code
+  has to be restarted.

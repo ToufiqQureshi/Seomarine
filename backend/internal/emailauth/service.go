@@ -64,6 +64,8 @@ type Service struct {
 	Captcha  Captcha
 	Limiter  Limiter
 	Sessions SessionReader
+	// Google enables "Sign in with Google"; nil leaves it off.
+	Google   *GoogleProvider
 	Logger   *slog.Logger
 	ClientIP func(*http.Request) string
 	Now      func() time.Time

@@ -196,3 +196,20 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
+
+// googleAccountUser returns the user a Google subject is already linked to.
+func googleAccountUser(ctx context.Context, q querier, subject string) (string, bool, error) {
+	var userID string
+	err := q.QueryRow(ctx, `SELECT user_id FROM account WHERE provider_id = 'google' AND account_id = $1 LIMIT 1`, subject).Scan(&userID)
+	return found(userID, err, "google account")
+}
+
+// insertOAuthAccount links a provider identity to a user. No provider tokens
+// are stored: they are not needed to sign someone in again.
+func insertOAuthAccount(ctx context.Context, q querier, id, userID, providerID, accountID string, now time.Time) error {
+	if _, err := q.Exec(ctx, `INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $5)`, id, accountID, providerID, userID, now); err != nil {
+		return fmt.Errorf("insert oauth account: %w", err)
+	}
+	return nil
+}
