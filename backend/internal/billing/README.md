@@ -23,6 +23,6 @@ separate negative `debt` ledger row records the shortfall. Refunds restore
 the full reservation. IDs are generated with `platform/ids.New`.
 
 The database constraints and accounting decisions are documented in
-`docs/maintainers/credits-usage-design.md`. DataForSEO and MCP call-level
-reserve/settle wiring and the authenticated balance endpoint are still pending;
-the ledger service alone does not make those calls billable.
+`docs/maintainers/credits-usage-design.md`. The authenticated balance endpoint is wired. DataForSEO and MCP call-level
+reserve/settle wiring and replacing Autumn usage with the Go ledger remain
+pending; the ledger service alone does not make those calls billable.
