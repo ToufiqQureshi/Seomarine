@@ -14,7 +14,7 @@ import {
 } from "@/client/components/ui/dialog";
 import { getErrorCode } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { sendTeamInvitation } from "@/serverFunctions/organization";
+import { sendTeamInvitation } from "@/client/features/team/teamApi";
 
 const inviteSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),

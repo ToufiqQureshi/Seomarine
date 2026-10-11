@@ -11,7 +11,7 @@ import {
 } from "@/client/components/ui/dialog";
 import { getErrorCode } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
-import { transferOwnership } from "@/serverFunctions/organization";
+import { transferOwnership } from "@/client/features/team/teamApi";
 
 // NOT_FOUND: the member left. FORBIDDEN: the caller is no longer the owner
 // (another tab). CONFLICT: a row changed mid-transfer.

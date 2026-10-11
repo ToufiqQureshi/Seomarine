@@ -1,7 +1,7 @@
 import { Bar, BarChart } from "recharts";
 import { sort } from "remeda";
 import { autumnSeoDataCreditsToUsd } from "@/shared/billing";
-import type { BillingUsageEvent } from "@/serverFunctions/billing";
+import type { BillingUsageEvent } from "@/client/features/billing/billingApi";
 import { QueryState } from "@/client/components/QueryState";
 import {
   ChartGrid,

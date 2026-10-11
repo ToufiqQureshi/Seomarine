@@ -2,13 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { chunk, unique } from "remeda";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { getAhrefsDomainRatings } from "@/serverFunctions/ahrefs";
+import { getAhrefsDomainRatings } from "@/client/features/backlinks/ahrefsApi";
 
 /** Map of domain (as held in table rows) → Ahrefs DR, or null when unknown. */
 export type DomainRatings = Record<string, number | null>;
 
-// The server function caps each call at 100 domains (Workers subrequest limit),
-// so the client chunks larger sets and calls sequentially.
+// The Go API caps each call at 100 domains, so the client chunks larger sets.
 const DOMAINS_PER_REQUEST = 100;
 
 export function useAhrefsDomainRatings(projectId: string) {

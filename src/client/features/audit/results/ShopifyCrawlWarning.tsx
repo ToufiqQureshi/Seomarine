@@ -15,7 +15,7 @@ import { Button } from "@/client/components/ui/button";
 import type { AuditResultsData } from "@/client/features/audit/results/types";
 import { extractHostname } from "@/client/features/audit/shared";
 import { startAudit } from "@/client/features/audit/auditApi";
-import { listCrawlerCredentials } from "@/serverFunctions/crawlerAccess";
+import { listCrawlerCredentials } from "@/client/features/crawler-access/crawlerAccessApi";
 import {
   SHOPIFY_CRAWLER_ACCESS_DOC_URL,
   isCrawlerAccessExpired,

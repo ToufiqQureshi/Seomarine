@@ -4,7 +4,7 @@ import {
   creditFeatureLabel,
   mapDataforseoPathToCreditFeature,
 } from "@/shared/billing-credit-features";
-import type { BillingUsageEvent } from "@/serverFunctions/billing";
+import type { BillingUsageEvent } from "@/client/features/billing/billingApi";
 import { QueryState } from "@/client/components/QueryState";
 import { Skeleton } from "@/client/components/ui/skeleton";
 import { BillingUsageCard } from "@/client/features/billing/BillingUsageCard";

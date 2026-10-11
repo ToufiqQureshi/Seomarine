@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { hasOrgPermission } from "@/lib/org-permissions";
-import { getOrganizationContext } from "@/serverFunctions/organization";
+import { getOrganizationContext } from "@/client/features/team/organizationApi";
 
 export const organizationContextQueryOptions = () =>
   queryOptions({
