@@ -26,23 +26,23 @@ type keywordMetricToolRow struct {
 func getKeywordMetricsTool() *tool {
 	return &tool{
 		Name: "get_keyword_metrics", Title: "Get keyword metrics",
-		Description: "Hydrate up to 700 known keywords with search volume, keyword difficulty, search intent, CPC, competition, and monthly trends in one call. Google Ads-only countries do not provide difficulty or intent. Charges credits.",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"keywords":{"type":"array","items":{"type":"string","minLength":1,"maxLength":80},"minItems":1,"maxItems":700},"locationCode":{"type":"integer","minimum":1},"languageCode":{"type":"string","minLength":2,"maxLength":8},"includeMonthlyTrends":{"type":"boolean"},"includeClickstreamData":{"type":"boolean"},"sortBy":{"type":"string","enum":["search_volume","keyword_difficulty","cpc","competition"]}},"required":["projectId","keywords"],"additionalProperties":false}`),
+		Description:  "Hydrate up to 700 known keywords with search volume, keyword difficulty, search intent, CPC, competition, and monthly trends in one call. Google Ads-only countries do not provide difficulty or intent. Charges credits.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"keywords":{"type":"array","items":{"type":"string","minLength":1,"maxLength":80},"minItems":1,"maxItems":700},"locationCode":{"type":"integer","minimum":1},"languageCode":{"type":"string","minLength":2,"maxLength":8},"includeMonthlyTrends":{"type":"boolean"},"includeClickstreamData":{"type":"boolean"},"sortBy":{"type":"string","enum":["search_volume","keyword_difficulty","cpc","competition"]}},"required":["projectId","keywords"],"additionalProperties":false}`),
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{"keywords":{"type":"array","items":{"type":"object"}}},"additionalProperties":true}`),
-		Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
-		Handler: handleGetKeywordMetrics,
+		Annotations:  map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
+		Handler:      handleGetKeywordMetrics,
 	}
 }
 
 func handleGetKeywordMetrics(ctx context.Context, raw json.RawMessage, env *callEnv) (*callResult, error) {
 	var args struct {
-		ProjectID string   `json:"projectId"`
-		Keywords []string  `json:"keywords"`
-		LocationCode *int  `json:"locationCode"`
-		LanguageCode string `json:"languageCode"`
-		IncludeMonthlyTrends *bool `json:"includeMonthlyTrends"`
-		IncludeClickstreamData bool `json:"includeClickstreamData"`
-		SortBy string `json:"sortBy"`
+		ProjectID              string   `json:"projectId"`
+		Keywords               []string `json:"keywords"`
+		LocationCode           *int     `json:"locationCode"`
+		LanguageCode           string   `json:"languageCode"`
+		IncludeMonthlyTrends   *bool    `json:"includeMonthlyTrends"`
+		IncludeClickstreamData bool     `json:"includeClickstreamData"`
+		SortBy                 string   `json:"sortBy"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil || strings.TrimSpace(args.ProjectID) == "" {
 		return nil, newAppErrorf("VALIDATION_ERROR", "projectId and keywords are required")
@@ -106,7 +106,9 @@ func handleGetKeywordMetrics(ctx context.Context, raw json.RawMessage, env *call
 			trends = append(trends, map[string]any{"year": month.Year, "month": month.Month, "search_volume": month.SearchVolume})
 		}
 		var monthly []map[string]any
-		if len(trends) > 0 { monthly = trends }
+		if len(trends) > 0 {
+			monthly = trends
+		}
 		out = append(out, keywordMetricToolRow{
 			Keyword: row.Keyword, SearchVolume: row.SearchVolume, KeywordDifficulty: row.KeywordDifficulty,
 			MainIntent: row.Intent, CPC: row.CPC, Competition: row.Competition, CompetitionLevel: row.CompetitionLevel,
@@ -114,7 +116,9 @@ func handleGetKeywordMetrics(ctx context.Context, raw json.RawMessage, env *call
 		})
 	}
 	sortBy := args.SortBy
-	if sortBy == "" { sortBy = "search_volume" }
+	if sortBy == "" {
+		sortBy = "search_volume"
+	}
 	sort.SliceStable(out, func(i, j int) bool {
 		return metricSortValue(out[i], sortBy) > metricSortValue(out[j], sortBy)
 	})
@@ -147,18 +151,28 @@ func handleGetKeywordMetrics(ctx context.Context, raw json.RawMessage, env *call
 func metricSortValue(row keywordMetricToolRow, field string) float64 {
 	switch field {
 	case "keyword_difficulty":
-		if row.KeywordDifficulty != nil { return float64(*row.KeywordDifficulty) }
+		if row.KeywordDifficulty != nil {
+			return float64(*row.KeywordDifficulty)
+		}
 	case "cpc":
-		if row.CPC != nil { return *row.CPC }
+		if row.CPC != nil {
+			return *row.CPC
+		}
 	case "competition":
-		if row.Competition != nil { return *row.Competition }
+		if row.Competition != nil {
+			return *row.Competition
+		}
 	default:
-		if row.SearchVolume != nil { return float64(*row.SearchVolume) }
+		if row.SearchVolume != nil {
+			return float64(*row.SearchVolume)
+		}
 	}
 	return 0
 }
 
 func nullableMetric[T any](value *T) string {
-	if value == nil { return "—" }
+	if value == nil {
+		return "—"
+	}
 	return fmt.Sprint(*value)
 }

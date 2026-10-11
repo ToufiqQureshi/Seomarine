@@ -50,9 +50,9 @@ type Config struct {
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
 	// Self-host setup values are shown only as configuration status, never as secrets.
-	TeamDomain       string
-	PolicyAudience   string
-	ContextAPIKey    string
+	TeamDomain     string
+	PolicyAudience string
+	ContextAPIKey  string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }

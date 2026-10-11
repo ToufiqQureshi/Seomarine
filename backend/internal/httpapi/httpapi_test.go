@@ -186,11 +186,9 @@ func TestProxyRoutesUnownedPaths(t *testing.T) {
 	}
 }
 
-func TestMCPRouteUsesGoDispatcherAndKeepsLegacyFallback(t *testing.T) {
+func TestMCPRouteIsServedByGoWithoutTheLegacyFallback(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/mcp" {
-			t.Errorf("upstream path = %q, want /mcp", r.URL.Path)
-		}
+		t.Errorf("MCP request reached the legacy app at %s", r.URL.Path)
 		w.WriteHeader(http.StatusTeapot)
 	}))
 	defer upstream.Close()
@@ -205,22 +203,23 @@ func TestMCPRouteUsesGoDispatcherAndKeepsLegacyFallback(t *testing.T) {
 	handler := NewHandler(Deps{
 		Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(nil, testSecret), Site: pages,
 		Upstream: parsed,
-		MCP:      &mcp.Deps{Logger: discardLogger, Upstream: parsed},
+		MCP:      &mcp.Deps{Logger: discardLogger},
 	})
 
-	legacy := httptest.NewRecorder()
-	legacyReq := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
-	handler.ServeHTTP(legacy, legacyReq)
-	if legacy.Code != http.StatusTeapot {
-		t.Fatalf("request without API key status = %d, want legacy %d", legacy.Code, http.StatusTeapot)
-	}
-
-	goLane := httptest.NewRecorder()
-	goReq := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
-	goReq.Header.Set("x-api-key", "oseo_invalid")
-	handler.ServeHTTP(goLane, goReq)
-	if goLane.Code == http.StatusTeapot {
-		t.Fatal("API key request reached legacy fallback; expected Go dispatcher auth")
+	for name, setup := range map[string]func(*http.Request){
+		"no credentials":  func(*http.Request) {},
+		"invalid API key": func(r *http.Request) { r.Header.Set("x-api-key", "oseo_invalid") },
+	} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+		setup(req)
+		handler.ServeHTTP(rec, req)
+		if rec.Code == http.StatusTeapot {
+			t.Errorf("%s: request reached the legacy fallback", name)
+		}
+		if name == "no credentials" && rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s: status = %d, want %d from the Go dispatcher", name, rec.Code, http.StatusUnauthorized)
+		}
 	}
 }
 

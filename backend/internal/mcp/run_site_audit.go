@@ -14,11 +14,11 @@ var runSiteAuditInputSchema = json.RawMessage("{\"type\":\"object\",\"properties
 func runSiteAuditTool() *tool {
 	return &tool{
 		Name: "run_site_audit", Title: "Run site audit",
-		Description: "Start a same-origin, robots-aware site crawl and SEO audit. It runs in the background; poll get_audit_status and then read get_audit_issues. Lighthouse and JavaScript rendering are optional and use additional capacity.",
-		InputSchema: runSiteAuditInputSchema,
+		Description:  "Start a same-origin, robots-aware site crawl and SEO audit. It runs in the background; poll get_audit_status and then read get_audit_issues. Lighthouse and JavaScript rendering are optional and use additional capacity.",
+		InputSchema:  runSiteAuditInputSchema,
 		OutputSchema: json.RawMessage("{\"type\":\"object\",\"properties\":{\"auditId\":{\"type\":\"string\"},\"meta\":{\"type\":\"object\",\"additionalProperties\":true}},\"required\":[\"auditId\"],\"additionalProperties\":true}"),
-		Annotations: mutatingAnnotations(),
-		Handler: handleRunSiteAudit,
+		Annotations:  mutatingAnnotations(),
+		Handler:      handleRunSiteAudit,
 	}
 }
 

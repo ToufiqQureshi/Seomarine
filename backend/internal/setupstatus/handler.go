@@ -18,16 +18,16 @@ type Pinger interface {
 // Config contains only values needed to report whether features are configured.
 // Secret values are never included in responses.
 type Config struct {
-	Version           string
-	AuthMode          string
-	TeamDomain        string
-	PolicyAudience    string
-	DataForSEOKey     string
-	GoogleClientID    string
+	Version            string
+	AuthMode           string
+	TeamDomain         string
+	PolicyAudience     string
+	DataForSEOKey      string
+	GoogleClientID     string
 	GoogleClientSecret string
-	BetterAuthSecret  string
-	OpenRouterAPIKey  string
-	ContextAPIKey     string
+	BetterAuthSecret   string
+	OpenRouterAPIKey   string
+	ContextAPIKey      string
 }
 
 type check struct {

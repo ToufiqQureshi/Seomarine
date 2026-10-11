@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	rankGridDepth       = 20
-	rankGridConcurrency = 3
-	kmPerDegreeLatitude = 110.574
-	kmPerDegreeLongitude = 111.32
-	minLongitudeCosine  = 0.01
+	rankGridDepth           = 20
+	rankGridConcurrency     = 3
+	kmPerDegreeLatitude     = 110.574
+	kmPerDegreeLongitude    = 111.32
+	minLongitudeCosine      = 0.01
 	rankGridZoomNumeratorKM = 24045
 )
 
@@ -31,10 +31,10 @@ type localRankGridPoint struct {
 
 type localRankGridResult struct {
 	localRankGridPoint
-	Rank         *float64                `json:"rank"`
-	ResultsCount *int                    `json:"resultsCount,omitempty"`
-	TopResult    json.RawMessage          `json:"topResult,omitempty"`
-	Error        bool                    `json:"error,omitempty"`
+	Rank         *float64        `json:"rank"`
+	ResultsCount *int            `json:"resultsCount,omitempty"`
+	TopResult    json.RawMessage `json:"topResult,omitempty"`
+	Error        bool            `json:"error,omitempty"`
 }
 
 type localRankGridTopResult struct {
@@ -58,34 +58,34 @@ type localRankGridSummary struct {
 
 func getLocalRankGridTool() *tool {
 	return &tool{
-		Name: "get_local_rank_grid",
-		Title: "Get local rank grid",
-		Description: "Runs one Google Maps search per point of a bounded grid around a coordinate and reports the target business rank at each point, plus the result count and top result. Charges credits per point.",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"keyword":{"type":"string","minLength":1,"maxLength":120},"target":{"type":"object","properties":{"cid":{"type":"string","minLength":1,"maxLength":64},"placeId":{"type":"string","minLength":1,"maxLength":256},"name":{"type":"string","minLength":1,"maxLength":200}},"additionalProperties":false},"center":{"type":"object","properties":{"latitude":{"type":"number","minimum":-90,"maximum":90},"longitude":{"type":"number","minimum":-180,"maximum":180}},"required":["latitude","longitude"],"additionalProperties":false},"gridSize":{"type":"integer","enum":[3,5]},"spacingKm":{"type":"number","minimum":0.25,"maximum":10},"device":{"type":"string","enum":["desktop","mobile"]},"zoom":{"type":"integer","minimum":4,"maximum":18},"languageCode":{"type":"string","minLength":2,"maxLength":8}},"required":["projectId","keyword","target","center"],"additionalProperties":false}`),
+		Name:         "get_local_rank_grid",
+		Title:        "Get local rank grid",
+		Description:  "Runs one Google Maps search per point of a bounded grid around a coordinate and reports the target business rank at each point, plus the result count and top result. Charges credits per point.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"keyword":{"type":"string","minLength":1,"maxLength":120},"target":{"type":"object","properties":{"cid":{"type":"string","minLength":1,"maxLength":64},"placeId":{"type":"string","minLength":1,"maxLength":256},"name":{"type":"string","minLength":1,"maxLength":200}},"additionalProperties":false},"center":{"type":"object","properties":{"latitude":{"type":"number","minimum":-90,"maximum":90},"longitude":{"type":"number","minimum":-180,"maximum":180}},"required":["latitude","longitude"],"additionalProperties":false},"gridSize":{"type":"integer","enum":[3,5]},"spacingKm":{"type":"number","minimum":0.25,"maximum":10},"device":{"type":"string","enum":["desktop","mobile"]},"zoom":{"type":"integer","minimum":4,"maximum":18},"languageCode":{"type":"string","minLength":2,"maxLength":8}},"required":["projectId","keyword","target","center"],"additionalProperties":false}`),
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{"grid":{"type":"array","items":{"type":"object"}},"summary":{"type":"object"},"matchedBusiness":{"type":["object","null"]}},"required":["grid","summary","matchedBusiness"],"additionalProperties":true}`),
-		Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
-		Handler: handleGetLocalRankGrid,
+		Annotations:  map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
+		Handler:      handleGetLocalRankGrid,
 	}
 }
 
 func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callEnv) (*callResult, error) {
 	var args struct {
 		ProjectID string `json:"projectId"`
-		Keyword string `json:"keyword"`
-		Target *struct {
-			CID string `json:"cid"`
+		Keyword   string `json:"keyword"`
+		Target    *struct {
+			CID     string `json:"cid"`
 			PlaceID string `json:"placeId"`
-			Name string `json:"name"`
+			Name    string `json:"name"`
 		} `json:"target"`
 		Center struct {
-			Latitude *float64 `json:"latitude"`
+			Latitude  *float64 `json:"latitude"`
 			Longitude *float64 `json:"longitude"`
 		} `json:"center"`
-		GridSize int `json:"gridSize"`
-		SpacingKm *float64 `json:"spacingKm"`
-		Device string `json:"device"`
-		Zoom *int `json:"zoom"`
-		LanguageCode string `json:"languageCode"`
+		GridSize     int      `json:"gridSize"`
+		SpacingKm    *float64 `json:"spacingKm"`
+		Device       string   `json:"device"`
+		Zoom         *int     `json:"zoom"`
+		LanguageCode string   `json:"languageCode"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil || strings.TrimSpace(args.ProjectID) == "" {
 		return nil, newAppErrorf("VALIDATION_ERROR", "projectId is required")
@@ -185,7 +185,7 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 				if len(items) > 0 {
 					top := localRankGridTopResult{
 						Title: gridString(items[0], "title"),
-						CID: gridString(items[0], "cid"),
+						CID:   gridString(items[0], "cid"),
 					}
 					result.TopResult, _ = json.Marshal(top)
 				} else {
@@ -194,8 +194,8 @@ func handleGetLocalRankGrid(ctx context.Context, raw json.RawMessage, env *callE
 				matched := matchLocalRankGridItem(items, args.Target.CID, args.Target.PlaceID, args.Target.Name)
 				if matched != nil {
 					matchedRows[index] = &localRankGridBusiness{
-						Title: gridString(matched, "title"),
-						CID: gridString(matched, "cid"),
+						Title:   gridString(matched, "title"),
+						CID:     gridString(matched, "cid"),
 						PlaceID: gridString(matched, "place_id"),
 					}
 					result.Rank = gridNumber(matched, "rank_absolute")
@@ -284,7 +284,7 @@ func buildLocalRankGridPoints(latitude, longitude float64, gridSize int, spacing
 		for col := 0; col < gridSize; col++ {
 			points = append(points, localRankGridPoint{
 				Row: row, Col: col,
-				Latitude: math.Round((latitude+(middle-float64(row))*latitudeStep)*1e7) / 1e7,
+				Latitude:  math.Round((latitude+(middle-float64(row))*latitudeStep)*1e7) / 1e7,
 				Longitude: math.Round((longitude+(float64(col)-middle)*longitudeStep)*1e7) / 1e7,
 			})
 		}
@@ -294,7 +294,7 @@ func buildLocalRankGridPoints(latitude, longitude float64, gridSize int, spacing
 
 func rankGridZoom(spacing, latitude float64) int {
 	cosine := math.Max(math.Abs(math.Cos(latitude*math.Pi/180)), minLongitudeCosine)
-	zoom := int(math.Floor(math.Log2((rankGridZoomNumeratorKM*cosine)/spacing)))
+	zoom := int(math.Floor(math.Log2((rankGridZoomNumeratorKM * cosine) / spacing)))
 	return min(18, max(4, zoom))
 }
 

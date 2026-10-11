@@ -312,7 +312,6 @@ type SavedLister interface {
 	List(ctx context.Context, q ListQuery) (ListResult, error)
 }
 
-
 // SerpResultsLive fetches the complete live SERP result set for an MCP batch.
 // The API's SERP analysis cache intentionally keeps only organic rows, while
 // this tool preserves all result types returned by the provider.

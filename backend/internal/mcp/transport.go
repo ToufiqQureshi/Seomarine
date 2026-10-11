@@ -66,7 +66,6 @@ func (h *handler) serveRPC(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-
 	responses := make([]rpcResponse, 0, len(requests))
 	for _, req := range requests {
 		if req.isNotification() {
