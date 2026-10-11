@@ -9,19 +9,6 @@ import (
 	"time"
 )
 
-func newCreditTestOrg(t *testing.T, ctx context.Context) string {
-	t.Helper()
-	orgID := fmt.Sprintf("org_credit_%d", time.Now().UnixNano())
-	_, err := setupTestDB(t).Exec(ctx,
-		`INSERT INTO organization (id, name, slug, created_at) VALUES ($1, $1, $1, now())`,
-		orgID,
-	)
-	if err != nil {
-		t.Fatalf("create test organization: %v", err)
-	}
-	return orgID
-}
-
 func TestCreditLedgerConcurrentReserveAndOrgScopedKeys(t *testing.T) {
 	pool := setupTestDB(t)
 	if pool == nil {
