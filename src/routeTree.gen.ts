@@ -30,8 +30,6 @@ import { Route as AuthenticatedYcRouteImport } from './routes/_authenticated.yc'
 import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitation.$id'
 import { Route as AppBillingFixPaymentRouteImport } from './routes/_app/billing_.fix-payment'
 import { Route as AppBillingPlanRouteImport } from './routes/_app/billing_.plan'
-import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
-import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppPProjectIdRouteRouteImport } from './routes/_app/p/$projectId/route'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsBrandingRouteImport } from './routes/_app/settings/branding'
@@ -162,16 +160,6 @@ const AppBillingFixPaymentRoute = AppBillingFixPaymentRouteImport.update({
 const AppBillingPlanRoute = AppBillingPlanRouteImport.update({
   id: '/billing_/plan',
   path: '/billing/plan',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppHelpDataforseoApiKeyRoute = AppHelpDataforseoApiKeyRouteImport.update({
-  id: '/help/dataforseo-api-key',
-  path: '/help/dataforseo-api-key',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppHelpOpenrouterApiKeyRoute = AppHelpOpenrouterApiKeyRouteImport.update({
-  id: '/help/openrouter-api-key',
-  path: '/help/openrouter-api-key',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppPProjectIdRouteRoute = AppPProjectIdRouteRouteImport.update({
@@ -349,8 +337,6 @@ export interface FileRoutesByFullPath {
   '/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/billing/plan': typeof AppBillingPlanRoute
-  '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/branding': typeof AppSettingsBrandingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -397,8 +383,6 @@ export interface FileRoutesByTo {
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/billing/plan': typeof AppBillingPlanRoute
-  '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/branding': typeof AppSettingsBrandingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -449,8 +433,6 @@ export interface FileRoutesById {
   '/_app/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/_app/billing_/fix-payment': typeof AppBillingFixPaymentRoute
   '/_app/billing_/plan': typeof AppBillingPlanRoute
-  '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
-  '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/_app/settings/branding': typeof AppSettingsBrandingRoute
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -501,8 +483,6 @@ export interface FileRouteTypes {
     | '/p/$projectId'
     | '/billing/fix-payment'
     | '/billing/plan'
-    | '/help/dataforseo-api-key'
-    | '/help/openrouter-api-key'
     | '/settings/branding'
     | '/settings/organization'
     | '/settings/'
@@ -549,8 +529,6 @@ export interface FileRouteTypes {
     | '/accept-invitation/$id'
     | '/billing/fix-payment'
     | '/billing/plan'
-    | '/help/dataforseo-api-key'
-    | '/help/openrouter-api-key'
     | '/settings/branding'
     | '/settings/organization'
     | '/settings'
@@ -600,8 +578,6 @@ export interface FileRouteTypes {
     | '/_app/p/$projectId'
     | '/_app/billing_/fix-payment'
     | '/_app/billing_/plan'
-    | '/_app/help/dataforseo-api-key'
-    | '/_app/help/openrouter-api-key'
     | '/_app/settings/branding'
     | '/_app/settings/organization'
     | '/_app/settings/'
@@ -789,20 +765,6 @@ declare module '@tanstack/react-router' {
       path: '/billing/plan'
       fullPath: '/billing/plan'
       preLoaderRoute: typeof AppBillingPlanRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/help/dataforseo-api-key': {
-      id: '/_app/help/dataforseo-api-key'
-      path: '/help/dataforseo-api-key'
-      fullPath: '/help/dataforseo-api-key'
-      preLoaderRoute: typeof AppHelpDataforseoApiKeyRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/help/openrouter-api-key': {
-      id: '/_app/help/openrouter-api-key'
-      path: '/help/openrouter-api-key'
-      fullPath: '/help/openrouter-api-key'
-      preLoaderRoute: typeof AppHelpOpenrouterApiKeyRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/p/$projectId': {
@@ -1110,8 +1072,6 @@ interface AppRouteRouteChildren {
   AppPProjectIdRouteRoute: typeof AppPProjectIdRouteRouteWithChildren
   AppBillingFixPaymentRoute: typeof AppBillingFixPaymentRoute
   AppBillingPlanRoute: typeof AppBillingPlanRoute
-  AppHelpDataforseoApiKeyRoute: typeof AppHelpDataforseoApiKeyRoute
-  AppHelpOpenrouterApiKeyRoute: typeof AppHelpOpenrouterApiKeyRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -1124,8 +1084,6 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppPProjectIdRouteRoute: AppPProjectIdRouteRouteWithChildren,
   AppBillingFixPaymentRoute: AppBillingFixPaymentRoute,
   AppBillingPlanRoute: AppBillingPlanRoute,
-  AppHelpDataforseoApiKeyRoute: AppHelpDataforseoApiKeyRoute,
-  AppHelpOpenrouterApiKeyRoute: AppHelpOpenrouterApiKeyRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

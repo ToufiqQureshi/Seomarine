@@ -5,18 +5,18 @@
 ```sh
 DATABASE_URL=postgres://user:pass@localhost:5432/seomarine \
 REDIS_URL=redis://localhost:6379/0 \
-BETTER_AUTH_SECRET=<the legacy app's secret> \
-UPSTREAM_APP_URL=http://localhost:3000 \
+BETTER_AUTH_SECRET=<at least 32 random characters> \
+STATIC_DIR=../dist \
 PUBLIC_URL=http://localhost:8080 \
 PORT=8080 go run ./cmd/server
 ```
 
 | Variable                  | Required | Meaning                                                                                                         |
 | ------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`            | yes      | Postgres shared with the legacy app.                                                                            |
+| `DATABASE_URL`            | yes      | Postgres. A new database is fully built by the migrations.                                                                            |
 | `REDIS_URL`               | yes      | Redis, e.g. `redis://localhost:6379/0` or `rediss://` for TLS.                                                  |
-| `BETTER_AUTH_SECRET`      | yes      | The legacy app's secret (at least 32 characters). It verifies the signed `better-auth.session_token` cookie.    |
-| `UPSTREAM_APP_URL`        | yes      | Absolute `http(s)` URL of the legacy TypeScript app. Every route the Go server does not own is proxied there.   |
+| `BETTER_AUTH_SECRET`      | yes      | At least 32 characters. Signs the `better-auth.session_token` cookie and email tokens. |
+| `STATIC_DIR`              | no       | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
 | `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://seomarine.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
 | `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
 | `DATAFORSEO_API_KEY`      | no       | Base64 `login:password` for AI search, backlinks and domain. Without it those endpoints answer `503`. |
@@ -36,7 +36,7 @@ SIGINT or SIGTERM.
 - `GET /readyz`: readiness. Postgres and Redis answer within 2 seconds,
   otherwise 503.
 - `GET /`: the landing page for visitors without a valid session; signed-in
-  users get the app (proxied). `GET /pricing`: the pricing page, for
+  users get the app. `GET /pricing`: the pricing page, for
   everyone. Both are rendered once at startup from `internal/site`
   (`html/template`, no JavaScript) and send `ETag`, a strict CSP and
   `Vary: Cookie` on `/`. Prices are the `FreePriceINR`/`ProPriceINR`
@@ -81,12 +81,21 @@ SIGINT or SIGTERM.
 - `POST /api/v1/projects/{projectId}/domain/overview`, `/keyword-suggestions`,
   `/keywords` and `/pages`: Domain Overview lookups, same gating as backlinks.
   See `internal/domain/README.md`.
-- `/api/v1/...`: needs a valid legacy session cookie, otherwise 401.
+- `/api/v1/...`: needs a valid session cookie, otherwise 401.
   `/api/v1/projects/{projectId}/...` also needs membership of the project's
   organization; any other project answers 404. Errors are JSON:
   `{"error": {"code": "...", "message": "..."}}`.
-- Everything else is reverse-proxied to `UPSTREAM_APP_URL` with the original
-  `Host`, cookies, path and query.
+- Everything else is the React app: a file under `STATIC_DIR` is served as
+  is (`assets/` immutable for a year), any other path without an extension
+  gets `index.html` (`no-cache`, `frame-ancestors 'self'`), and a missing
+  asset stays 404.
+- `GET /r/{reportId}`: report viewer for signed-in members (report CSP,
+  white-label bar, `?print=1`). `GET /s/{token}`: public share page that
+  frames `/s/{token}/raw`. `GET /.well-known/openai-apps-challenge`: the
+  `OPENAI_APPS_CHALLENGE` token.
+- Billing: `GET /api/v1/billing/credits` (plan + credit balance),
+  `POST /api/v1/billing/usage-events` (settled spends). A paid subscription
+  charge grants `BILLING_MONTHLY_CREDITS_USD` once per webhook event.
 
 ## Analytics
 
@@ -154,9 +163,9 @@ happens next through webhooks, so subscribe the webhook to
 ## Database
 
 Migrations live in `internal/database/migrations` (goose, embedded SQL) and
-run at startup under a Postgres advisory lock. The Go server shares the
-legacy app's database, so every Go-owned table, including the
-`go_schema_migrations` history, is prefixed `go_`.
+run at startup under a Postgres advisory lock. Version 1 is the full
+legacy schema; Go-owned tables, including the `go_schema_migrations` history,
+are prefixed `go_`.
 
 ## Checks (all mandatory, see /CLAUDE.md)
 
