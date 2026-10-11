@@ -65,6 +65,8 @@ type Deps struct {
 	// Billing is nil when Razorpay is not configured; billing routes then
 	// answer 503.
 	Billing *billing.Service
+	// CreditLedger provides organization-scoped available credit balances.
+	CreditLedger billing.CreditBalanceReader
 	// Branding is the active organization's white-label report branding.
 	Branding *branding.Service
 	// AISearch is nil when no DataForSEO key is configured; its routes then
@@ -229,7 +231,7 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, Credits: d.CreditLedger, WithSession: withSession, AutumnSecretKey: d.AutumnSecretKey, Hosted: d.HostedMode})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
