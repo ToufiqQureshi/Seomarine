@@ -2,14 +2,13 @@ package billing
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
 )
 
 var (
@@ -43,12 +42,6 @@ type CreditLedgerService struct {
 
 func NewCreditLedgerService(db *pgxpool.Pool) *CreditLedgerService {
 	return &CreditLedgerService{db: db}
-}
-
-func generateID(prefix string) string {
-	b := make([]byte, 12)
-	_, _ = rand.Read(b)
-	return fmt.Sprintf("%s_%s", prefix, hex.EncodeToString(b))
 }
 
 // GetBalance returns the organization's credit balance.
@@ -87,7 +80,10 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 		return fmt.Errorf("upsert credits: %w", err)
 	}
 
-	ledgerID := generateID("led")
+	ledgerID, err := ids.New()
+	if err != nil {
+		return fmt.Errorf("generate credit ledger id: %w", err)
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, 'grant', $4, now())
@@ -99,7 +95,7 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 	return tx.Commit(ctx)
 }
 
-// Reserve atomically reserves credits for an operation using idempotency key.
+// Reserve atomically reserves credits for an operation using an organization-scoped idempotency key.
 func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount int64, idempotencyKey string) (CreditReservation, error) {
 	if amount <= 0 {
 		return CreditReservation{}, errors.New("amount must be positive")
@@ -107,23 +103,31 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return CreditReservation{}, fmt.Errorf("begin tx: %w", err)
+		return CreditReservation{}, fmt.Errorf("begin reservation: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if idempotencyKey != "" {
+	loadExisting := func() (CreditReservation, error) {
 		var res CreditReservation
-		var ik *string
+		var key *string
 		err := tx.QueryRow(ctx, `
 			SELECT id, organization_id, amount_credits, status, idempotency_key, created_at
 			FROM go_billing_credit_reservations
-			WHERE idempotency_key = $1
-		`, idempotencyKey).Scan(&res.ID, &res.OrganizationID, &res.AmountCredits, &res.Status, &ik, &res.CreatedAt)
+			WHERE organization_id = $1 AND idempotency_key = $2
+		`, orgID, idempotencyKey).Scan(&res.ID, &res.OrganizationID, &res.AmountCredits, &res.Status, &key, &res.CreatedAt)
+		if err == nil && key != nil {
+			res.IdempotencyKey = *key
+		}
+		return res, err
+	}
+
+	if idempotencyKey != "" {
+		res, err := loadExisting()
 		if err == nil {
-			if ik != nil {
-				res.IdempotencyKey = *ik
-			}
 			return res, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return CreditReservation{}, fmt.Errorf("find existing reservation: %w", err)
 		}
 	}
 
@@ -131,60 +135,95 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 	err = tx.QueryRow(ctx, `
 		SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE
 	`, orgID).Scan(&balance)
-	if errors.Is(err, pgx.ErrNoRows) || balance < amount {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return CreditReservation{}, ErrInsufficientBalance
 	}
 	if err != nil {
-		return CreditReservation{}, fmt.Errorf("lock balance: %w", err)
+		return CreditReservation{}, fmt.Errorf("lock credit balance: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, `
-		UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now()
-		WHERE organization_id = $2
-	`, amount, orgID)
-	if err != nil {
-		return CreditReservation{}, fmt.Errorf("deduct balance: %w", err)
-	}
-
-	resID := generateID("res")
-	var ik *string
+	// Recheck after the organization balance lock. Concurrent reservations for
+	// the same organization serialize here and return the same reservation.
 	if idempotencyKey != "" {
-		ik = &idempotencyKey
+		res, err := loadExisting()
+		if err == nil {
+			return res, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return CreditReservation{}, fmt.Errorf("recheck existing reservation: %w", err)
+		}
+	}
+	if balance < amount {
+		return CreditReservation{}, ErrInsufficientBalance
 	}
 
-	var nowTime = time.Now().UTC()
-	_, err = tx.Exec(ctx, `
-		INSERT INTO go_billing_credit_reservations (id, organization_id, amount_credits, status, idempotency_key, created_at, updated_at)
+	resID, err := ids.New()
+	if err != nil {
+		return CreditReservation{}, fmt.Errorf("generate reservation id: %w", err)
+	}
+	var key any
+	if idempotencyKey != "" {
+		key = idempotencyKey
+	}
+	now := time.Now().UTC()
+	var insertedID string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO go_billing_credit_reservations
+			(id, organization_id, amount_credits, status, idempotency_key, created_at, updated_at)
 		VALUES ($1, $2, $3, 'reserved', $4, $5, $5)
-	`, resID, orgID, amount, ik, nowTime)
+		ON CONFLICT (organization_id, idempotency_key) DO NOTHING
+		RETURNING id
+	`, resID, orgID, amount, key, now).Scan(&insertedID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		res, selectErr := loadExisting()
+		if selectErr != nil {
+			return CreditReservation{}, fmt.Errorf("load concurrent reservation: %w", selectErr)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return CreditReservation{}, fmt.Errorf("commit idempotent reservation: %w", err)
+		}
+		return res, nil
+	}
 	if err != nil {
 		return CreditReservation{}, fmt.Errorf("insert reservation: %w", err)
 	}
 
-	ledgerID := generateID("led")
+	_, err = tx.Exec(ctx, `
+		UPDATE go_billing_credits
+		SET balance_credits = balance_credits - $1, updated_at = now()
+		WHERE organization_id = $2
+	`, amount, orgID)
+	if err != nil {
+		return CreditReservation{}, fmt.Errorf("deduct reserved credits: %w", err)
+	}
+
+	ledgerID, err := ids.New()
+	if err != nil {
+		return CreditReservation{}, fmt.Errorf("generate reservation ledger id: %w", err)
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, $4, 'reserve', 'credit reservation', $5)
-	`, ledgerID, orgID, resID, -amount, nowTime)
+	`, ledgerID, orgID, resID, -amount, now)
 	if err != nil {
-		return CreditReservation{}, fmt.Errorf("insert ledger reserve: %w", err)
+		return CreditReservation{}, fmt.Errorf("insert reserve ledger entry: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return CreditReservation{}, fmt.Errorf("commit tx: %w", err)
+		return CreditReservation{}, fmt.Errorf("commit reservation: %w", err)
 	}
-
 	return CreditReservation{
-		ID:             resID,
+		ID: resID,
 		OrganizationID: orgID,
-		AmountCredits:  amount,
-		Status:         "reserved",
+		AmountCredits: amount,
+		Status: "reserved",
 		IdempotencyKey: idempotencyKey,
-		CreatedAt:      nowTime,
+		CreatedAt: now,
 	}, nil
 }
 
-// Settle settles a reservation with actual used credits, returning any unused credits to balance.
+// Settle settles the reservation with actual usage. The ledger stores only the
+// balance adjustment; any uncollectable extra usage is recorded as debt.
 func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, actualAmount int64) error {
 	if actualAmount < 0 {
 		return errors.New("actual amount cannot be negative")
@@ -192,7 +231,7 @@ func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, 
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
+		return fmt.Errorf("begin settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -207,48 +246,87 @@ func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, 
 		return ErrReservationNotFound
 	}
 	if err != nil {
-		return fmt.Errorf("query reservation: %w", err)
+		return fmt.Errorf("load reservation for settlement: %w", err)
 	}
-
 	if status != "reserved" {
 		return ErrReservationAlreadyClosed
 	}
 
-	refundAmount := reservedAmount - actualAmount
-	if refundAmount < 0 {
-		// If actual exceeded reserved, try to deduct extra
-		extraNeeded := -refundAmount
-		var currentBal int64
-		err = tx.QueryRow(ctx, `SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE`, orgID).Scan(&currentBal)
-		if err != nil || currentBal < extraNeeded {
-			return ErrInsufficientBalance
-		}
-		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now() WHERE organization_id = $2`, extraNeeded, orgID)
+	adjustment := reservedAmount - actualAmount
+	debt := int64(0)
+	if adjustment > 0 {
+		_, err = tx.Exec(ctx, `
+			UPDATE go_billing_credits
+			SET balance_credits = balance_credits + $1, updated_at = now()
+			WHERE organization_id = $2
+		`, adjustment, orgID)
 		if err != nil {
-			return fmt.Errorf("deduct extra balance: %w", err)
+			return fmt.Errorf("refund unused credits: %w", err)
 		}
-	} else if refundAmount > 0 {
-		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, refundAmount, orgID)
+	} else if adjustment < 0 {
+		extra := -adjustment
+		var balance int64
+		err = tx.QueryRow(ctx, `
+			SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE
+		`, orgID).Scan(&balance)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("load settlement balance: %w", err)
+		}
 		if err != nil {
-			return fmt.Errorf("refund unused balance: %w", err)
+			return fmt.Errorf("lock settlement balance: %w", err)
 		}
+		deduct := balance
+		if deduct > extra {
+			deduct = extra
+		}
+		debt = extra - deduct
+		if deduct > 0 {
+			_, err = tx.Exec(ctx, `
+				UPDATE go_billing_credits
+				SET balance_credits = balance_credits - $1, updated_at = now()
+				WHERE organization_id = $2
+			`, deduct, orgID)
+			if err != nil {
+				return fmt.Errorf("deduct extra credits: %w", err)
+			}
+		}
+		adjustment = -deduct
 	}
 
-	_, err = tx.Exec(ctx, `UPDATE go_billing_credit_reservations SET status = 'settled', updated_at = now() WHERE id = $1`, reservationID)
+	_, err = tx.Exec(ctx, `
+		UPDATE go_billing_credit_reservations SET status = 'settled', updated_at = now() WHERE id = $1
+	`, reservationID)
 	if err != nil {
 		return fmt.Errorf("update reservation status: %w", err)
 	}
-
-	ledgerID := generateID("led")
+	ledgerID, err := ids.New()
+	if err != nil {
+		return fmt.Errorf("generate settlement ledger id: %w", err)
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
-		VALUES ($1, $2, $3, $4, 'settle', 'settled reservation', now())
-	`, ledgerID, orgID, reservationID, -actualAmount)
+		VALUES ($1, $2, $3, $4, 'settle', 'settlement balance adjustment', now())
+	`, ledgerID, orgID, reservationID, adjustment)
 	if err != nil {
-		return fmt.Errorf("insert ledger settle: %w", err)
+		return fmt.Errorf("insert settlement ledger entry: %w", err)
 	}
-
-	return tx.Commit(ctx)
+	if debt > 0 {
+		debtID, err := ids.New()
+		if err != nil {
+			return fmt.Errorf("generate debt ledger id: %w", err)
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
+			VALUES ($1, $2, $3, $4, 'debt', 'uncollected settlement shortfall', now())
+		`, debtID, orgID, reservationID, -debt)
+		if err != nil {
+			return fmt.Errorf("record settlement debt: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit settlement: %w", err)
+	}
+	return nil
 }
 
 // Refund refunds a reservation in full.
@@ -287,7 +365,10 @@ func (s *CreditLedgerService) Refund(ctx context.Context, reservationID string, 
 		return fmt.Errorf("update reservation status: %w", err)
 	}
 
-	ledgerID := generateID("led")
+	ledgerID, err := ids.New()
+	if err != nil {
+		return fmt.Errorf("generate refund ledger id: %w", err)
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, $4, 'refund', $5, now())
