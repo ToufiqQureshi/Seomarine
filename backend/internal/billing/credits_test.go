@@ -72,14 +72,14 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 	})
 
 	t.Run("insufficient balance", func(t *testing.T) {
-		_, err := svc.Reserve(ctx, orgID, 10000, "ik_over")
+		_, err := svc.Reserve(ctx, orgID, 10000, orgID+"_ik_over")
 		if !errors.Is(err, ErrInsufficientBalance) {
 			t.Errorf("expected ErrInsufficientBalance, got %v", err)
 		}
 	})
 
 	t.Run("reserve, settle, refund", func(t *testing.T) {
-		res, err := svc.Reserve(ctx, orgID, 2000, "ik_1")
+		res, err := svc.Reserve(ctx, orgID, 2000, orgID+"_ik_1")
 		if err != nil {
 			t.Fatalf("reserve failed: %v", err)
 		}
@@ -88,7 +88,7 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 		}
 
 		// Idempotent reserve check
-		res2, err := svc.Reserve(ctx, orgID, 2000, "ik_1")
+		res2, err := svc.Reserve(ctx, orgID, 2000, orgID+"_ik_1")
 		if err != nil || res2.ID != res.ID {
 			t.Errorf("expected idempotent reservation, got id %s, err %v", res2.ID, err)
 		}
@@ -115,7 +115,7 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 		}
 
 		// Reserve and refund
-		resRefund, err := svc.Reserve(ctx, orgID, 1000, "ik_ref")
+		resRefund, err := svc.Reserve(ctx, orgID, 1000, orgID+"_ik_ref")
 		if err != nil {
 			t.Fatalf("reserve refund failed: %v", err)
 		}

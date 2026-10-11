@@ -29,3 +29,33 @@ The Go MCP `get_serp_results` tool uses the shared keyword SERP provider for
 market and canonical local-location validation. It returns bounded live result
 rows per query and captures individual query failures without discarding
 successful results. Tool-contract tests are deferred to the final test phase.
+
+
+The Go MCP `get_keyword_metrics` tool fetches known terms from Labs or Google Ads by market, supports optional clickstream refinement and monthly trends, and returns nullable metrics sorted by the requested field. Its contract tests are deferred to the final test phase.
+
+
+The Go MCP `research_keywords` tool calls the shared Go research service per seed, honors local-area markets and the requested research options, and returns a separate result for each seed. Its contract tests are deferred to the final test phase.
+
+
+The shared Go DataForSEO keyword provider also owns the MCP Maps and Local Finder SERP paths. It preserves coordinate formatting, device/OS selection, depth and trimmed local-result fields. Contract tests are deferred to the final migration phase.
+
+
+The Go keyword/DataForSEO provider also supports Google Business Profile Q&A lookups, including `cid:` and `place_id:` identifiers and the provider's billed empty-result response. Contract tests are deferred to the final migration test phase.
+
+
+The Go DataForSEO provider exposes the free business-category index using its unmetered HTTP path. The MCP handler caches the normalized category list for seven days and filters it locally.
+
+
+The shared Go DataForSEO provider supports Business Listings search with coordinate radius, categories, title, rating/review filters, claimed status, sorting, and bounded pages. Contract tests are deferred to the final migration test phase.
+
+
+The Go DataForSEO provider also reads a single `my_business_info` record by name, CID, or place ID with a project-market or coordinate selector, merging the provider's check URL into the profile. Contract tests are deferred to the final migration test phase.
+
+
+The Go provider now supports metered Google and extended review task-post operations plus unmetered task-get polling. Review task IDs remain resumable across MCP calls, and contract tests are deferred to the final migration phase.
+
+
+The Go DataForSEO provider now posts and collects `my_business_updates` tasks, keeping the post metered and task polling unmetered. Contract tests are deferred to the final migration phase.
+
+
+The local SERP provider also supports bounded Google Maps rank grids. It uses a fixed, latitude-aware zoom for comparable grid points and keeps each request independently metered.

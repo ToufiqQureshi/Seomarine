@@ -124,8 +124,7 @@ type Deps struct {
 	AutumnSecretKey      string
 	AuthMode             string
 	HostedMode           bool
-	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
-	// credentials and tools that are not registered in Go.
+	// MCP serves API-key and Go-issued OAuth requests through the Go dispatcher.
 	MCP *mcp.Deps
 	// HealthStatus reports safe self-host setup checks on /api/health.
 	HealthStatus http.Handler

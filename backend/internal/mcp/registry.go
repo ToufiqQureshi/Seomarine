@@ -1,14 +1,10 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
 	"time"
 )
 
@@ -23,10 +19,9 @@ func toolCallName(params json.RawMessage) string {
 	return call.Name
 }
 
-// listTools returns Go-owned tools and any legacy tools not yet ported to Go.
-func (h *handler) listTools(ctx context.Context, r *http.Request, req rpcRequest) ([]json.RawMessage, error) {
+// listTools returns the complete Go-owned MCP tool registry.
+func (h *handler) listTools() ([]json.RawMessage, error) {
 	local := make([]json.RawMessage, 0, len(registry()))
-	owned := make(map[string]struct{}, len(registry()))
 	for _, t := range registry() {
 		data, err := json.Marshal(map[string]any{
 			"name":         t.Name,
@@ -40,82 +35,9 @@ func (h *handler) listTools(ctx context.Context, r *http.Request, req rpcRequest
 			return nil, fmt.Errorf("encode local tool %s: %w", t.Name, err)
 		}
 		local = append(local, data)
-		owned[t.Name] = struct{}{}
 	}
 
-	legacy, err := h.fetchLegacyTools(ctx, r, req)
-	if err != nil {
-		return nil, err
-	}
-	merged := make([]json.RawMessage, 0, len(local)+len(legacy))
-	merged = append(merged, local...)
-	for _, raw := range legacy {
-		var tool struct {
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal(raw, &tool); err != nil || strings.TrimSpace(tool.Name) == "" {
-			return nil, errors.New("legacy MCP tools/list returned a tool without a name")
-		}
-		if _, duplicate := owned[tool.Name]; duplicate {
-			continue
-		}
-		owned[tool.Name] = struct{}{}
-		merged = append(merged, raw)
-	}
-	return merged, nil
-}
-
-func (h *handler) fetchLegacyTools(ctx context.Context, r *http.Request, req rpcRequest) ([]json.RawMessage, error) {
-	if h.deps.Upstream == nil {
-		return nil, errors.New("legacy MCP upstream is not configured")
-	}
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("encode tools/list request: %w", err)
-	}
-	proxyCtx, cancel := context.WithTimeout(ctx, requestTimeout)
-	defer cancel()
-	resp, err := h.proxyRoundTrip(proxyCtx, r, body)
-	if err != nil {
-		return nil, fmt.Errorf("request legacy MCP tool list: %w", err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			h.deps.Logger.WarnContext(ctx, "close legacy MCP tools/list response", "err", err)
-		}
-	}()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("legacy MCP tools/list returned HTTP %d", resp.StatusCode)
-	}
-	const maxLegacyToolListBytes = 4 << 20
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxLegacyToolListBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read legacy MCP tool list: %w", err)
-	}
-	if len(data) > maxLegacyToolListBytes {
-		return nil, errors.New("legacy MCP tool list is too large")
-	}
-	var envelope struct {
-		JSONRPC string          `json:"jsonrpc"`
-		ID      json.RawMessage `json:"id"`
-		Result  struct {
-			Tools []json.RawMessage `json:"tools"`
-		} `json:"result"`
-		Error *rpcError `json:"error"`
-	}
-	if err := json.Unmarshal(data, &envelope); err != nil {
-		return nil, fmt.Errorf("decode legacy MCP tool list: %w", err)
-	}
-	if envelope.JSONRPC != "2.0" || !bytes.Equal(bytes.TrimSpace(envelope.ID), bytes.TrimSpace(req.ID)) {
-		return nil, errors.New("legacy MCP tools/list response does not match the request")
-	}
-	if envelope.Error != nil {
-		return nil, fmt.Errorf("legacy MCP tools/list failed with code %d", envelope.Error.Code)
-	}
-	if envelope.Result.Tools == nil {
-		return nil, errors.New("legacy MCP tools/list response has no tools array")
-	}
-	return envelope.Result.Tools, nil
+	return local, nil
 }
 
 // callTool invokes a registered tool with panic recovery and output validation.

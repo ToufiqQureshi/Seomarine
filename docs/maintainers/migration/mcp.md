@@ -1,10 +1,9 @@
 # MCP server: TypeScript to Go migration
 
 The legacy MCP server lives in `src/server/mcp` (about 9.2k lines). The Go port
-lives in `backend/internal/mcp`. This file is the tool inventory and the PR plan.
-Update it in every PR.
+lives in `backend/internal/mcp`. This file is the tool inventory and migration history. The original three-PR plan below has been superseded by the stacked migration PRs; update the current status in every PR.
 
-## How the port ships
+## Original migration plan (historical)
 
 - **One PR per stage.** PR 1 (this one) is the server, transport, auth,
   dispatcher, plus `whoami` and the project tools. PR 2 ports the read-only and
@@ -20,15 +19,9 @@ Update it in every PR.
   working through the proxy; it is removed from the proxy only when its Go
   handler lands.
 
-### PR 2 implementation status
+### Original PR 2 snapshot (historical)
 
-The Go registry currently owns saved keyword list/save/remove, SERP location
-search, and site audit history/status/pages/delete. Audit delete enforces the
-owner/admin project-delete gate and uses the Go audit service's workflow cleanup.
-Search Console, GA4, report/template/sharing, rank-tracker reads, and audit issue
-formatting still use the TypeScript fallback because their public contract has
-not yet been ported to Go. Keep the fallback until each corresponding Go handler
-has a contract test.
+The old PR 2 snapshot below described an early point in the migration. It is superseded by the current stacked PR status below.
 
 ## Auth and gates (legacy)
 
@@ -122,7 +115,7 @@ lives under `internal/google` and is only partially ported, so the GA4 tools
 that have no Go service stay on the proxy and are marked "pending" below.
 `internal/reports` does not exist yet, so the report tools stay on the proxy.
 
-## Status by PR
+## Original status by PR (historical)
 
 - **PR 1 (`port-mcp-go-1`):** server, Streamable HTTP transport, JSON-RPC
   errors, tool registry, dispatcher + legacy proxy, API-key auth, project
@@ -139,19 +132,25 @@ that have no Go service stay on the proxy and are marked "pending" below.
   `internal/audit`; the paid-plan and credit gates; proxy cutover where
   complete.
 
+## Current stacked migration status
+
+- **PRs #55–#90:** ported the MCP tool catalog and handlers into Go across the existing Go services. PR #90 completed Go declarations/handlers for all 58 legacy tool names and removed the TypeScript tool proxy.
+- **PR #91:** fixed `get_local_rank_grid` so fatal billing/provider authorization errors stop later paid batches.
+- **PR #92:** moves OAuth dynamic client registration, authorization/consent, PKCE exchange, refresh rotation, token authentication, and discovery metadata into Go. The `/mcp` route now accepts Go-issued OAuth tokens and API keys; no MCP OAuth request is sent to the TypeScript app.
+- OAuth clients and grants are stored in `go_mcp_oauth_*`; existing KV-backed OAuth clients must authorize once again after this cutover. API keys continue using the existing Better Auth API-key table.
+- Contract tests remain deferred by request and are tracked in `docs/maintainers/migration/test-backlog.md`.
+
 ## Deliberate differences (must be reviewed)
 
 - Legacy OAuth grants and access tokens live in Cloudflare KV
   (`workers-oauth-provider`), which a Go server cannot read. The Go OAuth
-  provider is not active yet; `go_mcp_oauth_*` tables are reserved for its grants. Existing
+  provider stores new registrations and grants in `go_mcp_oauth_*`. Existing
   **API keys keep working** (same `apikey` table, same SHA-256/base64url hash);
   existing **OAuth clients will re-authorize once** against the Go provider. See
   `docs/maintainers/mcp-auth-design.md` (PR 1).
 - Legacy rate limiting uses a Cloudflare rate-limit binding (per-colo,
   best-effort). Go uses Redis so the limit holds across instances.
 
-## Pending (stays on the proxy)
+## Remaining MCP migration work
 
-Everything not listed as moved in "Status by PR". The dispatcher keeps a
-`proxy` set that shrinks each PR; when it is empty the TypeScript code can be
-deleted.
+The Go MCP dispatcher no longer proxies OAuth or tool calls to TypeScript. Remaining migration work is to complete the final deferred contract-test phase and remove the retired TypeScript MCP implementation once other runtime imports are gone. The API and React client contracts remain compatible.

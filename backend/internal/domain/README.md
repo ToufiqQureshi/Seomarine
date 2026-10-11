@@ -69,3 +69,6 @@ no keyword or no address dropped, relative URL derived from the ranking URL,
 
 
 The Go MCP `get_ranked_keywords` tool uses the same DataForSEO Labs ranked-keyword endpoint with host/path scope filters, bounded filter conditions, market validation, sort modes, result-type selection, and pagination. Its tool-contract tests are deferred to the final test phase.
+
+
+The Go domain provider also exposes a bounded Labs SERP competitor lookup for the MCP registry, with location, language, item-type, and pagination validation. Contract tests are deferred to the final migration test phase.

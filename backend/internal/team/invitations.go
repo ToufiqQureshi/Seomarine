@@ -2,9 +2,7 @@
 package team
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	loops "github.com/toufiqqureshi/seomarine/backend/internal/email"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
 )
 
@@ -159,23 +158,15 @@ func (s *Service) sendEmail(ctx context.Context, email, invitationID, organizati
 	if inviterName == "" {
 		inviterName = user.Email
 	}
-	body, err := json.Marshal(map[string]any{"transactionalId": s.InvitationTemplateID, "email": email, "addToAudience": false, "dataVariables": map[string]string{"appName": "Seomarine", "inviteUrl": inviteURL, "organizationName": organizationName, "inviterName": inviterName, "inviterEmail": user.Email}})
-	if err != nil {
-		return fmt.Errorf("encode invitation email: %w", err)
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://app.loops.so/api/v1/transactional", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("build invitation email request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.LoopsAPIKey)
-	resp, err := client.Do(req)
-	if err != nil {
+	provider := loops.LoopsClient{APIKey: s.LoopsAPIKey, HTTP: client}
+	if err := provider.SendTransactional(ctx, email, s.InvitationTemplateID, map[string]string{
+		"appName":          "Seomarine",
+		"inviteUrl":        inviteURL,
+		"organizationName": organizationName,
+		"inviterName":      inviterName,
+		"inviterEmail":     user.Email,
+	}); err != nil {
 		return fmt.Errorf("send invitation email: %w", errors.Join(ErrUpstreamUnavailable, err))
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Loops transactional invitation returned %s: %w", resp.Status, ErrUpstreamUnavailable)
 	}
 	return nil
 }
