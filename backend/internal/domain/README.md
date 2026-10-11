@@ -66,3 +66,6 @@ No new tables. Needs `DATAFORSEO_API_KEY`; Redis is optional.
 LIKE wildcards escaped in filter text, UTF-16 length limits (emoji), rows with
 no keyword or no address dropped, relative URL derived from the ranking URL,
 `hasMore` with and without a provider total.
+
+
+The Go MCP `get_ranked_keywords` tool uses the same DataForSEO Labs ranked-keyword endpoint with host/path scope filters, bounded filter conditions, market validation, sort modes, result-type selection, and pagination. Its tool-contract tests are deferred to the final test phase.
