@@ -12,7 +12,7 @@ import {
   getCurrentAuthRedirectFromHref,
   getSignInSearch,
 } from "@/lib/auth-redirect";
-import { getProjectAccess } from "@/serverFunctions/projects";
+import { getProjectAccess } from "@/client/features/projects/projectApi";
 
 export const Route = createFileRoute("/_app/p/$projectId")({
   // Everything under this subtree fetches its data client-side with

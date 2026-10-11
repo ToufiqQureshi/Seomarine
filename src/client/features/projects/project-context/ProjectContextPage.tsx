@@ -3,7 +3,10 @@ import { InlineConfirm } from "@/client/components/InlineConfirm";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { QueryState } from "@/client/components/QueryState";
-import { getProjectContext } from "@/serverFunctions/projectContext";
+import {
+  getProjectContext,
+  type ProjectContextData,
+} from "@/client/features/projects/projectContextApi";
 import {
   PROJECT_CONTEXT_SECTION_KEYS,
   PROJECT_CONTEXT_SECTION_LABELS,
@@ -18,7 +21,6 @@ import {
   RowActions,
   projectContextQueryKey,
   useContextUpdate,
-  type ProjectContextData,
 } from "./shared";
 import { EmptyState } from "@/client/components/EmptyState";
 import { FormActions } from "@/client/components/FormActions";

@@ -24,7 +24,7 @@ import {
   getLanguageCode,
 } from "@/client/features/keywords/locations";
 import { ProjectMarketFields } from "@/client/features/projects/ProjectMarketFields";
-import { createProject } from "@/serverFunctions/projects";
+import { createProject } from "@/client/features/projects/projectApi";
 
 const createProjectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required"),
