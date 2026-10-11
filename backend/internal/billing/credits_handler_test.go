@@ -3,8 +3,11 @@ package billing
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
@@ -65,7 +68,7 @@ func TestCreditBalanceHandler(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/billing/credits", nil)
 			req = req.WithContext(auth.WithUser(req.Context(), tt.user))
 			rec := httptest.NewRecorder()
-			creditBalanceHandler(nilLogger(), tt.credits).ServeHTTP(rec, req)
+			creditBalanceHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), tt.credits).ServeHTTP(rec, req)
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d; body=%s", rec.Code, tt.wantStatus, rec.Body.String())
 			}
