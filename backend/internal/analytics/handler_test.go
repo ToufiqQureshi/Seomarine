@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/netip"
 	"strings"
 	"testing"
 )
@@ -71,39 +70,5 @@ func TestCollectPreflight(t *testing.T) {
 		if got := rec.Header().Get(name); got != want {
 			t.Errorf("%s = %q, want %q", name, got, want)
 		}
-	}
-}
-
-func TestClientIP(t *testing.T) {
-	trusted := netip.MustParsePrefix
-	tests := []struct {
-		name    string
-		remote  string
-		xff     []string
-		cf      string
-		trusted []netip.Prefix
-		want    string
-	}{
-		{name: "direct peer", remote: "198.51.100.1:443", want: "198.51.100.1"},
-		{name: "untrusted forwarded header", remote: "10.0.0.2:80", xff: []string{"1.2.3.4"}, want: "10.0.0.2"},
-		{name: "trusted proxy appended client", remote: "10.0.0.2:80", xff: []string{"1.2.3.4, 203.0.113.5"}, trusted: []netip.Prefix{trusted("10.0.0.0/8")}, want: "203.0.113.5"},
-		{name: "trusted cloudflare header", remote: "10.0.0.2:80", cf: "8.8.8.8", trusted: []netip.Prefix{trusted("10.0.0.0/8")}, want: "8.8.8.8"},
-		{name: "invalid forwarded entries fall back to peer", remote: "[2001:db8::2]:443", xff: []string{"unknown"}, trusted: []netip.Prefix{trusted("2001:db8::/32")}, want: "2001:db8::2"},
-		{name: "peer without port", remote: "198.51.100.3", want: "198.51.100.3"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/collect", nil)
-			req.RemoteAddr = tt.remote
-			for _, value := range tt.xff {
-				req.Header.Add("X-Forwarded-For", value)
-			}
-			if tt.cf != "" {
-				req.Header.Set("CF-Connecting-IP", tt.cf)
-			}
-			if got := clientIP(req, tt.trusted); got != tt.want {
-				t.Errorf("ClientIP() = %q, want %q", got, tt.want)
-			}
-		})
 	}
 }

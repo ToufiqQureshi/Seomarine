@@ -42,13 +42,20 @@ type Config struct {
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
 	// account behind AI search. Empty turns those endpoints off.
 	DataForSEOAPIKey string
-	// OpenRouterAPIKey enables the self-hosted SAM agent.
+	// OpenRouterAPIKey is Seomarine's own model key for SAM.
 	OpenRouterAPIKey string
 	// AutumnSecretKey enables hosted billing-usage event history.
 	AutumnSecretKey string
 	// Loops configures hosted teammate invitation email.
 	LoopsAPIKey               string
 	LoopsInvitationTemplateID string
+	// Loops templates for the sign-up verification and password reset emails.
+	LoopsVerifyEmailTemplateID   string
+	LoopsResetPasswordTemplateID string
+	// TurnstileSecretKey turns on the sign-up captcha when set.
+	TurnstileSecretKey string
+	// BypassEmailVerification skips email verification (development only).
+	BypassEmailVerification bool
 	// Self-host setup values are shown only as configuration status, never as secrets.
 	TeamDomain     string
 	PolicyAudience string
@@ -145,27 +152,31 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		AuthMode:                  authMode,
-		Addr:                      fmt.Sprintf(":%d", port),
-		DatabaseURL:               databaseURL,
-		RedisURL:                  redisURL,
-		BetterAuthSecret:          secret,
-		GoogleClientID:            strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret:        strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleTokenEncryptionKey:  strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		UpstreamAppURL:            upstream,
-		PublicURL:                 public,
-		BetterAuthURL:             betterAuthURL,
-		Razorpay:                  rzp,
-		DataForSEOAPIKey:          strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
-		OpenRouterAPIKey:          strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
-		AutumnSecretKey:           strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
-		LoopsAPIKey:               strings.TrimSpace(getenv("LOOPS_API_KEY")),
-		LoopsInvitationTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
-		TeamDomain:                strings.TrimSpace(getenv("TEAM_DOMAIN")),
-		PolicyAudience:            strings.TrimSpace(getenv("POLICY_AUD")),
-		ContextAPIKey:             strings.TrimSpace(getenv("CONTEXT_API_KEY")),
-		TrustedProxyCIDRs:         trusted,
+		AuthMode:                     authMode,
+		Addr:                         fmt.Sprintf(":%d", port),
+		DatabaseURL:                  databaseURL,
+		RedisURL:                     redisURL,
+		BetterAuthSecret:             secret,
+		GoogleClientID:               strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:           strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey:     strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		UpstreamAppURL:               upstream,
+		PublicURL:                    public,
+		BetterAuthURL:                betterAuthURL,
+		Razorpay:                     rzp,
+		DataForSEOAPIKey:             strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
+		OpenRouterAPIKey:             strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		AutumnSecretKey:              strings.TrimSpace(getenv("AUTUMN_SECRET_KEY")),
+		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
+		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
+		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
+		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
+		BypassEmailVerification:      strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true",
+		TeamDomain:                   strings.TrimSpace(getenv("TEAM_DOMAIN")),
+		PolicyAudience:               strings.TrimSpace(getenv("POLICY_AUD")),
+		ContextAPIKey:                strings.TrimSpace(getenv("CONTEXT_API_KEY")),
+		TrustedProxyCIDRs:            trusted,
 	}, nil
 }
 

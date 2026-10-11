@@ -25,6 +25,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/emailauth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
@@ -111,6 +112,9 @@ type Deps struct {
 	Projects *projects.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
+	// leaves those routes with the legacy app.
+	EmailAuth *emailauth.Service
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
 	Onboarding     *onboarding.Service
 	WorkspaceMerge *workspace.Service
@@ -194,6 +198,9 @@ func NewHandler(d Deps) http.Handler {
 	if d.AuthMode == "hosted" {
 		auth.MountCurrentSession(mux, d.Auth, d.Logger)
 		auth.MountSession(mux, d.Auth, d.Logger)
+		if d.EmailAuth != nil {
+			emailauth.Mount(mux, d.EmailAuth)
+		}
 	}
 	workspace.Mount(mux, d.WorkspaceMerge, withSession)
 	team.Mount(mux, d.Team, withSession)

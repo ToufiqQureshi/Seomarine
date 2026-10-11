@@ -32,6 +32,8 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
 	"github.com/toufiqqureshi/seomarine/backend/internal/database"
 	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
+	"github.com/toufiqqureshi/seomarine/backend/internal/email"
+	"github.com/toufiqqureshi/seomarine/backend/internal/emailauth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/google"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
@@ -41,6 +43,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
 	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
@@ -204,6 +207,7 @@ func run(logger *slog.Logger) error {
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
+	emailAuthSvc := buildEmailAuth(cfg, logger, db, rdb, authService)
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -240,6 +244,7 @@ func run(logger *slog.Logger) error {
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
+			EmailAuth:            emailAuthSvc,
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
 			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
@@ -299,6 +304,36 @@ const rankTickInterval = 5 * time.Minute
 // queues checks. Without a DataForSEO key it returns nil and the check route
 // answers 503. Checks run ungated only when billing is not configured, as for
 // a self-hosted deployment.
+// buildEmailAuth wires the email and password routes. They exist only in
+// hosted mode and need the public URL; email verification and password reset
+// need Loops, and without it those two features answer "not enabled".
+func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, sessions *auth.Service) *emailauth.Service {
+	if cfg.AuthMode != "hosted" || cfg.BetterAuthURL == nil {
+		return nil
+	}
+	svc := emailauth.Service{
+		DB: db, Sessions: emailauth.AuthSessions{Auth: sessions}, Logger: logger,
+		Limiter:  emailauth.RedisLimiter{Client: rdb},
+		ClientIP: func(r *http.Request) string { return httpx.ClientIP(r, cfg.TrustedProxyCIDRs) },
+		Cfg: emailauth.Config{
+			Secret: cfg.BetterAuthSecret, BaseURL: cfg.BetterAuthURL,
+			BypassEmailVerification: cfg.BypassEmailVerification,
+			BlockDisposableEmail:    true,
+		},
+	}
+	if cfg.LoopsAPIKey != "" && cfg.LoopsVerifyEmailTemplateID != "" && cfg.LoopsResetPasswordTemplateID != "" {
+		svc.Mailer = emailauth.LoopsMailer{
+			Client:           email.LoopsClient{APIKey: cfg.LoopsAPIKey},
+			VerifyTemplateID: cfg.LoopsVerifyEmailTemplateID,
+			ResetPasswordID:  cfg.LoopsResetPasswordTemplateID,
+		}
+	}
+	if cfg.TurnstileSecretKey != "" {
+		svc.Captcha = emailauth.Turnstile{Secret: cfg.TurnstileSecretKey}
+	}
+	return emailauth.New(svc)
+}
+
 func buildGSCService(db *pgxpool.Pool, api *google.APIClient) *gsc.Service {
 	if api == nil {
 		return nil
