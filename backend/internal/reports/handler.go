@@ -21,10 +21,13 @@ type Deps struct {
 	PublicURL         *url.URL
 	WithSession       func(http.Handler) http.Handler
 	WithProjectAccess func(http.Handler) http.Handler
+	View              ViewDeps
 }
 
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
+	mux.HandleFunc("GET /s/{token}", d.sharedPage)
+	mux.HandleFunc("GET /r/{reportId}", d.viewReport)
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	base := "POST /api/v1/projects/{projectId}/reports/"
 	mux.Handle(base+"list", protect(http.HandlerFunc(d.listReports)))
@@ -38,8 +41,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle(base+"templates/delete", protect(http.HandlerFunc(d.deleteTemplate)))
 }
 
-// sharedRaw serves only the sandboxed public document; the share wrapper page
-// and its social image remain on the existing frontend route.
+// sharedRaw serves the sandboxed public document the share page frames.
 func (d Deps) sharedRaw(w http.ResponseWriter, r *http.Request) {
 	if d.Service == nil || !d.Service.Hosted {
 		http.NotFound(w, r)

@@ -69,6 +69,8 @@ type Deps struct {
 	Billing *billing.Service
 	// Branding is the active organization's white-label report branding.
 	Branding *branding.Service
+	// OpenAIAppsChallenge is served at /.well-known/openai-apps-challenge.
+	OpenAIAppsChallenge string
 	// AISearch is nil when no DataForSEO key is configured; its routes then
 	// answer 503.
 	AISearch *aisearch.Service
@@ -196,6 +198,14 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
 
 	mux.HandleFunc("GET /t.js", serveTracker())
+	mux.HandleFunc("GET /.well-known/openai-apps-challenge", func(w http.ResponseWriter, r *http.Request) {
+		if d.OpenAIAppsChallenge == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = io.WriteString(w, d.OpenAIAppsChallenge)
+	})
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
 	if d.AuthMode == "hosted" {
@@ -299,6 +309,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	activation.Mount(mux, activation.Deps{Logger: d.Logger, Service: d.Activation, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	reports.Mount(mux, reports.Deps{Logger: d.Logger, Service: d.Reports, PublicURL: d.PublicURL, WithSession: withSession,
+		View:              reportViewDeps(d),
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
@@ -440,4 +451,14 @@ func newUpstreamProxy(logger *slog.Logger, upstream *url.URL) *httputil.ReverseP
 			httpx.WriteError(w, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
 		},
 	}
+}
+
+// reportViewDeps wires the member report viewer and share page to the session,
+// project authorization and branding services.
+func reportViewDeps(d Deps) reports.ViewDeps {
+	v := reports.ViewDeps{Authenticate: d.Auth.Authenticate, AuthorizeProject: d.Auth.AuthorizeProject}
+	if d.Branding != nil {
+		v.Branding = d.Branding.Get
+	}
+	return v
 }

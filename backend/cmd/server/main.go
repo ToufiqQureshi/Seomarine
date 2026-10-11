@@ -227,6 +227,7 @@ func run(logger *slog.Logger) error {
 			TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
 			Billing:              billingSvc,
 			Branding:             branding.NewService(db),
+			OpenAIAppsChallenge:  cfg.OpenAIAppsChallenge,
 			AISearch:             aiSearchSvc,
 			Ahrefs:               ahrefs.New(rdb),
 			Backlinks:            backlinksSvc,

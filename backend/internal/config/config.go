@@ -54,6 +54,9 @@ type Config struct {
 	LoopsResetPasswordTemplateID string
 	// TurnstileSecretKey turns on the sign-up captcha when set.
 	TurnstileSecretKey string
+	// OpenAIAppsChallenge is the public verification token served at
+	// /.well-known/openai-apps-challenge; unset means the path is a 404.
+	OpenAIAppsChallenge string
 	// BypassEmailVerification skips email verification (development only).
 	BypassEmailVerification bool
 	// Self-host setup values are shown only as configuration status, never as secrets.
@@ -172,6 +175,7 @@ func Load(getenv func(string) string) (Config, error) {
 		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
 		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
 		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
+		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
 		BypassEmailVerification:      strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true",
 		TeamDomain:                   strings.TrimSpace(getenv("TEAM_DOMAIN")),
 		PolicyAudience:               strings.TrimSpace(getenv("POLICY_AUD")),

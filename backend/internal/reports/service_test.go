@@ -105,6 +105,12 @@ func (m *memoryStore) GetShared(_ context.Context, token string) (SharedReport, 
 	}
 	return SharedReport{}, ErrNotFound
 }
+func (m *memoryStore) ReportProject(_ context.Context, id string) (string, error) {
+	if v, ok := m.items[id]; ok {
+		return v.ProjectID, nil
+	}
+	return "", ErrNotFound
+}
 func (m *memoryStore) ListTemplates(context.Context, string) ([]Template, error) { return m.rows, nil }
 func (m *memoryStore) GetTemplate(_ context.Context, project, id string) (Template, error) {
 	v, ok := m.templates[id]
