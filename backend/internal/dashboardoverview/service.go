@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 )
 
 type Store interface {
@@ -12,9 +14,15 @@ type Store interface {
 	LatestAudit(context.Context, string) (*AuditSummary, error)
 	LatestBacklinkSnapshot(context.Context, string) (BacklinkSummary, bool, error)
 }
+type backlinkSnapshotWriter interface {
+	InsertBacklinkSnapshot(context.Context, string, BacklinkSummary) error
+}
 type Service struct {
-	Store Store
-	Now   func() time.Time
+	Store     Store
+	Backlinks interface {
+		DashboardSummary(context.Context, string, string) (backlinks.Summary, error)
+	}
+	Now func() time.Time
 }
 
 func (s *Service) Get(ctx context.Context, organizationID, projectID string) (Overview, error) {
@@ -39,6 +47,58 @@ func (s *Service) Get(ctx context.Context, organizationID, projectID string) (Ov
 		backlinks = &snapshot
 	}
 	return Overview{Audit: audit, Backlinks: backlinks}, nil
+}
+
+// RefreshBacklinkSnapshot captures one provider summary per project and domain
+// per day. If a refresh fails, an existing stale snapshot remains usable.
+func (s *Service) RefreshBacklinkSnapshot(ctx context.Context, organizationID, projectID string) error {
+	if s == nil || s.Store == nil {
+		return fmt.Errorf("dashboard overview store unavailable")
+	}
+	domain, err := s.Store.ProjectDomain(ctx, projectID, organizationID)
+	if err != nil || domain == nil {
+		return err
+	}
+	latest, found, err := s.Store.LatestBacklinkSnapshot(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	matches := found && latest.Domain == *domain
+	if matches && fresh(latest.CapturedAt, s.now()) {
+		return nil
+	}
+	writer, ok := s.Store.(backlinkSnapshotWriter)
+	if !ok {
+		return fmt.Errorf("dashboard backlink snapshot writer unavailable")
+	}
+	if s.Backlinks == nil {
+		if matches {
+			return nil
+		}
+		return fmt.Errorf("dashboard backlink provider unavailable")
+	}
+	summary, err := s.Backlinks.DashboardSummary(ctx, organizationID, *domain)
+	if err != nil {
+		if matches {
+			return nil
+		}
+		return err
+	}
+	snapshot := BacklinkSummary{
+		Domain: *domain, Rank: toInt64(summary.Rank), Backlinks: toInt64(summary.Backlinks),
+		ReferringDomains: toInt64(summary.ReferringDomains), NewBacklinks: toInt64(summary.NewBacklinks),
+		LostBacklinks: toInt64(summary.LostBacklinks), NewReferringDomains: toInt64(summary.NewReferringDomains),
+		LostReferringDomains: toInt64(summary.LostReferringDomains),
+		CapturedAt:           s.now().UTC().Format(time.RFC3339Nano),
+	}
+	return writer.InsertBacklinkSnapshot(ctx, projectID, snapshot)
+}
+func toInt64(value *float64) *int64 {
+	if value == nil {
+		return nil
+	}
+	converted := int64(*value)
+	return &converted
 }
 func (s *Service) now() time.Time {
 	if s.Now != nil {

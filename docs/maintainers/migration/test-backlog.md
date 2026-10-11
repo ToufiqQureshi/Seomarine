@@ -16,15 +16,17 @@ Current confirmed count: **6 files**.
 | Project context API cutover      | `src/client/features/projects/projectContextApi.test.ts`              | Covers context read/update paths, payloads, and response parsing.                                                                                  |
 | GSC connection API cutover       | `src/client/features/integrations/gscApi.test.ts`                     | Covers grant status, connection status, site listing/selection, and disconnect request mapping.                                                    |
 | GSC performance API cutover      | `src/client/features/search-performance/searchPerformanceApi.test.ts` | Covers report/table/export payload normalization and connected/disconnected response parsing.                                                      |
-| Dashboard activation API cutover | `src/client/features/dashboard/dashboardApi.test.ts`                  | Covers activation/overview parsing and click, dismiss, and GA4-card dismissal requests.                                                            |
+| Dashboard activation API cutover | `src/client/features/dashboard/dashboardApi.test.ts`                  | Covers activation/overview parsing, click and dismiss requests, GA4-card dismissal, and daily backlink snapshot refresh.                           |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed
 tests in the final test phase and clear the pending count.
 
-The existing `src/client/features/dashboard/DashboardOnboarding.test.ts` also
-needs its server-function mock updated to mock `dashboardApi` in the final test
-phase; it does not add a new test file to the count.
+The existing `src/client/features/dashboard/DashboardOnboarding.test.ts` needs
+its server-function mock updated to mock `dashboardApi`, and
+`src/client/features/dashboard/dashboardSteps.test.ts` needs its type import
+moved to `dashboardApi` in the final test phase. These do not add new test files
+to the count.
 
 ## Existing test inventory at migration start
 

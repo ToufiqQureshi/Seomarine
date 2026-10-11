@@ -159,6 +159,21 @@ func (s *Service) Overview(ctx context.Context, org string, in lookupInput) (Ove
 	return result, nil
 }
 
+// DashboardSummary fetches the metered summary only, without the history task
+// used by the full backlinks report. The dashboard stores this result as a
+// daily snapshot so repeated page visits do not repeat provider spend.
+func (s *Service) DashboardSummary(ctx context.Context, org, domain string) (Summary, error) {
+	target, err := normalizeTarget(domain, string(ScopeSubdomains))
+	if err != nil {
+		return Summary{}, err
+	}
+	got, err := s.provider.summary(ctx, org, target)
+	if err != nil {
+		return Summary{}, err
+	}
+	return mapSummary(got), nil
+}
+
 // Rows returns paginated backlink rows matching the request filters.
 func (s *Service) Rows(ctx context.Context, org string, in lookupInput, page pageInput, filters rowsFilters, hideSpam bool) (Page[BacklinkRow], error) {
 	target, err := normalizeTarget(in.Target, in.Scope)
