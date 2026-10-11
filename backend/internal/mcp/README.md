@@ -6,7 +6,7 @@ and proxies OAuth credentials and tools that are not ported yet to the legacy
 server. `tools/list` merges both registries and keeps Go definitions on name
 collisions.
 
-The Go API-key lane includes the account `whoami` tool. Hosted mode comes from
+The Go API-key lane includes the account `whoami` tool and the `run_site_audit` tool. Audit starts reuse Go's project authorization, plan/capacity checks, SSRF guard, background job queue, and optional Lighthouse/rendering controls. Hosted mode comes from
 `AUTH_MODE`, and the Go tool reads the active organization's Autumn usage and
 top-up balances without charging credits. If Autumn is unavailable or has no
 balance, the response reports the balance as unknown. Self-hosted mode does
