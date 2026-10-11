@@ -2,7 +2,10 @@ package database
 
 import (
 	"context"
+	"crypto/rand"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +33,7 @@ func testDatabaseURL(t *testing.T) string {
 func TestMigrateIsIdempotentAndConcurrencySafe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	pool := openWithLegacySchema(ctx, t)
+	pool := openFresh(ctx, t)
 
 	errs := make(chan error, 3)
 	for range cap(errs) {
@@ -61,7 +64,7 @@ func TestMigrateIsIdempotentAndConcurrencySafe(t *testing.T) {
 }
 
 func TestMigrateFailsOnCanceledContext(t *testing.T) {
-	pool := openWithLegacySchema(context.Background(), t)
+	pool := openFresh(context.Background(), t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := Migrate(ctx, pool); err == nil {
@@ -69,19 +72,33 @@ func TestMigrateFailsOnCanceledContext(t *testing.T) {
 	}
 }
 
-func openWithLegacySchema(ctx context.Context, t *testing.T) *pgxpool.Pool {
+// openFresh returns a pool on an empty private database: the baseline
+// migration must build the whole legacy schema itself, as on a new production
+// database. The baseline names the public schema, so a private schema is not
+// enough.
+func openFresh(ctx context.Context, t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	pool, err := pgdb.Open(ctx, testDatabaseURL(t))
+	admin, err := pgdb.Open(ctx, testDatabaseURL(t))
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	name := strings.ToLower("mig_" + rand.Text())
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create database: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.WithoutCancel(ctx), "DROP DATABASE "+name+" WITH (FORCE)")
+		admin.Close()
+	})
+	u, err := url.Parse(testDatabaseURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.Path = "/" + name
+	pool, err := pgdb.Open(ctx, u.String())
 	if err != nil {
 		t.Fatalf("Open() error = %v", err)
 	}
 	t.Cleanup(pool.Close)
-	schema, err := os.ReadFile("testdata/legacy_schema.sql")
-	if err != nil {
-		t.Fatalf("read legacy schema: %v", err)
-	}
-	if _, err := pool.Exec(ctx, string(schema)); err != nil {
-		t.Fatalf("create legacy schema: %v", err)
-	}
 	return pool
 }
