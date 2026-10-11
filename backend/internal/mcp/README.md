@@ -17,3 +17,9 @@ Keep tool names and JSON schemas compatible with MCP clients. OAuth
 authorization and unported tools still use the TypeScript fallback and are
 tracked as remaining migration work. Tests for migrated tool contracts are
 deferred to the final migration test phase.
+
+
+The Go API-key MCP registry also owns `get_backlinks_overview`. It reads the
+organization-scoped Go backlinks service, applies the default spam filter to
+the top referring-domain rows, and preserves the scope notes and provider
+limitations from the legacy tool. OAuth calls still use the TypeScript fallback.

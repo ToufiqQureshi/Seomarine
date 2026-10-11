@@ -523,3 +523,22 @@ func joinWithAnd(a, b []any) []any {
 	out = append(out, "and")
 	return append(out, b...)
 }
+
+
+ // MCPOverview reuses the Go report service for an MCP request.
+func (s *Service) MCPOverview(ctx context.Context, organizationID, target, scope string) (Overview, error) {
+	return s.Overview(ctx, organizationID, lookupInput{Target: target, Scope: scope})
+}
+
+// MCPReferringDomains returns the top referring domains with the MCP default
+// spam filter. Subfolder breakdowns are unavailable because the provider does
+// not support URL filtering for this report.
+func (s *Service) MCPReferringDomains(ctx context.Context, organizationID, target, scope string, hideSpam bool) (Page[ReferringDomainRow], error) {
+	filters := domainsFilters{}
+	if hideSpam {
+		maxSpam := 40.0
+		filters.MaxSpamScore = &maxSpam
+	}
+	return s.Domains(ctx, organizationID, lookupInput{Target: target, Scope: scope},
+		pageInput{Page: 1, PageSize: 100, Sort: "backlinks,desc"}, filters)
+}

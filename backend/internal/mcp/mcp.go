@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
+	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
@@ -51,6 +52,7 @@ type Deps struct {
 	Upstream       *url.URL
 	PublicURL      *url.URL
 	Audit          *audit.Service
+	Backlinks      *backlinks.Service
 	Locations      *keywords.LocationService
 	SavedKeywords  *keywords.SavedService
 	GA4            *ga4.Service

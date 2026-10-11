@@ -200,7 +200,7 @@ func run(logger *slog.Logger) error {
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Hosted: cfg.AuthMode == "hosted", AutumnCredits: billing.NewAutumnCreditClient(cfg.AutumnSecretKey),
 		Upstream: cfg.UpstreamAppURL, PublicURL: cfg.PublicURL,
-		Audit: auditSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, ProjectContext: projectContextSvc,
+		Audit: auditSvc, Backlinks: backlinksSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, ProjectContext: projectContextSvc,
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
 		RankTracking: rankTrackingService,
 	}
