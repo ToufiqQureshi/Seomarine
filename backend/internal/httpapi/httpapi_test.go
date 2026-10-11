@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -35,24 +36,37 @@ var (
 
 // newTestHandler builds the root handler. db may be nil for requests that
 // never reach the database.
-func newTestHandler(t *testing.T, db *pgxpool.Pool, pgPing, redisPing Pinger, upstream string) http.Handler {
+func newTestHandler(t *testing.T, db *pgxpool.Pool, pgPing, redisPing Pinger) http.Handler {
 	t.Helper()
-	u, err := url.Parse(upstream)
-	if err != nil {
-		t.Fatalf("parse upstream: %v", err)
-	}
 	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
 	if err != nil {
 		t.Fatalf("site.New: %v", err)
 	}
 	return NewHandler(Deps{
-		Logger:   discardLogger,
-		DB:       pgPing,
-		Redis:    redisPing,
-		Auth:     auth.NewService(db, testSecret),
-		Site:     pages,
-		Upstream: u,
+		Logger:    discardLogger,
+		DB:        pgPing,
+		Redis:     redisPing,
+		Auth:      auth.NewService(db, testSecret),
+		Site:      pages,
+		StaticDir: testStaticDir(t),
 	})
+}
+
+const appShell = "<!doctype html><title>app shell</title>"
+
+// testStaticDir is a built frontend with an index and one hashed asset.
+func testStaticDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"index.html": appShell, "assets/app-abc123.js": "console.log(1)"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
 }
 
 func TestHealthRoutes(t *testing.T) {
@@ -73,7 +87,7 @@ func TestHealthRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newTestHandler(t, nil, tt.db, tt.redis, "http://127.0.0.1:1").
+			newTestHandler(t, nil, tt.db, tt.redis).
 				ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
 
 			if rec.Code != tt.wantStatus {
@@ -105,121 +119,80 @@ func TestReadyzBoundsThePings(t *testing.T) {
 	cancel()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/readyz", nil)
 	rec := httptest.NewRecorder()
-	newTestHandler(t, nil, hung, hung, "http://127.0.0.1:1").ServeHTTP(rec, req)
+	newTestHandler(t, nil, hung, hung).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 }
 
-func TestProxyPassesRequestsThroughToTheLegacyApp(t *testing.T) {
-	type seen struct {
-		method, uri, host, cookie, body, forwardedFor, forwardedProto string
+func TestSPAServesClientRoutesAndAssets(t *testing.T) {
+	handler := newTestHandler(t, nil, healthy, healthy)
+	tests := []struct {
+		name, method, target string
+		wantStatus           int
+		wantBody, wantCache  string
+	}{
+		{name: "client route gets the index", method: http.MethodGet, target: "/dashboard", wantStatus: 200, wantBody: appShell, wantCache: "no-cache"},
+		{name: "nested client route", method: http.MethodGet, target: "/p/abc/keywords", wantStatus: 200, wantBody: appShell, wantCache: "no-cache"},
+		{name: "hashed asset is immutable", method: http.MethodGet, target: "/assets/app-abc123.js", wantStatus: 200, wantBody: "console.log(1)", wantCache: "public, max-age=31536000, immutable"},
+		{name: "missing asset stays 404", method: http.MethodGet, target: "/assets/gone-1.js", wantStatus: 404},
+		{name: "traversal is redirected to the clean path", method: http.MethodGet, target: "/../../etc/passwd", wantStatus: 307},
+		{name: "unknown api path is JSON 404", method: http.MethodGet, target: "/api/v1beta/x", wantStatus: 404},
+		{name: "POST is refused", method: http.MethodPost, target: "/dashboard", wantStatus: 405},
 	}
-	got := make(chan seen, 1)
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
-		}
-		got <- seen{
-			method: r.Method, uri: r.RequestURI, host: r.Host, cookie: r.Header.Get("Cookie"), body: string(body),
-			forwardedFor: r.Header.Get("X-Forwarded-For"), forwardedProto: r.Header.Get("X-Forwarded-Proto"),
-		}
-		w.Header().Add("Set-Cookie", "a=1; Path=/")
-		w.Header().Add("Set-Cookie", "b=2; Path=/")
-		w.WriteHeader(http.StatusCreated)
-		_, _ = io.WriteString(w, "from legacy ✓")
-	}))
-	defer upstream.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, httptest.NewRequest(tt.method, tt.target, nil))
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+			if tt.wantBody != "" && rec.Body.String() != tt.wantBody {
+				t.Errorf("body = %q, want %q", rec.Body.String(), tt.wantBody)
+			}
+			if tt.wantCache != "" && rec.Header().Get("Cache-Control") != tt.wantCache {
+				t.Errorf("Cache-Control = %q, want %q", rec.Header().Get("Cache-Control"), tt.wantCache)
+			}
+		})
+	}
+}
 
-	req := httptest.NewRequest(http.MethodPost, "http://app.seomarine.com/_serverFn/abc?x=1&y=%2F", strings.NewReader(`{"q":"ü"}`))
-	req.RemoteAddr = "10.0.0.7:5555"
-	req.Header.Set("Cookie", "better-auth.session_token=t.s%3D; theme=dark")
-	req.Header.Set("X-Forwarded-For", "203.0.113.9")
-	req.Header.Set("X-Forwarded-Proto", "https")
+func TestSPAIndexCannotBeFramedByOtherSites(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newTestHandler(t, nil, healthy, healthy, upstream.URL).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusCreated)
-	}
-	if body := rec.Body.String(); body != "from legacy ✓" {
-		t.Errorf("body = %q", body)
-	}
-	if cookies := rec.Header().Values("Set-Cookie"); len(cookies) != 2 {
-		t.Errorf("Set-Cookie = %q, want both upstream cookies", cookies)
-	}
-
-	want := seen{
-		method: http.MethodPost, uri: "/_serverFn/abc?x=1&y=%2F", host: "app.seomarine.com",
-		cookie: "better-auth.session_token=t.s%3D; theme=dark", body: `{"q":"ü"}`,
-		forwardedFor: "203.0.113.9, 10.0.0.7", forwardedProto: "https",
-	}
-	if s := <-got; s != want {
-		t.Errorf("upstream saw %+v\nwant          %+v", s, want)
+	newTestHandler(t, nil, healthy, healthy).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'self'" {
+		t.Errorf("Content-Security-Policy = %q", got)
 	}
 }
 
-func TestProxyRoutesUnownedPaths(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	defer upstream.Close()
-
-	// Only the exact GET routes belong to the Go server.
-	for _, route := range []struct{ method, target string }{
-		{http.MethodGet, "/dashboard"},
-		{http.MethodGet, "/api/auth/get-session"},
-		{http.MethodGet, "/api/v1beta"},
-		{http.MethodPost, "/healthz?probe=post"},
-		{http.MethodPost, "/"},
-		{http.MethodGet, "/pricing/annual"},
-		{http.MethodPost, "/pricing"},
-		{http.MethodGet, "/sitemap.xml"},
-	} {
-		rec := httptest.NewRecorder()
-		newTestHandler(t, nil, healthy, healthy, upstream.URL).ServeHTTP(rec, httptest.NewRequest(route.method, route.target, nil))
-		if rec.Code != http.StatusTeapot {
-			t.Errorf("%s %s: status = %d, want the upstream's %d", route.method, route.target, rec.Code, http.StatusTeapot)
-		}
-	}
-}
-
-func TestMCPRouteIsServedByGoWithoutTheLegacyFallback(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("MCP request reached the legacy app at %s", r.URL.Path)
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	defer upstream.Close()
-	parsed, err := url.Parse(upstream.URL)
+func TestSPAWithoutABuildAnswers503(t *testing.T) {
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	handler := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(nil, testSecret), Site: pages, StaticDir: t.TempDir()})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	assertError(t, rec, http.StatusServiceUnavailable, "frontend_unavailable")
+}
+
+func TestMCPRouteIsServedByGo(t *testing.T) {
 	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	handler := NewHandler(Deps{
 		Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(nil, testSecret), Site: pages,
-		Upstream: parsed,
-		MCP:      &mcp.Deps{Logger: discardLogger},
+		StaticDir: testStaticDir(t),
+		MCP:       &mcp.Deps{Logger: discardLogger},
 	})
 
-	for name, setup := range map[string]func(*http.Request){
-		"no credentials":  func(*http.Request) {},
-		"invalid API key": func(r *http.Request) { r.Header.Set("x-api-key", "oseo_invalid") },
-	} {
-		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
-		setup(req)
-		handler.ServeHTTP(rec, req)
-		if rec.Code == http.StatusTeapot {
-			t.Errorf("%s: request reached the legacy fallback", name)
-		}
-		if name == "no credentials" && rec.Code != http.StatusUnauthorized {
-			t.Errorf("%s: status = %d, want %d from the Go dispatcher", name, rec.Code, http.StatusUnauthorized)
-		}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d from the Go dispatcher", rec.Code, http.StatusUnauthorized)
 	}
 }
 
@@ -236,14 +209,10 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 		($1, $2, $5, now() + interval '1 hour'), ($3, $4, $5, now() - interval '1 second')`,
 		"s-live-"+id, liveToken, "s-expired-"+id, expiredToken, userID)
 
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	defer upstream.Close()
-	handler := newTestHandler(t, pool, healthy, healthy, upstream.URL)
+	handler := newTestHandler(t, pool, healthy, healthy)
 	closedPool := openTestDB(ctx, t)
 	closedPool.Close()
-	brokenDBHandler := newTestHandler(t, closedPool, healthy, healthy, upstream.URL)
+	brokenDBHandler := newTestHandler(t, closedPool, healthy, healthy)
 
 	const landing, app, pricing = "landing", "app", "pricing"
 	tests := []struct {
@@ -281,14 +250,15 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
 			got := app
-			if rec.Code == http.StatusOK && strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") {
+			if rec.Body.String() != appShell {
 				got = landing
 				if strings.Contains(rec.Header().Get("Cache-Control"), "max-age") {
 					got = pricing
 				}
-			} else if rec.Code != http.StatusTeapot {
-				t.Fatalf("status = %d, want the landing page or the upstream's 418", rec.Code)
 			}
 			if got != tt.want {
 				t.Errorf("served the %s, want the %s", got, tt.want)
@@ -302,26 +272,18 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 
 func TestSiteAssetsAreServed(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newTestHandler(t, nil, healthy, healthy, "http://127.0.0.1:1").
+	newTestHandler(t, nil, healthy, healthy).
 		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/site/logo.svg", nil))
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/svg+xml" {
 		t.Errorf("GET /site/logo.svg: status %d, Content-Type %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
 }
 
-func TestProxyReportsAnUnreachableLegacyApp(t *testing.T) {
-	rec := httptest.NewRecorder()
-	// Port 1 on localhost refuses connections.
-	newTestHandler(t, nil, healthy, healthy, "http://127.0.0.1:1").
-		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
-	assertError(t, rec, http.StatusBadGateway, "upstream_unavailable")
-}
-
 func TestAPIRequiresASessionBeforeTouchingTheDatabase(t *testing.T) {
 	for _, target := range []string{"/api/v1/billing/status", "/api/v1/projects/p1/analytics/summary", "/api/v1/"} {
 		rec := httptest.NewRecorder()
 		// A nil pool would panic if the handler reached the database.
-		newTestHandler(t, nil, healthy, healthy, "http://127.0.0.1:1").
+		newTestHandler(t, nil, healthy, healthy).
 			ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
 		assertError(t, rec, http.StatusUnauthorized, "unauthenticated")
 	}
@@ -362,7 +324,7 @@ func TestAPIAuthorization(t *testing.T) {
 		{name: "signed-in user reaches the API", token: liveToken, path: "/api/v1/nope", wantCode: http.StatusNotFound, wantErr: "not_found"},
 		{name: "expired session", token: expiredToken, path: "/api/v1/projects/" + ownProject + "/nope", wantCode: http.StatusUnauthorized, wantErr: "unauthenticated"},
 	}
-	handler := newTestHandler(t, pool, healthy, healthy, "http://127.0.0.1:1")
+	handler := newTestHandler(t, pool, healthy, healthy)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, tt.path, nil)
@@ -383,7 +345,7 @@ func TestAPIReportsDatabaseErrorsAsInternal(t *testing.T) {
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/billing/status", nil)
 	req.AddCookie(&http.Cookie{Name: "better-auth.session_token", Value: sign("any-token")})
 	rec := httptest.NewRecorder()
-	newTestHandler(t, pool, healthy, healthy, "http://127.0.0.1:1").ServeHTTP(rec, req)
+	newTestHandler(t, pool, healthy, healthy).ServeHTTP(rec, req)
 	assertError(t, rec, http.StatusInternalServerError, "internal")
 }
 

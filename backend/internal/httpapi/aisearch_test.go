@@ -83,7 +83,6 @@ func TestAISearchEndToEnd(t *testing.T) {
 		Auth:     auth.NewService(pool, testSecret),
 		AISearch: aisearch.NewService(client, rdb, discardLogger),
 		Site:     pages,
-		Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
 	})
 	lookup := func(projectID string, signedIn bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+projectID+"/ai-search/brand-lookup", strings.NewReader(`{"query":"acme.com"}`))

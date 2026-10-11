@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 )
 

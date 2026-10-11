@@ -29,9 +29,9 @@ type Config struct {
 	// GoogleTokenEncryptionKey is an optional base64 AES-256 key. When empty,
 	// the server derives a domain-separated key from BETTER_AUTH_SECRET.
 	GoogleTokenEncryptionKey string
-	// UpstreamAppURL is the legacy TypeScript app that receives every request
-	// the Go server does not route itself.
-	UpstreamAppURL *url.URL
+	// StaticDir is the built React app (Vite output) the server serves for
+	// every page it does not render itself. Default: dist.
+	StaticDir string
 	// PublicURL is the site's public origin, e.g. https://seomarine.com. The
 	// landing and pricing pages build canonical and Open Graph URLs from it.
 	PublicURL *url.URL
@@ -107,9 +107,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("AUTH_MODE must be cloudflare_access, local_noauth, or hosted")
 	}
 
-	upstream, err := url.Parse(getenv("UPSTREAM_APP_URL"))
-	if err != nil || (upstream.Scheme != "http" && upstream.Scheme != "https") || upstream.Host == "" {
-		return Config{}, errors.New("UPSTREAM_APP_URL must be an absolute http or https URL")
+	staticDir := strings.TrimSpace(getenv("STATIC_DIR"))
+	if staticDir == "" {
+		staticDir = "dist"
 	}
 
 	public, err := url.Parse(getenv("PUBLIC_URL"))
@@ -174,7 +174,7 @@ func Load(getenv func(string) string) (Config, error) {
 		GoogleClientID:               strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
 		GoogleClientSecret:           strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
 		GoogleTokenEncryptionKey:     strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		UpstreamAppURL:               upstream,
+		StaticDir:                    staticDir,
 		PublicURL:                    public,
 		BetterAuthURL:                betterAuthURL,
 		Razorpay:                     rzp,

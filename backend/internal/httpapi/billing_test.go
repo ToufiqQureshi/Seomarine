@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -47,12 +46,11 @@ func TestBillingEndToEnd(t *testing.T) {
 
 	newHandler := func(svc *billing.Service) http.Handler {
 		return NewHandler(Deps{
-			Logger:   discardLogger,
-			DB:       healthy,
-			Redis:    healthy,
-			Auth:     auth.NewService(pool, testSecret),
-			Billing:  svc,
-			Upstream: &url.URL{Scheme: "http", Host: "127.0.0.1:1"},
+			Logger:  discardLogger,
+			DB:      healthy,
+			Redis:   healthy,
+			Auth:    auth.NewService(pool, testSecret),
+			Billing: svc,
 		})
 	}
 	handler := newHandler(billing.NewService(pool, razorpay.NewClient(fakeRazorpay.URL, "rzp_test_key", "key-secret"), "plan_pro", testWebhookSecret))

@@ -267,7 +267,7 @@ func run(logger *slog.Logger) error {
 			ProjectContext:       projectContextSvc,
 			KeywordResearch:      keywordResearch,
 			Site:                 pages,
-			Upstream:             cfg.UpstreamAppURL,
+			StaticDir:            cfg.StaticDir,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,

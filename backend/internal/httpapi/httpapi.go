@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/http/httputil"
 	"net/netip"
 	"net/url"
 	"time"
@@ -139,16 +138,13 @@ type Deps struct {
 	HealthStatus http.Handler
 	// Site is the public landing and pricing pages.
 	Site *site.Site
-	// Upstream is the legacy app that serves every route not listed here.
-	Upstream          *url.URL
+	// StaticDir is the built React app that serves every route not listed here.
+	StaticDir         string
 	TrustedProxyCIDRs []netip.Prefix
 }
 
 const (
 	readinessTimeout = 2 * time.Second
-	// upstreamHeaderTimeout bounds how long the legacy app may take to start
-	// answering; it matches the server's write timeout.
-	upstreamHeaderTimeout = 30 * time.Second
 )
 
 // NewHandler returns the root handler.
@@ -191,7 +187,7 @@ func NewHandler(d Deps) http.Handler {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	app := newUpstreamProxy(d.Logger, d.Upstream)
+	app := spaHandler(d.StaticDir)
 
 	mux.HandleFunc("GET /{$}", landing(d.Logger, d.Auth, d.Site, app))
 	mux.HandleFunc("GET /pricing", d.Site.ServePricing)
@@ -425,31 +421,6 @@ func landing(logger *slog.Logger, authn *auth.Service, pages *site.Site, app htt
 func notFound() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such endpoint.")
-	}
-}
-
-// newUpstreamProxy forwards requests to the legacy app unchanged: same Host
-// (the legacy app builds absolute URLs and cookies from it), cookies, path
-// and query. Railway's edge sets X-Forwarded-For and X-Forwarded-Proto; they
-// are passed through so the legacy app sees the real client and scheme.
-func newUpstreamProxy(logger *slog.Logger, upstream *url.URL) *httputil.ReverseProxy {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.ResponseHeaderTimeout = upstreamHeaderTimeout
-	return &httputil.ReverseProxy{
-		Rewrite: func(pr *httputil.ProxyRequest) {
-			pr.SetURL(upstream)
-			pr.Out.Host = pr.In.Host
-			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
-			pr.SetXForwarded()
-			if proto := pr.In.Header.Get("X-Forwarded-Proto"); proto != "" {
-				pr.Out.Header.Set("X-Forwarded-Proto", proto)
-			}
-		},
-		Transport: transport,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			logger.ErrorContext(r.Context(), "proxy to legacy app", "err", err)
-			httpx.WriteError(w, http.StatusBadGateway, "upstream_unavailable", "The app is temporarily unavailable. Please try again.")
-		},
 	}
 }
 
