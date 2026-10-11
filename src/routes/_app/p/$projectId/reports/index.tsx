@@ -10,7 +10,10 @@ import {
   useDeleteReport,
 } from "@/client/features/reports/shared";
 import { QueryState } from "@/client/components/QueryState";
-import { listReports, type ReportListItem } from "@/serverFunctions/reports";
+import {
+  listReports,
+  type ReportListItem,
+} from "@/client/features/reports/reportApi";
 import { REPORT_APP_LIST_LIMIT } from "@/types/schemas/reports";
 
 export const Route = createFileRoute("/_app/p/$projectId/reports/")({

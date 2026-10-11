@@ -228,7 +228,10 @@ func (d Deps) setSharing(w http.ResponseWriter, r *http.Request) {
 		value := d.projectURL(r, "/s/"+*report.ShareToken)
 		shareURL = &value
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"reportId": report.ID, "public": shareURL != nil, "url": reportURL, "shareUrl": shareURL})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"reportId": report.ID, "public": shareURL != nil, "url": reportURL,
+		"shareUrl": shareURL, "shareToken": report.ShareToken, "sharedAt": report.SharedAt,
+	})
 }
 func (d Deps) listTemplates(w http.ResponseWriter, r *http.Request) {
 	if !d.service(w) {

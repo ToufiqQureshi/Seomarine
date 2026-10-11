@@ -14,7 +14,7 @@ import {
 } from "@/client/components/ui/table";
 import { formatCreatedBy } from "@/client/features/reports/shared";
 import { formatRelativeTime } from "@/client/lib/relative-time";
-import type { ReportListItem } from "@/serverFunctions/reports";
+import type { ReportListItem } from "@/client/features/reports/reportApi";
 import { REPORT_APP_LIST_LIMIT } from "@/types/schemas/reports";
 
 export function ReportsList({

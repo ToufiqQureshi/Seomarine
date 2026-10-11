@@ -27,7 +27,7 @@ import {
   shareReport,
   unshareReport,
   type ReportListItem,
-} from "@/serverFunctions/reports";
+} from "@/client/features/reports/reportApi";
 import { sharePath } from "@/shared/report-share";
 
 // Query keys for the reports and templates pages. staleTime is 0 wherever these are used:
