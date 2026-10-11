@@ -524,8 +524,7 @@ func joinWithAnd(a, b []any) []any {
 	return append(out, b...)
 }
 
-
- // MCPOverview reuses the Go report service for an MCP request.
+// MCPOverview reuses the Go report service for an MCP request.
 func (s *Service) MCPOverview(ctx context.Context, organizationID, target, scope string) (Overview, error) {
 	return s.Overview(ctx, organizationID, lookupInput{Target: target, Scope: scope})
 }

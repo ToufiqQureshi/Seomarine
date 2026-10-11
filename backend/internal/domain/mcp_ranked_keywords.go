@@ -54,10 +54,10 @@ func (s *Service) RankedKeywordsForMCP(ctx context.Context, organizationID, proj
 		return MCPRankedKeywordsResult{}, badRequest("offset must be between 0 and 1000.")
 	}
 	orderBy := map[string]string{
-		"rank": "ranked_serp_element.serp_item.rank_absolute,asc",
+		"rank":             "ranked_serp_element.serp_item.rank_absolute,asc",
 		"traffic_estimate": "ranked_serp_element.serp_item.etv,desc",
-		"cpc": "keyword_data.keyword_info.cpc,desc",
-		"search_volume": "keyword_data.keyword_info.search_volume,desc",
+		"cpc":              "keyword_data.keyword_info.cpc,desc",
+		"search_volume":    "keyword_data.keyword_info.search_volume,desc",
 	}[input.SortBy]
 	if input.SortBy == "" {
 		orderBy = "keyword_data.keyword_info.search_volume,desc"
@@ -109,12 +109,12 @@ func (s *Service) RankedKeywordsForMCP(ctx context.Context, organizationID, proj
 	}
 
 	request := map[string]any{
-		"target": target.Hostname,
+		"target":        target.Hostname,
 		"location_code": normalizeLocationCode(input.LocationCode),
 		"language_code": normalizeLanguageCode(input.LanguageCode),
-		"limit": limit,
-		"offset": input.Offset,
-		"order_by": []string{orderBy},
+		"limit":         limit,
+		"offset":        input.Offset,
+		"order_by":      []string{orderBy},
 	}
 	if len(filters) > 0 {
 		request["filters"] = join(filters, "and")

@@ -47,7 +47,7 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 	orgID := "org_test_" + time.Now().Format("150405999")
 
 	// Create dummy organization
-	_, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug) VALUES ($1, 'Test Org', $1) ON CONFLICT DO NOTHING`, orgID)
+	_, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Test Org', $1, now()) ON CONFLICT DO NOTHING`, orgID)
 	if err != nil {
 		t.Fatalf("failed to insert org: %v", err)
 	}

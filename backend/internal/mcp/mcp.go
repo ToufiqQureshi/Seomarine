@@ -11,10 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
 	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
 	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
@@ -42,27 +42,27 @@ var corsHeaders = map[string]string{
 
 // Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger         *slog.Logger
-	DB             *pgxpool.Pool
-	Redis          *redis.Client
-	Auth           *auth.Service
-	Billing        *billing.Service
+	Logger  *slog.Logger
+	DB      *pgxpool.Pool
+	Redis   *redis.Client
+	Auth    *auth.Service
+	Billing *billing.Service
 	// Hosted follows AUTH_MODE, independently of Razorpay configuration.
-	Hosted bool
-	AutumnCredits *billing.AutumnCreditClient
-	Upstream       *url.URL
-	PublicURL      *url.URL
-	Audit          *audit.Service
-	Backlinks      *backlinks.Service
-	Domain         *domain.Service
-	Locations      *keywords.LocationService
-	SavedKeywords  *keywords.SavedService
+	Hosted          bool
+	AutumnCredits   *billing.AutumnCreditClient
+	Upstream        *url.URL
+	PublicURL       *url.URL
+	Audit           *audit.Service
+	Backlinks       *backlinks.Service
+	Domain          *domain.Service
+	Locations       *keywords.LocationService
+	SavedKeywords   *keywords.SavedService
 	KeywordResearch *keywords.ResearchService
-	GA4            *ga4.Service
-	Reports        *reports.Service
-	GSC            *gsc.Service
-	RankTracking   *ranktracking.Service
-	ProjectContext *projectcontext.Service
+	GA4             *ga4.Service
+	Reports         *reports.Service
+	GSC             *gsc.Service
+	RankTracking    *ranktracking.Service
+	ProjectContext  *projectcontext.Service
 }
 
 // Mount registers the MCP dispatcher on mux.

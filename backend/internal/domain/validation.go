@@ -23,7 +23,6 @@ func parseResearchTarget(input string, requested Scope) (ResearchTarget, error) 
 	return aisearch.ResolveResearchTarget(input, requested)
 }
 
-
 // ResolveTarget exposes the shared hostname/path normalization to Go API
 // consumers that need the display target and effective scope in their response.
 func ResolveTarget(input string, scope Scope) (ResearchTarget, error) {

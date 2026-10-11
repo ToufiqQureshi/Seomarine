@@ -23,28 +23,28 @@ type serpToolItem struct {
 type serpToolQueryResult struct {
 	Keyword string         `json:"keyword"`
 	OK      bool           `json:"ok"`
-	Items   []serpToolItem  `json:"items,omitempty"`
+	Items   []serpToolItem `json:"items,omitempty"`
 	Error   string         `json:"error,omitempty"`
 }
 
 func getSerpResultsTool() *tool {
 	return &tool{
 		Name: "get_serp_results", Title: "Get Google SERP results",
-		Description: "Fetch live Google organic search results for 1-10 keywords. Returns up to the requested depth per keyword; individual query errors do not fail the batch. DataForSEO usage is charged per keyword.",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"queries":{"type":"array","minItems":1,"maxItems":10,"items":{"type":"object","properties":{"keyword":{"type":"string","minLength":1},"locationCode":{"type":"integer","minimum":1},"languageCode":{"type":"string","minLength":2,"maxLength":8},"locationName":{"type":"string","minLength":1}},"required":["keyword"],"additionalProperties":false}},"depth":{"type":"integer","minimum":10,"maximum":100,"multipleOf":10}},"required":["projectId","queries"],"additionalProperties":false}`),
+		Description:  "Fetch live Google organic search results for 1-10 keywords. Returns up to the requested depth per keyword; individual query errors do not fail the batch. DataForSEO usage is charged per keyword.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"queries":{"type":"array","minItems":1,"maxItems":10,"items":{"type":"object","properties":{"keyword":{"type":"string","minLength":1},"locationCode":{"type":"integer","minimum":1},"languageCode":{"type":"string","minLength":2,"maxLength":8},"locationName":{"type":"string","minLength":1}},"required":["keyword"],"additionalProperties":false}},"depth":{"type":"integer","minimum":10,"maximum":100,"multipleOf":10}},"required":["projectId","queries"],"additionalProperties":false}`),
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{"results":{"type":"array","items":{"type":"object"}}},"additionalProperties":true}`),
-		Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
-		Handler: handleGetSerpResults,
+		Annotations:  map[string]any{"readOnlyHint": false, "openWorldHint": true, "destructiveHint": false},
+		Handler:      handleGetSerpResults,
 	}
 }
 
 func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv) (*callResult, error) {
 	var args struct {
 		ProjectID string `json:"projectId"`
-		Queries []struct {
-			Keyword string `json:"keyword"`
-			LocationCode *int `json:"locationCode"`
-			LanguageCode string `json:"languageCode"`
+		Queries   []struct {
+			Keyword      string  `json:"keyword"`
+			LocationCode *int    `json:"locationCode"`
+			LanguageCode string  `json:"languageCode"`
 			LocationName *string `json:"locationName"`
 		} `json:"queries"`
 		Depth int `json:"depth"`
@@ -56,7 +56,9 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 		return nil, newAppErrorf("VALIDATION_ERROR", "queries must contain 1 to 10 items")
 	}
 	depth := args.Depth
-	if depth == 0 { depth = keywords.SerpShallowDepth }
+	if depth == 0 {
+		depth = keywords.SerpShallowDepth
+	}
 	if depth < 10 || depth > 100 || depth%10 != 0 {
 		return nil, newAppErrorf("VALIDATION_ERROR", "depth must be a multiple of 10 from 10 to 100")
 	}
@@ -75,7 +77,9 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 		return nil, newAppErrorf("SERVICE_UNAVAILABLE", "Keyword research is not configured on this server.")
 	}
 	access, err := env.h.authorizeProject(ctx, env.auth, args.ProjectID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	results := make([]serpToolQueryResult, len(args.Queries))
 	okCount := 0
@@ -104,7 +108,9 @@ func handleGetSerpResults(ctx context.Context, raw json.RawMessage, env *callEnv
 		trimmed := make([]serpToolItem, 0, min(len(items), depth))
 		for _, item := range items[:min(len(items), depth)] {
 			rank := item.RankAbsolute
-			if rank == nil { rank = item.RankGroup }
+			if rank == nil {
+				rank = item.RankGroup
+			}
 			trimmed = append(trimmed, serpToolItem{
 				Type: nonemptyString(item.Type), Rank: rank, Title: nullableText(item.Title),
 				URL: nullableText(item.URL), Domain: nullableText(item.Domain), Description: nullableText(item.Description),
@@ -140,18 +146,24 @@ func serpToolErrorMessage(err error) string {
 }
 
 func nonemptyString(value string) *string {
-	if value == "" { return nil }
+	if value == "" {
+		return nil
+	}
 	return &value
 }
 
 func nullableText(value string) *string { return &value }
 
 func textValue(value *string) string {
-	if value == nil { return "" }
+	if value == nil {
+		return ""
+	}
 	return *value
 }
 
 func rankText(value *int) string {
-	if value == nil { return "" }
+	if value == nil {
+		return ""
+	}
 	return fmt.Sprint(*value)
 }

@@ -15,9 +15,9 @@ const (
 	autumnCheckURL = "https://api.useautumn.com/v1/check"
 
 	// Autumn credit features used by hosted SEO and agent usage.
-	AutumnSEODataBalanceFeatureID     = "usage_credits"
-	AutumnSEOTopupBalanceFeatureID    = "topup_credits"
-	maxAutumnCheckBody                = 1 << 20
+	AutumnSEODataBalanceFeatureID  = "usage_credits"
+	AutumnSEOTopupBalanceFeatureID = "topup_credits"
+	maxAutumnCheckBody             = 1 << 20
 )
 
 // AutumnCreditClient reads a hosted customer's remaining credit balance.
