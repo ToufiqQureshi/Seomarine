@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
+	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
@@ -198,40 +200,44 @@ func run(logger *slog.Logger) error {
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
-			Logger:            logger,
-			DB:                db,
-			Redis:             httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
-			Auth:              authService,
-			Analytics:         analytics.NewService(db, rdb, countryLookup),
-			TrustedProxyCIDRs: cfg.TrustedProxyCIDRs,
-			Billing:           billingSvc,
-			Branding:          branding.NewService(db),
-			AISearch:          aiSearchSvc,
-			Backlinks:         backlinksSvc,
-			Domain:            domainSvc,
-			DashboardOverview: &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}, Backlinks: backlinksSvc},
-			GoogleAccounts:    google.AccountRepository{Pool: db},
-			GoogleOAuth:       googleOAuthSvc,
-			GA4:               ga4Svc,
-			GA4Setup:          ga4Setup,
-			GSC:               gscService,
-			GSCConnections:    buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
-			ProjectMarkets:    domain.ProjectMarketRepository{DB: db},
-			Locations:         locationSvc,
-			Audit:             auditSvc,
-			RankTracking:      rankTrackingService,
-			RankChecks:        rankChecks,
-			Projects:          &projects.Service{Store: projects.Repository{DB: db}},
-			SAMSessions:       &sam.Service{Store: sam.Repository{DB: db}},
-			Activation:        &activation.Service{Store: activation.Repository{DB: db}},
-			Reports:           reportsSvc,
-			PublicURL:         cfg.PublicURL,
-			MCP:               mcpDeps,
-			SavedKeywords:     savedKeywordsSvc,
-			ProjectContext:    projectContextSvc,
-			KeywordResearch:   keywordResearch,
-			Site:              pages,
-			Upstream:          cfg.UpstreamAppURL,
+			Logger:               logger,
+			DB:                   db,
+			Redis:                httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
+			Auth:                 authService,
+			Analytics:            analytics.NewService(db, rdb, countryLookup),
+			TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
+			Billing:              billingSvc,
+			Branding:             branding.NewService(db),
+			AISearch:             aiSearchSvc,
+			Backlinks:            backlinksSvc,
+			Domain:               domainSvc,
+			DashboardOverview:    &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}, Backlinks: backlinksSvc},
+			GoogleAccounts:       google.AccountRepository{Pool: db},
+			GoogleOAuth:          googleOAuthSvc,
+			GA4:                  ga4Svc,
+			GA4Setup:             ga4Setup,
+			GSC:                  gscService,
+			GSCConnections:       buildGSCConnectionOperations(db, googleAPIClient, googleOAuthSvc != nil),
+			ProjectMarkets:       domain.ProjectMarketRepository{DB: db},
+			Locations:            locationSvc,
+			Audit:                auditSvc,
+			RankTracking:         rankTrackingService,
+			RankChecks:           rankChecks,
+			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
+			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
+			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
+			Activation:           &activation.Service{Store: activation.Repository{DB: db}},
+			Reports:              reportsSvc,
+			PublicURL:            cfg.PublicURL,
+			DataForSEOConfigured: strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
+			OpenRouterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
+			HostedMode:           cfg.AuthMode == "hosted",
+			MCP:                  mcpDeps,
+			SavedKeywords:        savedKeywordsSvc,
+			ProjectContext:       projectContextSvc,
+			KeywordResearch:      keywordResearch,
+			Site:                 pages,
+			Upstream:             cfg.UpstreamAppURL,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,

@@ -7,7 +7,7 @@ while features move to Go.
 
 ## Pending new test files
 
-Current confirmed count: **9 files**.
+Current confirmed count: **11 files**.
 
 | Feature / slice                  | Test file to add at the end                                           | Coverage to add                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -20,6 +20,8 @@ Current confirmed count: **9 files**.
 | SAM session API cutover          | `src/client/features/sam/samApi.test.ts`                              | Covers session listing, creation, archive payloads, and response parsing.                                                                          |
 | Rank tracking API cutover        | `src/client/features/rank-tracking/rankTrackingApi.test.ts`           | Covers Go route payloads, config summaries, ranking results/history, and mutation response mapping.                                                |
 | Reports API cutover              | `src/client/features/reports/reportApi.test.ts`                       | Covers report metadata, template names, sharing state, template list/save/delete, and errors.                                                      |
+| Onboarding API cutover           | `src/client/features/onboarding/onboardingApi.test.ts`                | Covers saved-answer reads/writes, completion, and Search Console nudge dismissal.                                                                  |
+| Runtime setup API cutover        | `src/client/lib/appConfigApi.test.ts`                                 | Covers SEO provider-key status and SAM access setup status from Go.                                                                                |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

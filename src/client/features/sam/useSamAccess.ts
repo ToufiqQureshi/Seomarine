@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
-import { getSamAccessSetupStatus } from "@/serverFunctions/samAccess";
+import { getSamAccessSetupStatus } from "@/client/features/sam/samApi";
 
 // Fails closed: the chat only renders once the check confirms the OpenRouter
 // key is set. A failed check is an error with retry, not the key-missing gate.

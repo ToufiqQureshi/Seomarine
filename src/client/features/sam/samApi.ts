@@ -12,6 +12,20 @@ const samSessionSchema = z.object({
 
 export type SamSession = z.infer<typeof samSessionSchema>;
 
+export async function getSamAccessSetupStatus({
+  data,
+}: {
+  data: { projectId: string };
+}) {
+  const { projectId } = projectInput.parse(data);
+  return apiRequest(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/sam/access-setup-status`,
+    z.object({ enabled: z.boolean(), errorMessage: z.string().nullable() }),
+    "POST",
+    {},
+  );
+}
+
 export async function listSamSessions({
   data,
 }: {

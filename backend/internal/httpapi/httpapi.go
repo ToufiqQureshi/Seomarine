@@ -26,6 +26,7 @@ import (
 	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
 	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
 	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
+	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
 	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
@@ -102,9 +103,14 @@ type Deps struct {
 	Projects *projects.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
+	// Onboarding stores account-scoped signup answers and the Search Console nudge.
+	Onboarding *onboarding.Service
 	// Reports owns project report documents, templates, and sharing.
-	Reports   *reports.Service
-	PublicURL *url.URL
+	Reports              *reports.Service
+	PublicURL            *url.URL
+	DataForSEOConfigured bool
+	OpenRouterConfigured bool
+	HostedMode           bool
 	// MCP serves API-key-authenticated requests in Go and proxies legacy OAuth
 	// credentials and tools that are not registered in Go.
 	MCP *mcp.Deps
@@ -166,6 +172,28 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.HandleFunc("GET /t.js", serveTracker())
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
+	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
+	})))
+	withSAMProjectAccess := func(next http.Handler) http.Handler {
+		return withSession(requireProjectAccess(d.Logger, d.Auth, next))
+	}
+	mux.Handle("POST /api/v1/projects/{projectId}/sam/access-setup-status", withSAMProjectAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct{}
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		dec.DisallowUnknownFields()
+		if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid SAM setup request.")
+			return
+		}
+		enabled := d.HostedMode || d.OpenRouterConfigured
+		var message *string
+		if !enabled {
+			text := "OPENROUTER_API_KEY is not set for this deployment yet. Add it to your environment, restart Seomarine, then confirm here."
+			message = &text
+		}
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"enabled": enabled, "errorMessage": message})
+	})))
 	analytics.Mount(mux, analytics.Deps{
 		Logger:            d.Logger,
 		Service:           d.Analytics,
@@ -235,6 +263,7 @@ func NewHandler(d Deps) http.Handler {
 		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
+	onboarding.Mount(mux, onboarding.Deps{Logger: d.Logger, Service: d.Onboarding, WithSession: withSession})
 	audit.Mount(mux, audit.Deps{
 		Logger: d.Logger, Service: d.Audit, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
