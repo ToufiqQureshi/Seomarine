@@ -11,7 +11,6 @@ import (
 type Repository struct{ DB *pgxpool.Pool }
 
 // GetDashboardActivation returns activation state for a project dashboard.
-// GetDashboardActivation returns activation state for a project dashboard.
 func (r Repository) GetDashboardActivation(ctx context.Context, userID, projectID, organizationID string) (DashboardActivation, error) {
 	var result DashboardActivation
 	var projectCount int
@@ -48,7 +47,6 @@ func (r Repository) GetDashboardActivation(ctx context.Context, userID, projectI
 }
 
 // MarkClicked records that a user clicked an activation step.
-// MarkClicked records that a user clicked an activation step.
 func (r Repository) MarkClicked(ctx context.Context, project, step, stamp string) error {
 	column := "competitor_step_clicked_at"
 	if step == "keywords" {
@@ -62,7 +60,6 @@ func (r Repository) MarkClicked(ctx context.Context, project, step, stamp string
 }
 
 // DismissGA4 records that the GA4 activation card was dismissed.
-// DismissGA4 records that the GA4 activation card was dismissed.
 func (r Repository) DismissGA4(ctx context.Context, project, stamp string) error {
 	_, err := r.DB.Exec(ctx, `INSERT INTO project_activation_state(project_id,ga4_card_dismissed_at,updated_at) VALUES($1,$2,$2) ON CONFLICT(project_id) DO UPDATE SET ga4_card_dismissed_at=COALESCE(project_activation_state.ga4_card_dismissed_at,$2),updated_at=$2`, project, stamp)
 	if err != nil {
@@ -71,7 +68,6 @@ func (r Repository) DismissGA4(ctx context.Context, project, stamp string) error
 	return nil
 }
 
-// SetDismissed records whether a user dismissed an activation step.
 // SetDismissed records whether a user dismissed an activation step.
 func (r Repository) SetDismissed(ctx context.Context, user, project, step string, dismissed bool) error {
 	if dismissed {

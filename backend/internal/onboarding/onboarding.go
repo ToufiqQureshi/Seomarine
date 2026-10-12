@@ -35,12 +35,9 @@ type SaveInput struct {
 // Store persists onboarding state.
 type Store interface {
 	// Get returns saved onboarding state for a user.
-	// Get returns saved onboarding state for a user.
 	Get(context.Context, string) (Answers, error)
 	// Save persists onboarding answers for a user and organization.
-	// Save persists onboarding answers for a user and organization.
 	Save(context.Context, string, string, SaveInput) error
-	// DismissGSCNudge records that a user dismissed the Search Console prompt.
 	// DismissGSCNudge records that a user dismissed the Search Console prompt.
 	DismissGSCNudge(context.Context, string, string) error
 }

@@ -64,7 +64,6 @@ type WriterOutput struct {
 // WriterService generates content for a project.
 type WriterService interface {
 	// Generate creates the requested content and records its usage.
-	// Generate creates the requested content and records its usage.
 	Generate(context.Context, string, WriterInput) (WriterOutput, error)
 }
 

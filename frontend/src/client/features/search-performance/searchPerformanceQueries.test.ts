@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
 import { tableQueryOptions } from "./searchPerformanceQueries";
 
 afterEach(() => vi.restoreAllMocks());
@@ -27,20 +28,22 @@ describe("search performance table query", () => {
         queryFilter: { operator: "contains", expression: "dentist" },
       },
     ]);
-    await options.queryFn?.({} as never);
+    await new QueryClient().fetchQuery(options);
     const [path, init] = fetchMock.mock.calls[0];
     expect(path).toBe(
       "/api/v1/projects/project%2F1/gsc/search-performance/table",
     );
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(String(init?.body))).toEqual({
-      queryFilter: { operator: "contains", expression: "dentist" },
-      dateRange: "last_3_months",
-      device: "MOBILE",
-      country: "usa",
-      dimension: "query",
-      page: 2,
-      pageSize: 50,
-    });
+    expect(init?.body).toBe(
+      JSON.stringify({
+        queryFilter: { operator: "contains", expression: "dentist" },
+        dateRange: "last_3_months",
+        device: "MOBILE",
+        country: "usa",
+        dimension: "query",
+        page: 2,
+        pageSize: 50,
+      }),
+    );
   });
 });
