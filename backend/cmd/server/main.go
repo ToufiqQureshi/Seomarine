@@ -61,7 +61,10 @@ import (
 )
 
 const (
-	startupTimeout  = 10 * time.Second
+	startupTimeout = 10 * time.Second
+	// The first deploy creates every table, one statement per round trip, and
+	// the database can be in another region.
+	migrateTimeout  = 5 * time.Minute
 	shutdownTimeout = 15 * time.Second
 )
 
@@ -94,7 +97,9 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer db.Close()
-	if err := database.Migrate(startupCtx, db); err != nil {
+	migrateCtx, cancelMigrate := context.WithTimeout(ctx, migrateTimeout)
+	defer cancelMigrate()
+	if err := database.Migrate(migrateCtx, db); err != nil {
 		return err
 	}
 
