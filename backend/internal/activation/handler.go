@@ -60,14 +60,26 @@ func (d Deps) click(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if err := d.Service.MarkClicked(r.Context(), r.PathValue("projectId"), in.Step); err != nil {
+	if d.Service == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "activation_unavailable", "Dashboard activation is not available.")
+		return
+	}
+	if !validClickStep(in.Step) {
 		invalid(w)
+		return
+	}
+	if err := d.Service.MarkClicked(r.Context(), r.PathValue("projectId"), in.Step); err != nil {
+		d.fail(w, r, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 func (d Deps) ga4Dismiss(w http.ResponseWriter, r *http.Request) {
 	if !empty(w, r) {
+		return
+	}
+	if d.Service == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "activation_unavailable", "Dashboard activation is not available.")
 		return
 	}
 	if err := d.Service.DismissGA4(r.Context(), r.PathValue("projectId")); err != nil {
@@ -89,8 +101,16 @@ func (d Deps) dismiss(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthenticated", "Sign in to continue.")
 		return
 	}
-	if err := d.Service.SetDismissed(r.Context(), u.ID, r.PathValue("projectId"), in.Step, in.Dismissed); err != nil {
+	if d.Service == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "activation_unavailable", "Dashboard activation is not available.")
+		return
+	}
+	if !validSetupStep(in.Step) {
 		invalid(w)
+		return
+	}
+	if err := d.Service.SetDismissed(r.Context(), u.ID, r.PathValue("projectId"), in.Step, in.Dismissed); err != nil {
+		d.fail(w, r, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
@@ -118,6 +138,17 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	}
 	return true
 }
+func validClickStep(step string) bool { return step == "competitor" || step == "keywords" }
+
+func validSetupStep(step string) bool {
+	switch step {
+	case "competitor", "keywords", "audit", "mcp", "team", "project":
+		return true
+	default:
+		return false
+	}
+}
+
 func invalid(w http.ResponseWriter) {
 	httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid activation update.")
 }

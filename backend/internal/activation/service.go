@@ -68,7 +68,10 @@ func (s *Service) GetDashboardActivation(ctx context.Context, userID, projectID,
 
 // MarkClicked records that a user clicked an activation step.
 func (s *Service) MarkClicked(ctx context.Context, project, step string) error {
-	if step != "competitor" && step != "keywords" {
+	if s == nil || s.Store == nil {
+		return fmt.Errorf("dashboard activation store unavailable")
+	}
+	if !validClickStep(step) {
 		return fmt.Errorf("invalid dashboard click step")
 	}
 	return s.Store.MarkClicked(ctx, project, step, s.stamp())
@@ -76,14 +79,18 @@ func (s *Service) MarkClicked(ctx context.Context, project, step string) error {
 
 // DismissGA4 records that the GA4 activation card was dismissed.
 func (s *Service) DismissGA4(ctx context.Context, project string) error {
+	if s == nil || s.Store == nil {
+		return fmt.Errorf("dashboard activation store unavailable")
+	}
 	return s.Store.DismissGA4(ctx, project, s.stamp())
 }
 
 // SetDismissed records whether a user dismissed an activation step.
 func (s *Service) SetDismissed(ctx context.Context, user, project, step string, dismissed bool) error {
-	switch step {
-	case "competitor", "keywords", "audit", "mcp", "team", "project":
-	default:
+	if s == nil || s.Store == nil {
+		return fmt.Errorf("dashboard activation store unavailable")
+	}
+	if !validSetupStep(step) {
 		return fmt.Errorf("invalid dashboard setup step")
 	}
 	return s.Store.SetDismissed(ctx, user, project, step, dismissed)

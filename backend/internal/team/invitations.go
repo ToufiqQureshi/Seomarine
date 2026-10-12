@@ -138,17 +138,24 @@ func (s *Service) consumeBudget(ctx context.Context, organizationID, email strin
 		return errors.New("invitation rate limiter unavailable")
 	}
 	day := s.now().UTC().Format("2006-01-02")
-	for _, entry := range []struct {
-		key   string
-		limit int64
-	}{{"invite-sends:" + organizationID + ":" + day, 50}, {"invite-sends:" + organizationID + ":" + email + ":" + day, 5}} {
-		count, err := s.Redis.Eval(ctx, `local current=tonumber(redis.call('GET',KEYS[1]) or '0'); if current>=tonumber(ARGV[1]) then return current end; local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],86400) end; return n`, []string{entry.key}, entry.limit).Int64()
-		if err != nil {
-			return fmt.Errorf("consume invitation send budget: %w", err)
-		}
-		if count > entry.limit {
-			return ErrRateLimited
-		}
+	keys := []string{
+		"invite-sends:" + organizationID + ":" + day,
+		"invite-sends:" + organizationID + ":" + email + ":" + day,
+	}
+	allowed, err := s.Redis.Eval(ctx, `
+		local organizationCount=tonumber(redis.call('GET',KEYS[1]) or '0')
+		local recipientCount=tonumber(redis.call('GET',KEYS[2]) or '0')
+		if organizationCount>=tonumber(ARGV[1]) or recipientCount>=tonumber(ARGV[2]) then return 0 end
+		for i=1,2 do
+			local n=redis.call('INCR',KEYS[i])
+			if n==1 then redis.call('EXPIRE',KEYS[i],86400) end
+		end
+		return 1`, keys, 50, 5).Int64()
+	if err != nil {
+		return fmt.Errorf("consume invitation send budget: %w", err)
+	}
+	if allowed != 1 {
+		return ErrRateLimited
 	}
 	return nil
 }
