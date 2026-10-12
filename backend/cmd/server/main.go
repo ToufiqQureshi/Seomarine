@@ -103,7 +103,10 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	rdb, err := kv.Open(startupCtx, cfg.RedisURL)
+	// Migrations may have used up the first startup deadline.
+	redisCtx, cancelRedis := context.WithTimeout(ctx, startupTimeout)
+	defer cancelRedis()
+	rdb, err := kv.Open(redisCtx, cfg.RedisURL)
 	if err != nil {
 		return err
 	}
