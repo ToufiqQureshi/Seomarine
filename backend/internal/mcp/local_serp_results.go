@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 var localSERPFields = []string{"rank_group", "rank_absolute", "title", "domain", "url", "contact_url", "address", "address_info", "phone", "category", "additional_categories", "rating", "rating_distribution", "price_level", "is_claimed", "cid", "place_id", "latitude", "longitude", "total_photos", "work_hours", "local_justifications"}

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 // goldenCookie was produced by better-call 1.3.7's own signCookieValue
@@ -222,7 +222,7 @@ func newFixture(ctx context.Context, t *testing.T) fixture {
 
 func (f fixture) addSession(ctx context.Context, t *testing.T, token string, expiresAt time.Time) {
 	t.Helper()
-	exec(ctx, t, f.pool, `INSERT INTO session (id, token, user_id, expires_at) VALUES ($1, $2, $3, $4)`,
+	exec(ctx, t, f.pool, `INSERT INTO session (id, token, user_id, expires_at, updated_at) VALUES ($1, $2, $3, $4, now())`,
 		"session-"+rand.Text(), token, f.user.ID, expiresAt)
 }
 

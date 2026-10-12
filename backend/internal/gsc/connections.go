@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
 )
 
 var (

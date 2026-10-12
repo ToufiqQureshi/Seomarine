@@ -35,8 +35,8 @@ docs/                           user-facing docs, docs/maintainers/ engineering 
 
 Why `go.mod` moves to the root: `go:embed` cannot reach outside its package
 tree, so `db/` can only embed its migrations if it is inside the module.
-Import paths do not change (`.../seomarine/backend/internal/x` stays the same
-string once the module is `github.com/toufiqqureshi/seomarine`).
+Import paths do not change (`.../uplumo/backend/internal/x` stays the same
+string once the module is `github.com/toufiqqureshi/uplumo`).
 
 `legacy/` is a temporary fourth folder for today's TypeScript app. It exists
 only while features are being ported, shrinks with every PR, and is deleted
@@ -49,7 +49,7 @@ with the last port. The finished repo has no `legacy/`.
 | `backend/go.mod`, `backend/go.sum`                                                             | repo root                      | Step 1                                         |
 | `backend/internal/database/migrations`                                                         | `db/migrations` (+ `db/db.go`) | Step 1                                         |
 | `backend/internal/database/testdata/*.sql`                                                     | `db/schema/legacy_schema.sql`  | Step 1                                         |
-| `src/client`, `src/routes`, parts of `src/shared`                                              | `frontend/src`                 | Step 4: after the last server function is gone |
+| `frontend/` (was `src/`, `tests/` and the root Vite, pnpm and lint configs)                    | stays                          | Done                                           |
 | `src/server`, `src/serverFunctions`, `drizzle`, `wrangler*.jsonc`, `deploy/alchemy`, `scripts` | `legacy/`, then deleted        | Step 3, shrinking until the end                |
 | `backend/internal/<feature>`                                                                   | stays                          | n/a                                            |
 

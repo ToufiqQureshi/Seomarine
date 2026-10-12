@@ -1,6 +1,6 @@
 # Country database attribution
 
-Seomarine includes the October 2026 DB-IP IP to Country Lite database.
+Uplumo includes the October 2026 DB-IP IP to Country Lite database.
 Copyright DB-IP.com. The database is licensed under the Creative Commons
 Attribution 4.0 International License (CC BY 4.0).
 

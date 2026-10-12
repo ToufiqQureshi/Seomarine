@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
 	"golang.org/x/net/idna"
 )
 

@@ -1,28 +1,36 @@
 {{template "head" .}}
+{{template "nav" .}}
 <main id="main">
-<div class="wrap hero">
-<h1>Simple pricing. No surprises.</h1>
+<div class="dots">
+<div class="wrap hero" style="padding-bottom:5rem">
+<span class="sticker">AI visibility included in Pro</span>
+<h1>Simple pricing. <em>No surprises.</em></h1>
 <p class="lead">One price in rupees, AI visibility included and no credits to count. Start free, upgrade when you are ready and cancel in one click.</p>
 </div>
+</div>
 
-<section class="alt" aria-labelledby="plans">
-<div class="wrap">
-<h2 id="plans" class="center">Plans</h2>
+<section class="band" aria-labelledby="plans">
+<div class="wrap narrow stack">
+<div class="section-head">
+<p class="eyebrow">Plans</p>
+<h2 id="plans">Pick one. Change any time.</h2>
+</div>
 {{template "plans" .}}
-<p class="note center">Prices are per workspace, per month, in Indian rupees.</p>
+<p class="note">Prices are per workspace, per month, in Indian rupees.</p>
 </div>
 </section>
 
-<section aria-labelledby="compare">
-<div class="wrap">
+<section class="band" aria-labelledby="compare">
+<div class="wrap narrow stack">
 <div class="section-head">
-<h2 id="compare">How Seomarine compares</h2>
+<p class="eyebrow">Compare</p>
+<h2 id="compare">How Uplumo compares</h2>
 <p>What you pay for the things people complain about most.</p>
 </div>
 <div class="table-scroll">
 <table>
-<caption class="skip">Seomarine compared with Semrush and Ahrefs</caption>
-<thead><tr><th scope="col"></th><th scope="col">Seomarine Pro</th><th scope="col">Semrush</th><th scope="col">Ahrefs</th></tr></thead>
+<caption class="skip">Uplumo compared with Semrush and Ahrefs</caption>
+<thead><tr><th scope="col"></th><th scope="col">Uplumo Pro</th><th scope="col">Semrush</th><th scope="col">Ahrefs</th></tr></thead>
 <tbody>
 <tr><th scope="row">AI visibility</th><td>Included</td><td>Add-on, about $99 a month per domain</td><td>Sold separately</td></tr>
 <tr><th scope="row">Rows per report</th><td>No cap on our own data</td><td>Capped by plan</td><td>2,500 on the Lite plan</td></tr>
@@ -34,21 +42,21 @@
 </div>
 </section>
 
-<section class="alt" aria-labelledby="faq">
-<div class="wrap">
-<div class="section-head"><h2 id="faq">Billing questions</h2></div>
+<section class="band" aria-labelledby="faq">
+<div class="wrap narrow stack">
+<div class="section-head">
+<p class="eyebrow">Billing</p>
+<h2 id="faq">Billing questions</h2>
+</div>
 {{template "faq" .}}
 </div>
 </section>
 
-<section aria-labelledby="start">
-<div class="wrap">
-<div class="final">
-<h2 id="start">Try Seomarine free</h2>
+<section class="band dots" aria-labelledby="start">
+<div class="wrap final">
+<h2 id="start">Try Uplumo <em>free.</em></h2>
 <p>No card needed. Upgrade to Pro only when it pays for itself.</p>
-<a class="btn btn-primary" href="{{.SignUp}}">Create your free account</a>
-</div>
+<a class="btn" href="{{.SignUp}}">Create your free account</a>
 </div>
 </section>
-</main>
 {{template "footer" .}}

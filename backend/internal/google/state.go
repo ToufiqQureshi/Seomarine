@@ -120,7 +120,7 @@ func CodeVerifier(state, provider, clientSecret string) (string, error) {
 	if state == "" || !validProvider(provider) || clientSecret == "" {
 		return "", errors.New("invalid pkce parameters")
 	}
-	mac := hmac.New(sha256.New, []byte("seomarine:"+provider+":pkce:"+clientSecret))
+	mac := hmac.New(sha256.New, []byte("uplumo:"+provider+":pkce:"+clientSecret))
 	_, _ = mac.Write([]byte(state))
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
 }

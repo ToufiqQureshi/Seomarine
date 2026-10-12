@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 const (
@@ -66,7 +66,7 @@ type googleProfile struct {
 
 // exchange trades the authorization code for the profile. The access token goes
 // straight from Google's token endpoint to Google's userinfo endpoint over TLS
-// and is never stored: Seomarine uses Google here only to learn who the user is.
+// and is never stored: Uplumo uses Google here only to learn who the user is.
 func (g *GoogleProvider) exchange(ctx context.Context, code, verifier, redirectURI string) (googleProfile, error) {
 	form := url.Values{
 		"client_id": {g.ClientID}, "client_secret": {g.ClientSecret}, "code": {code},

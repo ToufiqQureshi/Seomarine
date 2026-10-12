@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 // testDatabaseURL returns the Postgres URL for integration tests. CI always

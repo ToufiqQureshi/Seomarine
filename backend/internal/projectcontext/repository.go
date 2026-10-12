@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 // Repository owns SQL for shared project memory. Project-level updates hold a

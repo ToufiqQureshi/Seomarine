@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 )
 
 // emptyObjectSchema is the JSON Schema for a tool with no inputs (z.object({})).
@@ -24,12 +24,12 @@ func whoamiTool() *tool {
 	return &tool{
 		Name:        "whoami",
 		Title:       "Who am I",
-		Description: "Confirms the connected Seomarine account, server mode, token scopes, and current credit balance when the user asks to check their account or connection. Uses no credits — does not call DataForSEO.",
+		Description: "Confirms the connected Uplumo account, server mode, token scopes, and current credit balance when the user asks to check their account or connection. Uses no credits — does not call DataForSEO.",
 		InputSchema: emptyObjectSchema,
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{
 			"userEmail":{"type":"string"},
 			"scopes":{"type":"array","items":{"type":"string"}},
-			"mode":{"type":"string","enum":["hosted","self-hosted"]},
+			"mode":{"type":"string","enum":["hosted"]},
 			"creditsRemaining":{"type":["number","null"]},
 			"meta":{"type":"object","additionalProperties":true}
 		},"additionalProperties":true}`),
@@ -40,11 +40,8 @@ func whoamiTool() *tool {
 
 func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callResult, error) {
 	auth := env.auth
-	hosted := env.deps.Hosted
-	mode := "self-hosted"
-	if hosted {
-		mode = "hosted"
-	}
+	// Kept in the output for clients that read it; there is one mode.
+	const mode = "hosted"
 	scopes := auth.Scopes
 	if scopes == nil {
 		scopes = []string{}
@@ -55,7 +52,7 @@ func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callRe
 	}
 
 	var creditsRemaining *int
-	if hosted && env.deps.Credits != nil && auth.OrganizationID != "" {
+	if env.deps.Credits != nil && auth.OrganizationID != "" {
 		if balance, err := env.deps.Credits.GetBalance(ctx, auth.OrganizationID); err == nil {
 			credits := int(balance)
 			creditsRemaining = &credits
@@ -66,13 +63,11 @@ func handleWhoami(ctx context.Context, _ json.RawMessage, env *callEnv) (*callRe
 		"Mode: " + mode,
 		"Scopes: " + scopeText,
 	}
-	if hosted {
-		creditText := "unknown"
-		if creditsRemaining != nil {
-			creditText = fmt.Sprintf("%d", *creditsRemaining)
-		}
-		lines = append(lines, "Credits remaining: "+creditText)
+	creditText := "unknown"
+	if creditsRemaining != nil {
+		creditText = fmt.Sprintf("%d", *creditsRemaining)
 	}
+	lines = append(lines, "Credits remaining: "+creditText)
 	return mcpResponse(strings.Join(lines, "\n"), map[string]any{
 		"userEmail":        auth.UserEmail,
 		"scopes":           scopes,
@@ -85,7 +80,7 @@ func listProjectsTool() *tool {
 	return &tool{
 		Name:        "list_projects",
 		Title:       "List projects",
-		Description: "Lists the user's projects. Uses no credits — does not call DataForSEO. Use this whenever you need a `projectId` for another Seomarine tool. Returns an array of {id, name, domain, locationCode, languageCode}; pass the `id` value as `projectId`. locationCode/languageCode are the project's default market — tools fall back to them when a call omits location/language args. When the user belongs to several organizations, each project is labeled with its organization and organizationId (pass that to create_project).",
+		Description: "Lists the user's projects. Uses no credits — does not call DataForSEO. Use this whenever you need a `projectId` for another Uplumo tool. Returns an array of {id, name, domain, locationCode, languageCode}; pass the `id` value as `projectId`. locationCode/languageCode are the project's default market — tools fall back to them when a call omits location/language args. When the user belongs to several organizations, each project is labeled with its organization and organizationId (pass that to create_project).",
 		InputSchema: emptyObjectSchema,
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{
 			"projects":{"type":"array","items":{"type":"object","properties":{
@@ -190,7 +185,7 @@ func createProjectTool() *tool {
 	return &tool{
 		Name:        "create_project",
 		Title:       "Create project",
-		Description: "Create a new project in the user's organization. Uses no credits — does not call DataForSEO. Provide a name, and optionally a domain and default market (locationCode/languageCode; a languageCode requires a locationCode). Returns the created {id, name, domain, locationCode, languageCode, url}; pass the returned `id` as `projectId` to other Seomarine tools. Call list_projects first to avoid creating a duplicate.",
+		Description: "Create a new project in the user's organization. Uses no credits — does not call DataForSEO. Provide a name, and optionally a domain and default market (locationCode/languageCode; a languageCode requires a locationCode). Returns the created {id, name, domain, locationCode, languageCode, url}; pass the returned `id` as `projectId` to other Uplumo tools. Call list_projects first to avoid creating a duplicate.",
 		InputSchema: createProjectInputSchema,
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{
 			"project":{"type":"object","properties":{
@@ -321,14 +316,14 @@ func hasProjectCreatePermission(role string) bool {
 }
 
 var getProjectContextInputSchema = json.RawMessage(`{"type":"object","properties":{
-	"projectId":{"type":"string","minLength":1,"description":"Required. The Seomarine project ID to scope this call to. Get one from list_projects."}
+	"projectId":{"type":"string","minLength":1,"description":"Required. The Uplumo project ID to scope this call to. Get one from list_projects."}
 },"required":["projectId"]}`)
 
 func getProjectContextTool() *tool {
 	return &tool{
 		Name:        "get_project_context",
 		Title:       "Get project context",
-		Description: "Reads a project's shared memory: business overview, current goal, positioning, writing preferences, custom sections, competitors, key pages, and the recent research log. Uses no credits. Call this before SEO work to ground it in what the user already told Seomarine, and check the research log before re-buying research. Sections listed as missing are the ones worth filling with update_project_context.",
+		Description: "Reads a project's shared memory: business overview, current goal, positioning, writing preferences, custom sections, competitors, key pages, and the recent research log. Uses no credits. Call this before SEO work to ground it in what the user already told Uplumo, and check the research log before re-buying research. Sections listed as missing are the ones worth filling with update_project_context.",
 		InputSchema: getProjectContextInputSchema,
 		OutputSchema: json.RawMessage(`{"type":"object","properties":{
 			"sections":{"type":"array","items":{"type":"object","additionalProperties":true}},

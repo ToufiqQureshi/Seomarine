@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const maxBody = 32 << 10

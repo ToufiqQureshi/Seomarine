@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 // SavedRepository is the Postgres store of saved keywords, tags and metrics.

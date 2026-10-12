@@ -23,7 +23,7 @@ POST /api/v1/projects/{projectId}/ai-search/prompt-explorer
 ```
 
 Request and response JSON is byte-compatible with the legacy server functions
-(`src/types/schemas/ai-search.ts` validates it on the client), so the pages did
+(`frontend/src/types/schemas/ai-search.ts` validates it on the client), so the pages did
 not change shape.
 
 ## Rules that must not break

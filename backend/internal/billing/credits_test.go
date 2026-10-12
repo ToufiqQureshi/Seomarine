@@ -2,24 +2,33 @@ package billing
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
-		t.Skip("Skipping integration test: TEST_DATABASE_URL not set")
+		if os.Getenv("CI") != "" {
+			t.Fatal("TEST_DATABASE_URL must be set in CI")
+		}
+		t.Skip("TEST_DATABASE_URL not set; skipping PostgreSQL integration test")
 	}
 	pool, err := pgdb.Open(context.Background(), url)
 	if err != nil {
-		t.Skipf("Skipping integration test: database connection failed: %v", err)
+		t.Fatalf("open PostgreSQL integration database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := database.Migrate(context.Background(), pool); err != nil {
+		pool.Close()
+		t.Fatalf("migrate PostgreSQL integration database: %v", err)
 	}
 	return pool
 }
@@ -40,17 +49,21 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 	if pool == nil {
 		return
 	}
-	defer pool.Close()
 
 	ctx := context.Background()
 	svc := NewCreditLedgerService(pool)
-	orgID := "org_test_" + time.Now().Format("150405999")
+	orgID := "org_test_" + rand.Text()
 
 	// Create dummy organization
 	_, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Test Org', $1, now()) ON CONFLICT DO NOTHING`, orgID)
 	if err != nil {
 		t.Fatalf("failed to insert org: %v", err)
 	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM organization WHERE id = $1`, orgID); err != nil {
+			t.Errorf("delete integration test organization: %v", err)
+		}
+	})
 
 	t.Run("balance and grant", func(t *testing.T) {
 		bal, err := svc.GetBalance(ctx, orgID)

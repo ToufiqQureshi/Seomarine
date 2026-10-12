@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
 type storeFake struct {

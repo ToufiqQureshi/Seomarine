@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/razorpay"
 )
 
 const testWebhookSecret = "webhook-secret"
@@ -65,9 +65,9 @@ func TestBillingEndToEnd(t *testing.T) {
 	exec(ctx, t, pool, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Acme', $1, now())`, org)
 	exec(ctx, t, pool, `INSERT INTO member (id, organization_id, user_id, role, created_at) VALUES
 		($1, $3, $4, 'owner', now()), ($2, $3, $5, 'member', now())`, "m-owner-"+id, "m-member-"+id, org, owner, member)
-	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, active_organization_id, expires_at) VALUES
-		($1, $1, $2, $5, now() + interval '1 hour'), ($3, $3, $4, $5, now() + interval '1 hour'),
-		($6, $6, $7, NULL, now() + interval '1 hour')`,
+	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, active_organization_id, expires_at, updated_at) VALUES
+		($1, $1, $2, $5, now() + interval '1 hour', now()), ($3, $3, $4, $5, now() + interval '1 hour', now()),
+		($6, $6, $7, NULL, now() + interval '1 hour', now())`,
 		"s-owner-"+id, owner, "s-member-"+id, member, org, "s-loner-"+id, loner)
 
 	as := func(h http.Handler, sessionToken, method, target string) *httptest.ResponseRecorder {

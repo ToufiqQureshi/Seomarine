@@ -11,14 +11,20 @@ var secret = strings.Repeat("s", 32)
 
 func TestLoad(t *testing.T) {
 	valid := map[string]string{
-		"DATABASE_URL":       "postgres://localhost/seomarine",
+		"DATABASE_URL":       "postgres://localhost/uplumo",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"PUBLIC_URL":         "https://seomarine.com",
+		"PUBLIC_URL":         "https://uplumo.com",
 	}
 	with := func(key, value string) map[string]string {
 		env := maps.Clone(valid)
 		env[key] = value
+		return env
+	}
+
+	withAll := func(extra map[string]string) map[string]string {
+		env := maps.Clone(valid)
+		maps.Copy(env, extra)
 		return env
 	}
 
@@ -29,9 +35,6 @@ func TestLoad(t *testing.T) {
 		wantErr  bool
 	}{
 		{name: "defaults the port", env: valid, wantAddr: ":8080"},
-		{name: "defaults auth mode", env: valid, wantAddr: ":8080"},
-		{name: "accepts hosted auth mode", env: with("AUTH_MODE", "hosted"), wantAddr: ":8080"},
-		{name: "rejects invalid auth mode", env: with("AUTH_MODE", "Hosted"), wantErr: true},
 		{name: "uses PORT", env: with("PORT", "3000"), wantAddr: ":3000"},
 		{name: "accepts the highest port", env: with("PORT", "65535"), wantAddr: ":65535"},
 		{name: "accepts trusted proxy CIDRs", env: with("TRUSTED_PROXY_CIDRS", "10.0.0.0/8, 2001:db8::/32"), wantAddr: ":8080"},
@@ -45,6 +48,11 @@ func TestLoad(t *testing.T) {
 		{name: "rejects port zero", env: with("PORT", "0"), wantErr: true},
 		{name: "rejects a port above 65535", env: with("PORT", "65536"), wantErr: true},
 		{name: "rejects a negative port", env: with("PORT", "-1"), wantErr: true},
+		{name: "rejects skipping email verification on a live site", env: with("BYPASS_EMAIL_VERIFICATION", "true"), wantErr: true},
+		{name: "rejects a provider key without billing on a live site", env: with("DATAFORSEO_API_KEY", "key"), wantErr: true},
+		{name: "rejects a model key without billing on a live site", env: with("OPENROUTER_API_KEY", "key"), wantErr: true},
+		{name: "allows a provider key without billing locally", env: withAll(map[string]string{"PUBLIC_URL": "http://localhost:8080", "DATAFORSEO_API_KEY": "key", "BYPASS_EMAIL_VERIFICATION": "true"}), wantAddr: ":8080"},
+		{name: "allows a provider key with billing on a live site", env: withAll(map[string]string{"DATAFORSEO_API_KEY": "key", "RAZORPAY_KEY_ID": "a", "RAZORPAY_KEY_SECRET": "b", "RAZORPAY_WEBHOOK_SECRET": "c", "RAZORPAY_PLAN_ID_PRO": "d"}), wantAddr: ":8080"},
 	}
 
 	for _, tt := range tests {
@@ -62,12 +70,6 @@ func TestLoad(t *testing.T) {
 			if cfg.Addr != tt.wantAddr {
 				t.Errorf("Addr = %q, want %q", cfg.Addr, tt.wantAddr)
 			}
-			if tt.name == "defaults auth mode" && cfg.AuthMode != "cloudflare_access" {
-				t.Errorf("AuthMode = %q, want cloudflare_access", cfg.AuthMode)
-			}
-			if tt.name == "accepts hosted auth mode" && cfg.AuthMode != "hosted" {
-				t.Errorf("AuthMode = %q, want hosted", cfg.AuthMode)
-			}
 			if cfg.DatabaseURL != tt.env["DATABASE_URL"] || cfg.RedisURL != tt.env["REDIS_URL"] ||
 				cfg.BetterAuthSecret != secret {
 				t.Errorf("Load() = %+v, does not carry the environment through", cfg)
@@ -78,24 +80,24 @@ func TestLoad(t *testing.T) {
 
 func TestLoadPublicURL(t *testing.T) {
 	env := map[string]string{
-		"DATABASE_URL":       "postgres://localhost/seomarine",
+		"DATABASE_URL":       "postgres://localhost/uplumo",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
 	}
 	tests := []struct {
 		value, want string // want "" means an error
 	}{
-		{value: "https://seomarine.com", want: "https://seomarine.com"},
-		{value: "https://seomarine.com/", want: "https://seomarine.com"},
+		{value: "https://uplumo.com", want: "https://uplumo.com"},
+		{value: "https://uplumo.com/", want: "https://uplumo.com"},
 		{value: "http://localhost:8080", want: "http://localhost:8080"},
 		{value: ""},
-		{value: "seomarine.com"},
-		{value: "ftp://seomarine.com"},
+		{value: "uplumo.com"},
+		{value: "ftp://uplumo.com"},
 		{value: "https://"},
-		{value: "https://seomarine.com/app"},
-		{value: "https://seomarine.com/?ref=x"},
-		{value: "https://seomarine.com/#top"},
-		{value: "https://user:pass@seomarine.com"},
+		{value: "https://uplumo.com/app"},
+		{value: "https://uplumo.com/?ref=x"},
+		{value: "https://uplumo.com/#top"},
+		{value: "https://user:pass@uplumo.com"},
 		{value: "https://[::1"},
 	}
 	for _, tt := range tests {
@@ -114,10 +116,10 @@ func TestLoadPublicURL(t *testing.T) {
 
 func TestLoadRazorpay(t *testing.T) {
 	base := map[string]string{
-		"DATABASE_URL":       "postgres://localhost/seomarine",
+		"DATABASE_URL":       "postgres://localhost/uplumo",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"PUBLIC_URL":         "https://seomarine.com",
+		"PUBLIC_URL":         "https://uplumo.com",
 	}
 	full := maps.Clone(base)
 	maps.Copy(full, map[string]string{
@@ -155,10 +157,10 @@ func TestLoadRazorpay(t *testing.T) {
 
 func TestLoadDataForSEOKey(t *testing.T) {
 	env := map[string]string{
-		"DATABASE_URL":       "postgres://localhost/seomarine",
+		"DATABASE_URL":       "postgres://localhost/uplumo",
 		"REDIS_URL":          "redis://localhost:6379/0",
 		"BETTER_AUTH_SECRET": secret,
-		"PUBLIC_URL":         "https://seomarine.com",
+		"PUBLIC_URL":         "http://localhost:8080",
 	}
 	load := func() Config {
 		t.Helper()

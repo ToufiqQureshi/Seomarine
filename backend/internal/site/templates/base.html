@@ -6,9 +6,9 @@
 <title>{{.Title}}</title>
 <meta name="description" content="{{.Description}}">
 <link rel="canonical" href="{{.Canonical}}">
-<meta name="theme-color" content="#0c4a6e">
+<meta name="theme-color" content="#07090a">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Seomarine">
+<meta property="og:site_name" content="Uplumo">
 <meta property="og:locale" content="en_IN">
 <meta property="og:title" content="{{.Title}}">
 <meta property="og:description" content="{{.Description}}">
@@ -16,109 +16,169 @@
 <meta property="og:image" content="{{.OGImage}}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Seomarine: SEO and AI search, made simple">
+<meta property="og:image:alt" content="Uplumo: SEO and AI search, made simple">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="{{asset "logo.svg"}}" type="image/svg+xml">
-<link rel="preload" href="{{asset "plus-jakarta-sans.woff2"}}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{asset "geist.woff2"}}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{asset "instrument-serif.woff2"}}" as="font" type="font/woff2" crossorigin>
 <script type="application/ld+json">{{.JSONLD}}</script>
 <style>
-@font-face{font-family:"Plus Jakarta Sans";src:url("{{asset "plus-jakarta-sans.woff2"}}") format("woff2");font-weight:200 800;font-display:swap}
+@font-face{font-family:"Geist";src:url("{{asset "geist.woff2"}}") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("{{asset "geist-mono.woff2"}}") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("{{asset "instrument-serif.woff2"}}") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("{{asset "instrument-serif-italic.woff2"}}") format("woff2");font-weight:400;font-style:italic;font-display:swap}
 :root{
-  --bg:oklch(97.5% .006 200);--fg:oklch(23% .035 235);--muted:oklch(23% .035 235/68%);
-  --card:oklch(100% 0 0);--border:oklch(91% .012 210);--primary:oklch(50% .095 195);
-  --primary-fg:oklch(100% 0 0);--accent:oklch(94% .025 190);--deep:oklch(31% .07 235);
-  --radius:14px;color-scheme:light dark
+  --bg:#07090a;--fg:#f2f5f3;--soft:#d9e2dd;--muted:#a3b0aa;--faint:#7c8984;
+  --card:#0d1110;--raised:#131917;--border:#1b2320;--line:#232b28;--strong:#33403b;
+  --lime:#c6ff3d;--pink:#ff7aa6;--ink:#07090a;--bar:#5c6a64;
+  --sans:"Geist",ui-sans-serif,system-ui,sans-serif;
+  --serif:"Instrument Serif",ui-serif,Georgia,serif;
+  --mono:"Geist Mono",ui-monospace,monospace;
+  color-scheme:dark
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:oklch(17% .022 235);--fg:oklch(93% .01 200);--muted:oklch(93% .01 200/65%);
-  --card:oklch(21% .025 232);--border:oklch(30% .025 230);--primary:oklch(74% .12 185);
-  --primary-fg:oklch(19% .03 230);--accent:oklch(28% .035 210);--deep:oklch(21% .025 232)
-}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:1rem/1.6 "Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif}
-a{color:var(--primary)}
-a:focus-visible,summary:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
+body{margin:0;background:var(--bg);color:var(--fg);font:1rem/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--lime);outline-offset:3px;border-radius:6px}
 img,svg{display:block}
-h1,h2,h3{line-height:1.2;letter-spacing:-.02em;margin:0 0 .5em}
-h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:800}
-h2{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:750}
-h3{font-size:1.15rem;font-weight:700}
-p{margin:0 0 1em}
-.wrap{max-width:72rem;margin:0 auto;padding:0 1rem}
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0}
+h1{font-size:clamp(3rem,10vw,7.5rem);line-height:.95;letter-spacing:-.03em}
+h2{font-size:clamp(2.25rem,6vw,4.5rem);line-height:1;letter-spacing:-.02em}
+h3{font-size:clamp(1.75rem,3.4vw,2.5rem);line-height:1.05;letter-spacing:-.01em}
+p{margin:0}
+em{font-style:italic;color:var(--pink)}
+.wrap{max-width:84rem;margin:0 auto;padding:0 1.25rem}
+.narrow{max-width:78rem}
 .skip{position:absolute;left:-999px}.skip:focus{left:1rem;top:1rem;background:var(--card);padding:.5rem 1rem;z-index:1}
-header.top{border-bottom:1px solid var(--border)}
-.nav{display:flex;align-items:center;gap:1rem;min-height:4rem}
-.brand{display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:1.15rem;color:var(--fg);text-decoration:none;margin-right:auto}
-.nav a.link{color:var(--fg);text-decoration:none;font-weight:600}
-.nav a.link[aria-current=page]{color:var(--primary)}
-.btn{display:inline-block;padding:.7rem 1.2rem;border-radius:10px;font-weight:700;text-decoration:none;text-align:center;border:1px solid var(--primary)}
-.btn-primary{background:var(--primary);color:var(--primary-fg)}
-.btn-ghost{color:var(--primary)}
-.btn-sm{padding:.45rem .9rem}
-.hero{padding:3.5rem 0 3rem;text-align:center}
-.hero p.lead{font-size:1.15rem;color:var(--muted);max-width:42rem;margin:0 auto 1.5rem}
+.dots{background-image:radial-gradient(#1e2825 1px,transparent 1px);background-size:26px 26px}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--lime)}
+.eyebrow.pink{color:var(--pink)}.eyebrow.faint{color:var(--faint)}.eyebrow.ink{color:var(--ink)}
+.sticker{display:inline-block;font-family:var(--mono);font-size:.8125rem;font-weight:500;text-transform:uppercase;background:var(--lime);color:var(--ink);border-radius:8px;padding:.45rem .9rem;transform:rotate(-2deg)}
+.sticker.sm{font-size:.6875rem;border-radius:5px;padding:.2rem .5rem;transform:rotate(3deg)}
+.nav{display:flex;flex-wrap:wrap;align-items:center;gap:.375rem;min-height:78px}
+.brand{display:flex;align-items:center;gap:.625rem;font-family:var(--serif);font-size:1.875rem;line-height:1;text-decoration:none;margin-right:auto}
+.nav a.link{display:inline-flex;align-items:center;min-height:44px;padding:0 .875rem;font-size:.875rem;font-weight:500;color:var(--muted);text-decoration:none}
+.nav a.link:hover,.nav a.link[aria-current=page]{color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 1.75rem;border-radius:12px;font-size:1.0625rem;font-weight:600;text-decoration:none;text-align:center;border:1px solid var(--lime);background:var(--lime);color:var(--ink)}
+.btn-ghost{background:transparent;border-color:var(--strong);color:var(--fg);font-weight:500}
+.btn-ink{background:var(--ink);border-color:var(--ink);color:var(--fg)}
+.btn-sm{min-height:44px;padding:0 1.125rem;border-radius:10px;font-size:.875rem}
+.btn-md{min-height:48px;padding:0 1.25rem;border-radius:10px;font-size:.9375rem}
+.hero{display:flex;flex-direction:column;align-items:center;gap:1.75rem;text-align:center;padding-top:4rem}
+.hero h1{max-width:68rem}
+.lead{font-size:clamp(1.0625rem,2vw,1.25rem);color:var(--muted);max-width:41rem}
 .cta-row{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center}
-.note{font-size:.9rem;color:var(--muted);margin-top:1rem}
+.note{font-family:var(--mono);font-size:.8125rem;color:var(--faint)}
+.note a{color:var(--muted)}
 .center{text-align:center}
-section{padding:3rem 0}
-section.alt{background:var(--accent)}
-.section-head{max-width:44rem;margin:0 auto 2rem;text-align:center}
+section.band{border-top:1px solid var(--border);padding:clamp(3.5rem,8vw,6rem) 0}
+.stack{display:flex;flex-direction:column;gap:3rem}
+.section-head{display:flex;flex-direction:column;gap:.875rem;max-width:47.5rem}
 .section-head p{color:var(--muted)}
-.grid{display:grid;gap:1rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem}
-.card p{color:var(--muted);margin:0}
-.plans{max-width:52rem;margin:0 auto}
-.plan{display:flex;flex-direction:column}
-.plan.featured{border:2px solid var(--primary)}
-.plan .price{font-size:2.5rem;font-weight:800;margin:.25rem 0}
-.plan .price span{font-size:1rem;font-weight:600;color:var(--muted)}
-.plan ul{padding:0;margin:1rem 0 1.5rem;list-style:none;flex:1}
-.plan li{padding:.35rem 0 .35rem 1.6rem;position:relative}
-.plan li::before{content:"";position:absolute;left:0;top:.75rem;width:.9rem;height:.5rem;border:solid var(--primary);border-width:0 0 3px 3px;transform:rotate(-45deg)}
-.badge{display:inline-block;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary)}
-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);overflow:hidden}
-th,td{padding:.8rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
-thead th{font-size:.9rem}
-.table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
-.faq{max-width:46rem;margin:0 auto}
-details{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:.75rem}
-summary{cursor:pointer;font-weight:700}
-details p{margin:.75rem 0 0;color:var(--muted)}
-.final{background:var(--deep);color:oklch(97% .01 200);text-align:center;border-radius:var(--radius);padding:2.5rem 1.25rem}
-.final p{color:oklch(90% .02 200)}
-.final .btn-primary{background:oklch(85% .1 180);border-color:oklch(85% .1 180);color:oklch(23% .035 235)}
-footer{border-top:1px solid var(--border);padding:2rem 0;color:var(--muted);font-size:.9rem}
-footer .wrap{display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between}
-footer a{color:var(--muted)}
-@media (min-width:40rem){.grid.cols-2{grid-template-columns:repeat(2,1fr)}}
-@media (min-width:56rem){.grid.cols-3{grid-template-columns:repeat(3,1fr)}.hero{padding:5rem 0 4rem}section{padding:4.5rem 0}}
-@media (max-width:30rem){.nav a.link.hide-sm{display:none}}
+.row{display:flex;flex-wrap:wrap;gap:1.25rem;align-items:stretch}
+.card{flex:1 1 20rem;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2rem;display:flex;flex-direction:column;gap:1rem}
+.card p{color:var(--muted);line-height:1.6}
+.card.wide{flex:2 1 35rem;flex-direction:row;flex-wrap:wrap;gap:1.75rem;align-items:center}
+.card.wide>div{flex:1 1 16rem;display:flex;flex-direction:column;gap:.75rem}
+.card.lime{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.card.lime p{color:#1b2410}
+.meter{display:flex;flex-direction:column;gap:.375rem;font-size:.8125rem;color:var(--muted)}
+.meter.you{color:var(--fg)}
+.meter span{display:flex;justify-content:space-between}
+.meter i{display:block;height:10px;border-radius:99px;background:var(--border)}
+.meter b{display:block;height:100%;border-radius:99px;background:var(--bar)}
+.meter.you b{background:var(--pink)}
+.diff{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:1rem;font-family:var(--mono);font-size:.78rem;line-height:1.8;overflow:auto}
+.diff div{padding:0 .5rem;border-radius:4px;white-space:pre}
+.diff .del{background:#2a1220;color:var(--pink)}
+.diff .add{background:#18260a;color:var(--lime);margin-top:4px}
+.bars{display:flex;gap:6px;align-items:flex-end;margin-top:auto}
+.bars i{display:block;width:30px;background:var(--ink);border-radius:4px}
+.window{background:var(--card);border:1px solid var(--strong);border-radius:20px;box-shadow:12px 12px 0 var(--lime);overflow:hidden;text-align:left}
+.window-bar{display:flex;align-items:center;gap:8px;padding:.875rem 1.25rem;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.window-bar i{width:11px;height:11px;border-radius:50%;background:var(--strong)}
+.window-bar .sticker{margin-left:auto;transform:none}
+.window-body{padding:clamp(1.25rem,4vw,2.25rem);display:flex;flex-direction:column;gap:1.5rem}
+.headline{font-family:var(--serif);font-size:clamp(1.75rem,5vw,3.25rem);line-height:1.05;letter-spacing:-.02em}
+.headline span{color:var(--faint)}
+.tile{border:1px solid var(--line);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:2px}
+.tile.lime{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.tile .num{font-family:var(--serif);font-size:3rem;line-height:1.05}
+.tile .num small{font-family:var(--mono);font-size:.8125rem;color:var(--lime)}
+.tile .say{font-family:var(--serif);font-size:1.625rem;line-height:1.1}
+.plan{flex:1 1 17rem;max-width:28rem}
+.plan.featured{border-color:var(--lime);box-shadow:8px 8px 0 var(--lime)}
+.plan-top{display:flex;justify-content:space-between;align-items:center}
+.plan h3{font-family:var(--sans);font-size:1rem;font-weight:600;letter-spacing:0}
+.price{display:flex;align-items:baseline;gap:.5rem;font-family:var(--serif);font-size:3.75rem;line-height:1;color:var(--fg)}
+.price span{font-family:var(--sans);font-size:.875rem;color:var(--muted)}
+.plan ul{margin:0;padding:0 0 0 1.25rem;display:flex;flex-direction:column;gap:.5rem;font-size:.9375rem;line-height:1.45;color:var(--muted);flex:1}
+.plan.featured ul{color:var(--soft)}
+table{width:100%;border-collapse:collapse;background:var(--card)}
+th,td{padding:.9rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child th,tr:last-child td{border-bottom:0}
+thead th{font-family:var(--mono);font-size:.75rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+tbody th{font-weight:600}
+td{color:var(--muted)}
+td:nth-child(2){color:var(--fg)}
+.table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:16px}
+.faq{max-width:46rem;display:flex;flex-direction:column;gap:.75rem}
+details{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1rem 1.25rem}
+summary{cursor:pointer;font-weight:600}
+details p{margin-top:.75rem;color:var(--muted)}
+.final{display:flex;flex-direction:column;align-items:center;gap:1.75rem;text-align:center;max-width:60rem;margin:0 auto}
+.final h2{font-size:clamp(2.5rem,8vw,5.5rem);line-height:.98;letter-spacing:-.03em}
+.final em{color:var(--lime)}
+.final p{color:var(--muted)}
+footer{border-top:1px solid var(--border);padding:3.5rem 0 2rem}
+footer .cols{display:flex;flex-wrap:wrap;gap:2.5rem 4rem;justify-content:space-between}
+footer .about{flex:1 1 16rem;max-width:22rem;display:flex;flex-direction:column;gap:.75rem;color:var(--muted);font-size:.9375rem}
+footer .name{display:flex;align-items:center;gap:.625rem;font-family:var(--serif);font-size:1.75rem;line-height:1;color:var(--fg);text-decoration:none}
+footer nav{display:flex;flex-direction:column;gap:.25rem;min-width:8rem}
+footer nav h2{font-family:var(--mono);font-size:.75rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:.5rem}
+footer nav a{display:inline-flex;align-items:center;min-height:32px;font-size:.9375rem;color:var(--muted);text-decoration:none}
+footer nav a:hover{color:var(--fg)}
+footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;justify-content:space-between;font-family:var(--mono);font-size:.75rem;color:var(--faint)}
+.doc{padding:4rem 0 5rem}
+.doc h1{font-size:clamp(2.75rem,8vw,5rem);line-height:1}
+.doc .lead{margin-top:1.25rem}
+.doc .note{margin-top:1rem}
+.prose{max-width:44rem;margin-top:3rem;display:flex;flex-direction:column;gap:1rem;color:var(--soft)}
+.prose h2{font-size:clamp(1.75rem,4vw,2.25rem);line-height:1.1;letter-spacing:-.01em;color:var(--fg);margin-top:1.75rem}
+.prose ul{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.5rem}
+.prose a{color:var(--lime)}
+.prose strong{color:var(--fg);font-weight:600}
+@media (max-width:30rem){.nav a.link.hide-sm{display:none}.window{box-shadow:6px 6px 0 var(--lime)}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="top">
+{{end}}
+
+{{define "nav"}}
+<header class="dots">
 <nav class="wrap nav" aria-label="Main">
-<a class="brand" href="/"><img src="{{asset "logo.svg"}}" alt="" width="32" height="32">Seomarine</a>
+<a class="brand" href="/"><img src="{{asset "logo.svg"}}" alt="" width="30" height="30">Uplumo</a>
 <a class="link hide-sm" href="/pricing"{{if eq .Path "/pricing"}} aria-current="page"{{end}}>Pricing</a>
-<a class="link" href="/sign-in">Sign in</a>
-<a class="btn btn-primary btn-sm" href="{{.SignUp}}">Start free</a>
+<a class="link hide-sm" href="/about"{{if eq .Path "/about"}} aria-current="page"{{end}}>About</a>
+<a class="link" href="/sign-in">Log in</a>
+<a class="btn btn-sm" href="{{.SignUp}}">Start free</a>
 </nav>
 </header>
 {{end}}
 
 {{define "plans"}}
-<div class="grid cols-2 plans">
+<div class="row">
 {{range .Plans}}
 <article class="card plan{{if .Featured}} featured{{end}}" aria-labelledby="plan-{{.Name}}">
-{{if .Featured}}<span class="badge">Most popular</span>{{end}}
-<h3 id="plan-{{.Name}}">{{.Name}}</h3>
+<div class="plan-top"><h3 id="plan-{{.Name}}">{{.Name}}</h3>{{if .Featured}}<span class="sticker sm">Most picked</span>{{end}}</div>
 <p class="price">{{inr .PriceINR}} <span>{{.Period}}</span></p>
 <p>{{.Summary}}</p>
 <ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
-<a class="btn {{if .Featured}}btn-primary{{else}}btn-ghost{{end}}" href="{{$.SignUp}}">{{.CTA}}</a>
+<a class="btn btn-md{{if not .Featured}} btn-ghost{{end}}" href="{{$.SignUp}}">{{.CTA}}</a>
 </article>
 {{end}}
 </div>
@@ -136,10 +196,19 @@ footer a{color:var(--muted)}
 {{end}}
 
 {{define "footer"}}
+</main>
 <footer>
-<div class="wrap">
-<p>&copy; Seomarine. SEO and AI search, made simple.</p>
-<nav aria-label="Footer"><a href="/pricing">Pricing</a> · <a href="/sign-in">Sign in</a> · <a href="{{.SignUp}}">Create an account</a></nav>
+<div class="wrap narrow">
+<div class="cols">
+<div class="about">
+<a class="name" href="/"><img src="{{asset "logo.svg"}}" alt="" width="28" height="28">Uplumo</a>
+<p>SEO and AI search, made simple. See where you rank, where AI names you and what to fix next.</p>
+</div>
+<nav aria-label="Product"><h2>Product</h2><a href="/pricing">Pricing</a><a href="/sign-in">Log in</a><a href="{{.SignUp}}">Start free</a></nav>
+<nav aria-label="Company"><h2>Company</h2><a href="/about">About</a><a href="/contact">Contact</a></nav>
+<nav aria-label="Legal"><h2>Legal</h2><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a></nav>
+</div>
+<p class="legal"><span>&copy; Uplumo</span><span>built for solo owners and agencies · made in India</span></p>
 </div>
 </footer>
 </body>

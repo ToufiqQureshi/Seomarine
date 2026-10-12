@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 // PaidPlans says whether an organization may use billed keyword data.

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
 )
 
 func TestPrintScriptHashMatchesTheCSP(t *testing.T) {

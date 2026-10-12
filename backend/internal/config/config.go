@@ -12,8 +12,6 @@ import (
 
 // Config is the validated server configuration.
 type Config struct {
-	// AuthMode matches the legacy runtime mode; only hosted deployments may expose public reports.
-	AuthMode string
 	// Addr is the TCP address the HTTP server listens on, e.g. ":8080".
 	Addr string
 	// DatabaseURL is the Postgres connection string.
@@ -32,7 +30,7 @@ type Config struct {
 	// StaticDir is the built React app (Vite output) the server serves for
 	// every page it does not render itself. Default: dist.
 	StaticDir string
-	// PublicURL is the site's public origin, e.g. https://seomarine.com. The
+	// PublicURL is the site's public origin, e.g. https://uplumo.com. The
 	// landing and pricing pages build canonical and Open Graph URLs from it.
 	PublicURL *url.URL
 	// BetterAuthURL is the hosted app origin used for invitation links.
@@ -42,7 +40,7 @@ type Config struct {
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
 	// account behind AI search. Empty turns those endpoints off.
 	DataForSEOAPIKey string
-	// OpenRouterAPIKey is Seomarine's own model key for SAM.
+	// OpenRouterAPIKey is Uplumo's own model key for SAM.
 	OpenRouterAPIKey string
 	// BillingMonthlyCreditsUSD is granted to an organization on each paid
 	// subscription charge. Zero grants nothing; the owner sets the amount.
@@ -62,10 +60,6 @@ type Config struct {
 	OpenAIAppsChallenge string
 	// BypassEmailVerification skips email verification (development only).
 	BypassEmailVerification bool
-	// Self-host setup values are shown only as configuration status, never as secrets.
-	TeamDomain     string
-	PolicyAudience string
-	ContextAPIKey  string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -101,13 +95,6 @@ func Load(getenv func(string) string) (Config, error) {
 	if len(secret) < minSecretLength {
 		return Config{}, fmt.Errorf("BETTER_AUTH_SECRET must be at least %d characters", minSecretLength)
 	}
-	authMode := strings.TrimSpace(getenv("AUTH_MODE"))
-	if authMode == "" {
-		authMode = "cloudflare_access"
-	}
-	if authMode != "cloudflare_access" && authMode != "local_noauth" && authMode != "hosted" {
-		return Config{}, fmt.Errorf("AUTH_MODE must be cloudflare_access, local_noauth, or hosted")
-	}
 
 	staticDir := strings.TrimSpace(getenv("STATIC_DIR"))
 	if staticDir == "" {
@@ -117,7 +104,7 @@ func Load(getenv func(string) string) (Config, error) {
 	public, err := url.Parse(getenv("PUBLIC_URL"))
 	if err != nil || (public.Scheme != "http" && public.Scheme != "https") || public.Host == "" ||
 		(public.Path != "" && public.Path != "/") || public.RawQuery != "" || public.Fragment != "" || public.User != nil {
-		return Config{}, errors.New("PUBLIC_URL must be an http or https origin such as https://seomarine.com, without a path")
+		return Config{}, errors.New("PUBLIC_URL must be an http or https origin such as https://uplumo.com, without a path")
 	}
 	public.Path = ""
 	betterAuthURL := public
@@ -166,9 +153,22 @@ func Load(getenv func(string) string) (Config, error) {
 		monthlyCredits = parsed
 	}
 
+	dataForSEOKey := strings.TrimSpace(getenv("DATAFORSEO_API_KEY"))
+	openRouterKey := strings.TrimSpace(getenv("OPENROUTER_API_KEY"))
+	bypassVerification := strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true"
+	if isLive(public) {
+		if bypassVerification {
+			return Config{}, errors.New("BYPASS_EMAIL_VERIFICATION is for local development and cannot be set on a live site")
+		}
+		// Without billing nothing limits usage, so every lookup would be
+		// charged to our provider accounts with no plan behind it.
+		if rzp == nil && (dataForSEOKey != "" || openRouterKey != "") {
+			return Config{}, errors.New("a live site with DATAFORSEO_API_KEY or OPENROUTER_API_KEY also needs the RAZORPAY_* variables")
+		}
+	}
+
 	return Config{
 		BillingMonthlyCreditsUSD:     monthlyCredits,
-		AuthMode:                     authMode,
 		Addr:                         fmt.Sprintf(":%d", port),
 		DatabaseURL:                  databaseURL,
 		RedisURL:                     redisURL,
@@ -180,8 +180,8 @@ func Load(getenv func(string) string) (Config, error) {
 		PublicURL:                    public,
 		BetterAuthURL:                betterAuthURL,
 		Razorpay:                     rzp,
-		DataForSEOAPIKey:             strings.TrimSpace(getenv("DATAFORSEO_API_KEY")),
-		OpenRouterAPIKey:             strings.TrimSpace(getenv("OPENROUTER_API_KEY")),
+		DataForSEOAPIKey:             dataForSEOKey,
+		OpenRouterAPIKey:             openRouterKey,
 		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
 		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
 		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
@@ -189,12 +189,17 @@ func Load(getenv func(string) string) (Config, error) {
 		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
 		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
 		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
-		BypassEmailVerification:      strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true",
-		TeamDomain:                   strings.TrimSpace(getenv("TEAM_DOMAIN")),
-		PolicyAudience:               strings.TrimSpace(getenv("POLICY_AUD")),
-		ContextAPIKey:                strings.TrimSpace(getenv("CONTEXT_API_KEY")),
+		BypassEmailVerification:      bypassVerification,
 		TrustedProxyCIDRs:            trusted,
 	}, nil
+}
+
+// isLive reports whether the site is served to the public: over https, on a
+// host that is not this machine.
+func isLive(public *url.URL) bool {
+	host := public.Hostname()
+	return public.Scheme == "https" && host != "localhost" && !strings.HasSuffix(host, ".localhost") &&
+		host != "127.0.0.1" && host != "::1"
 }
 
 // loadRazorpay returns nil when no RAZORPAY_* variable is set, so the server

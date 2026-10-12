@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 )
 
 //go:embed product_fact_sheet.md
@@ -344,7 +344,7 @@ func (ts *toolset) localTools(sc scraper, skills []skill) []localTool {
 		{
 			def: openrouter.Tool{
 				Name:        "get_product_info",
-				Description: "The Seomarine fact sheet: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about Seomarine itself. Uses no credits.",
+				Description: "The Uplumo fact sheet: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about Uplumo itself. Uses no credits.",
 				Parameters:  objectSchema(""),
 			},
 			run: func(context.Context, json.RawMessage) (any, error) {

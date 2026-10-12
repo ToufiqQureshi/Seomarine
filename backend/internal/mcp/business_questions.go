@@ -7,7 +7,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 var businessQuestionFields = []string{"rank_absolute", "question_id", "question_text", "original_question_text", "profile_name", "time_ago", "timestamp"}

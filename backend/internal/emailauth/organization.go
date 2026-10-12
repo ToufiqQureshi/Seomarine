@@ -101,7 +101,7 @@ func createDefaultOrganization(ctx context.Context, q querier, user User, now ti
 		label, _, _ = strings.Cut(user.Email, "@")
 	}
 	if label == "" {
-		label = "Seomarine"
+		label = "Uplumo"
 	}
 	slugSource := label
 	if slugSource == "" {

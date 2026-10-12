@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 const businessQuestionsPath = "/v3/business_data/google/questions_and_answers/live"

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 const maxBody = 32 << 10

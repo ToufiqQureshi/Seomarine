@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 // CheckRequest is one live SERP lookup: where a domain ranks for a keyword.

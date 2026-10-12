@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Seomarine branding
+  title: Uplumo branding
   version: 1.0.0
   description: |
     White-label branding for an organization's client-facing reports. One row
-    per organization; no row means the default Seomarine branding. The logo is
+    per organization; no row means the default Uplumo branding. The logo is
     a small data URL, because the report sandbox CSP allows `img-src data:`.
 servers:
   - url: /api/v1

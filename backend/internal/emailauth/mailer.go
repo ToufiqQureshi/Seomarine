@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/email"
+	"github.com/toufiqqureshi/uplumo/backend/internal/email"
 )
 
 // Mailer sends the account emails. A nil Mailer turns verification and password
@@ -24,7 +24,7 @@ type Mailer interface {
 }
 
 const (
-	appName          = "Seomarine"
+	appName          = "Uplumo"
 	loopsContactsURL = "https://app.loops.so/api/v1/contacts/update"
 )
 
@@ -57,7 +57,7 @@ func (m LoopsMailer) UpsertSignupContact(ctx context.Context, userID, address, n
 		return nil
 	}
 	payload := map[string]any{
-		"email": address, "userId": userID, "source": "seomarine-signup", "userGroup": "app-user",
+		"email": address, "userId": userID, "source": "uplumo-signup", "userGroup": "app-user",
 	}
 	if parts := strings.Fields(name); len(parts) > 0 {
 		payload["firstName"] = parts[0]

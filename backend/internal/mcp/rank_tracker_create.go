@@ -9,9 +9,9 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
 )
 
 func createRankTrackerTool() *tool {

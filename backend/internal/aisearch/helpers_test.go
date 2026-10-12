@@ -17,8 +17,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 // taskReply is what the fake provider answers with, as a task of an HTTP 200

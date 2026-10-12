@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
 )
 
 // The report sandbox lives here so the header `/r/{id}` serves and the

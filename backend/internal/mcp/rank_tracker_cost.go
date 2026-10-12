@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
 )
 
 func estimateRankTrackerCostTool() *tool {

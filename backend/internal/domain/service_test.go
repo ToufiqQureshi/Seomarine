@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 func overviewResult(etv, count float64) func(string) any {

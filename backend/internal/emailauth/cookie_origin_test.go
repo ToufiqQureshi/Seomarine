@@ -96,7 +96,7 @@ func TestForgottenSessionIsABrowserSessionCookie(t *testing.T) {
 }
 
 func TestCallbackAllowed(t *testing.T) {
-	o := newOrigins(mustURL(t, "https://app.seomarine.test"), "http://localhost:3000")
+	o := newOrigins(mustURL(t, "https://app.uplumo.test"), "http://localhost:3000")
 	tests := []struct {
 		target string
 		want   bool
@@ -104,7 +104,7 @@ func TestCallbackAllowed(t *testing.T) {
 		{"", true},
 		{"/", true},
 		{"/dashboard?tab=1", true},
-		{"https://app.seomarine.test/reset-password", true},
+		{"https://app.uplumo.test/reset-password", true},
 		{"http://localhost:3000/x", true},
 		{"//evil.test", false},
 		{"/\\evil.test", false},
@@ -112,10 +112,10 @@ func TestCallbackAllowed(t *testing.T) {
 		{"/%2Fevil.test", false},
 		{"/%5cevil.test", false},
 		{"https://evil.test/", false},
-		{"https://app.seomarine.test.evil.test/", false},
-		{"https://app.seomarine.test@evil.test/", false},
-		{"https://user:pw@app.seomarine.test/", false},
-		{"http://app.seomarine.test/", false},
+		{"https://app.uplumo.test.evil.test/", false},
+		{"https://app.uplumo.test@evil.test/", false},
+		{"https://user:pw@app.uplumo.test/", false},
+		{"http://app.uplumo.test/", false},
 		{"javascript:alert(1)", false},
 		{"data:text/html,x", false},
 		{"/ok\nHeader: x", false},
@@ -129,7 +129,7 @@ func TestCallbackAllowed(t *testing.T) {
 }
 
 func TestRequestAllowed(t *testing.T) {
-	o := newOrigins(mustURL(t, "https://app.seomarine.test"))
+	o := newOrigins(mustURL(t, "https://app.uplumo.test"))
 	req := func(headers map[string]string) *http.Request {
 		r := httptest.NewRequest(http.MethodPost, "/api/auth/sign-in/email", nil)
 		for k, v := range headers {
@@ -143,10 +143,10 @@ func TestRequestAllowed(t *testing.T) {
 		want    bool
 	}{
 		{"no cookies cannot ride a session", nil, true},
-		{"cookie from the app origin", map[string]string{"Cookie": "a=b", "Origin": "https://app.seomarine.test"}, true},
+		{"cookie from the app origin", map[string]string{"Cookie": "a=b", "Origin": "https://app.uplumo.test"}, true},
 		{"cookie from another origin", map[string]string{"Cookie": "a=b", "Origin": "https://evil.test"}, false},
 		{"cookie with no origin at all", map[string]string{"Cookie": "a=b"}, false},
-		{"referer stands in for a missing origin", map[string]string{"Cookie": "a=b", "Referer": "https://app.seomarine.test/sign-in"}, true},
+		{"referer stands in for a missing origin", map[string]string{"Cookie": "a=b", "Referer": "https://app.uplumo.test/sign-in"}, true},
 		{"foreign referer", map[string]string{"Cookie": "a=b", "Referer": "https://evil.test/x"}, false},
 		{"null origin", map[string]string{"Cookie": "a=b", "Origin": "null"}, false},
 	}

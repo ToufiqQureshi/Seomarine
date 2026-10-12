@@ -23,7 +23,7 @@ type errResp struct {
 	retryAfter int
 }
 
-// apiKeyFromRequest extracts a Seomarine API key from the x-api-key header or
+// apiKeyFromRequest extracts a Uplumo API key from the x-api-key header or
 // an Authorization: Bearer value. Only oseo_-prefixed credentials are treated
 // as API keys; other bearer values are checked as Go-issued OAuth tokens.
 func apiKeyFromRequest(r *http.Request) string {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 const (

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 const (

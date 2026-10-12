@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 // ErrProjectNotFound means the project is absent, archived, or owned by another organization.

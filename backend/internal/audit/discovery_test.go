@@ -44,7 +44,7 @@ func TestParseRobotsTxtWildcardAndEndAnchor(t *testing.T) {
 }
 
 func TestParseRobotsTxtUserAgentSpecificity(t *testing.T) {
-	text := "User-agent: Seomarine-Audit\nDisallow: /blocked\n\nUser-agent: *\nDisallow: /\n"
+	text := "User-agent: Uplumo-Audit\nDisallow: /blocked\n\nUser-agent: *\nDisallow: /\n"
 	robots := parseRobotsTxt("https://example.com", &text)
 	if robots.IsAllowed("https://example.com/blocked") {
 		t.Error("expected /blocked to be disallowed for our agent")

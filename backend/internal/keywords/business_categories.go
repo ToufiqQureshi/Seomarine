@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 const businessCategoriesPath = "/v3/business_data/business_listings/categories"

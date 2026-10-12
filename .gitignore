@@ -16,9 +16,7 @@ dist-sourcemaps/
 .env.
 .env.*
 !.env.example
-!.env.preview.example
 !.env.production.example
-!.env.selfhost.example
 .vercel
 .output
 .nitro
@@ -27,10 +25,10 @@ dist-sourcemaps/
 /server/build
 /public/build# Sentry Config File
 .env.sentry-build-plugin
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 .tanstack
 .logs/
 **/.pnpm-store/

@@ -6,7 +6,7 @@ import (
 )
 
 // Auth is the caller identity behind one MCP request. It mirrors the legacy
-// seomarineAuth props object.
+// uplumoAuth props object.
 type Auth struct {
 	UserID         string
 	UserEmail      string

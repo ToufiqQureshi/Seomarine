@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-func TestSharedRawServesSandboxedHTMLOnlyForHostedActiveProject(t *testing.T) {
+func TestSharedRawServesSandboxedHTMLOnlyForActiveProject(t *testing.T) {
 	token := strings.Repeat("a", 32)
 	store := newMemoryStore()
 	store.items["report-1"] = Metadata{ID: "report-1", ProjectID: "project-1", ShareToken: &token}
 	store.html["report-1"] = "<!doctype html><html><body>report</body></html>"
-	d := Deps{Service: &Service{Store: store, Hosted: true}}
+	d := Deps{Service: &Service{Store: store}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token+"/raw", nil)
@@ -36,7 +36,7 @@ func TestSharedRawServesSandboxedHTMLOnlyForHostedActiveProject(t *testing.T) {
 }
 
 func TestSharedRawRedirectsTopLevelAndStripsQueryBeforeLoading(t *testing.T) {
-	d := Deps{Service: &Service{Store: newMemoryStore(), Hosted: true}}
+	d := Deps{Service: &Service{Store: newMemoryStore()}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 	for _, test := range []struct{ name, target, fetchDest, location string }{
@@ -55,20 +55,20 @@ func TestSharedRawRedirectsTopLevelAndStripsQueryBeforeLoading(t *testing.T) {
 	}
 }
 
-func TestSharedRawHidesInvalidRevokedArchivedAndNonHostedReports(t *testing.T) {
+func TestSharedRawHidesInvalidRevokedAndArchivedReports(t *testing.T) {
 	token := strings.Repeat("b", 32)
 	store := newMemoryStore()
 	store.items["report-1"] = Metadata{ID: "report-1", ProjectID: "project-1", ShareToken: &token}
 	for _, test := range []struct {
-		name             string
-		hosted, archived bool
-		requestToken     string
+		name         string
+		archived     bool
+		requestToken string
 	}{
-		{"non-hosted", false, false, token}, {"archived project", true, true, token}, {"invalid token", true, false, "bad"}, {"revoked", true, false, strings.Repeat("c", 32)},
+		{"archived project", true, token}, {"invalid token", false, "bad"}, {"revoked", false, strings.Repeat("c", 32)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store.archived = test.archived
-			d := Deps{Service: &Service{Store: store, Hosted: test.hosted}}
+			d := Deps{Service: &Service{Store: store}}
 			mux := http.NewServeMux()
 			mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 			response := httptest.NewRecorder()

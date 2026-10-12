@@ -12,7 +12,7 @@ still hold.
 
 ## Context
 
-Keyword research is the largest credit spend for Seomarine users, and coverage
+Keyword research is the largest credit spend for Uplumo users, and coverage
 has a hard gap: DataForSEO Labs supports 94 countries, so a customer in
 Iceland (location 2352) cannot run keyword research at all.
 
@@ -95,7 +95,7 @@ USD × 1.28 markup × 1000):
   (~64 → ~32 credits per seed); the opt-in keeps the refinement available to
   users who want it, priced visibly.
 - The direct Google Ads API is rejected on policy, not effort — revisit only
-  if Seomarine ships campaign management.
+  if Uplumo ships campaign management.
 
 ## Consequences
 

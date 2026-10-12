@@ -4,7 +4,7 @@ This document covers maintainer-only workflow notes that do not belong in the pu
 
 ## Release updates
 
-GitHub Releases are the main user-facing update channel for Seomarine.
+GitHub Releases are the main user-facing update channel for Uplumo.
 
 - Ask interested users to watch the repo and enable release notifications.
 - Do not treat stars as a contact list; GitHub does not expose a way to message stargazers directly.

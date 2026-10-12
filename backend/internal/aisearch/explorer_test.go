@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 const (

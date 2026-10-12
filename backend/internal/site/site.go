@@ -1,4 +1,4 @@
-// Package site renders Seomarine's public marketing pages, the landing page
+// Package site renders Uplumo's public marketing pages, the landing page
 // and the pricing page, and serves their static assets.
 //
 // The pages hold no per-request data, so they are rendered once by New and
@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -33,9 +34,14 @@ const (
 const AssetsPrefix = "/site/"
 
 const (
-	name        = "Seomarine"
-	signUpPath  = "/sign-up"
-	contentType = "text/html; charset=utf-8"
+	name       = "Uplumo"
+	signUpPath = "/sign-up"
+	// SupportEmail is the address the public pages give for every question.
+	SupportEmail = "support@uplumo.com"
+	// policyUpdated is the date shown on the legal pages. Change it whenever
+	// their text changes.
+	policyUpdated = "12 October 2026"
+	contentType   = "text/html; charset=utf-8"
 	// The pages load nothing from other origins and run no script; the
 	// JSON-LD block is data, which script-src does not govern.
 	contentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; font-src 'self'; " +
@@ -75,6 +81,8 @@ type page struct {
 	Canonical   string
 	OGImage     string
 	SignUp      string
+	Support     string
+	Updated     string
 	ProPriceINR int
 	Plans       []Plan
 	FAQ         []QA
@@ -84,7 +92,11 @@ type page struct {
 // Site serves the pre-rendered pages and the static assets.
 type Site struct {
 	landing, pricing renderedPage
-	static           fs.FS
+	// info holds the pages that are plain text (about, contact and the legal
+	// pages), keyed by URL path.
+	info            map[string]renderedPage
+	robots, sitemap []byte
+	static          fs.FS
 	// versions maps each asset name to a hash of its content; asset URLs
 	// carry it as ?v=, so a changed file gets a new URL and an unchanged one
 	// can be cached forever.
@@ -97,7 +109,7 @@ type renderedPage struct {
 }
 
 // New renders the pages with publicURL, the site's absolute origin (e.g.
-// https://seomarine.com), as the base of canonical, Open Graph and JSON-LD
+// https://uplumo.com), as the base of canonical, Open Graph and JSON-LD
 // URLs.
 func New(publicURL *url.URL) (*Site, error) {
 	static, err := fs.Sub(embedded, "static")
@@ -128,11 +140,14 @@ func New(publicURL *url.URL) (*Site, error) {
 		return nil, err
 	}
 	plans := plans()
-	base := page{OGImage: origin + ogImage, SignUp: signUpPath, ProPriceINR: ProPriceINR, Plans: plans}
+	base := page{
+		OGImage: origin + ogImage, SignUp: signUpPath, Support: SupportEmail, Updated: policyUpdated,
+		ProPriceINR: ProPriceINR, Plans: plans,
+	}
 
 	landing := base
 	landing.Path = "/"
-	landing.Title = "Seomarine: SEO and AI search analytics with honest INR pricing"
+	landing.Title = "Uplumo: SEO and AI search analytics with honest INR pricing"
 	landing.Description = "Track rankings, audit your site and see where ChatGPT, Perplexity, Gemini and Claude " +
 		"mention you and send visitors. AI visibility included, simple pricing, cancel in one click."
 	landing.Canonical = origin + "/"
@@ -141,14 +156,27 @@ func New(publicURL *url.URL) (*Site, error) {
 
 	pricing := base
 	pricing.Path = "/pricing"
-	pricing.Title = "Pricing: Free and Pro plans in INR | Seomarine"
-	pricing.Description = fmt.Sprintf("Seomarine is free to start. Pro is %s a month with AI visibility "+
+	pricing.Title = "Pricing: Free and Pro plans in INR | Uplumo"
+	pricing.Description = fmt.Sprintf("Uplumo is free to start. Pro is %s a month with AI visibility "+
 		"included, no row caps and one-click cancel. No add-ons, no credit maths.", formatINR(ProPriceINR))
 	pricing.Canonical = origin + "/pricing"
 	pricing.FAQ = pricingFAQ()
 	pricing.JSONLD = jsonLD(origin, pricing.Description, plans)
 
-	s := &Site{static: static, versions: versions}
+	s := &Site{static: static, versions: versions, info: map[string]renderedPage{}}
+	for _, p := range infoPages {
+		data := base
+		data.Path = p.path
+		data.Title = p.title
+		data.Description = p.description
+		data.Canonical = origin + p.path
+		data.JSONLD = jsonLD(origin, p.description, plans)
+		if s.info[p.path], err = render(tmpl, p.file, data); err != nil {
+			return nil, err
+		}
+	}
+	s.robots = []byte("User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: " + origin + "/sitemap.xml\n")
+	s.sitemap = sitemap(origin)
 	if s.landing, err = render(tmpl, "landing.html", landing); err != nil {
 		return nil, err
 	}
@@ -167,6 +195,59 @@ func (s *Site) ServeLanding(w http.ResponseWriter, r *http.Request) {
 // ServePricing writes the pricing page.
 func (s *Site) ServePricing(w http.ResponseWriter, r *http.Request) {
 	servePage(w, r, s.pricing, "public, max-age=300")
+}
+
+// InfoPaths lists the URL paths ServeInfo answers, for the router.
+func InfoPaths() []string {
+	paths := make([]string, 0, len(infoPages))
+	for _, p := range infoPages {
+		paths = append(paths, p.path)
+	}
+	return paths
+}
+
+// ServeInfo writes the about, contact or legal page at the request's path.
+func (s *Site) ServeInfo(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.info[r.URL.Path]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	servePage(w, r, p, "public, max-age=300")
+}
+
+// ServeRobots writes robots.txt: everything public may be crawled, the API
+// may not.
+func (s *Site) ServeRobots(w http.ResponseWriter, _ *http.Request) {
+	serveText(w, "text/plain; charset=utf-8", s.robots)
+}
+
+// ServeSitemap writes sitemap.xml, listing every public page.
+func (s *Site) ServeSitemap(w http.ResponseWriter, _ *http.Request) {
+	serveText(w, "application/xml; charset=utf-8", s.sitemap)
+}
+
+func serveText(w http.ResponseWriter, contentType string, body []byte) {
+	h := w.Header()
+	h.Set("Content-Type", contentType)
+	h.Set("Cache-Control", "public, max-age=3600")
+	h.Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(body)
+}
+
+// sitemap lists the landing page, the pricing page and every info page.
+func sitemap(origin string) []byte {
+	var b strings.Builder
+	b.WriteString(xml.Header + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+	for _, path := range append([]string{"/", "/pricing"}, InfoPaths()...) {
+		b.WriteString("<url><loc>")
+		// A path here is a constant from this package; escaping keeps the
+		// file valid if one ever carries a special character.
+		_ = xml.EscapeText(&b, []byte(origin+path))
+		b.WriteString("</loc></url>\n")
+	}
+	b.WriteString("</urlset>\n")
+	return []byte(b.String())
 }
 
 // ServeAsset serves an embedded static file under AssetsPrefix. A request
@@ -251,6 +332,22 @@ func formatINR(rupees int) string {
 	return "₹" + s
 }
 
+// infoPages are the plain-text public pages. Each is one template file.
+var infoPages = []struct {
+	path, file, title, description string
+}{
+	{"/about", "about.html", "About Uplumo",
+		"Uplumo is an SEO and AI search tool built in India for business owners and agencies who want one clear next step."},
+	{"/contact", "contact.html", "Contact Uplumo",
+		"Get help with your Uplumo account, billing or data. Write to us and a person replies."},
+	{"/terms", "terms.html", "Terms of Service | Uplumo",
+		"The rules for using Uplumo: your account, plans and billing, acceptable use and our responsibilities."},
+	{"/privacy", "privacy.html", "Privacy Policy | Uplumo",
+		"What data Uplumo collects, why, who processes it and how to export or delete it."},
+	{"/refunds", "refunds.html", "Cancellation and Refund Policy | Uplumo",
+		"How to cancel Uplumo Pro, what happens after you cancel and when we refund a payment."},
+}
+
 func plans() []Plan {
 	return []Plan{
 		{
@@ -259,7 +356,7 @@ func plans() []Plan {
 			Period:   "forever",
 			Summary:  "For solo owners who want to see what is working.",
 			Features: []string{
-				"Seomarine Analytics with AI traffic detection",
+				"Uplumo Analytics with AI traffic detection",
 				"Site audit with every issue explained in plain language",
 				"White-label client reports",
 				"No card needed to start",
@@ -275,7 +372,7 @@ func plans() []Plan {
 				"Everything in Free",
 				"AI Visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, included",
 				"Rank tracking and keyword research",
-				"No row caps on Seomarine data",
+				"No row caps on Uplumo data",
 				"Cancel in one click, any time",
 			},
 			CTA:      "Start with Pro",
@@ -286,13 +383,13 @@ func plans() []Plan {
 
 func landingFAQ() []QA {
 	return []QA{
-		{"What is Seomarine?", "An SEO and AI search platform. It tracks your Google rankings, audits your site, " +
+		{"What is Uplumo?", "An SEO and AI search platform. It tracks your Google rankings, audits your site, " +
 			"shows where AI assistants mention your brand and measures the visitors they send you."},
 		{"How is it different from Semrush or Ahrefs?", "You get the features most sites actually use, " +
 			"one clear next step on every screen and AI visibility in the plan instead of a paid add-on. " +
 			"Prices are in rupees and there are no row caps on our own data."},
 		{"What is AI traffic detection?", "Most visits from ChatGPT, Perplexity or Gemini show up as \"Direct\" " +
-			"in ordinary analytics. Seomarine Analytics recognises AI referrers and AI tracking tags, " +
+			"in ordinary analytics. Uplumo Analytics recognises AI referrers and AI tracking tags, " +
 			"so you can see which assistants send you visitors and which pages they land on."},
 		{"Does the tracker need a cookie banner?", "The tracker sets no cookies and stores no IP addresses. " +
 			"Visitors are counted with a hash that changes every day, so nobody can be followed over time."},

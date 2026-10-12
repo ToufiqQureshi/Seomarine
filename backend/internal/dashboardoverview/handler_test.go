@@ -2,7 +2,7 @@ package dashboardoverview
 
 import (
 	"context"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"io"
 	"log/slog"
 	"net/http"

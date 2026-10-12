@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const maxBody = 64 << 10

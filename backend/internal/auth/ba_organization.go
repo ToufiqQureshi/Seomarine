@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 // The routes below keep Better Auth's organization plugin contract

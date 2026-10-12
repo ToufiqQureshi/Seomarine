@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
 )
 
 type setupStoreFake struct {

@@ -1,7 +1,7 @@
 # SAM
 
 SAM is the in-app SEO agent: a project-bound chat that can call the same
-tools Seomarine exposes over MCP. This package owns the session registry, the
+tools Uplumo exposes over MCP. This package owns the session registry, the
 conversation routes, the agent loop and its tool surface.
 
 ## Flow of one turn
@@ -48,7 +48,7 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 
 ## Env vars
 
-- `OPENROUTER_API_KEY`: Seomarine's own key, set in Railway. Customers never
+- `OPENROUTER_API_KEY`: Uplumo's own key, set in Railway. Customers never
   supply one. Without it the chat routes answer 503 and the app shows "SAM is
   unavailable right now".
 - `OPENROUTER_MODEL`: optional. Default `openai/gpt-5.6-luna` at reasoning
@@ -102,7 +102,7 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
   "recovering" state because no process holds a turn that can be reset.
 - **Credits.** Every turn is gated and charged against the Go credit ledger
   (`go_billing_credits`), not Autumn. 1 credit = $0.001 of provider cost with the
-  usual 1.28 markup, rounded up. Seomarine is SaaS: there is no bring-your-own-key
+  usual 1.28 markup, rounded up. Uplumo is SaaS: there is no bring-your-own-key
   or unmetered mode.
 - **Telemetry.** The `sam:turn` PostHog events are not ported; failures are
   logged with `slog`.

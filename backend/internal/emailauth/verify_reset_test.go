@@ -205,7 +205,7 @@ func TestRequestPasswordReset(t *testing.T) {
 	}
 	link, _ := url.Parse(mails[0].url)
 	token := resetToken(t, e)
-	if link.Host != "app.seomarine.test" || !strings.HasPrefix(link.Path, "/api/auth/reset-password/") || len(token) != 24 || link.Query().Get("callbackURL") != "/reset-password" {
+	if link.Host != "app.uplumo.test" || !strings.HasPrefix(link.Path, "/api/auth/reset-password/") || len(token) != 24 || link.Query().Get("callbackURL") != "/reset-password" {
 		t.Fatalf("link = %s", mails[0].url)
 	}
 	var value string

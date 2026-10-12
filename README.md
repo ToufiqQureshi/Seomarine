@@ -1,4 +1,4 @@
-# Seomarine
+# Uplumo
 
 SEO and AI-search platform: keyword research, rank tracking, site audits,
 backlinks, white-label client reports, and analytics that shows which AI
@@ -11,7 +11,7 @@ Proprietary software. See [`LICENSE`](./LICENSE).
 | Path                         | What                                                     |
 | ---------------------------- | -------------------------------------------------------- |
 | `backend/`                   | Go server: API, analytics ingest, billing, landing pages |
-| `src/client/`, `src/routes/` | React + TypeScript app (Vite, static SPA)                |
+| `frontend/`                  | React + TypeScript app (Vite, static SPA)                |
 | `docs/`                      | Setup guides                                             |
 | `CLAUDE.md`, `AGENTS.md`     | Rules for coding agents and contributors                 |
 | `ROADMAP.md`                 | Feature status and priorities                            |
@@ -21,7 +21,7 @@ Proprietary software. See [`LICENSE`](./LICENSE).
 - Go backend: [`backend/README.md`](./backend/README.md)
 - App: [`docs/LOCAL_DEVELOPMENT.md`](./docs/LOCAL_DEVELOPMENT.md)
 
-SEO data comes from [DataForSEO](https://dataforseo.com/) through Seomarine's
+SEO data comes from [DataForSEO](https://dataforseo.com/) through Uplumo's
 own account; customers never bring their own keys.
 
 ## Hosting

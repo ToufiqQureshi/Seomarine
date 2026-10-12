@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[4]
-source = (root / "src/shared/keyword-locations.ts").read_text(encoding="utf-8")
+source = (root / "frontend/src/shared/keyword-locations.ts").read_text(encoding="utf-8")
 
 
 def section(start: str, end: str) -> str:

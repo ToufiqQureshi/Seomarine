@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 func findSerpCompetitorsTool() *tool {

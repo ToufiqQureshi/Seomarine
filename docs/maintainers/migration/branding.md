@@ -62,5 +62,5 @@ handler tests run with no database. The round-trip and org-isolation tests need
 - The legacy server function returned the parsed payload; the Go route answers
   `{"ok":true}`. No client read the return value.
 - `PUT`/`DELETE` were considered and dropped: `apiRequest` in
-  `src/client/lib/seomarineApi.ts` speaks GET and POST only, and the legacy
+  `src/client/lib/uplumoApi.ts` speaks GET and POST only, and the legacy
   functions were POSTs, so no shared client change was needed.

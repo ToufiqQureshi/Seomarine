@@ -17,12 +17,12 @@ func TestDecodeJSONLimit(t *testing.T) {
 		var got struct {
 			Name string `json:"name"`
 		}
-		body := bytes.NewReader([]byte(`{"name":"seomarine"}`))
+		body := bytes.NewReader([]byte(`{"name":"uplumo"}`))
 		if err := DecodeJSONLimit(body, 1024, &got); err != nil {
 			t.Fatalf("DecodeJSONLimit returned error: %v", err)
 		}
-		if got.Name != "seomarine" {
-			t.Fatalf("name = %q, want %q", got.Name, "seomarine")
+		if got.Name != "uplumo" {
+			t.Fatalf("name = %q, want %q", got.Name, "uplumo")
 		}
 	})
 

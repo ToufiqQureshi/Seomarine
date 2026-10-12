@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 // TaskInput is one keyword and device to queue.

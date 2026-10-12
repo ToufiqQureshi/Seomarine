@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
 )
 
 func getSearchConsolePerformanceTool() *tool {

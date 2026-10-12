@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 // Research limits and cache lifetimes, as in the legacy app.

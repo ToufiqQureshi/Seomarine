@@ -8,7 +8,7 @@ import (
 )
 
 func TestTableCountsMatchTypeScript(t *testing.T) {
-	source, err := os.ReadFile("../../../../src/shared/keyword-locations.ts")
+	source, err := os.ReadFile("../../../../frontend/src/shared/keyword-locations.ts")
 	if err != nil {
 		t.Fatal(err)
 	}

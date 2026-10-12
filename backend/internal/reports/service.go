@@ -10,12 +10,11 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 type Service struct {
 	Store         Store
-	Hosted        bool
 	Now           func() time.Time
 	NewShareToken func() (string, error)
 }
@@ -184,9 +183,6 @@ func (s *Service) Delete(ctx context.Context, projectID, id string) error {
 }
 
 func (s *Service) Share(ctx context.Context, projectID, id string) (Metadata, error) {
-	if !s.Hosted {
-		return Metadata{}, fail("VALIDATION_ERROR", "Public report sharing is only available on hosted Seomarine.")
-	}
 	item, err := s.Get(ctx, projectID, id)
 	if err != nil {
 		return Metadata{}, err

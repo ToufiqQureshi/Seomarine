@@ -13,11 +13,11 @@ import (
 
 // serverInfo mirrors the legacy McpServer constructor arguments.
 var (
-	serverName         = "Seomarine MCP"
-	serverTitle        = "Seomarine"
+	serverName         = "Uplumo MCP"
+	serverTitle        = "Uplumo"
 	serverVersion      = "0.0.12"
 	serverDescription  = "SEO research tools for AI agents: keyword research and metrics, SERP and local SERP results, domain and backlink analysis, rank tracking, and Google Search Console performance."
-	serverInstructions = "Seomarine research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits. Seomarine cannot purchase credits or charge cards. Explain unsupported purchase requests without promoting subscriptions, upgrades or credit purchases, or directing users to checkout."
+	serverInstructions = "Uplumo research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits. Uplumo cannot purchase credits or charge cards. Explain unsupported purchase requests without promoting subscriptions, upgrades or credit purchases, or directing users to checkout."
 )
 
 // supportedProtocolVersions are the versions the Go server negotiates. The
@@ -139,7 +139,7 @@ func (h *handler) execute(ctx context.Context, r *http.Request, req rpcRequest, 
 		tools, err := h.listTools()
 		if err != nil {
 			h.deps.Logger.ErrorContext(ctx, "merge tools list failed", "err", err)
-			return errorResponse(req.ID, codeServerError, "Could not load the Seomarine tool list.")
+			return errorResponse(req.ID, codeServerError, "Could not load the Uplumo tool list.")
 		}
 		return resultResponse(req.ID, map[string]any{"tools": tools})
 	case "tools/call":

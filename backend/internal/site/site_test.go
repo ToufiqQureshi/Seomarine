@@ -2,6 +2,7 @@ package site
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -79,15 +80,15 @@ func parseJSONLD(t *testing.T, body string) jsonLDDoc {
 }
 
 func TestPagesCarryTheirMetadata(t *testing.T) {
-	s := newSite(t, &url.URL{Scheme: "https", Host: "seomarine.com"})
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	tests := []struct {
 		name      string
 		serve     http.HandlerFunc
 		canonical string
 		cache     string
 	}{
-		{name: "landing", serve: s.ServeLanding, canonical: "https://seomarine.com/", cache: "no-cache"},
-		{name: "pricing", serve: s.ServePricing, canonical: "https://seomarine.com/pricing", cache: "public, max-age=300"},
+		{name: "landing", serve: s.ServeLanding, canonical: "https://uplumo.com/", cache: "no-cache"},
+		{name: "pricing", serve: s.ServePricing, canonical: "https://uplumo.com/pricing", cache: "public, max-age=300"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -111,7 +112,7 @@ func TestPagesCarryTheirMetadata(t *testing.T) {
 				`<html lang="en-IN">`,
 				`<link rel="canonical" href="` + tt.canonical + `">`,
 				`<meta property="og:url" content="` + tt.canonical + `">`,
-				`<meta property="og:image" content="https://seomarine.com/site/social-card.png?v=` + s.versions["social-card.png"] + `">`,
+				`<meta property="og:image" content="https://uplumo.com/site/social-card.png?v=` + s.versions["social-card.png"] + `">`,
 				`<meta name="twitter:card" content="summary_large_image">`,
 				`href="/sign-up"`,
 				"₹1,499",
@@ -134,10 +135,10 @@ func TestPagesCarryTheirMetadata(t *testing.T) {
 				t.Fatalf("JSON-LD = %+v, want a schema.org graph of two nodes", doc)
 			}
 			org, app := doc.Graph[0], doc.Graph[1]
-			if org.Type != "Organization" || org.URL != "https://seomarine.com/" || org.Logo != "https://seomarine.com/site/logo.svg" {
+			if org.Type != "Organization" || org.URL != "https://uplumo.com/" || org.Logo != "https://uplumo.com/site/logo.svg" {
 				t.Errorf("Organization = %+v", org)
 			}
-			if app.Type != "SoftwareApplication" || app.Name != "Seomarine" || len(app.Offers) != 2 {
+			if app.Type != "SoftwareApplication" || app.Name != "Uplumo" || len(app.Offers) != 2 {
 				t.Fatalf("SoftwareApplication = %+v", app)
 			}
 			for i, want := range []string{"0", "1499"} {
@@ -169,7 +170,7 @@ func TestPagesEscapeThePublicURL(t *testing.T) {
 }
 
 func TestPagesAnswerConditionalRequests(t *testing.T) {
-	s := newSite(t, &url.URL{Scheme: "https", Host: "seomarine.com"})
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	etag := get(s.ServePricing, "/pricing", nil).Header().Get("ETag")
 	if etag == "" {
 		t.Fatal("no ETag")
@@ -187,7 +188,7 @@ var assetURL = regexp.MustCompile(`/site/[^"?]+\?v=[0-9a-f]+`)
 // Every asset a page references must be servable at that URL and cacheable
 // for good; any other version of the URL must be revalidated.
 func TestAssets(t *testing.T) {
-	s := newSite(t, &url.URL{Scheme: "https", Host: "seomarine.com"})
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	page := get(s.ServeLanding, "/", nil).Body.String() + get(s.ServePricing, "/pricing", nil).Body.String()
 	refs := assetURL.FindAllString(page, -1)
 	if len(refs) < 3 {
@@ -220,6 +221,105 @@ func TestAssets(t *testing.T) {
 	for _, target := range []string{"/site/", "/site/missing.css", "/site/static/logo.svg", "/site/../site.go", "/site/LOGO.SVG"} {
 		if rec := get(s.ServeAsset, target, nil); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404", target, rec.Code)
+		}
+	}
+}
+
+func TestInfoPages(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+	paths := InfoPaths()
+	if len(paths) == 0 {
+		t.Fatal("InfoPaths() is empty")
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			rec := get(s.ServeInfo, path, nil)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d", rec.Code)
+			}
+			if got := rec.Header().Get("Content-Security-Policy"); got != contentSecurityPolicy {
+				t.Errorf("Content-Security-Policy = %q", got)
+			}
+			body := rec.Body.String()
+			for _, want := range []string{
+				`<link rel="canonical" href="https://uplumo.com` + path + `">`,
+				`<footer>`,
+				`href="/terms"`, `href="/privacy"`, `href="/refunds"`, `href="/about"`, `href="/contact"`,
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("page lacks %s", want)
+				}
+			}
+			for _, tag := range []string{"<title>", "<h1>", "<main ", "</main>"} {
+				if n := strings.Count(body, tag); n != 1 {
+					t.Errorf("page has %d %s, want exactly 1", n, tag)
+				}
+			}
+		})
+	}
+
+	if rec := get(s.ServeInfo, "/no-such-page", nil); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown path: status = %d, want 404", rec.Code)
+	}
+}
+
+// Every link a public page carries must lead somewhere: another public page,
+// an app route the SPA owns, an asset or a mail address.
+func TestPagesHaveNoDeadLinks(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+	known := map[string]bool{"/": true, "/pricing": true, "/sign-in": true, "/sign-up": true}
+	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing}
+	for _, path := range InfoPaths() {
+		known[path] = true
+		pages[path] = s.ServeInfo
+	}
+	href := regexp.MustCompile(`href="([^"]*)"`)
+	for path, serve := range pages {
+		for _, m := range href.FindAllStringSubmatch(get(serve, path, nil).Body.String(), -1) {
+			link := m[1]
+			switch {
+			case strings.HasPrefix(link, "mailto:"+SupportEmail), strings.HasPrefix(link, "#"),
+				strings.HasPrefix(link, AssetsPrefix), strings.HasPrefix(link, "https://uplumo.com/"):
+			case !known[link]:
+				t.Errorf("%s links to %q, which no page serves", path, link)
+			}
+		}
+	}
+}
+
+func TestRobotsAndSitemap(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+
+	robots := get(s.ServeRobots, "/robots.txt", nil)
+	if ct := robots.Header().Get("Content-Type"); ct != "text/plain; charset=utf-8" {
+		t.Errorf("robots Content-Type = %q", ct)
+	}
+	for _, want := range []string{"User-agent: *\n", "Disallow: /api/\n", "Sitemap: https://uplumo.com/sitemap.xml\n"} {
+		if !strings.Contains(robots.Body.String(), want) {
+			t.Errorf("robots.txt lacks %q", want)
+		}
+	}
+
+	sitemap := get(s.ServeSitemap, "/sitemap.xml", nil)
+	var doc struct {
+		URLs []struct {
+			Loc string `xml:"loc"`
+		} `xml:"url"`
+	}
+	if err := xml.Unmarshal(sitemap.Body.Bytes(), &doc); err != nil {
+		t.Fatalf("sitemap.xml does not parse: %v", err)
+	}
+	got := map[string]bool{}
+	for _, u := range doc.URLs {
+		got[u.Loc] = true
+	}
+	want := append([]string{"/", "/pricing"}, InfoPaths()...)
+	if len(got) != len(want) {
+		t.Errorf("sitemap has %d URLs, want %d", len(got), len(want))
+	}
+	for _, path := range want {
+		if !got["https://uplumo.com"+path] {
+			t.Errorf("sitemap lacks %s", path)
 		}
 	}
 }

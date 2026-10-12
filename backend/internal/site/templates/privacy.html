@@ -1,0 +1,71 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<div class="wrap narrow doc">
+<p class="eyebrow">Legal</p>
+<h1>Privacy Policy</h1>
+<p class="note">Last updated {{.Updated}}</p>
+<div class="prose">
+<p>This page says what data Uplumo ("we", "us") collects, why we collect it, who else handles it and what you can do about it. We collect only what we need to run the service, and we do not sell personal data.</p>
+
+<h2>1. Data we collect about you</h2>
+<ul>
+<li><strong>Account.</strong> Your name, email address and a hashed password, or your Google profile name and email if you sign in with Google.</li>
+<li><strong>Workspace.</strong> The websites, keywords, competitors, reports, branding and team members you add.</li>
+<li><strong>Connected accounts.</strong> If you connect Google Search Console or Google Analytics, we store the access tokens, encrypted, and read the reports you ask us to show.</li>
+<li><strong>Billing.</strong> Your plan, payment status and payment references. Card, UPI and bank details are handled by Razorpay; we never see or store them.</li>
+<li><strong>Usage.</strong> Which features you use and errors you run into, so we can fix and improve the product. You can opt out of product analytics by writing to us.</li>
+<li><strong>Sign-in records.</strong> Your IP address and browser type for each session, to keep accounts secure.</li>
+</ul>
+
+<h2>2. Data about visitors to your site</h2>
+<p>If you add the Uplumo Analytics tracker to your website, it counts visits for you. It sets no cookies and does not store IP addresses. Visitors are counted with a hash that changes every day, so nobody can be followed from one day to the next. We store the page visited, the referrer, the country, and the device and browser type.</p>
+
+<h2>3. Why we use it</h2>
+<ul>
+<li>To provide the service you signed up for.</li>
+<li>To take payment and send receipts.</li>
+<li>To send emails about your account, such as verification, password reset, invitations and billing notices.</li>
+<li>To keep the service secure and stop abuse.</li>
+<li>To understand how the product is used so we can improve it.</li>
+</ul>
+
+<h2>4. Who else handles your data</h2>
+<p>We share data only with companies that help us run the service, and only what each one needs:</p>
+<ul>
+<li><strong>Razorpay</strong> for payments.</li>
+<li><strong>Google</strong> for sign-in and for the Search Console and Analytics data you connect.</li>
+<li><strong>DataForSEO</strong> for search, keyword and backlink data. We send the keywords and domains you look up, not your personal details.</li>
+<li><strong>OpenRouter</strong> and the AI models behind it, for AI answers and explanations. We send the prompt and the page or data it is about.</li>
+<li><strong>Loops</strong> for sending account emails.</li>
+<li><strong>PostHog</strong> for product analytics.</li>
+<li><strong>Cloudflare</strong> for the check that stops bots on the sign-up form.</li>
+<li><strong>Our hosting and database providers</strong>, who store the data on our behalf.</li>
+</ul>
+<p>Some of these companies process data outside India. We may also disclose data when the law requires it.</p>
+
+<h2>5. How long we keep it</h2>
+<p>We keep your data while your account is open. When you ask us to delete your account, we erase your personal data and your workspace's data. We may keep payment records for as long as tax and accounting law requires.</p>
+
+<h2>6. Your choices</h2>
+<ul>
+<li><strong>See or correct your data.</strong> Most of it is in Settings. For anything else, write to us.</li>
+<li><strong>Delete your account.</strong> Email <a href="mailto:{{.Support}}">{{.Support}}</a> from your account's address.</li>
+<li><strong>Disconnect Google.</strong> Remove the connection in the app, or from your Google account's security settings.</li>
+<li><strong>Withdraw consent or complain.</strong> Write to us and we will respond. You may also have the right to complain to a data protection authority.</li>
+</ul>
+
+<h2>7. Security</h2>
+<p>Data is encrypted in transit, passwords are hashed and access tokens are encrypted at rest. No system is perfectly secure; if a breach affects your data, we will tell you.</p>
+
+<h2>8. Children</h2>
+<p>Uplumo is for businesses and is not meant for anyone under 18.</p>
+
+<h2>9. Changes</h2>
+<p>If we change this policy in a way that matters, we tell you by email or in the app before it takes effect.</p>
+
+<h2>10. Contact</h2>
+<p>Privacy questions and requests: <a href="mailto:{{.Support}}">{{.Support}}</a>.</p>
+</div>
+</div>
+{{template "footer" .}}

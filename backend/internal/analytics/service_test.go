@@ -14,9 +14,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics/geo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 const desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"

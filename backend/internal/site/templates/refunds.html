@@ -1,0 +1,37 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<div class="wrap narrow doc">
+<p class="eyebrow">Legal</p>
+<h1>Cancellation and Refund Policy</h1>
+<p class="note">Last updated {{.Updated}}</p>
+<div class="prose">
+<h2>Cancelling Pro</h2>
+<ul>
+<li>You can cancel in one click from Billing, at any time. There are no calls and no forms.</li>
+<li>After you cancel, you keep Pro until the end of the month you have paid for.</li>
+<li>You are not charged again.</li>
+<li>When the paid month ends, your workspace moves to the Free plan. Your data stays.</li>
+</ul>
+
+<h2>Refunds</h2>
+<ul>
+<li>Pro is charged monthly in advance, at {{inr .ProPriceINR}} a month. We do not refund part of a month after you cancel, because you keep Pro until that month ends.</li>
+<li>If you were charged twice, charged after cancelling, or charged by mistake, we refund that payment in full.</li>
+<li>If the service did not work for you and we could not fix it, write to us and we will look at a refund for that month.</li>
+</ul>
+
+<h2>How to ask for a refund</h2>
+<p>Email <a href="mailto:{{.Support}}">{{.Support}}</a> from your account's address within 7 days of the payment, with the date and amount.</p>
+
+<h2>How refunds are paid</h2>
+<p>Approved refunds go back to the original payment method through Razorpay. Banks usually take 5 to 7 working days to show the money.</p>
+
+<h2>The Free plan</h2>
+<p>The Free plan costs {{inr 0}}, so there is nothing to refund.</p>
+
+<h2>Questions</h2>
+<p>See the <a href="/terms">terms of service</a>, or <a href="/contact">contact us</a>.</p>
+</div>
+</div>
+{{template "footer" .}}

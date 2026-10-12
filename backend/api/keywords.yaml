@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine keywords
+  title: Uplumo keywords
   version: 1.0.0
   description: |
     Keyword research, SERP analysis and saved keywords. Every route is a POST

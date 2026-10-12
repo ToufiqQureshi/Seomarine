@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 type fakeMarkets struct{}

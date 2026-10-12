@@ -12,6 +12,6 @@
 
 ## Implementation
 
-`generate.py` copies the legacy TypeScript source table into committed `data.json` during migration. Run it from any directory after changing `src/shared/keyword-locations.ts`; table-count tests detect incomplete regeneration. The Go package uses the generated table without network calls or mutable caches.
+`generate.py` copies the legacy TypeScript source table into committed `data.json` during migration. Run it from any directory after changing `frontend/src/shared/keyword-locations.ts`; table-count tests detect incomplete regeneration. The Go package uses the generated table without network calls or mutable caches.
 
 No database tables or environment variables. This package alone does not validate city-level SERP location codes; that belongs to the SERP location provider flow. Provider requests must validate the final Labs pair before billing.

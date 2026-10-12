@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine Search Console connections
+  title: Uplumo Search Console connections
   version: 1.0.0
   description: |
     Project Search Console grant status and property selection. Every API call is

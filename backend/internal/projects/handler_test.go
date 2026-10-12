@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
 func TestProjectRoutesUseSessionAndProjectScope(t *testing.T) {

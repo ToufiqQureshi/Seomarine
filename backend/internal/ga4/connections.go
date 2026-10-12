@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
 )
 
 var (

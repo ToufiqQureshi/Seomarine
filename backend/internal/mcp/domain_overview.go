@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 func getDomainOverviewTool() *tool {

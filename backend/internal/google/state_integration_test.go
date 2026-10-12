@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
 )
 
 func TestStateSingleUseExpiryAndOwner(t *testing.T) {

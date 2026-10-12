@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
 )
 
 const ga4AdminBase = "https://analyticsadmin.googleapis.com"

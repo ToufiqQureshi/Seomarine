@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 var fixedNow = time.Date(2026, 10, 9, 11, 12, 13, 0, time.UTC)

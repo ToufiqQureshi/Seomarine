@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 // ErrProjectPropertyNotFound means the project has no selected Search Console property.

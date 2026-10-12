@@ -19,7 +19,7 @@ const (
 	perPageChars     = 4000
 	fetchTimeout     = 10 * time.Second
 	maxResponseBytes = 2_000_000
-	scrapeUserAgent  = "Seomarine-Onboarding/1.0"
+	scrapeUserAgent  = "Uplumo-Onboarding/1.0"
 )
 
 // URLGuard validates URLs against the SSRF policy and supplies an HTTP client

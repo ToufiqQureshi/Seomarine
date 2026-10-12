@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 // MetricLookupInput fetches metrics for a bounded list of known keywords.

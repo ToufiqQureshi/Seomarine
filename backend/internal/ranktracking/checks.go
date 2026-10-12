@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 )
 
 // QueueName is the jobs queue that carries rank check runs.

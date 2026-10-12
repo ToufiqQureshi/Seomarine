@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 )
 
 func partTypes(m Message) []string {
@@ -427,7 +427,7 @@ func contains(list []string, want string) bool {
 
 func TestSetupFailuresAreGenericToTheClientAndReturnedToTheCaller(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"never reached"}})
-	h.agent.Memory = fakeMemory{err: errors.New("pq: password authentication failed for user seomarine")}
+	h.agent.Memory = fakeMemory{err: errors.New("pq: password authentication failed for user uplumo")}
 	sink := &recordingSink{}
 	user := Message{ID: "u", Role: "user", Parts: []Part{{Type: "text", Text: "hi"}}}
 	_ = h.store.Append(context.Background(), h.sc.SessionID, user)

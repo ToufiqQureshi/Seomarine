@@ -1,4 +1,4 @@
-module github.com/toufiqqureshi/seomarine/backend
+module github.com/toufiqqureshi/uplumo/backend
 
 go 1.27.0
 

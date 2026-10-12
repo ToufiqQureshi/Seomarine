@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 func searchSerpLocationsTool() *tool {
@@ -43,13 +43,13 @@ var auditProjectSchema = json.RawMessage(`{"type":"object","properties":{"projec
 var auditLookupSchema = json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"auditId":{"type":"string","minLength":1}},"required":["projectId"]}`)
 
 func auditHistoryTool() *tool {
-	return &tool{Name: "list_site_audits", Title: "List site audits", Description: "List recent audits for a project. Free; reads Seomarine state.", InputSchema: auditProjectSchema, OutputSchema: json.RawMessage(`{"type":"object","properties":{"audits":{"type":"array","items":{"type":"object"}}},"additionalProperties":true}`), Annotations: readOnlyAnnotations(), Handler: handleAuditHistory}
+	return &tool{Name: "list_site_audits", Title: "List site audits", Description: "List recent audits for a project. Free; reads Uplumo state.", InputSchema: auditProjectSchema, OutputSchema: json.RawMessage(`{"type":"object","properties":{"audits":{"type":"array","items":{"type":"object"}}},"additionalProperties":true}`), Annotations: readOnlyAnnotations(), Handler: handleAuditHistory}
 }
 func auditStatusTool() *tool {
-	return &tool{Name: "get_audit_status", Title: "Get site audit status", Description: "Check audit progress. Omit auditId for the most recent audit. Free; reads Seomarine state and may reconcile a dead workflow.", InputSchema: auditLookupSchema, OutputSchema: json.RawMessage(`{"type":"object","properties":{"status":{"type":"object"}},"additionalProperties":true}`), Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": false, "destructiveHint": false}, Handler: handleAuditStatus}
+	return &tool{Name: "get_audit_status", Title: "Get site audit status", Description: "Check audit progress. Omit auditId for the most recent audit. Free; reads Uplumo state and may reconcile a dead workflow.", InputSchema: auditLookupSchema, OutputSchema: json.RawMessage(`{"type":"object","properties":{"status":{"type":"object"}},"additionalProperties":true}`), Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": false, "destructiveHint": false}, Handler: handleAuditStatus}
 }
 func auditPagesTool() *tool {
-	return &tool{Name: "get_audit_pages", Title: "Get site audit pages", Description: "List crawled pages from an audit with per-page SEO data. Free; reads Seomarine state.", InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"auditId":{"type":"string"},"fetchClass":{"type":"string"},"statusCode":{"type":"integer"},"urlContains":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":1000}},"required":["projectId"]}`), OutputSchema: json.RawMessage(`{"type":"object","properties":{"pages":{"type":"array","items":{"type":"object"}},"total":{"type":"integer"}},"additionalProperties":true}`), Annotations: readOnlyAnnotations(), Handler: handleAuditPages}
+	return &tool{Name: "get_audit_pages", Title: "Get site audit pages", Description: "List crawled pages from an audit with per-page SEO data. Free; reads Uplumo state.", InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"auditId":{"type":"string"},"fetchClass":{"type":"string"},"statusCode":{"type":"integer"},"urlContains":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":1000}},"required":["projectId"]}`), OutputSchema: json.RawMessage(`{"type":"object","properties":{"pages":{"type":"array","items":{"type":"object"}},"total":{"type":"integer"}},"additionalProperties":true}`), Annotations: readOnlyAnnotations(), Handler: handleAuditPages}
 }
 func deleteAuditTool() *tool {
 	return &tool{Name: "delete_site_audit", Title: "Delete site audit", Description: "Permanently deletes one site audit and its crawled pages, issues, and Lighthouse results. Uses no credits. Requires an owner or admin.", InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1},"auditId":{"type":"string","minLength":1}},"required":["projectId","auditId"]}`), OutputSchema: json.RawMessage(`{"type":"object","properties":{"auditId":{"type":"string"},"deleted":{"type":"boolean","const":true}},"required":["auditId","deleted"],"additionalProperties":true}`), Annotations: map[string]any{"readOnlyHint": false, "openWorldHint": false, "destructiveHint": true}, Handler: handleDeleteAudit}

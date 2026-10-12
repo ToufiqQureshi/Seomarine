@@ -12,35 +12,35 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
-	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
-	"github.com/toufiqqureshi/seomarine/backend/internal/apikeys"
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
-	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
-	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
-	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/emailauth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
-	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
-	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
-	"github.com/toufiqqureshi/seomarine/backend/internal/team"
-	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
+	"github.com/toufiqqureshi/uplumo/backend/internal/activation"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ahrefs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/aisearch"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics"
+	"github.com/toufiqqureshi/uplumo/backend/internal/apikeys"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/contenteditor"
+	"github.com/toufiqqureshi/uplumo/backend/internal/crawleraccess"
+	"github.com/toufiqqureshi/uplumo/backend/internal/dashboardoverview"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/emailauth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ga4"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projects"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
+	"github.com/toufiqqureshi/uplumo/backend/internal/sam"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/team"
 )
 
 // Pinger reports whether a dependency is reachable. *pgxpool.Pool satisfies it.
@@ -111,7 +111,9 @@ type Deps struct {
 	// then answers 503.
 	RankChecks *ranktracking.Checks
 	// Projects serves organization-scoped project management.
-	Projects *projects.Service
+	Projects      *projects.Service
+	ContentEditor *contenteditor.Repository
+	ContentWriter contenteditor.WriterService
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
 	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
@@ -122,22 +124,17 @@ type Deps struct {
 	// SAMChat serves SAM conversations; nil answers 503 (no OpenRouter key).
 	SAMChat *sam.Chat
 	// Onboarding stores account-scoped signup answers and the Search Console nudge.
-	Onboarding     *onboarding.Service
-	WorkspaceMerge *workspace.Service
-	Team           *team.Service
-	CrawlerAccess  *crawleraccess.Service
+	Onboarding    *onboarding.Service
+	Team          *team.Service
+	CrawlerAccess *crawleraccess.Service
 	// Reports owns project report documents, templates, and sharing.
 	Reports              *reports.Service
 	PublicURL            *url.URL
 	DataForSEOConfigured bool
 	OpenRouterConfigured bool
 	Credits              *billing.CreditLedgerService
-	AuthMode             string
-	HostedMode           bool
 	// MCP serves API-key and Go-issued OAuth requests through the Go dispatcher.
 	MCP *mcp.Deps
-	// HealthStatus reports safe self-host setup checks on /api/health.
-	HealthStatus http.Handler
 	// Site is the public landing and pricing pages.
 	Site *site.Site
 	// StaticDir is the built React app that serves every route not listed here.
@@ -168,9 +165,10 @@ const (
 func NewHandler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 
-	if d.HealthStatus != nil {
-		mux.Handle("GET /api/health", d.HealthStatus)
-	}
+	// Says only that the server answers; it reveals no configuration.
+	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -193,6 +191,11 @@ func NewHandler(d Deps) http.Handler {
 
 	mux.HandleFunc("GET /{$}", landing(d.Logger, d.Auth, d.Site, app))
 	mux.HandleFunc("GET /pricing", d.Site.ServePricing)
+	for _, path := range site.InfoPaths() {
+		mux.HandleFunc("GET "+path, d.Site.ServeInfo)
+	}
+	mux.HandleFunc("GET /robots.txt", d.Site.ServeRobots)
+	mux.HandleFunc("GET /sitemap.xml", d.Site.ServeSitemap)
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)
 
 	mux.HandleFunc("GET /t.js", serveTracker())
@@ -206,18 +209,15 @@ func NewHandler(d Deps) http.Handler {
 	})
 	withSession := func(next http.Handler) http.Handler { return requireSession(d.Logger, d.Auth, next) }
 	auth.MountOrganization(mux, d.Auth, withSession)
-	if d.AuthMode == "hosted" {
-		auth.MountCurrentSession(mux, d.Auth, d.Logger)
-		auth.MountSession(mux, d.Auth, d.Logger)
-		auth.MountBetterAuthOrganization(mux, d.Auth, d.Logger)
-		if d.EmailAuth != nil {
-			emailauth.Mount(mux, d.EmailAuth)
-		}
-		if d.APIKeys != nil {
-			apikeys.Mount(mux, d.APIKeys)
-		}
+	auth.MountCurrentSession(mux, d.Auth, d.Logger)
+	auth.MountSession(mux, d.Auth, d.Logger)
+	auth.MountBetterAuthOrganization(mux, d.Auth, d.Logger)
+	if d.EmailAuth != nil {
+		emailauth.Mount(mux, d.EmailAuth)
 	}
-	workspace.Mount(mux, d.WorkspaceMerge, withSession)
+	if d.APIKeys != nil {
+		apikeys.Mount(mux, d.APIKeys)
+	}
 	team.Mount(mux, d.Team, withSession)
 	crawleraccess.Mount(mux, d.CrawlerAccess, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -311,6 +311,9 @@ func NewHandler(d Deps) http.Handler {
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
 	})
 	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
+	if d.ContentEditor != nil {
+		contenteditor.Mount(mux, d.ContentEditor, d.ContentWriter, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
+	}
 	sam.Mount(mux, sam.Deps{
 		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession, Chat: d.SAMChat,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

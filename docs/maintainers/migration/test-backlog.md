@@ -1,18 +1,24 @@
 # Deferred migration test backlog
 
-New test files are intentionally deferred until the final migration phase.
-Update this ledger in each migration PR so the remaining test work and its file
-count stay visible. Existing tests remain in place and continue to be useful
-while features move to Go.
+Most migration-specific test files remain deferred until the final migration
+phase. Production-readiness work may add high-value regression tests earlier.
+Update this ledger so the remaining test work and its file count stay visible.
+
+## Added early for production-readiness work
+
+- `backend/internal/apikeys/apikeys_test.go`: key hashing and generated-key contract.
+- `backend/internal/crawleraccess/service_test.go`: authenticated encryption, wrong-key rejection, and malformed ciphertext.
+- `backend/internal/projects/repository_integration_test.go`: concurrent last-project archive and conflicting default-project restore, using PostgreSQL.
+- `backend/internal/setupstatus/handler_test.go`: hosted redaction, self-hosted status reporting, and provider-key validation.
+- `frontend/src/client/features/projects/projectApi.test.ts`: project endpoint mapping, payloads, response parsing, and malformed response rejection.
 
 ## Pending new test files
 
-Current confirmed count: **54 files**.
+Current confirmed count: **51 files**.
 
 | Feature / slice                        | Test file to add at the end                                           | Coverage to add                                                                                                                                                                                                      |
 | -------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GA4 dashboard Go API cutover           | `src/client/features/dashboard/ga4DashboardApi.test.ts`               | Maps Go overview totals and trend rows, fills missing dates with zero sessions, and handles disconnected / expired / inaccessible GA4 connections.                                                                   |
-| Projects API cutover                   | `src/client/features/projects/projectApi.test.ts`                     | Covers project list/create/update/archive/restore/access request mapping and response parsing.                                                                                                                       |
 | Project context API cutover            | `src/client/features/projects/projectContextApi.test.ts`              | Covers context read/update paths, payloads, and response parsing.                                                                                                                                                    |
 | GSC connection API cutover             | `src/client/features/integrations/gscApi.test.ts`                     | Covers grant status, connection status, site listing/selection, and disconnect request mapping.                                                                                                                      |
 | GSC performance API cutover            | `src/client/features/search-performance/searchPerformanceApi.test.ts` | Covers report/table/export payload normalization and connected/disconnected response parsing.                                                                                                                        |
@@ -62,9 +68,7 @@ Current confirmed count: **54 files**.
 | Hosted Go get-session endpoint         | `backend/internal/auth/current_session_test.go`                       | Covers the Better Auth JSON shape and analyticsOptedOut field, secure/local cookie refresh after one day, invalid, expired and revoked sessions, null optional fields, and DB failures.                              |
 | Workspace merge Go service             | `backend/internal/workspace/merge_test.go`                            | Covers disabled auth modes, idempotency, project renaming, record repointing, and earliest activation milestones.                                                                                                    |
 | Team invitation Go service             | `backend/internal/team/invitations_test.go`                           | Covers permissions, deduped pending invitations, daily limits, email payloads, and failed delivery.                                                                                                                  |
-| Crawler credential Go service          | `backend/internal/crawleraccess/service_test.go`                      | Covers Better Auth encryption compatibility, Shopify key verification, organization scoping, and audit resolution.                                                                                                   |
 | Crawler credential Go handlers         | `backend/internal/crawleraccess/handler_test.go`                      | Covers permissions, secret-free list/save results, validation problems, and delete scoping.                                                                                                                          |
-| Go self-host health endpoint           | `backend/internal/setupstatus/handler_test.go`                        | Covers hosted redaction, setup check statuses, base64 DataForSEO validation, database failure, and safe response details.                                                                                            |
 
 This is a running count, not the final migration total. Add every newly
 identified test file here as its feature is migrated, then write the listed

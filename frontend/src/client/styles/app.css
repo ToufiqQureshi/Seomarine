@@ -1,0 +1,382 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+
+/* shadcn components here are built on Base UI. The shadcn variables below are
+   the source of truth for theme colors. */
+
+@custom-variant dark (&:where([data-theme=uplumo-dark], [data-theme=uplumo-dark] *));
+
+@theme {
+  --container-8xl: 88rem;
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  /* Display type: page headlines and big numbers. */
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  /* Labels, deltas, domains and anything that reads as data. */
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* At --radius 0.625rem fields and buttons (rounded-lg) are 10px and cards
+     (rounded-xl) are 15px, the two radii the design uses. */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 4);
+}
+
+/* Uplumo palette: near-black ink, one lime accent for actions and good
+   news, one pink for the number that matters and for bad news. Dark is the
+   product's look; light is the same ink and lime on paper. Every text pair
+   meets WCAG AA (4.5:1) and input borders meet 3:1. */
+:where(:root),
+[data-theme="uplumo"] {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: #f5f7f4;
+  --foreground: #07090a;
+  --card: #ffffff;
+  --card-foreground: #07090a;
+  --popover: #ffffff;
+  --popover-foreground: #07090a;
+  --primary: #07090a;
+  --primary-foreground: #c6ff3d;
+  --secondary: #eaeee9;
+  --secondary-foreground: #07090a;
+  --muted: #eef1ed;
+  --muted-foreground: #4f5b56;
+  --accent: #e6ebe5;
+  --accent-foreground: #07090a;
+  --destructive: #c2185b;
+  --success: #3d6b00;
+  --success-foreground: #ffffff;
+  --warning: #8a5a00;
+  --warning-foreground: #3d2800;
+  --info: #1f5fa8;
+  --info-foreground: #ffffff;
+  --border: #dde3dd;
+  --input: #8a968f;
+  --ring: #3d6b00;
+  --highlight: #c6ff3d;
+  --highlight-foreground: #07090a;
+  --chart-1: #c2185b;
+  --chart-2: #5c6a64;
+  --chart-3: #4c7a00;
+  --chart-4: #a76a00;
+  --chart-5: #1f5fa8;
+  --sidebar: #eef1ed;
+  --sidebar-foreground: #07090a;
+  --sidebar-primary: #07090a;
+  --sidebar-primary-foreground: #c6ff3d;
+  --sidebar-accent: #dfe5de;
+  --sidebar-accent-foreground: #07090a;
+  --sidebar-border: #d5dcd5;
+  --sidebar-ring: #3d6b00;
+}
+
+[data-theme="uplumo-dark"] {
+  color-scheme: dark;
+  --background: #07090a;
+  --foreground: #f2f5f3;
+  --card: #0d1110;
+  --card-foreground: #f2f5f3;
+  --popover: #131917;
+  --popover-foreground: #f2f5f3;
+  --primary: #c6ff3d;
+  --primary-foreground: #07090a;
+  --secondary: #1b2320;
+  --secondary-foreground: #f2f5f3;
+  --muted: #131917;
+  --muted-foreground: #a3b0aa;
+  --accent: #131917;
+  --accent-foreground: #f2f5f3;
+  --destructive: #ff7aa6;
+  --success: #c6ff3d;
+  --success-foreground: #07090a;
+  --warning: #ffc857;
+  --warning-foreground: #2b1d00;
+  --info: #7cb7ff;
+  --info-foreground: #07090a;
+  --border: #1b2320;
+  --input: #4a5852;
+  --ring: #c6ff3d;
+  --highlight: #c6ff3d;
+  --highlight-foreground: #07090a;
+  --chart-1: #ff7aa6;
+  --chart-2: #a3b0aa;
+  --chart-3: #c6ff3d;
+  --chart-4: #ffc857;
+  --chart-5: #7cb7ff;
+  --sidebar: #07090a;
+  --sidebar-foreground: #f2f5f3;
+  --sidebar-primary: #c6ff3d;
+  --sidebar-primary-foreground: #07090a;
+  --sidebar-accent: #131917;
+  --sidebar-accent-foreground: #f2f5f3;
+  --sidebar-border: #1b2320;
+  --sidebar-ring: #c6ff3d;
+}
+
+:root {
+  --trend-grid-color: oklch(56% 0.01 255 / 0.28);
+  --trend-axis-color: oklch(42% 0.01 255 / 0.85);
+  --trend-fill-start-opacity: 0.32;
+  --trend-fill-end-opacity: 0.05;
+  --trend-tooltip-bg: oklch(99% 0.005 255 / 0.96);
+  --trend-tooltip-border: oklch(84% 0.01 255 / 0.7);
+  --trend-tooltip-shadow: oklch(0% 0 0 / 0.1);
+}
+
+html,
+body {
+  @apply m-0 bg-background text-foreground;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Thin scrollbars in the muted text color, in both themes. */
+:root {
+  scrollbar-color: color-mix(in oklch, currentColor 35%, transparent)
+    transparent;
+}
+
+/* Prevent Safari mobile from zooming on input focus (requires 16px minimum).
+   This rule is outside a layer, so it beats every utility. shadcn controls
+   (the ones with data-slot) are left out: they are 16px below md and 14px
+   from md up through their own utilities. */
+input:not([data-slot]),
+textarea:not([data-slot]),
+select:not([data-slot]) {
+  @apply text-base;
+}
+
+/* Mono uppercase label: the eyebrow over a headline, a stat's name, a table
+   column head. */
+@utility label-mono {
+  @apply font-mono text-xs font-medium tracking-wider uppercase;
+}
+
+/* The tilted sticker used for "New" and similar one-word tags. */
+@utility sticker {
+  @apply inline-flex -rotate-3 items-center rounded-md bg-highlight px-1.5 py-0.5 font-mono text-[10px] font-medium text-highlight-foreground uppercase;
+}
+
+/* Safe area utilities for mobile devices */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0.5rem) + 0.5rem);
+  }
+}
+
+/* Row actions that appear on hover. Keyboard focus inside the row and touch
+   screens (no hover) show them too. Put `group` on the row. */
+@utility reveal-on-hover {
+  @apply opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100;
+}
+
+/* Touch device optimizations */
+@media (pointer: coarse) {
+  html {
+    touch-action: none;
+  }
+  body {
+    touch-action: pan-x pan-y;
+  }
+}
+
+/* Tag chip colors — muted background + readable text in both themes.
+   Text uses darker shades on light theme for contrast, lighter on dark. */
+.tag-chip-slate {
+  background-color: color-mix(in oklab, #64748b 14%, transparent);
+  color: #334155;
+  --tw-ring-color: color-mix(in oklab, #64748b 30%, transparent);
+}
+.tag-chip-rose {
+  background-color: color-mix(in oklab, #f43f5e 14%, transparent);
+  color: #9f1239;
+  --tw-ring-color: color-mix(in oklab, #f43f5e 30%, transparent);
+}
+.tag-chip-amber {
+  background-color: color-mix(in oklab, #f59e0b 16%, transparent);
+  color: #92400e;
+  --tw-ring-color: color-mix(in oklab, #f59e0b 32%, transparent);
+}
+.tag-chip-lime {
+  background-color: color-mix(in oklab, #84cc16 16%, transparent);
+  color: #3f6212;
+  --tw-ring-color: color-mix(in oklab, #84cc16 32%, transparent);
+}
+.tag-chip-emerald {
+  background-color: color-mix(in oklab, #10b981 14%, transparent);
+  color: #065f46;
+  --tw-ring-color: color-mix(in oklab, #10b981 30%, transparent);
+}
+.tag-chip-sky {
+  background-color: color-mix(in oklab, #0ea5e9 14%, transparent);
+  color: #075985;
+  --tw-ring-color: color-mix(in oklab, #0ea5e9 30%, transparent);
+}
+.tag-chip-violet {
+  background-color: color-mix(in oklab, #8b5cf6 16%, transparent);
+  color: #5b21b6;
+  --tw-ring-color: color-mix(in oklab, #8b5cf6 32%, transparent);
+}
+.tag-chip-fuchsia {
+  background-color: color-mix(in oklab, #d946ef 14%, transparent);
+  color: #86198f;
+  --tw-ring-color: color-mix(in oklab, #d946ef 30%, transparent);
+}
+
+html[data-theme="uplumo-dark"] .tag-chip-slate {
+  color: #cbd5e1;
+}
+html[data-theme="uplumo-dark"] .tag-chip-rose {
+  color: #fda4af;
+}
+html[data-theme="uplumo-dark"] .tag-chip-amber {
+  color: #fcd34d;
+}
+html[data-theme="uplumo-dark"] .tag-chip-lime {
+  color: #d9f99d;
+}
+html[data-theme="uplumo-dark"] .tag-chip-emerald {
+  color: #6ee7b7;
+}
+html[data-theme="uplumo-dark"] .tag-chip-sky {
+  color: #7dd3fc;
+}
+html[data-theme="uplumo-dark"] .tag-chip-violet {
+  color: #c4b5fd;
+}
+html[data-theme="uplumo-dark"] .tag-chip-fuchsia {
+  color: #f5d0fe;
+}
+
+/* Keyword difficulty score badges — muted/transparent style to match tag chips */
+.score-badge {
+  @apply ring-1 ring-inset;
+}
+
+.score-tier-na {
+  background-color: color-mix(in oklab, #94a3b8 12%, transparent);
+  color: #475569;
+  --tw-ring-color: color-mix(in oklab, #94a3b8 28%, transparent);
+}
+
+.score-tier-1 {
+  background-color: color-mix(in oklab, #10b981 15%, transparent);
+  color: #065f46;
+  --tw-ring-color: color-mix(in oklab, #10b981 30%, transparent);
+}
+
+.score-tier-2 {
+  background-color: color-mix(in oklab, #84cc16 15%, transparent);
+  color: #3f6212;
+  --tw-ring-color: color-mix(in oklab, #84cc16 30%, transparent);
+}
+
+.score-tier-3 {
+  background-color: color-mix(in oklab, #eab308 16%, transparent);
+  color: #854d0e;
+  --tw-ring-color: color-mix(in oklab, #eab308 32%, transparent);
+}
+
+.score-tier-4 {
+  background-color: color-mix(in oklab, #f97316 16%, transparent);
+  color: #9a3412;
+  --tw-ring-color: color-mix(in oklab, #f97316 32%, transparent);
+}
+
+.score-tier-5 {
+  background-color: color-mix(in oklab, #ef4444 15%, transparent);
+  color: #991b1b;
+  --tw-ring-color: color-mix(in oklab, #ef4444 30%, transparent);
+}
+
+.score-tier-6 {
+  background-color: color-mix(in oklab, #b91c1c 18%, transparent);
+  color: #7f1d1d;
+  --tw-ring-color: color-mix(in oklab, #b91c1c 32%, transparent);
+}
+
+html[data-theme="uplumo-dark"] .score-tier-na {
+  color: #cbd5e1;
+}
+html[data-theme="uplumo-dark"] .score-tier-1 {
+  color: #6ee7b7;
+}
+html[data-theme="uplumo-dark"] .score-tier-2 {
+  color: #bef264;
+}
+html[data-theme="uplumo-dark"] .score-tier-3 {
+  color: #fde047;
+}
+html[data-theme="uplumo-dark"] .score-tier-4 {
+  color: #fdba74;
+}
+html[data-theme="uplumo-dark"] .score-tier-5 {
+  color: #fca5a5;
+}
+html[data-theme="uplumo-dark"] .score-tier-6 {
+  color: #fda4af;
+}
+
+html[data-theme="uplumo-dark"] {
+  --trend-grid-color: oklch(78% 0.01 255 / 0.22);
+  --trend-axis-color: oklch(84% 0.01 255 / 0.62);
+  --trend-fill-start-opacity: 0.24;
+  --trend-fill-end-opacity: 0.03;
+  --trend-tooltip-bg: oklch(21% 0.01 255 / 0.95);
+  --trend-tooltip-border: oklch(40% 0.01 255 / 0.65);
+  --trend-tooltip-shadow: oklch(0% 0 0 / 0.35);
+}

@@ -34,7 +34,7 @@ Not ported yet: per-run credit holds, the React switch and the MCP tools. Until 
 
 ## Decisions for the owner
 
-- Credit maths (`costMarkup` 1.28, 1000 credits per USD) is copied from the legacy app. Seomarine's Razorpay plan model may want different numbers.
+- Credit maths (`costMarkup` 1.28, 1000 credits per USD) is copied from the legacy app. Uplumo's Razorpay plan model may want different numbers.
 - `go_rank_*` start empty. Existing customer data needs a one-time copy from the legacy tables before the switch.
 - Scheduled checks: a task that was posted but whose id was not stored before a crash (the window is one database write) would be posted again. Posting twice is billed twice, but the window is tiny and the alternative, a live fallback for every scheduled pair, costs more.
 - Credits: the legacy app held and settled Autumn credits around each check. Here the spend control is the paid-plan gate, the optional `maxCostCredits` ceiling and the usage ledger (`go_dataforseo_usage`). A real balance check waits for the owner's credit model.

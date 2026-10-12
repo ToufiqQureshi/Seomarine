@@ -1,16 +1,16 @@
 # Alchemy preview deployments
 
-Seomarine preview stages use isolated Cloudflare resources and a shared,
+Uplumo preview stages use isolated Cloudflare resources and a shared,
 Alchemy-managed Cloudflare Access boundary.
 
 ## Security model
 
-- Preview Workers are named `seomarine-<stage>` and served from
-  `seomarine-<stage>.<WORKERS_SUBDOMAIN>`.
+- Preview Workers are named `uplumo-<stage>` and served from
+  `uplumo-<stage>.<WORKERS_SUBDOMAIN>`.
 - One persistent Access application protects
-  `seomarine-*.<WORKERS_SUBDOMAIN>` before any preview Worker exists.
-- Production uses the unsuffixed `seomarine` Worker on `app.seomarine.com` and
-  `www.app.seomarine.com`. It does not match the preview wildcard and is not
+  `uplumo-*.<WORKERS_SUBDOMAIN>` before any preview Worker exists.
+- Production uses the unsuffixed `uplumo` Worker on `app.uplumo.com` and
+  `www.app.uplumo.com`. It does not match the preview wildcard and is not
   placed behind preview Access.
 - A separate persistent Alchemy stack manages the shared Access boundary. A
   failed preview deploy or teardown therefore cannot remove the gate protecting
@@ -53,13 +53,13 @@ The persistent Access stack creates a self-hosted application with this public
 hostname:
 
 ```text
-seomarine-*.your-subdomain.workers.dev
+uplumo-*.your-subdomain.workers.dev
 ```
 
 Use the account's Workers subdomain shown under **Workers & Pages**, not the
 Zero Trust team domain. Set that full value in `.env.preview` as
 `WORKERS_SUBDOMAIN`. Preview URLs derive from it as
-`https://seomarine-<stage>.<WORKERS_SUBDOMAIN>` — hosted previews use that as
+`https://uplumo-<stage>.<WORKERS_SUBDOMAIN>` — hosted previews use that as
 `BETTER_AUTH_URL`, and CI's verify step probes it; a wrong value fails the
 check. Previews in `local_noauth` or `cloudflare_access` mode deploy without
 it, since nothing reads `BETTER_AUTH_URL` there.
@@ -116,7 +116,7 @@ locally with `pnpm destroy:preview --stage pr-<n> --yes`.
 
 ## Public-mirror PRs
 
-External (ToufiqQureshi/Seomarine) PRs never deploy from CI — fork code must not
+External (ToufiqQureshi/Uplumo) PRs never deploy from CI — fork code must not
 run with deploy secrets. Preview one locally instead: the fork's code only
 BUILDS, in a detached sibling worktree, and the deploy runs from this trusted
 checkout's alchemy stack against the fork's `dist/`. The fork's own deploy
@@ -127,12 +127,12 @@ building executes the fork's config code on your machine with `.env.preview`
 available.
 
 ```sh
-git fetch https://github.com/ToufiqQureshi/Seomarine.git pull/<pr>/head
-git worktree add --detach ../seomarine-pub-<pr> FETCH_HEAD
-cp .env.preview ../seomarine-pub-<pr>/
-(cd ../seomarine-pub-<pr> && pnpm install --frozen-lockfile && pnpm exec vite build --mode preview)
-rm -rf dist && cp -R ../seomarine-pub-<pr>/dist dist
-git worktree remove --force ../seomarine-pub-<pr>
+git fetch https://github.com/ToufiqQureshi/Uplumo.git pull/<pr>/head
+git worktree add --detach ../uplumo-pub-<pr> FETCH_HEAD
+cp .env.preview ../uplumo-pub-<pr>/
+(cd ../uplumo-pub-<pr> && pnpm install --frozen-lockfile && pnpm exec vite build --mode preview)
+rm -rf dist && cp -R ../uplumo-pub-<pr>/dist dist
+git worktree remove --force ../uplumo-pub-<pr>
 pnpm alchemy deploy --env-file .env.preview --stage pub-<pr> --yes
 ```
 
@@ -167,10 +167,10 @@ was enabled for Hyperdrive).
 The first Alchemy prod deploy adopts live resources. Before running it:
 
 1. Append `--dry-run` to the alchemy command and read the plan — every prod
-   resource (D1 `seomarine`, KV `every-super-seo`/`OAUTH_KV`, R2 `seomarine`,
-   Hyperdrive `seomarine`, Worker `seomarine`) should be adopted, none created.
+   resource (D1 `uplumo`, KV `every-super-seo`/`OAUTH_KV`, R2 `uplumo`,
+   Hyperdrive `uplumo`, Worker `uplumo`) should be adopted, none created.
 2. Diff `.env.production` against the live worker's secrets
-   (`GET /accounts/:id/workers/scripts/seomarine/secrets`): alchemy's deploy
+   (`GET /accounts/:id/workers/scripts/uplumo/secrets`): alchemy's deploy
    replaces the COMPLETE binding set, so any live secret missing from the env
    file deploys as `""` — most vars are optional-with-empty-default, so the
    deploy succeeds while silently disabling that integration.
@@ -186,7 +186,7 @@ The first Alchemy prod deploy adopts live resources. Before running it:
 5. Confirm the `HYPERDRIVE_ORIGIN_*` values in `.env.production` match the
    live Hyperdrive config — Cloudflare never returns origin credentials, so a
    mismatch would rewrite the origin.
-6. Note: prod already serves on `seomarine.<subdomain>.workers.dev` (alchemy
+6. Note: prod already serves on `uplumo.<subdomain>.workers.dev` (alchemy
    keeps it enabled; the workers.dev toggle never appears in `--dry-run`).
    The prod resources (worker, D1, R2, KV, Hyperdrive) carry alchemy's
    `RemovalPolicy.retain`, stamped into state on the first prod deploy: a
@@ -205,5 +205,5 @@ gating the worker (`AUTH_MODE=cloudflare_access` +
 `ACCESS_ALLOWED_EMAILS`; `resolveSelfHostAccess` in deploy/alchemy/alchemy.run.ts derives
 `TEAM_DOMAIN`/`POLICY_AUD`, or accepts them explicitly for a hand-managed
 application). The preview Access wildcard and PR workflow are
-Seomarine-specific and not required. The walkthrough lives in
+Uplumo-specific and not required. The walkthrough lives in
 docs/SELF_HOSTING_CLOUDFLARE.md.

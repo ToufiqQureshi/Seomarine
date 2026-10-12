@@ -13,19 +13,19 @@ metadata where possible, then removes duplicate Default projects.
 1. Preview the cleanup:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine
+   pnpm cleanup:default-projects:d1 --database uplumo
    ```
 
 2. If the output looks right, apply it:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine --apply --confirm-remote-apply
+   pnpm cleanup:default-projects:d1 --database uplumo --apply --confirm-remote-apply
    ```
 
 3. Validate or re-run validation:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine --validate-only
+   pnpm cleanup:default-projects:d1 --database uplumo --validate-only
    ```
 
 4. Re-run the normal migration/deploy.
@@ -39,19 +39,19 @@ roughly 60 seconds while the cleanup runs.
 1. Preview the cleanup:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine --local
+   pnpm cleanup:default-projects:d1 --database uplumo --local
    ```
 
 2. Apply it:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine --local --apply
+   pnpm cleanup:default-projects:d1 --database uplumo --local --apply
    ```
 
 3. Validate or re-run validation:
 
    ```sh
-   pnpm cleanup:default-projects:d1 --database seomarine --local --validate-only
+   pnpm cleanup:default-projects:d1 --database uplumo --local --validate-only
    ```
 
 4. Re-run the normal local migration.

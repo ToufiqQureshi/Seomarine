@@ -10,17 +10,17 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
-	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ga4"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
 )
 
 const (
@@ -42,13 +42,11 @@ var corsHeaders = map[string]string{
 
 // Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger  *slog.Logger
-	DB      *pgxpool.Pool
-	Redis   *redis.Client
-	Auth    *auth.Service
-	Billing *billing.Service
-	// Hosted follows AUTH_MODE, independently of Razorpay configuration.
-	Hosted          bool
+	Logger          *slog.Logger
+	DB              *pgxpool.Pool
+	Redis           *redis.Client
+	Auth            *auth.Service
+	Billing         *billing.Service
 	Credits         CreditBalances
 	PublicURL       *url.URL
 	Audit           *audit.Service

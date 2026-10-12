@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
 )
 
 type testRow struct{ err error }

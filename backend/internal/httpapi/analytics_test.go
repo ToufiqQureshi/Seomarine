@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics/geo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
 )
 
 func TestTrackerScriptIsCacheable(t *testing.T) {
@@ -84,10 +84,10 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 	exec(ctx, t, pool, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Own', $1, now())`, org)
 	exec(ctx, t, pool, `INSERT INTO member (id, organization_id, user_id, created_at) VALUES ($1, $2, $3, now())`, "member-"+id, org, userID)
 	exec(ctx, t, pool, `INSERT INTO projects (id, organization_id, name, domain) VALUES ($1, $2, 'Acme', 'acme.com')`, project, org)
-	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at) VALUES ($1, $2, $3, now() + interval '1 hour')`, "session-"+id, token, userID)
+	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at, updated_at) VALUES ($1, $2, $3, now() + interval '1 hour', now())`, "session-"+id, token, userID)
 
 	api := func(method, target string) *httptest.ResponseRecorder {
-		req := httptest.NewRequestWithContext(ctx, method, "http://app.seomarine.com"+target, nil)
+		req := httptest.NewRequestWithContext(ctx, method, "http://app.uplumo.com"+target, nil)
 		req.Header.Set("X-Forwarded-Proto", "https")
 		req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
 		rec := httptest.NewRecorder()
@@ -103,7 +103,7 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 	}
 	rec := api(http.MethodPost, sitePath)
 	decode(t, rec, http.StatusOK, &site)
-	wantSnippet := `<script defer data-site="` + site.SiteKey + `" src="https://app.seomarine.com/t.js"></script>`
+	wantSnippet := `<script defer data-site="` + site.SiteKey + `" src="https://app.uplumo.com/t.js"></script>`
 	if site.SiteKey == "" || site.Snippet != wantSnippet {
 		t.Fatalf("site = %+v, want snippet %s", site, wantSnippet)
 	}

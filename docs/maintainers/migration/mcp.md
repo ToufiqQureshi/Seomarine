@@ -28,7 +28,7 @@ The old PR 2 snapshot below described an early point in the migration. It is sup
 - A request reaches a tool through one of: an **API key** (`oseo_` prefix,
   verified by better-auth's `verifyApiKey`), an **OAuth grant** minted by
   `@cloudflare/workers-oauth-provider`, or a self-host/Cloudflare-Access
-  identity. All become a `seomarineAuth` props object.
+  identity. All become a `uplumoAuth` props object.
 - `orgScope` is `"pinned"` (self-host, SAM: one org) or `"user"` (hosted OAuth
   tokens and API keys: the caller's membership in the project's org is the
   boundary).

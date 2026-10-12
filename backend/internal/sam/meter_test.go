@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
 )
 
 type fakeLedger struct {

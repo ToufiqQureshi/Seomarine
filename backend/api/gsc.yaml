@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine Search Console
+  title: Uplumo Search Console
   version: 1.0.0
   description: |
     Read-only Search Performance report, paginated query/page tables and capped export.

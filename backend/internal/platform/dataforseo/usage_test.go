@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 func TestUsageRecorderStoresCostPerOrganization(t *testing.T) {

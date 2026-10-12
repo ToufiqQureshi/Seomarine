@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
 )
 
 const maxDescriptionChars = 200
@@ -68,9 +68,9 @@ var sharePageTemplate = template.Must(template.New("share").Parse(`<!doctype htm
 <meta property="og:url" content="{{.Canonical}}"><meta property="og:image" content="{{.Image}}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="{{.Title}} · {{.SiteName}}"><meta name="twitter:image" content="{{.Image}}"><meta name="twitter:image:alt" content="{{.Title}} · {{.SiteName}}"><meta name="twitter:card" content="summary_large_image">{{end}}
 <link rel="icon" href="/favicon.ico"><style>{{.Styles}}</style></head><body>
 {{if .OK}}<header><div class="title"><h1>{{.Title}}</h1><p class="meta">{{.Byline}} · Updated {{.Updated}}</p></div><div class="actions"><button type="button" class="btn" id="share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg><span>Share</span></button>
-{{if .VisitURL}}<a class="btn primary" href="{{.VisitURL}}" target="_blank" rel="noreferrer" style="background:{{.Accent}};border-color:{{.Accent}}">Visit {{.BrandName}}</a>{{else if not .Branded}}<a class="btn primary" href="/" target="_blank" rel="noreferrer">Try Seomarine</a>{{end}}</div></header>
+{{if .VisitURL}}<a class="btn primary" href="{{.VisitURL}}" target="_blank" rel="noreferrer" style="background:{{.Accent}};border-color:{{.Accent}}">Visit {{.BrandName}}</a>{{else if not .Branded}}<a class="btn primary" href="/" target="_blank" rel="noreferrer">Try Uplumo</a>{{end}}</div></header>
 <iframe src="{{.RawPath}}" sandbox="` + iframeSandbox + `" referrerpolicy="no-referrer" title="{{.Title}}"></iframe><script>{{.Script}}</script>
-{{else}}<main><h1>{{.Heading}}</h1><p>{{.Detail}}</p><a class="btn primary" href="/" target="_blank" rel="noreferrer">Try Seomarine</a></main>{{end}}</body></html>`))
+{{else}}<main><h1>{{.Heading}}</h1><p>{{.Detail}}</p><a class="btn primary" href="/" target="_blank" rel="noreferrer">Try Uplumo</a></main>{{end}}</body></html>`))
 
 type sharePage struct {
 	OK                                      bool
@@ -99,14 +99,14 @@ func writeSharePage(w http.ResponseWriter, p sharePage, status int) {
 func unavailable(w http.ResponseWriter, heading, detail string) {
 	// Every dead end answers 404 with a generic title, so the report's own
 	// title stays out of a page the link no longer grants access to.
-	writeSharePage(w, sharePage{Title: "Report unavailable", SiteName: "Seomarine", Heading: heading, Detail: detail}, http.StatusNotFound)
+	writeSharePage(w, sharePage{Title: "Report unavailable", SiteName: "Uplumo", Heading: heading, Detail: detail}, http.StatusNotFound)
 }
 
 func (d Deps) sharedPage(w http.ResponseWriter, r *http.Request) {
 	missing := func() {
 		unavailable(w, "This report isn't shared.", "The link may have been turned off, or the report may have been deleted.")
 	}
-	if d.Service == nil || !d.Service.Hosted {
+	if d.Service == nil {
 		missing()
 		return
 	}
@@ -126,7 +126,7 @@ func (d Deps) sharedPage(w http.ResponseWriter, r *http.Request) {
 		unavailable(w, "This project has been archived.", "Its reports are hidden until the owner restores it.")
 		return
 	}
-	siteName, byline := "Seomarine", "Made with Seomarine"
+	siteName, byline := "Uplumo", "Made with Uplumo"
 	page := sharePage{OK: true, Title: report.Title, Description: shareDescription(report.Summary), RawPath: "/s/" + token + "/raw"}
 	if d.View.Branding != nil {
 		b, ok, err := d.View.Branding(r.Context(), report.OrganizationID)

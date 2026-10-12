@@ -191,14 +191,10 @@ func TestSavePreservesSharingOnReplaceAndCountsUTF16Characters(t *testing.T) {
 	}
 }
 
-func TestShareRequiresHostedAndCreatesOpaqueToken(t *testing.T) {
+func TestShareCreatesOpaqueToken(t *testing.T) {
 	store := newMemoryStore()
 	svc := &Service{Store: store, NewShareToken: func() (string, error) { return "0123456789abcdefghijklmnopqrstuv", nil }}
 	store.items["r1"] = Metadata{ID: "r1", ProjectID: "p1"}
-	if _, err := svc.Share(context.Background(), "p1", "r1"); err == nil {
-		t.Fatal("self-hosted share unexpectedly enabled")
-	}
-	svc.Hosted = true
 	got, err := svc.Share(context.Background(), "p1", "r1")
 	if err != nil {
 		t.Fatal(err)

@@ -34,7 +34,7 @@ func TestOpenRejectsMalformedAndUnreachableURLs(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if pool, err := Open(ctx, "postgres://seomarine@127.0.0.1:1/seomarine?connect_timeout=2"); err == nil {
+	if pool, err := Open(ctx, "postgres://uplumo@127.0.0.1:1/uplumo?connect_timeout=2"); err == nil {
 		pool.Close()
 		t.Fatal("Open connected to a closed local port")
 	}

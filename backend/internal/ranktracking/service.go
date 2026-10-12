@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
 // Repository is the storage the service needs; Store implements it.

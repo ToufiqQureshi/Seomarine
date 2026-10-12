@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine rank tracking
+  title: Uplumo rank tracking
   version: 1.0.0
   description: |
     Rank tracking configs and keywords. Every route is a POST with a JSON

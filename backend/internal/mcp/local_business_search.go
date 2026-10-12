@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 var localBusinessFields = []string{"title", "description", "category", "additional_categories", "address", "phone", "url", "domain", "rating", "is_claimed", "cid", "place_id", "latitude", "longitude", "total_photos", "check_url"}

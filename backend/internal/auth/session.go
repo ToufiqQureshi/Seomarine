@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 // RevokeSession deletes the session carried by r. Missing or invalid cookies

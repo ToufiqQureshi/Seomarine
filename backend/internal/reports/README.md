@@ -18,8 +18,8 @@ add or rename columns in this port.
 
 MCP clients use the Go reports service for report read/write, public sharing,
 and template tools. Every operation first authorizes the requested project;
-repository reads and writes then scope records to that project. Public links
-are enabled only when `AUTH_MODE=hosted`, and share tokens are never included
+repository reads and writes then scope records to that project. Share tokens
+are never included
 in report lists or ordinary report metadata. API clients use the same Go
 service through the authenticated `/api/v1/projects/{projectId}/reports/*`
 routes. Go also serves the public report document at `/s/{token}/raw` with a

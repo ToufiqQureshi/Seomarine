@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
+import "github.com/toufiqqureshi/uplumo/backend/internal/aisearch"
 
 // Scope matches the host and path scoping used by the legacy domain overview
 // feature: exact URL, subfolder, entire domain or all subdomains.

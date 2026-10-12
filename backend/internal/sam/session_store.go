@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 )
 
 // SessionLoader resolves a chat session to the project, user and organization

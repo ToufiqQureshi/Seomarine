@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 )
 
 type fakeSerp struct {

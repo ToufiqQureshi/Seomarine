@@ -1,4 +1,4 @@
-// Seomarine Analytics tracker. No cookies, no storage, no dependencies.
+// Uplumo Analytics tracker. No cookies, no storage, no dependencies.
 (function () {
   var script = document.currentScript;
   var nav = navigator;

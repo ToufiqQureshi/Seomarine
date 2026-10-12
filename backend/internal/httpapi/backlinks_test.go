@@ -11,12 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
 func TestBacklinksEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization(t *testing.T) {
@@ -46,7 +46,7 @@ func TestBacklinksEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganizat
 	exec(ctx, t, pool, `INSERT INTO organization (id,name,slug,created_at) VALUES ($1,'Own',$1,now()),($2,'Other',$2,now())`, ownOrg, otherOrg)
 	exec(ctx, t, pool, `INSERT INTO member (id,organization_id,user_id,created_at) VALUES ($1,$2,$3,now()),($4,$5,$6,now())`, "backlinks-member-"+id, ownOrg, userID, "backlinks-member-stranger-"+id, otherOrg, stranger)
 	exec(ctx, t, pool, `INSERT INTO projects (id,organization_id,name) VALUES ($1,$3,'Own'),($2,$4,'Other')`, ownProject, otherProject, ownOrg, otherOrg)
-	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at) VALUES ($1,$2,$3,now()+interval '1 hour')`, "backlinks-session-"+id, token, userID)
+	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at,updated_at) VALUES ($1,$2,$3,now()+interval '1 hour',now())`, "backlinks-session-"+id, token, userID)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		task := map[string]any{"status_code": 20000, "status_message": "Ok.", "cost": 0.01, "path": strings.Split(strings.Trim(r.URL.Path, "/"), "/"), "result": []any{map[string]any{"backlinks": 10, "rank": 50, "info": map[string]any{"target_spam_score": 3}}}}
 		w.Header().Set("Content-Type", "application/json")
@@ -59,7 +59,7 @@ func TestBacklinksEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganizat
 	if err != nil {
 		t.Fatal(err)
 	}
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-# Seomarine: agent guide
+# Uplumo: agent guide
 
 Every coding agent (Claude, Codex, Cursor, others) follows this file.
 `AGENTS.md` only points here. Product reasoning is in
@@ -33,8 +33,8 @@ db/         migrations/ (goose SQL), schema/ (per-feature table docs, test fixtu
 docs/       user-facing docs, plus docs/maintainers/ for engineering notes.
 ```
 
-Today the React app lives in `src/` and migrations in
-`backend/internal/database/migrations`. The plan for moving them is in
+The React app is in `frontend/`. Migrations are still in
+`backend/internal/database/migrations`; the plan for moving them is in
 `docs/maintainers/REPO-LAYOUT.md`. Never move folders outside that plan.
 
 Every feature folder (Go package or frontend feature) has a `README.md`: what
@@ -70,13 +70,13 @@ calls under `/api/v1/`. No Next.js.
   Secrets live in Railway variables, never in the repo.
 - **External data:** DataForSEO stays behind `backend/internal/platform/dataforseo`.
   Never send a request the provider would reject, because failed tasks are billed.
-- **Brand:** the product is Seomarine. Never add the upstream name, links,
+- **Brand:** the product is Uplumo. Never add the upstream name, links,
   logos or copy. The only mention is the license attribution
   (`LICENSE-OPENSEO-MIT`, never delete it).
 - **Copy:** plain language, Hinglish where the market is India, no raw jargon
   without a one-line explanation.
 
-**Frontend** (`frontend/`, today `src/client` and `src/routes`): React with
+**Frontend** (`frontend/src/client` and `frontend/src/routes`): React with
 Vite, TanStack Query/Router/Form patterns, shadcn on Base UI (compose with the
 `render` prop, not `asChild`). New screens call the Go API under `/api/v1/`
 through `apiRequest` and validate responses with Zod. 
@@ -139,9 +139,12 @@ govulncheck ./...
 test -z "$(deadcode -test ./...)"
 ```
 
-Frontend: `pnpm ci:check` (prettier, knip, tsc, oxlint) and `pnpm test`.
+Frontend, from `frontend/`: `pnpm exec prettier --check .`, `pnpm exec tsc
+--noEmit`, and `pnpm test`. `pnpm ci:check` also runs knip and oxlint; those
+broader checks currently report baseline issues and should be restored to CI
+after that backlog is resolved.
 
-Run them from the Go module root (`backend/` until `REPO-LAYOUT.md` moves
+Run the Go checks from the Go module root (`backend/` until `REPO-LAYOUT.md` moves
 `go.mod`). Do not commit with a failing check, and do not commit secrets.
 
 ## 7. Working with the owner
@@ -159,12 +162,12 @@ Propose with a recommendation; do not decide silently.
 ## 8. Documentation rules
 
 - `docs/` (except `docs/maintainers/`) is user-facing: only what helps users
-  understand, use or self-host Seomarine.
+  understand and use Uplumo.
 - `docs/maintainers/` holds engineering decisions and notes. Never put
   secrets there.
 
 ## 9. Legal
 
-`LICENSE` is proprietary (all rights reserved) for Seomarine's own work.
+`LICENSE` is proprietary (all rights reserved) for Uplumo's own work.
 Upstream-derived code stays under MIT. Never delete `LICENSE-OPENSEO-MIT` or
 the copyright notice it carries.

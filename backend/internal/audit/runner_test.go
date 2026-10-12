@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 )
 
 // auditPageHTML is a healthy page so the crawl produces no issues.

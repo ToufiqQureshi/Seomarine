@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
 	"golang.org/x/net/idna"
 )
 

@@ -1,4 +1,4 @@
-// Command server runs the Seomarine HTTP API.
+// Command server runs the Uplumo HTTP API.
 package main
 
 import (
@@ -17,47 +17,46 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/activation"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ahrefs"
-	"github.com/toufiqqureshi/seomarine/backend/internal/aisearch"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics"
-	"github.com/toufiqqureshi/seomarine/backend/internal/analytics/geo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/apikeys"
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
-	"github.com/toufiqqureshi/seomarine/backend/internal/branding"
-	"github.com/toufiqqureshi/seomarine/backend/internal/config"
-	"github.com/toufiqqureshi/seomarine/backend/internal/crawleraccess"
-	"github.com/toufiqqureshi/seomarine/backend/internal/dashboardoverview"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/email"
-	"github.com/toufiqqureshi/seomarine/backend/internal/emailauth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ga4"
-	"github.com/toufiqqureshi/seomarine/backend/internal/google"
-	"github.com/toufiqqureshi/seomarine/backend/internal/gsc"
-	"github.com/toufiqqureshi/seomarine/backend/internal/httpapi"
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/onboarding"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projectcontext"
-	"github.com/toufiqqureshi/seomarine/backend/internal/projects"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
-	"github.com/toufiqqureshi/seomarine/backend/internal/razorpay"
-	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
-	"github.com/toufiqqureshi/seomarine/backend/internal/sam"
-	"github.com/toufiqqureshi/seomarine/backend/internal/setupstatus"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
-	"github.com/toufiqqureshi/seomarine/backend/internal/team"
-	"github.com/toufiqqureshi/seomarine/backend/internal/workspace"
+	"github.com/toufiqqureshi/uplumo/backend/internal/activation"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ahrefs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/aisearch"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics"
+	"github.com/toufiqqureshi/uplumo/backend/internal/analytics/geo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/apikeys"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/config"
+	"github.com/toufiqqureshi/uplumo/backend/internal/contenteditor"
+	"github.com/toufiqqureshi/uplumo/backend/internal/crawleraccess"
+	"github.com/toufiqqureshi/uplumo/backend/internal/dashboardoverview"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/email"
+	"github.com/toufiqqureshi/uplumo/backend/internal/emailauth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ga4"
+	"github.com/toufiqqureshi/uplumo/backend/internal/google"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
+	"github.com/toufiqqureshi/uplumo/backend/internal/httpapi"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
+	"github.com/toufiqqureshi/uplumo/backend/internal/projects"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/razorpay"
+	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
+	"github.com/toufiqqureshi/uplumo/backend/internal/sam"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/team"
 )
 
 const (
@@ -149,7 +148,7 @@ func run(logger *slog.Logger) error {
 		key := cfg.GoogleTokenEncryptionKey
 		keyID := "v1"
 		if key == "" {
-			derived := sha256.Sum256([]byte("seomarine-google-tokens-v1:" + cfg.BetterAuthSecret))
+			derived := sha256.Sum256([]byte("uplumo-google-tokens-v1:" + cfg.BetterAuthSecret))
 			key = base64.StdEncoding.EncodeToString(derived[:])
 			keyID = "derived-v1"
 		}
@@ -158,7 +157,7 @@ func run(logger *slog.Logger) error {
 			return fmt.Errorf("configure google token encryption: %w", err)
 		}
 		if keyID != "derived-v1" {
-			derived := sha256.Sum256([]byte("seomarine-google-tokens-v1:" + cfg.BetterAuthSecret))
+			derived := sha256.Sum256([]byte("uplumo-google-tokens-v1:" + cfg.BetterAuthSecret))
 			if err := cipher.AddDecryptionKey("derived-v1", base64.StdEncoding.EncodeToString(derived[:])); err != nil {
 				return err
 			}
@@ -197,7 +196,7 @@ func run(logger *slog.Logger) error {
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
 	rankTrackingService.Plans = billingSvc
-	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}, Hosted: cfg.AuthMode == "hosted"}
+	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}}
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
@@ -205,7 +204,7 @@ func run(logger *slog.Logger) error {
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
-		Hosted: cfg.AuthMode == "hosted", Credits: credits,
+		Credits:   credits,
 		PublicURL: cfg.PublicURL,
 		Audit:     auditSvc, Backlinks: backlinksSvc, Domain: domainSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, KeywordResearch: keywordResearch, ProjectContext: projectContextSvc,
 		GA4: ga4Svc, GSC: gscService, Reports: reportsSvc,
@@ -216,13 +215,6 @@ func run(logger *slog.Logger) error {
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
-			HealthStatus: setupstatus.NewHandler(setupstatus.Config{
-				Version: "0.1.10", AuthMode: cfg.AuthMode, TeamDomain: cfg.TeamDomain,
-				PolicyAudience: cfg.PolicyAudience, DataForSEOKey: cfg.DataForSEOAPIKey,
-				GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret,
-				BetterAuthSecret: cfg.BetterAuthSecret, OpenRouterAPIKey: cfg.OpenRouterAPIKey,
-				ContextAPIKey: cfg.ContextAPIKey,
-			}, db),
 			Logger:               logger,
 			DB:                   db,
 			Redis:                httpapi.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
@@ -249,12 +241,13 @@ func run(logger *slog.Logger) error {
 			RankTracking:         rankTrackingService,
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
+			ContentEditor:        &contenteditor.Repository{DB: db},
+			ContentWriter:        buildContentWriter(cfg, logger, credits),
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
 			SAMChat:              samChat,
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
-			WorkspaceMerge:       &workspace.Service{DB: db, AuthMode: cfg.AuthMode},
 			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
 			CrawlerAccess:        crawlerAccessSvc,
 			Activation:           &activation.Service{Store: activation.Repository{DB: db}},
@@ -263,8 +256,6 @@ func run(logger *slog.Logger) error {
 			DataForSEOConfigured: strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
 			OpenRouterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
 			Credits:              credits,
-			AuthMode:             cfg.AuthMode,
-			HostedMode:           cfg.AuthMode == "hosted",
 			MCP:                  mcpDeps,
 			SavedKeywords:        savedKeywordsSvc,
 			ProjectContext:       projectContextSvc,
@@ -302,14 +293,26 @@ func run(logger *slog.Logger) error {
 	return nil
 }
 
+func buildContentWriter(cfg config.Config, logger *slog.Logger, credits *billing.CreditLedgerService) contenteditor.WriterService {
+	if strings.TrimSpace(cfg.OpenRouterAPIKey) == "" {
+		return nil
+	}
+	return &contenteditor.WriterAgent{
+		LLM:    &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
+		Model:  cfg.OpenRouterModel,
+		Meter:  sam.LedgerMeter{Ledger: credits},
+		Logger: logger,
+	}
+}
+
 // rankTickInterval is how often the rank tracking scheduler looks for due checks.
 const rankTickInterval = 5 * time.Minute
 
-// buildEmailAuth wires the email and password routes. They exist only in
-// hosted mode and need the public URL; email verification and password reset
-// need Loops, and without it those two features answer "not enabled".
+// buildEmailAuth wires the email and password routes. They need the public
+// URL; email verification and password reset need Loops, and without it those
+// two features answer "not enabled".
 func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, sessions *auth.Service) *emailauth.Service {
-	if cfg.AuthMode != "hosted" || cfg.BetterAuthURL == nil {
+	if cfg.BetterAuthURL == nil {
 		return nil
 	}
 	svc := emailauth.Service{
@@ -338,7 +341,7 @@ func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rd
 	return emailauth.New(svc)
 }
 
-// buildSAMChat wires the SAM agent. The model key is Seomarine's own, never the
+// buildSAMChat wires the SAM agent. The model key is Uplumo's own, never the
 // customer's: it returns nil without OPENROUTER_API_KEY and the chat routes
 // then answer 503. Every turn is gated on and charged to the organization's
 // credits.

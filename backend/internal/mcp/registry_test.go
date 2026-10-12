@@ -13,7 +13,7 @@ import (
 
 func TestListToolsServesOnlyTheGoRegistry(t *testing.T) {
 	h := newHandler(Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "http://seomarine.test/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":17,"method":"tools/list"}`))
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "http://uplumo.test/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":17,"method":"tools/list"}`))
 	rec := httptest.NewRecorder()
 	h.serveRPC(context.Background(), rec, r, Auth{})
 	if rec.Code != http.StatusOK {

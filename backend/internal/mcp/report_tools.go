@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/reports"
+	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
 )
 
 var reportToolAnnotations = map[string]any{"readOnlyHint": true, "openWorldHint": false, "destructiveHint": false}
@@ -174,7 +174,7 @@ func handleGetReport(ctx context.Context, raw json.RawMessage, env *callEnv) (*c
 	}
 	url := reportURL(env, access.Project.ID, item.ID)
 	var shareURL any
-	if env.deps.Reports.Hosted && item.ShareToken != nil {
+	if item.ShareToken != nil {
 		shareURL = buildDashboardURL(env.auth.BaseURL, "/s/"+*item.ShareToken, nil)
 	}
 	text := fmt.Sprintf("%s (%s)\n%s\n%s\n", item.Title, item.ID, item.Summary, url)

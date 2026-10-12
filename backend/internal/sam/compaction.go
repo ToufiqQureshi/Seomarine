@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 )
 
 const (

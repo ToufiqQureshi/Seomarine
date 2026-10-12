@@ -10,11 +10,9 @@ secrets, authorization codes, and tokens are never stored.
 
 The Go MCP lane includes the account `whoami` tool and the `run_site_audit` tool.
 Audit starts reuse Go's project authorization, plan/capacity checks, SSRF guard,
-background job queue, and optional Lighthouse/rendering controls. Hosted mode
-comes from `AUTH_MODE`, and the Go tool reads the active organization's Autumn usage and
-top-up balances without charging credits. If Autumn is unavailable or has no
-balance, the response reports the balance as unknown. Self-hosted mode does
-not call Autumn.
+background job queue, and optional Lighthouse/rendering controls. `whoami`
+reads the active organization's credit balance without charging credits. If
+the balance cannot be read, the response reports it as unknown.
 
 Keep tool names and JSON schemas compatible with MCP clients. Tools without a
 Go registration fail locally rather than being sent to the TypeScript server.

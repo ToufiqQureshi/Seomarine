@@ -20,10 +20,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
 const testSecret = "test-secret-that-is-at-least-32-chars-long"
@@ -38,7 +38,7 @@ var (
 // never reach the database.
 func newTestHandler(t *testing.T, db *pgxpool.Pool, pgPing, redisPing Pinger) http.Handler {
 	t.Helper()
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatalf("site.New: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestSPAIndexCannotBeFramedByOtherSites(t *testing.T) {
 }
 
 func TestSPAWithoutABuildAnswers503(t *testing.T) {
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestSPAWithoutABuildAnswers503(t *testing.T) {
 }
 
 func TestMCPRouteIsServedByGo(t *testing.T) {
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,8 +205,8 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 		exec(context.WithoutCancel(ctx), t, pool, `DELETE FROM "user" WHERE id = $1`, userID)
 	})
 	exec(ctx, t, pool, `INSERT INTO "user" (id, name, email) VALUES ($1, 'Asha', $1 || '@example.com')`, userID)
-	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at) VALUES
-		($1, $2, $5, now() + interval '1 hour'), ($3, $4, $5, now() - interval '1 second')`,
+	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at, updated_at) VALUES
+		($1, $2, $5, now() + interval '1 hour', now()), ($3, $4, $5, now() - interval '1 second', now())`,
 		"s-live-"+id, liveToken, "s-expired-"+id, expiredToken, userID)
 
 	handler := newTestHandler(t, pool, healthy, healthy)
@@ -307,8 +307,8 @@ func TestAPIAuthorization(t *testing.T) {
 	exec(ctx, t, pool, `INSERT INTO member (id, organization_id, user_id, created_at) VALUES ($1, $2, $3, now()), ($4, $5, $6, now())`,
 		"member-"+id, ownOrg, userID, "member-stranger-"+id, otherOrg, stranger)
 	exec(ctx, t, pool, `INSERT INTO projects (id, organization_id, name) VALUES ($1, $3, 'Own'), ($2, $4, 'Other')`, ownProject, otherProject, ownOrg, otherOrg)
-	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at) VALUES
-		($1, $2, $5, now() + interval '1 hour'), ($3, $4, $5, now() - interval '1 second')`,
+	exec(ctx, t, pool, `INSERT INTO session (id, token, user_id, expires_at, updated_at) VALUES
+		($1, $2, $5, now() + interval '1 hour', now()), ($3, $4, $5, now() - interval '1 second', now())`,
 		"s-live-"+id, liveToken, "s-expired-"+id, expiredToken, userID)
 
 	tests := []struct {

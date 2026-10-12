@@ -1,10 +1,10 @@
-# Seomarine: product brief
+# Uplumo: product brief
 
-Why Seomarine exists, who it beats and what must ship first. Read it before
+Why Uplumo exists, who it beats and what must ship first. Read it before
 choosing, prioritising or scoping a feature. Rules for writing code live in
 `CLAUDE.md`; feature status lives in `ROADMAP.md`.
 
-## What Seomarine is
+## What Uplumo is
 
 An all-in-one SEO + AI-search platform that has to beat Semrush and Ahrefs
 on the things users actually complain about, and not by cloning their
@@ -41,7 +41,7 @@ These are the complaints we exist to fix (2026 research):
 
 Full list and status: `ROADMAP.md`.
 
-1. **Seomarine Analytics**: our own privacy-friendly tracker (GA4/PostHog
+1. **Uplumo Analytics**: our own privacy-friendly tracker (GA4/PostHog
    style) with first-class **AI traffic detection** for ChatGPT,
    Perplexity, Gemini, Claude and Copilot, including recovery of the
    "Direct" traffic that is really AI.

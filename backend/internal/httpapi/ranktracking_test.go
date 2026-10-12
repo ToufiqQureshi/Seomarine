@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
 func TestRankTrackingIsScopedToTheSignedInOrganizationAndUsesProjectMarket(t *testing.T) {
@@ -37,9 +37,9 @@ func TestRankTrackingIsScopedToTheSignedInOrganizationAndUsesProjectMarket(t *te
 	exec(ctx, t, pool, `INSERT INTO organization (id,name,slug,created_at) VALUES ($1,'Own',$1,now()),($2,'Other',$2,now())`, ownOrg, otherOrg)
 	exec(ctx, t, pool, `INSERT INTO member (id,organization_id,user_id,created_at) VALUES ($1,$2,$3,now()),($4,$5,$6,now())`, "rt-member-"+id, ownOrg, userID, "rt-member-stranger-"+id, otherOrg, stranger)
 	exec(ctx, t, pool, `INSERT INTO projects (id,organization_id,name,location_code,language_code) VALUES ($1,$3,'Own',2356,'hi'),($2,$4,'Other',2124,'fr'),($5,$3,'Sibling',2840,'en')`, ownProject, otherProject, ownOrg, otherOrg, siblingProject)
-	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at) VALUES ($1,$2,$3,now()+interval '1 hour')`, "rt-session-"+id, token, userID)
+	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at,updated_at) VALUES ($1,$2,$3,now()+interval '1 hour',now())`, "rt-session-"+id, token, userID)
 
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,9 +103,9 @@ func TestSavedKeywordsAreScopedToTheSignedInOrganization(t *testing.T) {
 	exec(ctx, t, pool, `INSERT INTO organization (id,name,slug,created_at) VALUES ($1,'Own',$1,now()),($2,'Other',$2,now())`, ownOrg, otherOrg)
 	exec(ctx, t, pool, `INSERT INTO member (id,organization_id,user_id,created_at) VALUES ($1,$2,$3,now())`, "sk-member-"+id, ownOrg, userID)
 	exec(ctx, t, pool, `INSERT INTO projects (id,organization_id,name,location_code,language_code) VALUES ($1,$3,'Own',2356,'hi'),($2,$4,'Other',2124,'fr')`, ownProject, otherProject, ownOrg, otherOrg)
-	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at) VALUES ($1,$2,$3,now()+interval '1 hour')`, "sk-session-"+id, token, userID)
+	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at,updated_at) VALUES ($1,$2,$3,now()+interval '1 hour',now())`, "sk-session-"+id, token, userID)
 
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

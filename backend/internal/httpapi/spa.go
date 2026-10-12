@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 // spaHandler serves the built React app from dir. A path that names a file

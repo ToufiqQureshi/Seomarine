@@ -37,7 +37,7 @@ func (s *Service) InspectURLs(ctx context.Context, org, project string, in MCPIn
 	}
 	inspector, ok := client.(urlInspector)
 	if !ok {
-		return "", nil, errors.New("Search Console inspection is not configured")
+		return "", nil, errors.New("search console inspection is not configured")
 	}
 	out := make([]MCPInspectionResult, 0, len(in.URLs))
 	for _, raw := range in.URLs {

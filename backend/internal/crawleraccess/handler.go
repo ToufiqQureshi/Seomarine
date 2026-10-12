@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 // Mount registers crawler credential endpoints. Secrets are never returned.

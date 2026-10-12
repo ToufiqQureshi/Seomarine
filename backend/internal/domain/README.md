@@ -35,7 +35,7 @@ Validation runs before the provider: failed provider tasks are billed.
 - **Filter budget = 8.** The scope consumes slots (keywords: exact URL 4,
   subfolder 4, domain 1; pages: 4/4/2) and the search box costs 2. The slot
   numbers must equal `RESEARCH_SCOPE_FILTER_SLOTS` in
-  `src/shared/researchScope.ts`, which the UI uses to shrink its own budget.
+  `frontend/src/shared/researchScope.ts`, which the UI uses to shrink its own budget.
   Counting is done by `countConditions`, not hard-coded.
 - **Cache keys carry organization and project**, plus every input that changes
   the answer (scope, path, market, page, size, sort, filters, search).

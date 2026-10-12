@@ -23,7 +23,6 @@ var (
 	errPasswordTooShort    = &apiError{http.StatusBadRequest, "PASSWORD_TOO_SHORT", "Password too short"}
 	errPasswordTooLong     = &apiError{http.StatusBadRequest, "PASSWORD_TOO_LONG", "Password too long"}
 	errUserExists          = &apiError{http.StatusUnprocessableEntity, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}
-	errFailedCreateUser    = &apiError{http.StatusUnprocessableEntity, "FAILED_TO_CREATE_USER", "Failed to create user"}
 	errBadCredentials      = &apiError{http.StatusUnauthorized, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
 	errEmailNotVerified    = &apiError{http.StatusForbidden, "EMAIL_NOT_VERIFIED", "Email not verified"}
 	errInvalidToken        = &apiError{http.StatusBadRequest, "INVALID_TOKEN", "Invalid token"}

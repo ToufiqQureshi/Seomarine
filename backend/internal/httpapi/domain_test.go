@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/domain"
-	"github.com/toufiqqureshi/seomarine/backend/internal/kv"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/dataforseo"
-	"github.com/toufiqqureshi/seomarine/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
+	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
 func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization(t *testing.T) {
@@ -50,7 +50,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	if _, err := (domain.ProjectMarketRepository{DB: pool}).Get(ctx, ownOrg, otherProject); !errors.Is(err, domain.ErrProjectNotFound) {
 		t.Fatalf("org A read org B market: %v", err)
 	}
-	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at) VALUES ($1,$2,$3,now()+interval '1 hour')`, "domain-session-"+id, token, userID)
+	exec(ctx, t, pool, `INSERT INTO session (id,token,user_id,expires_at,updated_at) VALUES ($1,$2,$3,now()+interval '1 hour',now())`, "domain-session-"+id, token, userID)
 	providerMarkets := make(chan map[string]any, 1)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var tasks []map[string]any
@@ -71,7 +71,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	if err != nil {
 		t.Fatal(err)
 	}
-	pages, err := site.New(&url.URL{Scheme: "https", Host: "seomarine.com"})
+	pages, err := site.New(&url.URL{Scheme: "https", Host: "uplumo.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

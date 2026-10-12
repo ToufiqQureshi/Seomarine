@@ -4,11 +4,19 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml frontend/.npmrc ./
 RUN pnpm install --frozen-lockfile
-COPY index.html vite.config.ts tsconfig.json components.json ./
-COPY src ./src
-RUN pnpm exec vite build
+COPY frontend/index.html frontend/vite.config.ts frontend/tsconfig.json frontend/components.json ./
+COPY frontend/src ./src
+# The app lazy-loads e2e fixtures from tests/, so the bundler must see them.
+COPY frontend/tests ./tests
+# Vite bakes these into the bundle, so they are build arguments, not runtime
+# variables.
+ARG BYPASS_EMAIL_VERIFICATION=
+ARG TURNSTILE_SITE_KEY=
+ARG POSTHOG_PUBLIC_KEY=
+ARG POSTHOG_HOST=
+RUN BYPASS_EMAIL_VERIFICATION=$BYPASS_EMAIL_VERIFICATION     TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY POSTHOG_PUBLIC_KEY=$POSTHOG_PUBLIC_KEY     POSTHOG_HOST=$POSTHOG_HOST pnpm exec vite build
 
 FROM golang:1.27 AS server
 WORKDIR /src

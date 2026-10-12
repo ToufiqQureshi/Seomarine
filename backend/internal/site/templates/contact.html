@@ -1,0 +1,25 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<div class="wrap narrow doc">
+<p class="eyebrow">Contact</p>
+<h1>Write to us. <em>A person replies.</em></h1>
+<p class="lead">For help with your account, billing, your data or anything else, email us.</p>
+<div class="prose">
+<h2>Email</h2>
+<p><a href="mailto:{{.Support}}">{{.Support}}</a></p>
+<h2>To get a faster answer</h2>
+<ul>
+<li>Write from the email address you signed up with.</li>
+<li>For a billing question, include the date and amount of the payment.</li>
+<li>For a problem on a page, tell us which page and what you expected to see.</li>
+</ul>
+<h2>Common requests</h2>
+<ul>
+<li><strong>Cancel Pro.</strong> You can do this yourself in one click from Billing. See the <a href="/refunds">cancellation and refund policy</a>.</li>
+<li><strong>Delete your account and data.</strong> Email us from your account's address and we erase it. See the <a href="/privacy">privacy policy</a>.</li>
+<li><strong>Our crawler visited your site.</strong> Site audits use the "Uplumo-Audit" user agent and obey robots.txt. Write to us if you want it to stop.</li>
+</ul>
+</div>
+</div>
+{{template "footer" .}}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 )
 
 const interruptedToolResult = "Error: this tool call was interrupted before it returned a result."

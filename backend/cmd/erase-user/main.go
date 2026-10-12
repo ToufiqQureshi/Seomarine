@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/gdpr"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/gdpr"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 func main() {

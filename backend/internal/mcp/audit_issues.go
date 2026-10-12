@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
 )
 
 var auditIssuesInputSchema = json.RawMessage("{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1},\"auditId\":{\"type\":\"string\"},\"severity\":{\"type\":\"string\",\"enum\":[\"critical\",\"warning\",\"info\"]},\"issueType\":{\"type\":\"string\",\"minLength\":1},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}},\"required\":[\"projectId\"]}")
@@ -15,7 +15,7 @@ var auditIssuesInputSchema = json.RawMessage("{\"type\":\"object\",\"properties\
 func auditIssuesTool() *tool {
 	return &tool{
 		Name: "get_audit_issues", Title: "Get site audit issues",
-		Description:  "Read prioritized SEO issues for the latest or a selected site audit. Supports severity and issue-type filters. Each issue includes its title, details, URL, and remediation guidance. Free; reads Seomarine state.",
+		Description:  "Read prioritized SEO issues for the latest or a selected site audit. Supports severity and issue-type filters. Each issue includes its title, details, URL, and remediation guidance. Free; reads Uplumo state.",
 		InputSchema:  auditIssuesInputSchema,
 		OutputSchema: json.RawMessage("{\"type\":\"object\",\"properties\":{\"auditId\":{\"type\":\"string\"},\"issues\":{\"type\":\"array\",\"items\":{\"type\":\"object\"}},\"summary\":{\"type\":\"array\",\"items\":{\"type\":\"object\"}},\"totalCount\":{\"type\":\"integer\"},\"returnedCount\":{\"type\":\"integer\"}},\"additionalProperties\":true}"),
 		Annotations:  readOnlyAnnotations(),
@@ -66,11 +66,9 @@ func handleAuditIssues(ctx context.Context, raw json.RawMessage, env *callEnv) (
 	rows := make([]map[string]any, 0, len(payload.Issues))
 	counts, severities, titles := map[string]int{}, map[string]string{}, map[string]string{}
 	for _, issue := range payload.Issues {
-		severity, title, howToFix := string(issue.Severity), issue.IssueType, any(nil)
+		severity, title, howToFix := "info", issue.IssueType, any(nil)
 		if descriptor, ok := audit.DescribeIssueType(issue.IssueType); ok {
 			severity, title, howToFix = string(descriptor.Severity), descriptor.Title, descriptor.HowToFix
-		} else {
-			severity = "info"
 		}
 		if args.Severity != "" && severity != args.Severity {
 			continue

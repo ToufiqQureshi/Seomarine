@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine GA4 reports
+  title: Uplumo GA4 reports
   version: 1.0.0
 paths:
   /api/v1/projects/{projectId}/ga4/connection/status:

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const maxBody = 32 << 10

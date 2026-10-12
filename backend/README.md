@@ -1,12 +1,12 @@
-# Seomarine backend (Go)
+# Uplumo backend (Go)
 
 ## Run
 
 ```sh
-DATABASE_URL=postgres://user:pass@localhost:5432/seomarine \
+DATABASE_URL=postgres://user:pass@localhost:5432/uplumo \
 REDIS_URL=redis://localhost:6379/0 \
 BETTER_AUTH_SECRET=<at least 32 random characters> \
-STATIC_DIR=../dist \
+STATIC_DIR=../frontend/dist \
 PUBLIC_URL=http://localhost:8080 \
 PORT=8080 go run ./cmd/server
 ```
@@ -17,7 +17,7 @@ PORT=8080 go run ./cmd/server
 | `REDIS_URL`               | yes      | Redis, e.g. `redis://localhost:6379/0` or `rediss://` for TLS.                                                  |
 | `BETTER_AUTH_SECRET`      | yes      | At least 32 characters. Signs the `better-auth.session_token` cookie and email tokens. |
 | `STATIC_DIR`              | no       | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
-| `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://seomarine.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
+| `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://uplumo.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
 | `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
 | `DATAFORSEO_API_KEY`      | no       | Base64 `login:password` for AI search, backlinks and domain. Without it those endpoints answer `503`. |
 | `TRUSTED_PROXY_CIDRS`     | no       | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |

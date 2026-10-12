@@ -3,7 +3,7 @@
 Email and password accounts: sign-up, sign-in, email verification, password
 reset and profile update. It speaks Better Auth's HTTP contract over Better
 Auth's own tables, so the React client (`authClient`) and every existing
-account keep working. Only hosted mode mounts these routes.
+account keep working.
 
 ## Flow
 

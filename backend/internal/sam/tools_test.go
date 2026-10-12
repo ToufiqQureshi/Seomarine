@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 )
 
 func testToolset(t *testing.T, runner ToolRunner) *toolset {
@@ -267,7 +267,7 @@ func TestLocalTools(t *testing.T) {
 	ctx := context.Background()
 
 	out, isErr, err := ts.Run(ctx, "get_product_info", nil)
-	if err != nil || isErr || !strings.Contains(out.(map[string]any)["factSheet"].(string), "Seomarine") {
+	if err != nil || isErr || !strings.Contains(out.(map[string]any)["factSheet"].(string), "Uplumo") {
 		t.Fatalf("fact sheet = %v err = %v", out, err)
 	}
 

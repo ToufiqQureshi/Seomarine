@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 func getBusinessProfileTool() *tool {

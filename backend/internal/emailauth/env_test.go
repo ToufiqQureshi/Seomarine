@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -18,10 +17,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
-const testBase = "https://app.seomarine.test"
+const testBase = "https://app.uplumo.test"
 
 type sentMail struct{ kind, address, url string }
 
@@ -269,15 +268,6 @@ func (r *response) errCode() string {
 // base URL.
 func (r *response) sessionCookie() *http.Cookie {
 	return r.cookie("__Secure-better-auth.session_token")
-}
-
-func newJar(t *testing.T) *cookiejar.Jar {
-	t.Helper()
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return jar
 }
 
 // authenticate resolves a session cookie through the Go API's own reader, which

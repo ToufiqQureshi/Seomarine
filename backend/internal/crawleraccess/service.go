@@ -21,8 +21,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/audit"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -30,7 +30,7 @@ const keyDirectory = "https://shopify.com/.well-known/http-message-signatures-di
 
 var (
 	ErrInvalidCredential = errors.New("invalid Shopify crawler signature")
-	ErrWrongDomain       = errors.New("Shopify crawler signature belongs to another domain")
+	ErrWrongDomain       = errors.New("shopify crawler signature belongs to another domain")
 	ErrNotFound          = errors.New("crawler credential not found")
 	signatureParams      = regexp.MustCompile(`^\w+=(\(.+)$`)
 	keyIDPattern         = regexp.MustCompile(`;keyid="([^"]+)"`)

@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine site audit
+  title: Uplumo site audit
   version: 1.0.0
   description: |
     Crawl a site, run page and cross-page checks, and optionally sample

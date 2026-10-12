@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[3]
-source = (root / "src/shared/serp-location-search.ts").read_text(encoding="utf-8")
+source = (root / "frontend/src/shared/serp-location-search.ts").read_text(encoding="utf-8")
 section = source.split("export const REGION_ABBREVIATIONS:", 1)[1].split("export const LOCATION_TYPE_RANK:", 1)[0]
 abbreviations = {}
 for country, body in re.findall(r"(?m)^\s*(us|ca|au):\s*\{([^{}]+)\}", section):

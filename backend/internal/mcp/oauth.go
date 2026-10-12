@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
 const (
@@ -84,7 +84,7 @@ func (h *handler) protectedResourceMetadata(w http.ResponseWriter, r *http.Reque
 		"resource":              base + Route,
 		"authorization_servers": []string{base},
 		"scopes_supported":      []string{"mcp"},
-		"resource_name":         "Seomarine MCP",
+		"resource_name":         "Uplumo MCP",
 	})
 }
 
@@ -333,7 +333,7 @@ func (h *handler) parseAuthorizationRequest(ctx context.Context, values url.Valu
 		return request, errors.New("response_type=code, client_id, and redirect_uri are required")
 	}
 	if values.Get("resource") != "" && values.Get("resource") != h.publicBaseURL()+Route {
-		return request, errors.New("resource does not match the Seomarine MCP endpoint")
+		return request, errors.New("resource does not match the Uplumo MCP endpoint")
 	}
 	if h.deps.DB == nil {
 		return request, errors.New("OAuth storage is unavailable")
@@ -591,7 +591,7 @@ func (h *handler) oauthChallenge(w http.ResponseWriter, r *http.Request, code st
 		challenge += `, error="` + code + `"`
 	}
 	w.Header().Set("WWW-Authenticate", challenge)
-	h.writeJSON(w, http.StatusUnauthorized, errorResponse(json.RawMessage("null"), codeInvalidRequest, "A valid Seomarine MCP access token is required."))
+	h.writeJSON(w, http.StatusUnauthorized, errorResponse(json.RawMessage("null"), codeInvalidRequest, "A valid Uplumo MCP access token is required."))
 }
 
 func (h *handler) oauthInternalError(w http.ResponseWriter, r *http.Request, operation string, err error) {

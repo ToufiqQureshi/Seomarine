@@ -11,9 +11,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/mcp"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 )
 
 const (
@@ -50,7 +50,7 @@ type LLM interface {
 	Stream(ctx context.Context, req openrouter.Request, h openrouter.Handler) (openrouter.Result, error)
 }
 
-// Meter gates turns on credits and charges provider spend. Seomarine is a SaaS
+// Meter gates turns on credits and charges provider spend. Uplumo is a SaaS
 // product and the model key is the platform's, so production always sets one;
 // nil only exists for tests and local development.
 type Meter interface {

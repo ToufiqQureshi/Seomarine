@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/toufiqqureshi/seomarine/backend/internal/database"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 )
 
 type fakeChecker struct {

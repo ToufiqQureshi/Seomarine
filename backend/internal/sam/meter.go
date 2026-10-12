@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/billing"
+	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
 )
 
 // CreditLedger is the part of the billing ledger the meter uses.

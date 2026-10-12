@@ -18,7 +18,7 @@ var skillFiles embed.FS
 
 // surfaceNote reframes skills written for external MCP clients so SAM skips
 // the steps that do not apply in the app.
-const surfaceNote = `> Surface note: you are SAM, running inside the Seomarine app. You are already
+const surfaceNote = `> Surface note: you are SAM, running inside the Uplumo app. You are already
 > authenticated and scoped to the user's current project — skip any "verify the
 > MCP connection", "choose a project", or skill-install steps. You have no
 > local filesystem: skip local-folder and file steps.

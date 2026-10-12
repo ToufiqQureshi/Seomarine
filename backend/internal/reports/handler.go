@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const maxRequestBody = 4 << 20
@@ -43,7 +43,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 
 // sharedRaw serves the sandboxed public document the share page frames.
 func (d Deps) sharedRaw(w http.ResponseWriter, r *http.Request) {
-	if d.Service == nil || !d.Service.Hosted {
+	if d.Service == nil {
 		http.NotFound(w, r)
 		return
 	}

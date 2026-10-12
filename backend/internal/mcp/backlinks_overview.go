@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
 )
 
 const backlinksOverviewDescription = "Returns a backlinks profile summary, trends, and top referring domains. Charges DataForSEO usage (typically about 50 credits for a domain and 25 for a page). Bare domains default to subdomains; use scope domain to exclude subdomains. Trend data always includes subdomains due to a provider limitation. Subfolder scope has filtered counts but no rank, trends, or referring-domain breakdown."

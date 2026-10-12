@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/market"
-	"github.com/toufiqqureshi/seomarine/backend/internal/ranktracking"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
 )
 
 // SerpResult is one organic result of a keyword's SERP.

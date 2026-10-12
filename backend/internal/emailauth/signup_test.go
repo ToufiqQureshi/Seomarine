@@ -47,7 +47,7 @@ func TestSignUpCreatesAnUnverifiedAccountAndEmailsALink(t *testing.T) {
 		t.Fatalf("mails = %+v", mails)
 	}
 	link, err := url.Parse(mails[0].url)
-	if err != nil || link.Host != "app.seomarine.test" || link.Path != "/api/auth/verify-email" {
+	if err != nil || link.Host != "app.uplumo.test" || link.Path != "/api/auth/verify-email" {
 		t.Fatalf("verification link = %s", mails[0].url)
 	}
 	if got := link.Query().Get("callbackURL"); got != "/onboarding" {

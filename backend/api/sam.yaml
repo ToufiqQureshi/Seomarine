@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Seomarine SAM sessions
+  title: Uplumo SAM sessions
   version: 1.0.0
   description: |
     Project-scoped SAM sessions and chat. Every route is POST with a strict JSON

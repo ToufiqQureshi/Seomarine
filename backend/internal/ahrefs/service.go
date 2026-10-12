@@ -106,7 +106,7 @@ func (s *Service) lookup(ctx context.Context, domain string) (*float64, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("Ahrefs returned %s", response.Status)
+		return nil, fmt.Errorf("ahrefs returned %s", response.Status)
 	}
 	var body struct {
 		DomainRating struct {

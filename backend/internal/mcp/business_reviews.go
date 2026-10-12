@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 var businessReviewFields = []string{"rank_absolute", "time_ago", "timestamp", "rating", "review_text", "original_review_text", "original_language", "profile_name", "local_guide", "reviews_count", "photos_count", "review_highlights", "source", "owner_answer", "owner_time_ago", "owner_timestamp", "review_id"}

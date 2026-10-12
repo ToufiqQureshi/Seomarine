@@ -23,7 +23,7 @@ const (
 	MaxTasksPerPost      = 100 // DataForSEO accepts at most 100 queued tasks per task_post
 )
 
-// Credit pricing carried over from the legacy app. Seomarine's own credit model
+// Credit pricing carried over from the legacy app. Uplumo's own credit model
 // is an owner decision, so these stay in one place until it is made.
 const (
 	costMarkup       = 1.28

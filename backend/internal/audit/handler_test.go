@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
 // testMux mounts the audit routes with middleware that injects a session user

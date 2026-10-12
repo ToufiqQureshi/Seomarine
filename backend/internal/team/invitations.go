@@ -14,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/toufiqqureshi/seomarine/backend/internal/auth"
-	loops "github.com/toufiqqureshi/seomarine/backend/internal/email"
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/ids"
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	loops "github.com/toufiqqureshi/uplumo/backend/internal/email"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
 var (
@@ -160,7 +160,7 @@ func (s *Service) sendEmail(ctx context.Context, email, invitationID, organizati
 	}
 	provider := loops.LoopsClient{APIKey: s.LoopsAPIKey, HTTP: client}
 	if err := provider.SendTransactional(ctx, email, s.InvitationTemplateID, map[string]string{
-		"appName":          "Seomarine",
+		"appName":          "Uplumo",
 		"inviteUrl":        inviteURL,
 		"organizationName": organizationName,
 		"inviterName":      inviterName,

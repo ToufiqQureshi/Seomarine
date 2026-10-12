@@ -1,4 +1,4 @@
-# Seomarine roadmap
+# Uplumo roadmap
 
 Status: ✅ merged · 🔨 in progress · ⏳ pending.
 One PR per item.
@@ -8,7 +8,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 
 | #    | Task                                                                                                                                                    | Status                                                                                  |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 0.1  | Import code into the Seomarine repo, add the proprietary license, keep the MIT attribution                                                              | ✅                                                                                      |
+| 0.1  | Import code into the Uplumo repo, add the proprietary license, keep the MIT attribution                                                              | ✅                                                                                      |
 | 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                                                       | ⏳                                                                                      |
 | 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                                           | ✅                                                                                      |
 | 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                            | ✅                                                                                      |
@@ -45,13 +45,13 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 | #    | Feature                                                                                                                                                       | Status |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | 2.1  | White-label PDF/share reports (logo, name, color, website)                                                                                                    | ✅     |
-| 2.2  | **Seomarine Analytics** (Go): tracking script, ingest API, dashboard (visitors, pages, sources, devices)                                                      | ✅     |
+| 2.2  | **Uplumo Analytics** (Go): tracking script, ingest API, dashboard (visitors, pages, sources, devices)                                                      | ✅     |
 | 2.2b | Analytics: countries breakdown                                                                                                                                | 🔨     |
 | 2.3  | **AI traffic detection**: ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus recovery of AI traffic hiding as "Direct"                              | ✅     |
 | 2.4  | **AI Visibility**: mentions, citations, sentiment and competitor share of voice across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, with drop alerts | 🔨     |
 | 2.4a | AI Visibility base in Go: Brand Lookup (mentions, citations, share of voice) and Prompt Explorer, ported from the legacy app                                  | ✅     |
 | 2.5  | Join AI visibility with analytics: "seen in AI" vs "visitors from AI"                                                                                         | ⏳     |
-| 2.6  | **Content SEO Editor** ("RankMath for every site"): live score, keyword/heading/meta/readability checks, AI rewrite                                           | ⏳     |
+| 2.6  | **Content SEO Editor** ("RankMath for every site"): project-scoped drafts, live SEO/AEO readiness checks and mode-aware AI writing actions; external-site support pending | in progress |
 | 2.7  | Content editor fix delivery: JS snippet, GitHub PR, copy-paste                                                                                                | ⏳     |
 
 ## Phase 3: Improvements to existing features
@@ -74,7 +74,7 @@ Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `C
 
 | #   | Task                                                                                             | Status |
 | --- | ------------------------------------------------------------------------------------------------ | ------ |
-| 5.1 | Railway deploy: Dockerfile, `railway.json`, deploy guide, go live                                | ⏳     |
+| 5.1 | Railway deploy: Dockerfile, `railway.json` and `docs/DEPLOY.md` done; go live pending | 🔨     |
 | 5.2 | Domain, email, payments (Razorpay checkout + webhooks and Go Loops transactional client started) | 🔨     |
 | 5.3 | One-click cancel, live usage, AI visibility in the base plan                                     | ⏳     |
 
@@ -96,9 +96,30 @@ using the TypeScript service until MCP is ported.
 
 ## Decided
 
-- Name: Seomarine. Hosting: Railway. Redis: yes.
+- Name: Uplumo. Domain: uplumo.com. Hosting: Railway. Redis: yes.
+- Launch market: India only, prices in INR. USD pricing comes later.
+- GST: not registered at launch, so prices carry no tax line.
+- Customers never see credits. Each plan has plain limits; the credit ledger
+  stays internal, as a cap on what one workspace can cost us.
+- Plans (owner, 12 October 2026). Not built yet: today the code has Free and
+  one Pro plan at ₹1,499.
+
+  | Limit               | Basic  | Pro    | Agency          |
+  | ------------------- | ------ | ------ | --------------- |
+  | Price per month     | ₹999   | ₹2,499 | ₹5,999          |
+  | Sites               | 1      | 2      | 10, then ₹400 each |
+  | Tracked keywords    | 100    | 500    | 2,000           |
+  | White-label reports | no     | no     | yes             |
+  | Client access       | no     | no     | yes             |
+  | Team members        | 1      | 3      | 10              |
+
+  Sites and white-label are what separate Pro from Agency: a small agency
+  with four client sites must not fit in Pro.
 
 ## Open decisions for the owner
 
-- Domain.
-- Pricing tiers (INR and USD).
+- Whether a Free plan stays beside the three paid plans.
+- Data provider: keep DataForSEO, or drop the features that need it
+  (keywords, rank tracking, backlinks, AI visibility). An AI model cannot
+  replace it, because it has no real search data.
+- Audit page and AI-check limits per plan.

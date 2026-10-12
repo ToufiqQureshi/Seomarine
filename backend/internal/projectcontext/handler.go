@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
 const maxRequestBytes = 1 << 20

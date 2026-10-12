@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
 )
 
 func getBacklinksProfileTool() *tool {

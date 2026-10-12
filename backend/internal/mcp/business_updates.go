@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 )
 
 var businessUpdateFields = []string{"rank_absolute", "author", "post_date", "timestamp", "post_text", "snippet", "url", "links"}

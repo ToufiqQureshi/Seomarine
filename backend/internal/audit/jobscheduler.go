@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/toufiqqureshi/seomarine/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 )
 
 // AuditQueueName is the jobs queue audits run on.
