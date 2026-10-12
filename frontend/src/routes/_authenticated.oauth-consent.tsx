@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, Database, KeyRound, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
+import { z } from "zod";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { Button } from "@/client/components/ui/button";
@@ -28,6 +29,11 @@ const SCOPES = [
     description: "Run tools and write results back to your organization.",
   },
 ];
+
+const consentResponseSchema = z.object({
+  redirectTo: z.string().optional(),
+  error: z.string().optional(),
+});
 
 function OAuthConsentPage() {
   const { data: session } = useSession();
@@ -58,10 +64,7 @@ function OAuthConsentPage() {
           query: window.location.search,
         }),
       });
-      const data: {
-        redirectTo?: string;
-        error?: string;
-      } = await response.json();
+      const data = consentResponseSchema.parse(await response.json());
 
       if (!response.ok) {
         setError(data.error ?? "Unable to complete authorization.");

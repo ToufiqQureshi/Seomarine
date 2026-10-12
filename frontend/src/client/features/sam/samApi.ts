@@ -11,8 +11,6 @@ const samSessionSchema = z.object({
   updatedAt: z.string(),
 });
 
-type SamSession = z.infer<typeof samSessionSchema>;
-
 export async function listSamSessions({
   data,
 }: {

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TAG_COLOR_KEYS } from "@/shared/tag-colors";
 import {
   booleanSearchParamSchema,
   optionalSearchNumberParam,
@@ -8,7 +7,6 @@ import {
 } from "@/types/schemas/domain";
 
 const savedKeywordTagSchema = z.string().trim().min(1).max(64);
-const tagColorSchema = z.enum(TAG_COLOR_KEYS);
 const savedKeywordSortFields = [
   "createdAt",
   "keyword",
@@ -87,11 +85,6 @@ export const saveKeywordsSchema = z
     "Replacement tags are required when tagMode is replace.",
   );
 
-const removeSavedKeywordsSchema = z.object({
-  projectId: z.string().min(1),
-  savedKeywordIds: z.array(z.string().min(1)).min(1).max(2000),
-});
-
 export const getSavedKeywordsSchema = z.object({
   projectId: z.string().min(1),
   search: z.string().trim().max(200).optional(),
@@ -142,40 +135,6 @@ export const exportSavedKeywordsSchema = getSavedKeywordsSchema.omit({
   pageSize: true,
 });
 
-const updateSavedKeywordTagsSchema = z
-  .object({
-    projectId: z.string().min(1),
-    savedKeywordIds: z.array(z.string().min(1)).min(1).max(2000),
-    addTags: z.array(savedKeywordTagSchema).max(20).optional(),
-    removeTagIds: z.array(z.string().min(1)).max(50).optional(),
-  })
-  .refine(
-    (value) =>
-      (value.addTags?.length ?? 0) > 0 || (value.removeTagIds?.length ?? 0) > 0,
-    "Add or remove at least one tag.",
-  );
-
-const updateSavedKeywordTagSchema = z
-  .object({
-    projectId: z.string().min(1),
-    tagId: z.string().min(1),
-    name: savedKeywordTagSchema.optional(),
-    color: tagColorSchema.nullable().optional(),
-  })
-  .refine(
-    (value) => value.name !== undefined || value.color !== undefined,
-    "Provide a name or color to update.",
-  );
-
-const deleteSavedKeywordTagSchema = z.object({
-  projectId: z.string().min(1),
-  tagId: z.string().min(1),
-});
-
-const refreshSavedKeywordMetricsSchema = z.object({
-  projectId: z.string().min(1),
-});
-
 type ResearchKeywordsInput = z.infer<typeof researchKeywordsSchema>;
 export type SaveKeywordsInput = z.infer<typeof saveKeywordsSchema>;
 type ResolvedMarket = { locationCode: number; languageCode: string };
@@ -184,32 +143,10 @@ export type ResolvedResearchKeywordsInput = Omit<
   keyof ResolvedMarket
 > &
   ResolvedMarket;
-type ResolvedSaveKeywordsInput = Omit<SaveKeywordsInput, keyof ResolvedMarket> &
-  ResolvedMarket;
-type RemoveSavedKeywordsInput = z.infer<typeof removeSavedKeywordsSchema>;
 export type GetSavedKeywordsInput = z.infer<typeof getSavedKeywordsSchema>;
 export type ExportSavedKeywordsInput = z.infer<
   typeof exportSavedKeywordsSchema
 >;
-type UpdateSavedKeywordTagsInput = z.infer<typeof updateSavedKeywordTagsSchema>;
-type UpdateSavedKeywordTagInput = z.infer<typeof updateSavedKeywordTagSchema>;
-type DeleteSavedKeywordTagInput = z.infer<typeof deleteSavedKeywordTagSchema>;
-
-type RefreshSavedKeywordMetricsInput = z.infer<
-  typeof refreshSavedKeywordMetricsSchema
->;
-const serpAnalysisSchema = z.object({
-  projectId: z.string().min(1),
-  keyword: z.string().min(1),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: z.string().min(2).max(8).optional(),
-  // Same area as the research it belongs to, for a local SERP.
-  locationName: z.string().trim().min(1).max(200).optional(),
-  // Only the two depths the app offers: the default top-20 snapshot, and the
-  // full 100 the SERP panel buys when a user pages past the loaded results.
-  // Each 10 of depth is another crawled Google page (~2.5 credits).
-  depth: z.union([z.literal(20), z.literal(100)]).default(20),
-});
 
 /* ------------------------------------------------------------------ */
 /*  URL search params schema for /p/$projectId/keywords                */

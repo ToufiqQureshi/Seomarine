@@ -1,8 +1,4 @@
 import { z } from "zod";
-import { isSupportedLanguageCode } from "@/shared/keyword-locations";
-import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
-import { comparePeriodSchema } from "@/types/schemas/rank-tracking-search";
-import { domainField } from "@/types/schemas/domain";
 
 // ---------------------------------------------------------------------------
 // DB-derived types
@@ -29,17 +25,6 @@ export type RankTrackingConfig = {
 // API / UI types
 // ---------------------------------------------------------------------------
 
-type RankCheckTriggerResult =
-  | {
-      ok: true;
-      runId: string;
-    }
-  | {
-      ok: false;
-      reason: "already_running";
-      blockingRunId: string | null;
-    };
-
 export interface RankTrackingDeviceResult {
   position: number | null;
   previousPosition: number | null;
@@ -61,16 +46,6 @@ export interface RankTrackingRow {
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
-
-const devicesEnum = z.enum(["both", "desktop", "mobile"]);
-const scheduleEnum = z.enum(["daily", "weekly", "monthly", "manual"]);
-// Rank tracking runs against the SERP API, which serves any language in any
-// country — but an unknown code is a *charged* DataForSEO failure, so reject
-// it here at cost 0.
-const languageCodeField = z
-  .string()
-  .max(10)
-  .refine(isSupportedLanguageCode, "Unsupported language code");
 
 function isTimeZone(timeZone: string): boolean {
   try {
@@ -105,100 +80,3 @@ export const scheduleTimeSchema = z.object({
     ),
 });
 export type RankCheckScheduleTime = z.infer<typeof scheduleTimeSchema>;
-
-const getConfigsSchema = z.object({
-  projectId: z.string().uuid(),
-});
-
-const createConfigSchema = z.object({
-  projectId: z.string().uuid(),
-  domain: domainField,
-  locationCode: z.number().int().positive().optional(),
-  languageCode: languageCodeField.optional(),
-  locationName: z.string().min(1).max(200).optional(),
-  devices: devicesEnum.optional(),
-  serpDepth: z.number().int().min(10).max(100).multipleOf(10),
-  scheduleInterval: scheduleEnum.optional(),
-  scheduleTime: scheduleTimeSchema.optional(),
-});
-
-const updateConfigSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  domain: domainField.optional(),
-  locationCode: z.number().int().positive().optional(),
-  languageCode: languageCodeField.optional(),
-  locationName: z.string().min(1).max(200).nullable().optional(),
-  devices: devicesEnum.optional(),
-  serpDepth: z.number().int().min(10).max(100).multipleOf(10).optional(),
-  scheduleInterval: scheduleEnum.optional(),
-  scheduleTime: scheduleTimeSchema.optional(),
-  isActive: z.boolean().optional(),
-});
-
-const triggerCheckSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  keywordIds: z.array(z.string().uuid()).max(2000).optional(),
-});
-
-const getLatestResultsSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  comparePeriod: comparePeriodSchema.optional(),
-});
-
-const getLatestRunSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-});
-
-const estimateCostSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-});
-
-const addKeywordsSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  keywords: z
-    .array(z.string().min(1).max(MAX_TRACKED_KEYWORD_LENGTH))
-    .min(1)
-    .max(2000),
-  matchCase: z.boolean().optional(),
-});
-
-const removeKeywordsSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  keywordIds: z.array(z.string().uuid()).min(1).max(2000),
-});
-
-const refreshMetricsSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-});
-
-const deviceEnum = z.enum(["desktop", "mobile"]);
-const sinceDaysField = z.number().int().positive().max(730).default(365);
-
-const getKeywordHistorySchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  trackingKeywordId: z.string().uuid(),
-  sinceDays: sinceDaysField,
-});
-
-const getConfigTrendSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  device: deviceEnum,
-  sinceDays: sinceDaysField,
-});
-
-const getPositionMatrixSchema = z.object({
-  projectId: z.string().uuid(),
-  configId: z.string().uuid(),
-  device: deviceEnum,
-  runLimit: z.number().int().positive().max(26).default(12),
-});

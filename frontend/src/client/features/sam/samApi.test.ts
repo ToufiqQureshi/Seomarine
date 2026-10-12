@@ -36,7 +36,7 @@ describe("listSamMessages", () => {
     expect(messages[1].parts[1]).toMatchObject({ toolCallId: "c1" });
     const [path, init] = fetchMock.mock.calls[0];
     expect(path).toBe("/api/v1/projects/p%2F1/sam/sessions/messages");
-    expect(JSON.parse(String(init?.body))).toEqual({ sessionId: "s1" });
+    expect(init?.body).toBe(JSON.stringify({ sessionId: "s1" }));
   });
 
   it("rejects a response that is not a message list", async () => {
@@ -59,10 +59,9 @@ describe("rewindSamSession", () => {
     });
     const [path, init] = fetchMock.mock.calls[0];
     expect(path).toBe("/api/v1/projects/p1/sam/sessions/rewind");
-    expect(JSON.parse(String(init?.body))).toEqual({
-      sessionId: "s1",
-      messageId: "m9",
-    });
+    expect(init?.body).toBe(
+      JSON.stringify({ sessionId: "s1", messageId: "m9" }),
+    );
   });
 
   it("surfaces a server refusal as an ApiError", async () => {

@@ -613,6 +613,8 @@ function SidebarMenuSkeleton({
   const [width] = React.useState(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
   });
+  const style: React.CSSProperties = {};
+  Object.assign(style, { "--skeleton-width": width });
 
   return (
     <div
@@ -630,11 +632,7 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={style}
       />
     </div>
   );

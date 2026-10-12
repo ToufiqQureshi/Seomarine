@@ -128,16 +128,3 @@ export function useThemePreference() {
 
   return { themePreference, setThemePreference };
 }
-
-const themePreferenceInitScript = `(() => {
-  try {
-    var p = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    var t;
-    if (p === "light") t = ${JSON.stringify(LIGHT_THEME_NAME)};
-    else if (p === "dark") t = ${JSON.stringify(DARK_THEME_NAME)};
-    else t = window.matchMedia("(prefers-color-scheme: light)").matches ? ${JSON.stringify(LIGHT_THEME_NAME)} : ${JSON.stringify(DARK_THEME_NAME)};
-    document.documentElement.setAttribute("data-theme", t);
-  } catch {
-    document.documentElement.setAttribute("data-theme", ${JSON.stringify(DARK_THEME_NAME)});
-  }
-})();`;

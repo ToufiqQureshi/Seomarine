@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
   deleteSavedKeywordTag,
@@ -16,7 +16,7 @@ import {
 
 // The config's restoreMocks drops module-level spies before every test, so
 // the fetch spy is (re)created in beforeEach and every test sees it.
-let fetchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: Mock<typeof fetch>;
 
 beforeEach(() => {
   fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({}));

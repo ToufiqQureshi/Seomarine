@@ -36,24 +36,11 @@ export const KEYWORDS_PER_BATCH = 10;
 /** Approximate seconds per batch */
 export const SECONDS_PER_BATCH = 6;
 
-/** Soft application limit for keywords per rank tracking config */
-const MAX_KEYWORDS_PER_CONFIG = 1000;
-
 /** Maximum length of a single tracked keyword */
 export const MAX_TRACKED_KEYWORD_LENGTH = 200;
 
-/** Maximum configs (domain+location combos) per project */
-const MAX_CONFIGS_PER_PROJECT = 500;
-
 /** Maximum queued rank-check tasks DataForSEO accepts in one task_post. */
 const MAX_TASKS_PER_POST = 100;
-
-const rankCheckCostApprovalError = (
-  costCredits: number,
-  maxCostCredits: number,
-) => {
-  return `The current rank check costs ${costCredits} credits, above the approved maximum of ${maxCostCredits}. Call estimate_rank_tracker_cost again and ask the user to approve the updated amount.`;
-};
 
 // ---------------------------------------------------------------------------
 // Cost estimation
@@ -129,43 +116,6 @@ type ScheduledRankTrackingInterval = Exclude<
   RankTrackingConfig["scheduleInterval"],
   "manual"
 >;
-
-// Values written to rank_tracking_configs.last_skip_reason (free-form text in
-// the schema; this union keeps writers and UI comparisons in sync).
-type RankTrackingSkipReason =
-  | "plan_required"
-  | "no_keywords"
-  | "insufficient_credits";
-
-function estimateScheduledRankCheckCredits(
-  keywords: readonly string[],
-  devices: RankTrackingConfig["devices"],
-  depth: number,
-  scheduleInterval: ScheduledRankTrackingInterval,
-) {
-  const { costUsd, costCredits } = estimateRankCheckCredits(
-    keywords,
-    devices,
-    depth,
-    "queued",
-  );
-  const checksPerMonth =
-    scheduleInterval === "daily" ? 30 : scheduleInterval === "weekly" ? 4 : 1;
-  return {
-    scheduleInterval,
-    costUsd,
-    costCredits,
-    checksPerMonth,
-    monthlyCostUsd: costUsd * checksPerMonth,
-    monthlyCostCredits: costCredits * checksPerMonth,
-  };
-}
-
-function isScheduledRankTrackingInterval(
-  interval: RankTrackingConfig["scheduleInterval"],
-): interval is ScheduledRankTrackingInterval {
-  return interval !== "manual";
-}
 
 /**
  * Monthly checks run on the last day of the month where the user is. That day

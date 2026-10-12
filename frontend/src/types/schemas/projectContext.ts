@@ -13,6 +13,9 @@ export const PROJECT_CONTEXT_SECTION_KEYS = [
 
 const projectContextSectionKeySchema = z.enum(PROJECT_CONTEXT_SECTION_KEYS);
 
+const contextAuthorSchema = z.enum(["user", "sam", "mcp"]);
+export type ContextAuthor = z.infer<typeof contextAuthorSchema>;
+
 export type ProjectContextSectionKey = z.infer<
   typeof projectContextSectionKeySchema
 >;
@@ -34,10 +37,6 @@ export const KEY_PAGE_ROLES = ["hub", "spoke", "money", "other"] as const;
 const keyPageRoleSchema = z.enum(KEY_PAGE_ROLES);
 export type KeyPageRole = z.infer<typeof keyPageRoleSchema>;
 
-const CONTEXT_AUTHORS = ["user", "sam", "mcp"] as const;
-const contextAuthorSchema = z.enum(CONTEXT_AUTHORS);
-export type ContextAuthor = z.infer<typeof contextAuthorSchema>;
-
 // Custom sections are addressed by slug; the stored key is `custom:<slug>`.
 const customSectionSlugSchema = z
   .string()
@@ -50,8 +49,6 @@ const customSectionSlugSchema = z
   .describe(
     "Lowercase letters and digits separated by hyphens, e.g. 'launch-plan'. No underscores or spaces. Use the same slug to edit or delete the section.",
   );
-
-const CUSTOM_SECTION_KEY_PREFIX = "custom:";
 
 const competitorInputSchema = z.object({
   domain: z.string().trim().min(1).max(255),
@@ -110,12 +107,3 @@ const projectContextUpdateSchema = z.union([
 ]);
 
 export type ProjectContextUpdate = z.infer<typeof projectContextUpdateSchema>;
-
-const getProjectContextSchema = z.object({
-  projectId: z.string().min(1),
-});
-
-const updateProjectContextSchema = z.object({
-  projectId: z.string().min(1),
-  updates: z.array(projectContextUpdateSchema).min(1).max(50),
-});

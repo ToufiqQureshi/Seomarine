@@ -64,7 +64,6 @@ const latestResultsSchema = z.object({
 const projectPath = (projectId: string, suffix: string) =>
   `/api/v1/projects/${encodeURIComponent(projectId)}/rank-tracking/${suffix}`;
 
-type RankTrackingConfigSummary = z.infer<typeof configSummarySchema>;
 export type RankKeywordHistoryPoint = {
   device: "desktop" | "mobile";
   checkedAt: string;

@@ -41,7 +41,3 @@ export const saveCrawlerCredentialSchema = z.object({
   ),
   signature: signatureValueSchema,
 });
-
-const deleteCrawlerCredentialSchema = z.object({
-  id: z.string().min(1),
-});

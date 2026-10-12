@@ -107,9 +107,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check formatting
-        run: pnpm exec prettier --check .
-      - name: Type check
-        run: pnpm exec tsc --noEmit
+      - name: Check frontend quality gates
+        run: pnpm ci:check
       - name: Run frontend tests
         run: pnpm test

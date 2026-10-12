@@ -1,8 +1,5 @@
 import { apiRequest } from "@/client/lib/uplumoApi";
-import type {
-  ContextAuthor,
-  ProjectContextUpdate,
-} from "@/types/schemas/projectContext";
+import type { ProjectContextUpdate } from "@/types/schemas/projectContext";
 import { z } from "zod";
 
 const contextAuthorSchema = z.enum(["user", "sam", "mcp"]);
