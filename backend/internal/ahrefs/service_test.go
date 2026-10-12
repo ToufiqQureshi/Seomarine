@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -28,7 +29,7 @@ func TestNormalizeDomain(t *testing.T) {
 		{name: "URL with www and path", input: "https://www.example.com/path?q=1", want: "example.com"},
 		{name: "international host", input: "bücher.example", want: "xn--bcher-kva.example"},
 		{name: "empty", input: "  ", wantErr: true},
-		{name: "credentials", input: "https://user:pass@example.com", wantErr: true},
+		{name: "credentials", input: (&url.URL{Scheme: "https", User: url.UserPassword("user", "pass"), Host: "example.com"}).String(), wantErr: true},
 		{name: "not a host", input: "https://", wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

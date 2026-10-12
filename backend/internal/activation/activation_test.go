@@ -136,7 +136,7 @@ func TestActivationMutationRoutesValidateInputAndReturnServerErrors(t *testing.T
 		{body: `{"step":"keywords"} {}`, want: http.StatusBadRequest},
 	} {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/activation/click", strings.NewReader(tc.body))
+		request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/activation/click", strings.NewReader(tc.body))
 		mux.ServeHTTP(recorder, request)
 		if recorder.Code != tc.want {
 			t.Fatalf("click body %q: status=%d, want %d body=%s", tc.body, recorder.Code, tc.want, recorder.Body.String())
@@ -153,7 +153,7 @@ func TestActivationMutationRoutesValidateInputAndReturnServerErrors(t *testing.T
 		{"/api/v1/projects/p/activation/ga4-dismiss", `{}`},
 	} {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, routeAndBody[0], strings.NewReader(routeAndBody[1]))
+		request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, routeAndBody[0], strings.NewReader(routeAndBody[1]))
 		mux.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusInternalServerError {
 			t.Fatalf("%s status=%d, want 500 body=%s", routeAndBody[0], recorder.Code, recorder.Body.String())
@@ -175,7 +175,7 @@ func TestActivationMutationRoutesReturnUnavailableWithoutService(t *testing.T) {
 		{"/api/v1/projects/p/activation/ga4-dismiss", `{}`},
 	} {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, routeAndBody[0], strings.NewReader(routeAndBody[1]))
+		request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, routeAndBody[0], strings.NewReader(routeAndBody[1]))
 		mux.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusServiceUnavailable {
 			t.Fatalf("%s status=%d, want 503 body=%s", routeAndBody[0], recorder.Code, recorder.Body.String())
