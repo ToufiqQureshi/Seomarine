@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -68,7 +69,7 @@ func TestOAuthRedirectsPreserveClientQueryAndEncodeState(t *testing.T) {
 }
 
 func TestReadOAuthBodyRejectsOversizedRequest(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/oauth", strings.NewReader(strings.Repeat("x", maxOAuthBody+1)))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/oauth", strings.NewReader(strings.Repeat("x", maxOAuthBody+1)))
 	rec := httptest.NewRecorder()
 	if _, ok := readOAuthBody(rec, req); ok {
 		t.Fatal("readOAuthBody accepted an oversized request")
@@ -134,7 +135,7 @@ func TestRequestTargetIncludesRawQueryOnlyWhenPresent(t *testing.T) {
 		{"https://example.test/path", "/path"},
 		{"https://example.test/path?a=1%2F2", "/path?a=1%2F2"},
 	} {
-		r := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tc.target, nil)
 		if got := requestTarget(r); got != tc.want {
 			t.Errorf("requestTarget(%q) = %q, want %q", tc.target, got, tc.want)
 		}

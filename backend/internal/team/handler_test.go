@@ -1,6 +1,7 @@
 package team
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,7 +36,7 @@ func TestInvitationHandlerValidatesCallerAndRequest(t *testing.T) {
 			mux := http.NewServeMux()
 			Mount(mux, tc.service, withUser(tc.user))
 			recorder := httptest.NewRecorder()
-			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/organization/invitations", strings.NewReader(tc.body)))
+			mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/organization/invitations", strings.NewReader(tc.body)))
 			if recorder.Code != tc.want {
 				t.Fatalf("status=%d want=%d body=%s", recorder.Code, tc.want, recorder.Body.String())
 			}
@@ -45,7 +46,7 @@ func TestInvitationHandlerValidatesCallerAndRequest(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, nil, withUser(auth.User{ID: "u1", OrganizationID: "o1", Role: "owner"}))
 	recorder := httptest.NewRecorder()
-	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/organization/invitations", strings.NewReader(`{"email":"a@example.com"}`)))
+	mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/organization/invitations", strings.NewReader(`{"email":"a@example.com"}`)))
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("nil service status=%d body=%s", recorder.Code, recorder.Body.String())
 	}

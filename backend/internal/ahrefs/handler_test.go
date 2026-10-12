@@ -36,7 +36,7 @@ func TestMountValidatesRequestAndReturnsRatings(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
-			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(tc.body))
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, path, strings.NewReader(tc.body))
 			mux.ServeHTTP(recorder, request)
 			if recorder.Code != tc.want {
 				t.Fatalf("status=%d want=%d body=%s", recorder.Code, tc.want, recorder.Body.String())
@@ -48,7 +48,7 @@ func TestMountValidatesRequestAndReturnsRatings(t *testing.T) {
 	}
 
 	large := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"domains":["`+strings.Repeat("a", maxBody)+`"]}`))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, path, strings.NewReader(`{"domains":["`+strings.Repeat("a", maxBody)+`"]}`))
 	mux.ServeHTTP(large, request)
 	if large.Code != http.StatusBadRequest {
 		t.Fatalf("oversized request status=%d body=%s", large.Code, large.Body.String())
