@@ -42,6 +42,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/httpapi"
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/localseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
@@ -202,6 +203,11 @@ func run(logger *slog.Logger) error {
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
 	gscService := buildGSCService(db, googleAPIClient)
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
+	var localSEOData localseo.Data
+	if provider, ok := keywordResearch.Data.(localseo.Data); ok {
+		localSEOData = provider
+	}
+	localSEOService := &localseo.Service{Data: localSEOData}
 	mcpDeps := &mcp.Deps{
 		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
 		Credits:   credits,
@@ -260,6 +266,7 @@ func run(logger *slog.Logger) error {
 			SavedKeywords:        savedKeywordsSvc,
 			ProjectContext:       projectContextSvc,
 			KeywordResearch:      keywordResearch,
+			LocalSEO:             localSEOService,
 			Site:                 pages,
 			StaticDir:            cfg.StaticDir,
 		}),
