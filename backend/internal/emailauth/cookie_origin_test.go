@@ -1,6 +1,7 @@
 package emailauth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -131,7 +132,7 @@ func TestCallbackAllowed(t *testing.T) {
 func TestRequestAllowed(t *testing.T) {
 	o := newOrigins(mustURL(t, "https://app.uplumo.test"))
 	req := func(headers map[string]string) *http.Request {
-		r := httptest.NewRequest(http.MethodPost, "/api/auth/sign-in/email", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/auth/sign-in/email", nil)
 		for k, v := range headers {
 			r.Header.Set(k, v)
 		}

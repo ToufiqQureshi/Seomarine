@@ -54,7 +54,7 @@ func TestHandlerValidatesBodiesAndKeepsOperationsProjectScoped(t *testing.T) {
 
 	request := func(method, path, body string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(recorder, httptest.NewRequest(method, path, strings.NewReader(body)))
+		mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body)))
 		return recorder
 	}
 	if got := request(http.MethodPost, "/api/v1/projects/p1/content/drafts/list", `{"extra":true}`); got.Code != http.StatusBadRequest {
@@ -86,7 +86,7 @@ func TestHandlerRejectsOversizedPayload(t *testing.T) {
 	Mount(mux, &memoryStore{}, nil, identity, identity)
 	body := `{"content":"` + strings.Repeat("x", maxRequestBody+1) + `"}`
 	recorder := httptest.NewRecorder()
-	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/drafts/save", strings.NewReader(body)))
+	mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/drafts/save", strings.NewReader(body)))
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("oversized payload status = %d, want 400", recorder.Code)
 	}
@@ -104,7 +104,7 @@ func TestWriterHandlerRequiresProjectOrganizationAndValidRequest(t *testing.T) {
 	Mount(mux, &memoryStore{}, writer, identity, withOrganization)
 	request := func(body string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(body)))
+		mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(body)))
 		return recorder
 	}
 	if got := request(`{"action":"outline","extra":"no"}`); got.Code != http.StatusBadRequest {
@@ -117,7 +117,7 @@ func TestWriterHandlerRequiresProjectOrganizationAndValidRequest(t *testing.T) {
 	withoutOrganization := http.NewServeMux()
 	Mount(withoutOrganization, &memoryStore{}, writer, identity, identity)
 	failed := httptest.NewRecorder()
-	withoutOrganization.ServeHTTP(failed, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
+	withoutOrganization.ServeHTTP(failed, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
 	if failed.Code != http.StatusNotFound {
 		t.Fatalf("missing authorized organization status = %d, want 404", failed.Code)
 	}
@@ -142,7 +142,7 @@ func TestWriterHandlerMapsUnavailableAndNoCreditErrors(t *testing.T) {
 			mux := http.NewServeMux()
 			Mount(mux, &memoryStore{}, test.writer, identity, withOrganization)
 			recorder := httptest.NewRecorder()
-			mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
+			mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
 			if recorder.Code != test.want {
 				t.Fatalf("status = %d, want %d: %s", recorder.Code, test.want, recorder.Body)
 			}

@@ -197,7 +197,7 @@ func TestSavedKeywordsWithoutServiceAreUnavailable(t *testing.T) {
 	pass := func(next http.Handler) http.Handler { return next }
 	MountSaved(mux, SavedDeps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), WithSession: pass, WithProjectAccess: pass})
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/keywords/saved/list", strings.NewReader(`{}`)))
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/keywords/saved/list", strings.NewReader(`{}`)))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}

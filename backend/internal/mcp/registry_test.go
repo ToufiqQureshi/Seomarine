@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -81,7 +82,8 @@ func TestGA4ToolsAreRegisteredWithStrictReadOnlyContracts(t *testing.T) {
 
 func TestGA4ReportToolRejectsUnknownFields(t *testing.T) {
 	_, err := handleGA4Report(context.Background(), json.RawMessage(`{"projectId":"p","notInSchema":true}`), &callEnv{}, ga4ReportToolSpec{Name: "test", Kind: "landing_pages"})
-	appErr, ok := err.(*appError)
+	appErr := &appError{}
+	ok := errors.As(err, &appErr)
 	if !ok || appErr.code != "VALIDATION_ERROR" {
 		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
 	}
@@ -109,14 +111,15 @@ func TestSearchConsolePerformanceToolIsRegisteredReadOnly(t *testing.T) {
 
 func TestSearchConsoleToolRejectsMalformedArguments(t *testing.T) {
 	_, err := handleSearchConsolePerformance(context.Background(), json.RawMessage(`{`), &callEnv{})
-	appErr, ok := err.(*appError)
+	appErr := &appError{}
+	ok := errors.As(err, &appErr)
 	if !ok || appErr.code != "VALIDATION_ERROR" {
 		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
 	}
 }
 
 func TestDispatcherDoesNotProxyUnknownTools(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		t.Errorf("unknown tool call reached the legacy app at %s", r.URL.Path)
 	}))
 	defer upstream.Close()

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Store defines report and report template persistence operations.
 type Store interface {
 	List(context.Context, string, int, int) ([]Metadata, error)
 	Count(context.Context, string) (int, error)
@@ -29,10 +30,12 @@ type Store interface {
 	DeleteTemplate(context.Context, string, string) (bool, error)
 }
 
+// Repository stores reports and templates in Postgres.
 type Repository struct{ DB *pgxpool.Pool }
 
 const metadataColumns = `id, project_id, title, summary, skill, template_id, created_by, created_by_user_id, size_bytes, share_token, shared_at, created_at, updated_at`
 
+// List returns report metadata for a project page.
 func (r Repository) List(ctx context.Context, projectID string, limit, offset int) ([]Metadata, error) {
 	rows, err := r.DB.Query(ctx, `SELECT `+metadataColumns+` FROM reports WHERE project_id=$1 ORDER BY updated_at DESC, id DESC LIMIT $2 OFFSET $3`, projectID, limit, offset)
 	if err != nil {
@@ -53,6 +56,7 @@ func (r Repository) List(ctx context.Context, projectID string, limit, offset in
 	return result, nil
 }
 
+// Count returns the number of reports in a project.
 func (r Repository) Count(ctx context.Context, projectID string) (int, error) {
 	var count int
 	if err := r.DB.QueryRow(ctx, `SELECT count(*) FROM reports WHERE project_id=$1`, projectID).Scan(&count); err != nil {
@@ -61,6 +65,7 @@ func (r Repository) Count(ctx context.Context, projectID string) (int, error) {
 	return count, nil
 }
 
+// Get returns report metadata by project and ID.
 func (r Repository) Get(ctx context.Context, projectID, id string) (Metadata, error) {
 	var item Metadata
 	err := scanMetadata(r.DB.QueryRow(ctx, `SELECT `+metadataColumns+` FROM reports WHERE project_id=$1 AND id=$2`, projectID, id), &item)
@@ -73,6 +78,7 @@ func (r Repository) Get(ctx context.Context, projectID, id string) (Metadata, er
 	return item, nil
 }
 
+// GetHTML returns report metadata and its HTML document.
 func (r Repository) GetHTML(ctx context.Context, projectID, id string) (Metadata, string, error) {
 	var item Metadata
 	var html string
@@ -86,6 +92,7 @@ func (r Repository) GetHTML(ctx context.Context, projectID, id string) (Metadata
 	return item, html, nil
 }
 
+// FindTitle returns the ID of a report with the given title.
 func (r Repository) FindTitle(ctx context.Context, projectID, title string) (string, error) {
 	var id string
 	err := r.DB.QueryRow(ctx, `SELECT id FROM reports WHERE project_id=$1 AND title=$2 LIMIT 1`, projectID, title).Scan(&id)
@@ -98,6 +105,7 @@ func (r Repository) FindTitle(ctx context.Context, projectID, title string) (str
 	return id, nil
 }
 
+// OrganizationBytes returns the stored report size for an organization.
 func (r Repository) OrganizationBytes(ctx context.Context, organizationID string) (int64, error) {
 	var total int64
 	err := r.DB.QueryRow(ctx, `SELECT COALESCE(sum(r.size_bytes), 0)::bigint FROM reports r JOIN projects p ON p.id=r.project_id WHERE p.organization_id=$1`, organizationID).Scan(&total)
@@ -107,6 +115,7 @@ func (r Repository) OrganizationBytes(ctx context.Context, organizationID string
 	return total, nil
 }
 
+// Insert stores a report and its HTML document.
 func (r Repository) Insert(ctx context.Context, item Metadata, html string) error {
 	_, err := r.DB.Exec(ctx, `INSERT INTO reports (`+metadataColumns+`, html) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, item.ID, item.ProjectID, item.Title, item.Summary, item.Skill, item.TemplateID, item.CreatedBy, item.CreatedByUserID, item.SizeBytes, item.ShareToken, item.SharedAt, item.CreatedAt, item.UpdatedAt, html)
 	if err != nil {
@@ -115,6 +124,7 @@ func (r Repository) Insert(ctx context.Context, item Metadata, html string) erro
 	return nil
 }
 
+// Update replaces a report and its HTML document.
 func (r Repository) Update(ctx context.Context, item Metadata, html string) error {
 	tag, err := r.DB.Exec(ctx, `UPDATE reports SET title=$3, summary=$4, html=$5, skill=$6, template_id=$7, size_bytes=$8, updated_at=$9 WHERE project_id=$1 AND id=$2`, item.ProjectID, item.ID, item.Title, item.Summary, html, item.Skill, item.TemplateID, item.SizeBytes, item.UpdatedAt)
 	if err != nil {
@@ -126,6 +136,7 @@ func (r Repository) Update(ctx context.Context, item Metadata, html string) erro
 	return nil
 }
 
+// Delete removes a report by project and ID.
 func (r Repository) Delete(ctx context.Context, projectID, id string) (bool, error) {
 	tag, err := r.DB.Exec(ctx, `DELETE FROM reports WHERE project_id=$1 AND id=$2`, projectID, id)
 	if err != nil {
@@ -134,6 +145,7 @@ func (r Repository) Delete(ctx context.Context, projectID, id string) (bool, err
 	return tag.RowsAffected() == 1, nil
 }
 
+// SetShare updates a report share token and timestamp.
 func (r Repository) SetShare(ctx context.Context, projectID, id string, token, sharedAt *string) (bool, error) {
 	query := `UPDATE reports SET share_token=$3, shared_at=$4 WHERE project_id=$1 AND id=$2`
 	if token != nil {
@@ -146,6 +158,7 @@ func (r Repository) SetShare(ctx context.Context, projectID, id string, token, s
 	return tag.RowsAffected() == 1, nil
 }
 
+// GetShared returns a report and project details by share token.
 func (r Repository) GetShared(ctx context.Context, token string) (SharedReport, error) {
 	var item SharedReport
 	err := r.DB.QueryRow(ctx, `SELECT r.id,r.project_id,r.title,r.summary,r.skill,r.template_id,r.created_by,r.created_by_user_id,r.size_bytes,r.share_token,r.shared_at,r.created_at,r.updated_at,r.html,p.organization_id,p.domain,(p.archived_at IS NOT NULL) FROM reports r JOIN projects p ON p.id=r.project_id WHERE r.share_token=$1`, token).Scan(
@@ -159,6 +172,7 @@ func (r Repository) GetShared(ctx context.Context, token string) (SharedReport, 
 	return item, nil
 }
 
+// ListTemplates returns report templates for a project.
 func (r Repository) ListTemplates(ctx context.Context, projectID string) ([]Template, error) {
 	rows, err := r.DB.Query(ctx, `SELECT id,project_id,name,description,instructions,created_by,created_by_user_id,created_at,updated_at FROM report_templates WHERE project_id=$1 ORDER BY name ASC,id ASC`, projectID)
 	if err != nil {
@@ -179,6 +193,7 @@ func (r Repository) ListTemplates(ctx context.Context, projectID string) ([]Temp
 	return result, nil
 }
 
+// GetTemplate returns a project report template by ID.
 func (r Repository) GetTemplate(ctx context.Context, projectID, id string) (Template, error) {
 	var item Template
 	err := scanTemplate(r.DB.QueryRow(ctx, `SELECT id,project_id,name,description,instructions,created_by,created_by_user_id,created_at,updated_at FROM report_templates WHERE project_id=$1 AND id=$2`, projectID, id), &item)
@@ -191,6 +206,7 @@ func (r Repository) GetTemplate(ctx context.Context, projectID, id string) (Temp
 	return item, nil
 }
 
+// InsertTemplate stores a report template.
 func (r Repository) InsertTemplate(ctx context.Context, item Template) error {
 	_, err := r.DB.Exec(ctx, `INSERT INTO report_templates (id,project_id,name,description,instructions,created_by,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, item.ID, item.ProjectID, item.Name, item.Description, item.Instructions, item.CreatedBy, item.CreatedByUserID, item.CreatedAt, item.UpdatedAt)
 	if err != nil {
@@ -199,6 +215,7 @@ func (r Repository) InsertTemplate(ctx context.Context, item Template) error {
 	return nil
 }
 
+// UpdateTemplate saves report template fields.
 func (r Repository) UpdateTemplate(ctx context.Context, item Template) (bool, error) {
 	tag, err := r.DB.Exec(ctx, `UPDATE report_templates SET name=$3,description=$4,instructions=$5,updated_at=$6 WHERE project_id=$1 AND id=$2`, item.ProjectID, item.ID, item.Name, item.Description, item.Instructions, item.UpdatedAt)
 	if err != nil {
@@ -207,6 +224,7 @@ func (r Repository) UpdateTemplate(ctx context.Context, item Template) (bool, er
 	return tag.RowsAffected() == 1, nil
 }
 
+// DeleteTemplate removes a report template by project and ID.
 func (r Repository) DeleteTemplate(ctx context.Context, projectID, id string) (bool, error) {
 	tag, err := r.DB.Exec(ctx, `DELETE FROM report_templates WHERE project_id=$1 AND id=$2`, projectID, id)
 	if err != nil {

@@ -36,6 +36,7 @@ func spaHandler(dir string) http.Handler {
 			} else if name == "index.html" {
 				setIndexHeaders(w)
 			}
+			// #nosec G703 -- name is cleaned below the rooted DirFS before the file is served.
 			http.ServeFileFS(w, r, files, name)
 			return
 		}

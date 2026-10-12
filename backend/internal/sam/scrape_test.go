@@ -80,7 +80,10 @@ func TestMapLinksListsHomepageThenSitemapAndRespectsLimit(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		fmt.Fprintf(w, `<urlset><url><loc>%[1]s/</loc></url><url><loc>%[1]s/a</loc></url><url><loc>%[1]s/b</loc></url></urlset>`, "http://"+r.Host)
+		// #nosec G705 -- test-only XML response uses the httptest server's loopback host.
+		if _, err := fmt.Fprintf(w, `<urlset><url><loc>%[1]s/</loc></url><url><loc>%[1]s/a</loc></url><url><loc>%[1]s/b</loc></url></urlset>`, "http://"+r.Host); err != nil {
+			t.Errorf("write sitemap: %v", err)
+		}
 	})
 	urls, blocked := s.mapLinks(context.Background(), server.URL, 2)
 	if blocked || len(urls) != 2 || !strings.HasSuffix(urls[1], "/a") {
@@ -108,9 +111,13 @@ func TestReadPagesSkipsBlockedAndEmptyPages(t *testing.T) {
 	s, server := newSite(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/ok":
-			fmt.Fprint(w, "<title>Ok</title><p>"+strings.Repeat("word ", 2000)+"</p>")
+			if _, err := fmt.Fprint(w, "<title>Ok</title><p>"+strings.Repeat("word ", 2000)+"</p>"); err != nil {
+				t.Errorf("write page: %v", err)
+			}
 		case "/empty":
-			fmt.Fprint(w, "<script>x</script>")
+			if _, err := fmt.Fprint(w, "<script>x</script>"); err != nil {
+				t.Errorf("write empty page: %v", err)
+			}
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,7 +140,9 @@ func TestReadPagesHonorsLimitAndReportsBlockedWhenNothingReadable(t *testing.T) 
 	var hits int
 	s, server := newSite(t, func(w http.ResponseWriter, _ *http.Request) {
 		hits++
-		fmt.Fprint(w, "<p>text</p>")
+		if _, err := fmt.Fprint(w, "<p>text</p>"); err != nil {
+			t.Errorf("write page: %v", err)
+		}
 	})
 	pages, _ := s.readPages(context.Background(), []string{server.URL + "/1", server.URL + "/2", server.URL + "/3"}, 2)
 	if len(pages) != 2 || hits != 2 {
@@ -150,7 +159,9 @@ func TestFetchFollowsOneValidatedRedirect(t *testing.T) {
 		case "/old":
 			http.Redirect(w, r, "/new", http.StatusMovedPermanently)
 		case "/new":
-			fmt.Fprint(w, "moved here")
+			if _, err := fmt.Fprint(w, "moved here"); err != nil {
+				t.Errorf("write response: %v", err)
+			}
 		case "/loop1":
 			http.Redirect(w, r, "/loop2", http.StatusFound)
 		case "/loop2":
@@ -172,7 +183,9 @@ func TestFetchRefusesRedirectsToBlockedHosts(t *testing.T) {
 	var internalHits int
 	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		internalHits++
-		fmt.Fprint(w, "internal secret")
+		if _, err := fmt.Fprint(w, "internal secret"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	t.Cleanup(internal.Close)
 	s, server := newSite(t, func(w http.ResponseWriter, r *http.Request) {

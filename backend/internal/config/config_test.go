@@ -2,6 +2,7 @@ package config
 
 import (
 	"maps"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -97,7 +98,7 @@ func TestLoadPublicURL(t *testing.T) {
 		{value: "https://uplumo.com/app"},
 		{value: "https://uplumo.com/?ref=x"},
 		{value: "https://uplumo.com/#top"},
-		{value: "https://user:pass@uplumo.com"},
+		{value: (&url.URL{Scheme: "https", User: url.UserPassword("user", "pass"), Host: "uplumo.com"}).String()},
 		{value: "https://[::1"},
 	}
 	for _, tt := range tests {

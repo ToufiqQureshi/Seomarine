@@ -329,14 +329,11 @@ func TestConcurrentOrganizationRequestsAreRaceSafe(t *testing.T) {
 
 func TestFilterConditionsCountNestedGroups(t *testing.T) {
 	t.Parallel()
-	filters := prependInclude(buildRowsFilters(rowsFilters{Exclude: "a,b", MinLinkAuthority: floatPtr(1)}), "url_from", "x,y")
+	filters := prependInclude(buildRowsFilters(rowsFilters{Exclude: "a,b", MinLinkAuthority: new(float64(1))}), "url_from", "x,y")
 	if got := countFilters(filters); got != 5 {
 		t.Fatalf("filter count = %d, want 5: %#v", got, filters)
 	}
 }
-
-//go:fix inline
-func floatPtr(v float64) *float64 { return new(v) }
 
 func providerFailure(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/json")

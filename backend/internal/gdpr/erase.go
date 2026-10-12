@@ -167,7 +167,7 @@ func (e Eraser) Plan(ctx context.Context, subject Subject) (Plan, error) {
 // the transaction's view of the data by the caller having just produced it; a
 // workspace that gained a member in between makes the sweep delete only what
 // still references the erased ids, never the new member's account.
-func (e Eraser) Execute(ctx context.Context, plan Plan) error {
+func (e Eraser) Execute(ctx context.Context, plan Plan) (retErr error) {
 	orgIDs := make([]string, len(plan.Organizations))
 	for i, o := range plan.Organizations {
 		orgIDs[i] = o.ID
@@ -176,7 +176,11 @@ func (e Eraser) Execute(ctx context.Context, plan Plan) error {
 	if err != nil {
 		return fmt.Errorf("begin erasure: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func(rollbackCtx context.Context) {
+		if err := tx.Rollback(rollbackCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback erasure: %w", err))
+		}
+	}(ctx)
 
 	// Re-check under lock that nobody joined a workspace since the dry run.
 	var others int

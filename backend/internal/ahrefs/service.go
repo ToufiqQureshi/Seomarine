@@ -4,6 +4,7 @@ package ahrefs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+// Service provides access to Ahrefs data for project SEO features.
 type Service struct {
 	redis  *redis.Client
 	client httpDoer
@@ -85,7 +87,7 @@ func (s *Service) Ratings(ctx context.Context, domains []string) (map[string]*fl
 	return out, nil
 }
 
-func (s *Service) lookup(ctx context.Context, domain string) (*float64, error) {
+func (s *Service) lookup(ctx context.Context, domain string) (rating *float64, retErr error) {
 	key := cachePrefix + domain
 	if s.redis != nil {
 		cached, err := s.redis.Get(ctx, key).Result()
@@ -104,7 +106,11 @@ func (s *Service) lookup(ctx context.Context, domain string) (*float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close Ahrefs response: %w", err))
+		}
+	}()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("ahrefs returned %s", response.Status)
 	}
@@ -116,17 +122,17 @@ func (s *Service) lookup(ctx context.Context, domain string) (*float64, error) {
 	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&body); err != nil {
 		return nil, err
 	}
-	var rating *float64
+	var ratingValue *float64
 	if body.DomainRating.DomainRating > 0 && body.DomainRating.DomainRating <= 100 {
 		value := body.DomainRating.DomainRating
-		rating = &value
+		ratingValue = &value
 	}
 	if s.redis != nil {
-		if bytes, err := json.Marshal(rating); err == nil {
+		if bytes, err := json.Marshal(ratingValue); err == nil {
 			_ = s.redis.Set(ctx, key, bytes, cacheTTL).Err()
 		}
 	}
-	return rating, nil
+	return ratingValue, nil
 }
 
 func normalizeDomain(input string) (string, error) {

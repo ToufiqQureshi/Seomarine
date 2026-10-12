@@ -244,7 +244,7 @@ func TestAuditStatusWaitStopsWhenTheTurnIsCanceled(t *testing.T) {
 	runner := newFakeRunner()
 	runner.results["get_audit_status"] = auditSequence("crawling")
 	ts := testToolset(t, runner)
-	ts.sleep = func(ctx context.Context, _ time.Duration) error { return context.Canceled }
+	ts.sleep = func(_ context.Context, _ time.Duration) error { return context.Canceled }
 	if _, _, err := ts.Run(context.Background(), "get_audit_status", json.RawMessage(`{}`)); err != nil {
 		t.Fatal(err)
 	}

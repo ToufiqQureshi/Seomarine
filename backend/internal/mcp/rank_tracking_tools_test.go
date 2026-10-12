@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -47,7 +48,8 @@ func TestRankTrackingMutationToolsAreRegistered(t *testing.T) {
 func TestGetRankTrackerRejectsInvalidTrackerID(t *testing.T) {
 	env := &callEnv{}
 	_, err := handleGetRankTracker(context.Background(), json.RawMessage(`{"projectId":"project","trackerId":"not-a-uuid"}`), env)
-	appErr, ok := err.(*appError)
+	appErr := &appError{}
+	ok := errors.As(err, &appErr)
 	if !ok || appErr.code != "VALIDATION_ERROR" {
 		t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
 	}
@@ -60,7 +62,8 @@ func TestRankTrackingMutationsRejectInvalidIDsBeforeAuthorization(t *testing.T) 
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := handler(context.Background(), json.RawMessage(`{"projectId":"project","trackerId":"bad","keywords":["term"],"keywordIds":["bad"]}`), &callEnv{})
-			appErr, ok := err.(*appError)
+			appErr := &appError{}
+			ok := errors.As(err, &appErr)
 			if !ok || appErr.code != "VALIDATION_ERROR" {
 				t.Fatalf("error = %#v, want VALIDATION_ERROR", err)
 			}

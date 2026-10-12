@@ -2,6 +2,7 @@ package emailauth
 
 import (
 	"encoding/base64"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestVerifyJWTAcceptsJoseTokens(t *testing.T) {
 	if err != nil || claims["email"] != "a@example.com" {
 		t.Fatalf("claims = %v err = %v", claims, err)
 	}
-	if _, err := verifyJWT(testSecret, joseTokenExpired, fixedNow); err != ErrTokenExpired {
+	if _, err := verifyJWT(testSecret, joseTokenExpired, fixedNow); !errors.Is(err, ErrTokenExpired) {
 		t.Fatalf("expired token error = %v", err)
 	}
 }
@@ -48,7 +49,7 @@ func TestSignedTokensRoundTripAndMatchJoseHeader(t *testing.T) {
 	if err != nil || claims["email"] != "b@example.com" {
 		t.Fatalf("claims = %v err = %v", claims, err)
 	}
-	if _, err := verifyJWT(testSecret, token, fixedNow.Add(time.Hour)); err != ErrTokenExpired {
+	if _, err := verifyJWT(testSecret, token, fixedNow.Add(time.Hour)); !errors.Is(err, ErrTokenExpired) {
 		t.Fatalf("a token is expired at its expiry second: %v", err)
 	}
 }
@@ -78,7 +79,7 @@ func TestVerifyJWTRejectsForgeries(t *testing.T) {
 	}
 	for name, token := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := verifyJWT(testSecret, token, fixedNow); err != ErrTokenInvalid {
+			if _, err := verifyJWT(testSecret, token, fixedNow); !errors.Is(err, ErrTokenInvalid) {
 				t.Fatalf("error = %v, want ErrTokenInvalid", err)
 			}
 		})

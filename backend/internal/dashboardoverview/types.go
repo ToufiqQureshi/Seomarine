@@ -2,10 +2,13 @@ package dashboardoverview
 
 import "time"
 
+// Overview contains the audit and backlink summaries shown on a project dashboard.
 type Overview struct {
 	Audit     *AuditSummary    `json:"audit"`
 	Backlinks *BacklinkSummary `json:"backlinks"`
 }
+
+// AuditSummary contains the latest audit status and leading issues.
 type AuditSummary struct {
 	Status          string     `json:"status"`
 	PagesCrawled    int        `json:"pagesCrawled"`
@@ -13,11 +16,15 @@ type AuditSummary struct {
 	TopIssues       []TopIssue `json:"topIssues"`
 	TotalIssueTypes int        `json:"totalIssueTypes"`
 }
+
+// TopIssue summarizes one audit issue type and severity.
 type TopIssue struct {
 	IssueType string `json:"issueType"`
 	Severity  string `json:"severity"`
 	Count     int    `json:"count"`
 }
+
+// BacklinkSummary contains a project's latest backlink metrics.
 type BacklinkSummary struct {
 	Domain               string `json:"domain"`
 	Rank                 *int64 `json:"rank"`

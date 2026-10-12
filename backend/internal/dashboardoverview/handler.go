@@ -1,3 +1,4 @@
+// Package dashboardoverview serves the project dashboard summary.
 package dashboardoverview
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
+// Deps provides dependencies for dashboard overview handlers.
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
@@ -18,6 +20,7 @@ type Deps struct {
 	WithProjectAccess func(http.Handler) http.Handler
 }
 
+// Mount registers dashboard overview endpoints on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	h := http.Handler(http.HandlerFunc(d.get))
 	h = d.WithProjectAccess(h)

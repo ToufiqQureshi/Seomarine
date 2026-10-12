@@ -21,7 +21,7 @@ type memoryStore struct {
 func newMemoryStore() *memoryStore {
 	return &memoryStore{items: map[string]Metadata{}, html: map[string]string{}, templates: map[string]Template{}, shareCreated: true}
 }
-func (m *memoryStore) List(_ context.Context, project string, limit, offset int) ([]Metadata, error) {
+func (m *memoryStore) List(_ context.Context, project string, _ int, _ int) ([]Metadata, error) {
 	out := []Metadata{}
 	for _, v := range m.items {
 		if v.ProjectID == project {
@@ -74,10 +74,10 @@ func (m *memoryStore) Update(_ context.Context, v Metadata, h string) error {
 	m.html[v.ID] = h
 	return nil
 }
-func (m *memoryStore) Delete(_ context.Context, project, id string) (bool, error) {
-	v, e := m.Get(context.Background(), project, id)
-	if e != nil {
-		return false, nil
+func (m *memoryStore) Delete(ctx context.Context, project, id string) (bool, error) {
+	v, err := m.Get(ctx, project, id)
+	if err != nil {
+		return false, err
 	}
 	delete(m.items, id)
 	delete(m.html, id)

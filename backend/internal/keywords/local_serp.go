@@ -10,6 +10,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
+// LocalSERPInput contains a local search engine results request.
 type LocalSERPInput struct {
 	Keyword      string
 	Coordinate   string
@@ -18,10 +19,13 @@ type LocalSERPInput struct {
 	Device       string
 	Depth        int
 }
+
+// LocalSERPProvider reads local search engine results.
 type LocalSERPProvider interface {
 	LocalSERP(context.Context, string, LocalSERPInput) ([]map[string]any, error)
 }
 
+// LocalSERP reads local search results from DataForSEO.
 func (p DataForSEOProvider) LocalSERP(ctx context.Context, org string, in LocalSERPInput) ([]map[string]any, error) {
 	path := "/v3/serp/google/maps/live/advanced"
 	if in.SearchType == "local_finder" {
@@ -56,6 +60,8 @@ func (p DataForSEOProvider) LocalSERP(ctx context.Context, org string, in LocalS
 	}
 	return response.Items, nil
 }
+
+// FormatLocalSERPCoordinate formats a geographic point and zoom for local search.
 func FormatLocalSERPCoordinate(lat, lon float64, zoom *int) string {
 	format := func(v float64) string { return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.5f", v), "0"), ".") }
 	coordinate := format(lat) + "," + format(lon)

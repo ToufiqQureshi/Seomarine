@@ -15,6 +15,7 @@ import (
 
 const maxRequestBody = MaxContentLength + (16 << 10)
 
+// Store defines persistence operations used by the content editor.
 type Store interface {
 	List(context.Context, string) ([]DraftSummary, error)
 	Get(context.Context, string, string) (Draft, error)
@@ -22,12 +23,14 @@ type Store interface {
 	Delete(context.Context, string, string) error
 }
 
+// Handler serves content editor requests.
 type Handler struct {
 	Store  Store
 	Writer WriterService
 	Logger *slog.Logger
 }
 
+// Mount registers content editor endpoints on mux.
 func Mount(mux *http.ServeMux, store Store, writer WriterService, withSession, withProjectAccess func(http.Handler) http.Handler) {
 	handler := Handler{Store: store, Writer: writer, Logger: slog.Default()}
 	protect := func(next http.Handler) http.Handler { return withSession(withProjectAccess(next)) }

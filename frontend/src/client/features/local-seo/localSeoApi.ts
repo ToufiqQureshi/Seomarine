@@ -23,7 +23,7 @@ const gridResult = z.object({
   estimatedRequests: z.number(),
 });
 export type LocalGridResult = z.infer<typeof gridResult>;
-export type GridInput = {
+type GridInput = {
   projectId: string;
   keyword: string;
   target: { cid?: string; placeId?: string; name?: string };

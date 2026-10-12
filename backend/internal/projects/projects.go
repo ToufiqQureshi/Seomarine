@@ -16,15 +16,22 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
 )
 
+// ErrNotFound indicates that a project does not exist.
 var ErrNotFound = errors.New("project not found")
+
+// ErrConflict indicates that a project operation conflicts with current state.
 var ErrConflict = errors.New("project conflict")
+
+// ErrForbidden indicates that the caller cannot manage this project.
 var ErrForbidden = errors.New("project operation forbidden")
 
+// Error is a structured project service error.
 type Error struct{ Code, Message string }
 
 func (e *Error) Error() string        { return e.Message }
 func fail(code, message string) error { return &Error{Code: code, Message: message} }
 
+// Project is an SEO project within an organization.
 type Project struct {
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -33,12 +40,16 @@ type Project struct {
 	LanguageCode string  `json:"languageCode"`
 	CreatedAt    string  `json:"createdAt"`
 }
+
+// Input contains project fields supplied by a user.
 type Input struct {
 	Name         string  `json:"name"`
 	Domain       *string `json:"domain"`
 	LocationCode *int    `json:"locationCode"`
 	LanguageCode *string `json:"languageCode"`
 }
+
+// Store defines project persistence operations.
 type Store interface {
 	List(context.Context, string, bool) ([]Project, error)
 	Get(context.Context, string, string, bool) (Project, error)
@@ -50,11 +61,14 @@ type Store interface {
 	EnsureDefault(context.Context, string) error
 	Role(context.Context, string, string) (string, error)
 }
+
+// Service applies project validation and authorization rules.
 type Service struct {
 	Store Store
 	Now   func() time.Time
 }
 
+// List returns the organization projects, optionally ensuring a default exists.
 func (s *Service) List(ctx context.Context, org string, archived bool, ensureOne bool) ([]Project, error) {
 	if s == nil || s.Store == nil {
 		return nil, fail("projects_unavailable", "Projects are not available on this server.")
@@ -71,9 +85,13 @@ func (s *Service) List(ctx context.Context, org string, archived bool, ensureOne
 	}
 	return s.Store.List(ctx, org, false)
 }
+
+// Get returns an active project by organization and ID.
 func (s *Service) Get(ctx context.Context, org, id string) (Project, error) {
 	return s.Store.Get(ctx, org, id, false)
 }
+
+// Create validates and creates a project for an organization.
 func (s *Service) Create(ctx context.Context, org, user string, in Input) (Project, error) {
 	if err := s.requireAdmin(ctx, org, user); err != nil {
 		return Project{}, err
@@ -86,6 +104,8 @@ func (s *Service) Create(ctx context.Context, org, user string, in Input) (Proje
 	}
 	return s.Store.Create(ctx, org, in)
 }
+
+// Update validates and saves project details.
 func (s *Service) Update(ctx context.Context, org, id string, in Input) (Project, error) {
 	if err := validateName(in.Name); err != nil {
 		return Project{}, err
@@ -95,6 +115,8 @@ func (s *Service) Update(ctx context.Context, org, id string, in Input) (Project
 	}
 	return s.Store.Update(ctx, org, id, in)
 }
+
+// Archive removes a project from active project lists.
 func (s *Service) Archive(ctx context.Context, org, user, id string) error {
 	if err := s.requireAdmin(ctx, org, user); err != nil {
 		return err
@@ -108,6 +130,8 @@ func (s *Service) Archive(ctx context.Context, org, user, id string) error {
 	}
 	return s.Store.Archive(ctx, org, id, utc(s.now()))
 }
+
+// Restore an archived project for an organization.
 func (s *Service) Restore(ctx context.Context, org, user, id string) error {
 	if err := s.requireAdmin(ctx, org, user); err != nil {
 		return err
@@ -179,8 +203,10 @@ func normalize(in *Input) error {
 }
 func utc(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
 
+// Repository stores projects in Postgres.
 type Repository struct{ DB *pgxpool.Pool }
 
+// List returns the organization projects, optionally including archived projects.
 func (r Repository) List(ctx context.Context, org string, archived bool) ([]Project, error) {
 	condition := "archived_at IS NULL"
 	if archived {
@@ -201,6 +227,8 @@ func (r Repository) List(ctx context.Context, org string, archived bool) ([]Proj
 	}
 	return out, rows.Err()
 }
+
+// Get returns a project by organization and ID.
 func (r Repository) Get(ctx context.Context, org, id string, archived bool) (Project, error) {
 	condition := "archived_at IS NULL"
 	if archived {
@@ -216,6 +244,8 @@ func (r Repository) Get(ctx context.Context, org, id string, archived bool) (Pro
 	}
 	return p, nil
 }
+
+// Create inserts a project for an organization.
 func (r Repository) Create(ctx context.Context, org string, in Input) (Project, error) {
 	id, err := ids.New()
 	if err != nil {
@@ -236,6 +266,8 @@ func (r Repository) Create(ctx context.Context, org string, in Input) (Project, 
 	}
 	return p, nil
 }
+
+// Update saves project details.
 func (r Repository) Update(ctx context.Context, org, id string, in Input) (Project, error) {
 	var p Project
 	err := r.DB.QueryRow(ctx, `UPDATE projects SET name=$3,domain=$4,location_code=COALESCE($5,location_code),language_code=COALESCE($6,language_code) WHERE organization_id=$1 AND id=$2 AND archived_at IS NULL RETURNING id,name,domain,location_code,language_code,created_at`, org, id, in.Name, in.Domain, in.LocationCode, in.LanguageCode).Scan(&p.ID, &p.Name, &p.Domain, &p.LocationCode, &p.LanguageCode, &p.CreatedAt)
@@ -250,6 +282,8 @@ func (r Repository) Update(ctx context.Context, org, id string, in Input) (Proje
 	}
 	return p, nil
 }
+
+// Count returns the number of projects in an organization.
 func (r Repository) Count(ctx context.Context, org string) (int, error) {
 	var n int
 	err := r.DB.QueryRow(ctx, `SELECT count(*) FROM projects WHERE organization_id=$1 AND archived_at IS NULL`, org).Scan(&n)
@@ -258,6 +292,8 @@ func (r Repository) Count(ctx context.Context, org string) (int, error) {
 	}
 	return n, nil
 }
+
+// EnsureDefault creates the default project when an organization has none.
 func (r Repository) EnsureDefault(ctx context.Context, org string) error {
 	id, err := ids.New()
 	if err != nil {
@@ -269,12 +305,18 @@ func (r Repository) EnsureDefault(ctx context.Context, org string) error {
 	}
 	return nil
 }
-func (r Repository) Archive(ctx context.Context, org, id, at string) error {
+
+// Archive marks a project archived and records the update time.
+func (r Repository) Archive(ctx context.Context, org, id, at string) (retErr error) {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback project archive: %w", err))
+		}
+	}()
 	if _, err = tx.Exec(ctx, `SELECT id FROM organization WHERE id=$1 FOR UPDATE`, org); err != nil {
 		return fmt.Errorf("lock organization for project archive: %w", err)
 	}
@@ -294,6 +336,8 @@ func (r Repository) Archive(ctx context.Context, org, id, at string) error {
 	}
 	return tx.Commit(ctx)
 }
+
+// Restore makes an archived project active again.
 func (r Repository) Restore(ctx context.Context, org, id string) error {
 	tag, err := r.DB.Exec(ctx, `UPDATE projects SET archived_at=NULL WHERE organization_id=$1 AND id=$2 AND archived_at IS NOT NULL`, org, id)
 	if err != nil {
@@ -307,6 +351,8 @@ func (r Repository) Restore(ctx context.Context, org, id string) error {
 	}
 	return nil
 }
+
+// Role returns the user role within an organization.
 func (r Repository) Role(ctx context.Context, org, user string) (string, error) {
 	var role string
 	err := r.DB.QueryRow(ctx, `SELECT role FROM member WHERE organization_id=$1 AND user_id=$2`, org, user).Scan(&role)

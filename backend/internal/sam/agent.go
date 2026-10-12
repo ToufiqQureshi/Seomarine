@@ -295,8 +295,8 @@ func (t *turnState) run(ctx context.Context) error {
 		for _, call := range result.ToolCalls {
 			conversation = append(conversation, t.runTool(ctx, toolset, call))
 		}
-		if ctx.Err() != nil {
-			return nil
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 	}
 	t.refuseStepLimit()

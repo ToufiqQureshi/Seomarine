@@ -1,6 +1,8 @@
+// Package localseo serves local search ranking grid requests.
 package localseo
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,11 +17,14 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
+// Data provides the local search data used by ranking grids.
 type Data interface {
 	keywords.LocalSERPProvider
 	keywords.BusinessListingsSearchProvider
 	keywords.BusinessInfoProvider
 }
+
+// Service computes local ranking grids from provider results.
 type Service struct{ Data Data }
 type localPoint struct {
 	Row          int      `json:"row"`
@@ -47,6 +52,7 @@ type gridRequest struct {
 	LanguageCode string  `json:"languageCode"`
 }
 
+// Mount registers the local SEO grid endpoint.
 func Mount(mux *http.ServeMux, service *Service, withSession, withProjectAccess func(http.Handler) http.Handler) {
 	protect := func(h http.Handler) http.Handler { return withSession(withProjectAccess(h)) }
 	mux.Handle("POST /api/v1/projects/{projectId}/local-seo/rank-grid", protect(http.HandlerFunc(service.rankGrid)))
@@ -125,11 +131,11 @@ func (s *Service) rankGrid(w http.ResponseWriter, r *http.Request) {
 		var wg sync.WaitGroup
 		for i := start; i < end; i++ {
 			wg.Add(1)
-			go func(i int) {
+			go func(ctx context.Context, i int) {
 				defer wg.Done()
 				c := &cells[i]
 				coord := fmt.Sprintf("%.7f,%.7f,%dz", c.Latitude, c.Longitude, zoom)
-				items, err := s.Data.LocalSERP(r.Context(), org, keywords.LocalSERPInput{Keyword: in.Keyword, Coordinate: coord, LanguageCode: lang, SearchType: "maps", Device: in.Device, Depth: 20})
+				items, err := s.Data.LocalSERP(ctx, org, keywords.LocalSERPInput{Keyword: in.Keyword, Coordinate: coord, LanguageCode: lang, SearchType: "maps", Device: in.Device, Depth: 20})
 				c.err = err
 				if err != nil {
 					c.Error = true
@@ -146,7 +152,7 @@ func (s *Service) rankGrid(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 				}
-			}(i)
+			}(r.Context(), i)
 		}
 		wg.Wait()
 		for i := start; i < end; i++ {

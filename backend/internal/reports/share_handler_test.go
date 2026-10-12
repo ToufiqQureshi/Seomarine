@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,7 +16,7 @@ func TestSharedRawServesSandboxedHTMLOnlyForActiveProject(t *testing.T) {
 	d := Deps{Service: &Service{Store: store}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
-	req := httptest.NewRequest(http.MethodGet, "/s/"+token+"/raw", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/s/"+token+"/raw", nil)
 	req.Header.Set("Sec-Fetch-Dest", "iframe")
 	response := httptest.NewRecorder()
 	mux.ServeHTTP(response, req)
@@ -44,7 +45,7 @@ func TestSharedRawRedirectsTopLevelAndStripsQueryBeforeLoading(t *testing.T) {
 		{"query", "/s/" + strings.Repeat("a", 32) + "/raw?x=1", "iframe", "/s/" + strings.Repeat("a", 32) + "/raw"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, test.target, nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, test.target, nil)
 			req.Header.Set("Sec-Fetch-Dest", test.fetchDest)
 			response := httptest.NewRecorder()
 			mux.ServeHTTP(response, req)
@@ -72,7 +73,7 @@ func TestSharedRawHidesInvalidRevokedAndArchivedReports(t *testing.T) {
 			mux := http.NewServeMux()
 			mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 			response := httptest.NewRecorder()
-			mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/s/"+test.requestToken+"/raw", nil))
+			mux.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/s/"+test.requestToken+"/raw", nil))
 			if response.Code != http.StatusNotFound {
 				t.Fatalf("status = %d, want 404", response.Code)
 			}

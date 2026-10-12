@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
@@ -23,7 +24,7 @@ import (
 const (
 	oauthRegisterPath   = "/api/auth/oauth2/register"
 	oauthAuthorizePath  = "/api/auth/oauth2/authorize"
-	oauthTokenPath      = "/api/auth/oauth2/token"
+	authExchangePath    = "/api/auth/oauth2/token"
 	oauthConsentPath    = "/api/oauth/consent"
 	oauthResourcePath   = "/.well-known/oauth-protected-resource"
 	oauthAuthServerPath = "/.well-known/oauth-authorization-server"
@@ -57,7 +58,7 @@ type authorizationRequest struct {
 func (h *handler) mountOAuth(mux *http.ServeMux) {
 	mux.Handle("POST "+oauthRegisterPath, oauthCORS(http.HandlerFunc(h.registerOAuthClient)))
 	mux.Handle("GET "+oauthAuthorizePath, oauthCORS(http.HandlerFunc(h.authorizeOAuth)))
-	mux.Handle("POST "+oauthTokenPath, oauthCORS(http.HandlerFunc(h.exchangeOAuthToken)))
+	mux.Handle("POST "+authExchangePath, oauthCORS(http.HandlerFunc(h.exchangeOAuthToken)))
 	mux.Handle("POST "+oauthConsentPath, oauthCORS(http.HandlerFunc(h.respondOAuthConsent)))
 	mux.Handle("GET "+oauthResourcePath, oauthCORS(http.HandlerFunc(h.protectedResourceMetadata)))
 	mux.Handle("GET "+oauthResourcePath+"/mcp", oauthCORS(http.HandlerFunc(h.protectedResourceMetadata)))
@@ -78,7 +79,7 @@ func oauthCORS(next http.Handler) http.Handler {
 	})
 }
 
-func (h *handler) protectedResourceMetadata(w http.ResponseWriter, r *http.Request) {
+func (h *handler) protectedResourceMetadata(w http.ResponseWriter, _ *http.Request) {
 	base := h.publicBaseURL()
 	writeOAuthJSON(w, http.StatusOK, map[string]any{
 		"resource":              base + Route,
@@ -93,7 +94,7 @@ func (h *handler) authorizationServerMetadata(w http.ResponseWriter, _ *http.Req
 	writeOAuthJSON(w, http.StatusOK, map[string]any{
 		"issuer":                                base,
 		"authorization_endpoint":                base + oauthAuthorizePath,
-		"token_endpoint":                        base + oauthTokenPath,
+		"token_endpoint":                        base + authExchangePath,
 		"registration_endpoint":                 base + oauthRegisterPath,
 		"response_types_supported":              []string{"code"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
@@ -423,7 +424,7 @@ func (h *handler) exchangeOAuthToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *handler) exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request, clientInternalID, clientID string) {
+func (h *handler) exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request, clientInternalID, _ string) {
 	code, verifier, redirectURI := r.Form.Get("code"), r.Form.Get("code_verifier"), r.Form.Get("redirect_uri")
 	if code == "" || verifier == "" || !validPKCEVerifier(verifier) || redirectURI == "" {
 		writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "Authorization code, redirect_uri, and valid code_verifier are required.")
@@ -434,7 +435,7 @@ func (h *handler) exchangeAuthorizationCode(w http.ResponseWriter, r *http.Reque
 		h.oauthInternalError(w, r, "begin OAuth code exchange", err)
 		return
 	}
-	defer tx.Rollback(r.Context())
+	defer h.rollbackOAuthTx(r.Context(), tx, "roll back OAuth code exchange")
 	var grant struct {
 		RedirectURI, Scope, UserID, OrganizationID string
 		Challenge, Method                          *string
@@ -456,7 +457,7 @@ func (h *handler) exchangeAuthorizationCode(w http.ResponseWriter, r *http.Reque
 		h.oauthInternalError(w, r, "consume OAuth authorization code", err)
 		return
 	}
-	response, err := issueOAuthTokens(r.Context(), tx, clientInternalID, clientID, grant.UserID, grant.OrganizationID, grant.Scope, time.Now().UTC())
+	response, err := issueOAuthTokens(r.Context(), tx, clientInternalID, grant.UserID, grant.OrganizationID, grant.Scope, time.Now().UTC())
 	if err != nil {
 		h.oauthInternalError(w, r, "issue OAuth tokens", err)
 		return
@@ -468,7 +469,7 @@ func (h *handler) exchangeAuthorizationCode(w http.ResponseWriter, r *http.Reque
 	writeOAuthJSON(w, http.StatusOK, response)
 }
 
-func (h *handler) refreshOAuthToken(w http.ResponseWriter, r *http.Request, clientInternalID, clientID string) {
+func (h *handler) refreshOAuthToken(w http.ResponseWriter, r *http.Request, clientInternalID, _ string) {
 	refresh := r.Form.Get("refresh_token")
 	if refresh == "" {
 		writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "refresh_token is required.")
@@ -479,7 +480,7 @@ func (h *handler) refreshOAuthToken(w http.ResponseWriter, r *http.Request, clie
 		h.oauthInternalError(w, r, "begin OAuth refresh", err)
 		return
 	}
-	defer tx.Rollback(r.Context())
+	defer h.rollbackOAuthTx(r.Context(), tx, "roll back OAuth token refresh")
 	var grant struct{ UserID, OrganizationID, Scope string }
 	err = tx.QueryRow(r.Context(), `SELECT user_id, organization_id, scope FROM go_mcp_oauth_refresh_tokens WHERE token=$1 AND client_id=$2 AND expires_at > now() FOR UPDATE`, hashOAuthValue(refresh), clientInternalID).Scan(&grant.UserID, &grant.OrganizationID, &grant.Scope)
 	if err != nil {
@@ -505,7 +506,7 @@ func (h *handler) refreshOAuthToken(w http.ResponseWriter, r *http.Request, clie
 		h.oauthInternalError(w, r, "rotate OAuth refresh token", err)
 		return
 	}
-	response, err := issueOAuthTokens(r.Context(), tx, clientInternalID, clientID, grant.UserID, grant.OrganizationID, strings.Join(scopes, " "), time.Now().UTC())
+	response, err := issueOAuthTokens(r.Context(), tx, clientInternalID, grant.UserID, grant.OrganizationID, strings.Join(scopes, " "), time.Now().UTC())
 	if err != nil {
 		h.oauthInternalError(w, r, "issue refreshed OAuth tokens", err)
 		return
@@ -517,7 +518,7 @@ func (h *handler) refreshOAuthToken(w http.ResponseWriter, r *http.Request, clie
 	writeOAuthJSON(w, http.StatusOK, response)
 }
 
-func issueOAuthTokens(ctx context.Context, tx pgx.Tx, clientInternalID, clientID, userID, organizationID, scope string, now time.Time) (map[string]any, error) {
+func issueOAuthTokens(ctx context.Context, tx pgx.Tx, clientInternalID, userID, organizationID, scope string, now time.Time) (map[string]any, error) {
 	access, err := randomOAuthValue(32)
 	if err != nil {
 		return nil, err
@@ -584,7 +585,7 @@ func bearerTokenFromRequest(r *http.Request) string {
 	return parts[1]
 }
 
-func (h *handler) oauthChallenge(w http.ResponseWriter, r *http.Request, code string) {
+func (h *handler) oauthChallenge(w http.ResponseWriter, _ *http.Request, code string) {
 	metadata := h.publicBaseURL() + oauthResourcePath + "/mcp"
 	challenge := `Bearer resource_metadata="` + metadata + `"`
 	if code != "" {
@@ -597,6 +598,16 @@ func (h *handler) oauthChallenge(w http.ResponseWriter, r *http.Request, code st
 func (h *handler) oauthInternalError(w http.ResponseWriter, r *http.Request, operation string, err error) {
 	h.deps.Logger.ErrorContext(r.Context(), operation, "err", err)
 	writeOAuthError(w, http.StatusInternalServerError, "server_error", "The authorization service is temporarily unavailable.")
+}
+
+func (h *handler) rollbackOAuthTx(ctx context.Context, tx pgx.Tx, operation string) {
+	if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+		logger := h.deps.Logger
+		if logger == nil {
+			logger = slog.Default()
+		}
+		logger.ErrorContext(ctx, operation, "err", err)
+	}
 }
 
 func (h *handler) recordOAuthAuthorization(ctx context.Context, organizationID string) {
@@ -736,7 +747,7 @@ func validPKCEVerifier(value string) bool {
 		return false
 	}
 	for _, ch := range value {
-		if !(ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+		if (ch < 'A' || ch > 'Z') && (ch < 'a' || ch > 'z') && (ch < '0' || ch > '9') && ch != '-' && ch != '.' && ch != '_' && ch != '~' {
 			return false
 		}
 	}

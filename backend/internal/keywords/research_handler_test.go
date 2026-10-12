@@ -176,7 +176,7 @@ func TestResearchRoutesWithoutAServiceAreUnavailable(t *testing.T) {
 			})
 		}})
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/keywords/research", strings.NewReader(`{"keywords":["a"]}`)))
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/keywords/research", strings.NewReader(`{"keywords":["a"]}`)))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}

@@ -62,6 +62,7 @@ func clearSessionCookies(w http.ResponseWriter) {
 		Name: secureSessionCookie, Value: "", Path: "/", Expires: expires,
 		MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
 	})
+	// #nosec G124 -- this legacy non-Secure cookie is cleared for compatibility; the primary cookie is Secure.
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: "", Path: "/", Expires: expires,
 		MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode,

@@ -12,6 +12,7 @@ import (
 
 const businessListingsSearchPath = "/v3/business_data/business_listings/search/live"
 
+// BusinessListingsSearchInput contains a business listings search request.
 type BusinessListingsSearchInput struct {
 	Categories []string
 	Title      string
@@ -22,10 +23,13 @@ type BusinessListingsSearchInput struct {
 	Limit      int
 	Offset     int
 }
+
+// BusinessListingsSearchProvider searches for local business listings.
 type BusinessListingsSearchProvider interface {
 	BusinessListingsSearch(context.Context, string, BusinessListingsSearchInput) ([]map[string]any, error)
 }
 
+// BusinessListingsSearch searches DataForSEO local business listings.
 func (p DataForSEOProvider) BusinessListingsSearch(ctx context.Context, org string, in BusinessListingsSearchInput) ([]map[string]any, error) {
 	body := map[string]any{"location_coordinate": in.Coordinate, "limit": in.Limit}
 	if len(in.Categories) > 0 {
@@ -74,6 +78,8 @@ func (p DataForSEOProvider) BusinessListingsSearch(ctx context.Context, org stri
 	}
 	return response.Items, nil
 }
+
+// FormatBusinessListingsCoordinate formats a geographic point and radius for DataForSEO.
 func FormatBusinessListingsCoordinate(lat, lon, radiusKm float64) string {
 	f := func(v float64) string { return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.7f", v), "0"), ".") }
 	radius := max(1, int(radiusKm+0.5))

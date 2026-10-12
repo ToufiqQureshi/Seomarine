@@ -12,10 +12,13 @@ import (
 
 const businessCategoriesPath = "/v3/business_data/business_listings/categories"
 
+// BusinessCategory describes a DataForSEO business category.
 type BusinessCategory struct {
 	Category      string   `json:"category"`
 	BusinessCount *float64 `json:"businessCount"`
 }
+
+// BusinessCategoriesProvider searches for business categories.
 type BusinessCategoriesProvider interface {
 	BusinessCategories(context.Context) ([]BusinessCategory, error)
 }

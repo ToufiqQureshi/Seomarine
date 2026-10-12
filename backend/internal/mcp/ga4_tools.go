@@ -57,9 +57,9 @@ func ga4Tools() []*tool {
 	}
 	tools := make([]*tool, 0, len(base)+3)
 	for _, spec := range base {
-		copy := spec
+		toolSpec := spec
 		tools = append(tools, &tool{Name: spec.Name, Title: spec.Title, Description: spec.Description, InputSchema: spec.Schema, OutputSchema: json.RawMessage(ga4ReportOutput), Annotations: readOnlyAnnotations(), Handler: func(ctx context.Context, raw json.RawMessage, env *callEnv) (*callResult, error) {
-			return handleGA4Report(ctx, raw, env, copy)
+			return handleGA4Report(ctx, raw, env, toolSpec)
 		}})
 	}
 	tools = append(tools, organicOverviewTool(ga4OverviewInputSchema()), searchOpportunityTool(ga4OpportunityInputSchema()), measurementHealthTool(ga4HealthInputSchema()))

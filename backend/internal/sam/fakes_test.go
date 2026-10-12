@@ -30,7 +30,7 @@ type scriptedLLM struct {
 	repeat bool
 }
 
-func (l *scriptedLLM) Stream(ctx context.Context, req openrouter.Request, h openrouter.Handler) (openrouter.Result, error) {
+func (l *scriptedLLM) Stream(_ context.Context, req openrouter.Request, h openrouter.Handler) (openrouter.Result, error) {
 	l.mu.Lock()
 	l.requests = append(l.requests, req)
 	var step scriptStep
@@ -292,7 +292,7 @@ func newHarness(t *testing.T, steps ...scriptStep) *harness {
 }
 
 // run stores the user message like the HTTP handler does, then runs the turn.
-func (h *harness) run(t *testing.T, ctx context.Context, text string, sink Sink) {
+func (h *harness) run(ctx context.Context, t *testing.T, text string, sink Sink) {
 	t.Helper()
 	user := Message{ID: "user-msg-" + text, Role: "user", Parts: []Part{{Type: "text", Text: text}}}
 	if err := h.store.Append(ctx, h.sc.SessionID, user); err != nil {

@@ -272,6 +272,7 @@ func (s *Site) ServeAsset(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", cacheControl)
 	w.Header().Set("ETag", `"`+version+`"`)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// #nosec G703 -- file must match a key in the precomputed embedded-assets allowlist.
 	http.ServeFileFS(w, r, s.static, file)
 }
 

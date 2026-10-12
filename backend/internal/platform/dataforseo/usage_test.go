@@ -24,15 +24,15 @@ func TestUsageRecorderStoresCostPerOrganization(t *testing.T) {
 		t.Fatalf("connect: %v", err)
 	}
 	t.Cleanup(pool.Close)
+	if err := database.Migrate(ctx, pool); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
 	schema, err := os.ReadFile("../../database/testdata/legacy_schema.sql")
 	if err != nil {
 		t.Fatalf("read legacy schema: %v", err)
 	}
 	if _, err := pool.Exec(ctx, string(schema)); err != nil {
 		t.Fatalf("create legacy schema: %v", err)
-	}
-	if err := database.Migrate(ctx, pool); err != nil {
-		t.Fatalf("migrate: %v", err)
 	}
 	org, other := "org-usage-"+rand.Text(), "org-usage-"+rand.Text()
 	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'A', $1, now()), ($2, 'B', $2, now())`, org, other); err != nil {

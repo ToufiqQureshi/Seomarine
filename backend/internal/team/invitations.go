@@ -20,12 +20,18 @@ import (
 )
 
 var (
-	ErrForbidden           = errors.New("team invitation forbidden")
-	ErrInvalidEmail        = errors.New("invalid email address")
-	ErrConflict            = errors.New("invitee is already a member")
-	ErrRateLimited         = errors.New("invitation email limit reached")
+	// ErrForbidden indicates the caller cannot manage team invitations.
+	ErrForbidden = errors.New("team invitation forbidden")
+	// ErrInvalidEmail indicates that an invitation email address is invalid.
+	ErrInvalidEmail = errors.New("invalid email address")
+	// ErrConflict indicates that the invitee already belongs to the organization.
+	ErrConflict = errors.New("invitee is already a member")
+	// ErrRateLimited indicates that the invitation email limit was reached.
+	ErrRateLimited = errors.New("invitation email limit reached")
+	// ErrUpstreamUnavailable indicates that the invitation email provider failed.
 	ErrUpstreamUnavailable = errors.New("invitation email provider unavailable")
-	ErrTooManyPending      = errors.New("organization invitation limit reached")
+	// ErrTooManyPending indicates that the organization has reached its invitation limit.
+	ErrTooManyPending = errors.New("organization invitation limit reached")
 )
 
 const invitationTTL = 7 * 24 * time.Hour
@@ -65,13 +71,16 @@ func (s *Service) Invite(ctx context.Context, user auth.User, email string) (str
 	return id, nil
 }
 
-func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time) (string, string, error) {
+func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time) (invitationID, organizationName string, retErr error) {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return "", "", fmt.Errorf("begin team invitation: %w", err)
 	}
-	defer tx.Rollback(ctx)
-	var organizationName string
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback team invitation: %w", err))
+		}
+	}()
 	if err := tx.QueryRow(ctx, `SELECT name FROM organization WHERE id=$1 FOR UPDATE`, user.OrganizationID).Scan(&organizationName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", ErrForbidden
@@ -95,7 +104,6 @@ func (s *Service) saveInvitation(ctx context.Context, user auth.User, email stri
 	if isMember {
 		return "", "", ErrConflict
 	}
-	var invitationID string
 	err = tx.QueryRow(ctx, `SELECT id FROM invitation WHERE organization_id=$1 AND lower(email)=lower($2) AND status='pending' AND expires_at>now() ORDER BY created_at DESC LIMIT 1`, user.OrganizationID, email).Scan(&invitationID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", "", fmt.Errorf("find pending invitation: %w", err)

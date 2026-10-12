@@ -11,10 +11,13 @@ import (
 
 const businessQuestionsPath = "/v3/business_data/google/questions_and_answers/live"
 
+// BusinessQuestionsInput contains a business questions search request.
 type BusinessQuestionsInput struct {
 	Keyword, Coordinate, LanguageCode string
 	Depth                             int
 }
+
+// BusinessQuestionsProvider searches for questions related to a business.
 type BusinessQuestionsProvider interface {
 	BusinessQuestions(context.Context, string, BusinessQuestionsInput) ([]map[string]any, error)
 }

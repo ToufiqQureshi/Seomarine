@@ -208,12 +208,20 @@ func (c *Client) Stream(ctx context.Context, req Request, h Handler) (Result, er
 	if err != nil {
 		return Result{}, fmt.Errorf("call openrouter: %w", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
-		return Result{}, &StatusError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(snippet))}
+		snippet, readErr := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+		closeErr := resp.Body.Close()
+		statusErr := &StatusError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(snippet))}
+		if readErr != nil || closeErr != nil {
+			return Result{}, errors.Join(statusErr, readErr, closeErr)
+		}
+		return Result{}, statusErr
 	}
-	return readStream(resp.Body, h)
+	result, streamErr := readStream(resp.Body, h)
+	if closeErr := resp.Body.Close(); closeErr != nil {
+		streamErr = errors.Join(streamErr, fmt.Errorf("close OpenRouter response: %w", closeErr))
+	}
+	return result, streamErr
 }
 
 // readStream folds the SSE body into a Result.

@@ -24,8 +24,8 @@ const draftSummarySchema = draftSchema.pick({
 export type ContentDraft = z.infer<typeof draftSchema>;
 export type ContentDraftSummary = z.infer<typeof draftSummarySchema>;
 
-export type WriterAction = "outline" | "draft" | "improve" | "rewrite" | "faq";
-export type WriterRequest = Pick<
+type WriterAction = "outline" | "draft" | "improve" | "rewrite" | "faq";
+type WriterRequest = Pick<
   ContentDraftInput,
   "title" | "targetKeyword" | "content"
 > & {

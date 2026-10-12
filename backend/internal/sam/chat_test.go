@@ -79,7 +79,7 @@ func newChatServer(t *testing.T, h *harness, authed bool) *chatServer {
 	return &chatServer{Server: server, h: h, chat: chat}
 }
 
-func (s *chatServer) post(t *testing.T, ctx context.Context, path, body string) *http.Response {
+func (s *chatServer) post(ctx context.Context, t *testing.T, path, body string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL+"/api/v1/projects/project-1/sam/sessions/"+path, strings.NewReader(body))
 	if err != nil {
@@ -90,8 +90,23 @@ func (s *chatServer) post(t *testing.T, ctx context.Context, path, body string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { resp.Body.Close() })
+	t.Cleanup(func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	})
 	return resp
+}
+
+func (s *chatServer) postStatus(ctx context.Context, t *testing.T, path, body string) int {
+	t.Helper()
+	resp := s.post(ctx, t, path, body)
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
+	return resp.StatusCode
 }
 
 func chatBody(sessionID, id, text string) string {
@@ -116,7 +131,12 @@ func readEvents(t *testing.T, r io.Reader) []string {
 func TestChatStreamsServerSentEventsInTheAISDKFormat(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"Hello ", "world"}})
 	server := newChatServer(t, h, true)
-	resp := server.post(t, context.Background(), "chat", chatBody("session-1", "m1", "  hi there  "))
+	resp := server.post(context.Background(), t, "chat", chatBody("session-1", "m1", "  hi there  "))
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
@@ -164,7 +184,12 @@ func TestChatRejectsBadRequests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp := server.post(t, context.Background(), "chat", tt.body)
+			resp := server.post(context.Background(), t, "chat", tt.body)
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Errorf("close SAM response: %v", err)
+				}
+			}()
 			if resp.StatusCode != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400", resp.StatusCode)
 			}
@@ -178,7 +203,12 @@ func TestChatRejectsBadRequests(t *testing.T) {
 func TestChatHidesOtherUsersAndProjectsSessions(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"x"}})
 	server := newChatServer(t, h, true)
-	resp := server.post(t, context.Background(), "chat", chatBody("someone-elses-session", "m", "hi"))
+	resp := server.post(context.Background(), t, "chat", chatBody("someone-elses-session", "m", "hi"))
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", resp.StatusCode)
 	}
@@ -190,7 +220,7 @@ func TestChatHidesOtherUsersAndProjectsSessions(t *testing.T) {
 		if path == "messages" {
 			body = `{"sessionId":"someone-elses-session"}`
 		}
-		if got := server.post(t, context.Background(), path, body).StatusCode; got != http.StatusNotFound {
+		if got := server.postStatus(context.Background(), t, path, body); got != http.StatusNotFound {
 			t.Errorf("%s status = %d, want 404", path, got)
 		}
 	}
@@ -200,11 +230,16 @@ func TestChatRequiresASession(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"x"}})
 	server := newChatServer(t, h, false)
 	for _, path := range []string{"chat", "messages", "rewind"} {
-		if got := server.post(t, context.Background(), path, chatBody("session-1", "m", "hi")).StatusCode; got != http.StatusBadRequest && got != http.StatusUnauthorized {
+		if got := server.postStatus(context.Background(), t, path, chatBody("session-1", "m", "hi")); got != http.StatusBadRequest && got != http.StatusUnauthorized {
 			t.Errorf("%s status = %d", path, got)
 		}
 	}
-	resp := server.post(t, context.Background(), "chat", chatBody("session-1", "m", "hi"))
+	resp := server.post(context.Background(), t, "chat", chatBody("session-1", "m", "hi"))
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
@@ -220,7 +255,7 @@ func TestChatIsUnavailableWithoutAnAgent(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: logger, WithSession: withSession, WithProjectAccess: func(n http.Handler) http.Handler { return n }})
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/sam/sessions/chat", strings.NewReader(chatBody("session-1", "m", "hi")))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/project-1/sam/sessions/chat", strings.NewReader(chatBody("session-1", "m", "hi")))
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d", rec.Code)
@@ -235,10 +270,19 @@ func TestOnlyOneTurnRunsPerSession(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	first := make(chan *http.Response, 1)
-	go func() { first <- server.post(t, ctx, "chat", chatBody("session-1", "m1", "first")) }()
+	go func() {
+		//nolint:bodyclose // The receiving goroutine drains and closes this streamed response.
+		resp := server.post(ctx, t, "chat", chatBody("session-1", "m1", "first"))
+		first <- resp
+	}()
 	<-blocker.started
 
-	second := server.post(t, context.Background(), "chat", chatBody("session-1", "m2", "second"))
+	second := server.post(context.Background(), t, "chat", chatBody("session-1", "m2", "second"))
+	defer func() {
+		if err := second.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	if second.StatusCode != http.StatusConflict {
 		t.Fatalf("status = %d, want 409 while a turn is running", second.StatusCode)
 	}
@@ -251,11 +295,14 @@ func TestOnlyOneTurnRunsPerSession(t *testing.T) {
 	close(blocker.release)
 	resp := <-first
 	_, _ = io.Copy(io.Discard, resp.Body)
+	if err := resp.Body.Close(); err != nil {
+		t.Errorf("close SAM response: %v", err)
+	}
 	cancel()
 
 	// The session is free again once the turn ends.
 	h.agent.LLM = &scriptedLLM{steps: []scriptStep{{text: []string{"ok"}}}}
-	if got := server.post(t, context.Background(), "chat", chatBody("session-1", "m3", "third")).StatusCode; got != http.StatusOK {
+	if got := server.postStatus(context.Background(), t, "chat", chatBody("session-1", "m3", "third")); got != http.StatusOK {
 		t.Fatalf("status after the turn ended = %d", got)
 	}
 }
@@ -263,9 +310,14 @@ func TestOnlyOneTurnRunsPerSession(t *testing.T) {
 func TestDuplicateMessageIDIsRefused(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}}, scriptStep{text: []string{"ok"}})
 	server := newChatServer(t, h, true)
-	first := server.post(t, context.Background(), "chat", chatBody("session-1", "same", "hi"))
+	first := server.post(context.Background(), t, "chat", chatBody("session-1", "same", "hi"))
+	defer func() {
+		if err := first.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	_, _ = io.Copy(io.Discard, first.Body)
-	if got := server.post(t, context.Background(), "chat", chatBody("session-1", "same", "hi")).StatusCode; got != http.StatusConflict {
+	if got := server.postStatus(context.Background(), t, "chat", chatBody("session-1", "same", "hi")); got != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", got)
 	}
 	if h.llm.callCount() != 1 {
@@ -283,8 +335,11 @@ func TestClientDisconnectKeepsThePartialReply(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		resp := server.post(t, ctx, "chat", chatBody("session-1", "m1", "hello"))
+		resp := server.post(ctx, t, "chat", chatBody("session-1", "m1", "hello"))
 		_, _ = io.Copy(io.Discard, resp.Body)
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
 	}()
 	<-blocker.started
 	cancel()
@@ -307,10 +362,18 @@ func TestClientDisconnectKeepsThePartialReply(t *testing.T) {
 func TestMessagesReturnsTheTranscript(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"hi"}})
 	server := newChatServer(t, h, true)
-	resp := server.post(t, context.Background(), "chat", chatBody("session-1", "m1", "hello"))
+	resp := server.post(context.Background(), t, "chat", chatBody("session-1", "m1", "hello"))
 	_, _ = io.Copy(io.Discard, resp.Body)
+	if err := resp.Body.Close(); err != nil {
+		t.Errorf("close SAM response: %v", err)
+	}
 
-	list := server.post(t, context.Background(), "messages", `{"sessionId":"session-1"}`)
+	list := server.post(context.Background(), t, "messages", `{"sessionId":"session-1"}`)
+	defer func() {
+		if err := list.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	var messages []struct {
 		ID    string `json:"id"`
 		Role  string `json:"role"`
@@ -327,7 +390,14 @@ func TestMessagesReturnsTheTranscript(t *testing.T) {
 	}
 
 	empty := newChatServer(t, newHarness(t), true)
-	body, _ := io.ReadAll(empty.post(t, context.Background(), "messages", `{"sessionId":"session-1"}`).Body)
+	emptyResp := empty.post(context.Background(), t, "messages", `{"sessionId":"session-1"}`)
+	body, readErr := io.ReadAll(emptyResp.Body)
+	if err := emptyResp.Body.Close(); err != nil {
+		t.Errorf("close SAM response: %v", err)
+	}
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
 	if strings.TrimSpace(string(body)) != "[]" {
 		t.Fatalf("an empty transcript must be [], got %s", body)
 	}
@@ -337,10 +407,18 @@ func TestRewindDeletesFromTheMessageOn(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"one"}}, scriptStep{text: []string{"two"}})
 	server := newChatServer(t, h, true)
 	for _, id := range []string{"m1", "m2"} {
-		resp := server.post(t, context.Background(), "chat", chatBody("session-1", id, "question "+id))
+		resp := server.post(context.Background(), t, "chat", chatBody("session-1", id, "question "+id))
 		_, _ = io.Copy(io.Discard, resp.Body)
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
 	}
-	resp := server.post(t, context.Background(), "rewind", `{"sessionId":"session-1","messageId":"m2"}`)
+	resp := server.post(context.Background(), t, "rewind", `{"sessionId":"session-1","messageId":"m2"}`)
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -348,7 +426,7 @@ func TestRewindDeletesFromTheMessageOn(t *testing.T) {
 	if len(msgs) != 2 || msgs[1].Role != "assistant" {
 		t.Fatalf("after rewind to m2: %+v", msgs)
 	}
-	if got := server.post(t, context.Background(), "rewind", `{"sessionId":"session-1","messageId":"nope"}`).StatusCode; got != http.StatusNotFound {
+	if got := server.postStatus(context.Background(), t, "rewind", `{"sessionId":"session-1","messageId":"nope"}`); got != http.StatusNotFound {
 		t.Fatalf("unknown message status = %d", got)
 	}
 }
@@ -362,12 +440,20 @@ func TestRewindStopsARunningTurnFirst(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		resp := server.post(t, context.Background(), "chat", chatBody("session-1", "m1", "hello"))
+		resp := server.post(context.Background(), t, "chat", chatBody("session-1", "m1", "hello"))
 		_, _ = io.Copy(io.Discard, resp.Body)
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
 	}()
 	<-blocker.started
 
-	resp := server.post(t, context.Background(), "rewind", `{"sessionId":"session-1","messageId":"m1"}`)
+	resp := server.post(context.Background(), t, "rewind", `{"sessionId":"session-1","messageId":"m1"}`)
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SAM response: %v", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -394,11 +480,19 @@ func TestSSESinkFramesEventsAndTerminates(t *testing.T) {
 		}
 	}))
 	t.Cleanup(server.Close)
-	resp, err := http.Get(server.URL)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close SSE response: %v", err)
+		}
+	}()
 	body, _ := io.ReadAll(resp.Body)
 	want := "data: {\"messageId\":\"a\",\"type\":\"start\"}\n\ndata: [DONE]\n\n"
 	if !bytes.Equal(body, []byte(want)) {

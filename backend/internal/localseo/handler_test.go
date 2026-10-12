@@ -44,7 +44,7 @@ func TestRankGridBoundsWorkAndSummarizesMatches(t *testing.T) {
 	provider := &fakeData{}
 	s := &Service{Data: provider}
 	body := `{"keyword":"dentist","target":{"cid":"target"},"center":{"latitude":19.07,"longitude":72.87},"gridSize":3,"spacingKm":1,"device":"mobile"}`
-	r := httptest.NewRequest("POST", "/", strings.NewReader(body))
+	r := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(body))
 	r = r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1"))
 	w := httptest.NewRecorder()
 	s.rankGrid(w, r)
@@ -79,7 +79,7 @@ func TestRankGridRejectsInvalidInputBeforeProviderCall(t *testing.T) {
 		`{"keyword":"dentist","target":{"cid":"target"},"center":{"latitude":0,"longitude":0},"gridSize":4}`,
 		`{"keyword":"dentist","target":{},"center":{"latitude":0,"longitude":0}}`,
 	} {
-		r := httptest.NewRequest("POST", "/", strings.NewReader(body))
+		r := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(body))
 		r = r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1"))
 		w := httptest.NewRecorder()
 		s.rankGrid(w, r)
@@ -95,7 +95,7 @@ func TestRankGridRejectsInvalidInputBeforeProviderCall(t *testing.T) {
 func TestRankGridAllProviderFailuresReturnGatewayError(t *testing.T) {
 	provider := &fakeData{fail: true}
 	s := &Service{Data: provider}
-	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"keyword":"dentist","target":{"name":"Harbor Dental"},"center":{"latitude":0,"longitude":0},"gridSize":3}`))
+	r := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(`{"keyword":"dentist","target":{"name":"Harbor Dental"},"center":{"latitude":0,"longitude":0},"gridSize":3}`))
 	r = r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1"))
 	w := httptest.NewRecorder()
 	s.rankGrid(w, r)
@@ -110,7 +110,7 @@ func TestRankGridAllProviderFailuresReturnGatewayError(t *testing.T) {
 func TestRankGridStopsAfterProviderBillingFailure(t *testing.T) {
 	provider := &fakeData{billing: true}
 	s := &Service{Data: provider}
-	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"keyword":"dentist","target":{"name":"Harbor Dental"},"center":{"latitude":0,"longitude":0},"gridSize":5}`))
+	r := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(`{"keyword":"dentist","target":{"name":"Harbor Dental"},"center":{"latitude":0,"longitude":0},"gridSize":5}`))
 	r = r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1"))
 	w := httptest.NewRecorder()
 	s.rankGrid(w, r)

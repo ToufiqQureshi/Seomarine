@@ -79,12 +79,12 @@ func TestDismissRouteScopesCaller(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/activation/dismiss", strings.NewReader(`{"step":"audit","dismissed":true}`)))
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/activation/dismiss", strings.NewReader(`{"step":"audit","dismissed":true}`)))
 	if rec.Code != http.StatusOK || store.user != "user-1" || store.step != "audit" || !store.dismissed {
 		t.Fatalf("status=%d store=%+v", rec.Code, store)
 	}
 	bad := httptest.NewRecorder()
-	mux.ServeHTTP(bad, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/activation/dismiss", strings.NewReader(`{"step":"bad","dismissed":true}`)))
+	mux.ServeHTTP(bad, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/activation/dismiss", strings.NewReader(`{"step":"bad","dismissed":true}`)))
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("invalid step status=%d", bad.Code)
 	}
@@ -106,7 +106,7 @@ func TestDashboardActivationRouteReturnsProjectScopedState(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
 	response := httptest.NewRecorder()
-	mux.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/activation/get", strings.NewReader(`{}`)))
+	mux.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/activation/get", strings.NewReader(`{}`)))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"hasAudit":false`) || !strings.Contains(response.Body.String(), `"domain":"example.com"`) || !strings.Contains(response.Body.String(), `"dismissedSteps":["audit"]`) {
 		t.Fatalf("response = %d %s", response.Code, response.Body.String())
 	}

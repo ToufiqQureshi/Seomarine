@@ -1,6 +1,7 @@
 package google
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +30,7 @@ func TestAccountHandlersRejectInvalidInputBeforeDatabase(t *testing.T) {
 		{"remove", `{"provider":"ga4","accountId":"` + strings.Repeat("😀", 129) + `","confirmed":true}`},
 		{"remove", `{"provider":"ga4","accountId":"` + strings.Repeat("x", 4096) + `","confirmed":true}`},
 	} {
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/google/accounts/"+tc.path, strings.NewReader(tc.body))
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/google/accounts/"+tc.path, strings.NewReader(tc.body))
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest {

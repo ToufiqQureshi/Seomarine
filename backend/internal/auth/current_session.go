@@ -161,6 +161,7 @@ func refreshSessionCookie(w http.ResponseWriter, r *http.Request, expiresAt time
 	if err != nil {
 		return
 	}
+	// #nosec G124 -- Secure is false only when refreshing a legacy cookie that arrived without the __Secure- name.
 	http.SetCookie(w, &http.Cookie{
 		Name: name, Value: cookie.Value, Path: "/", Expires: expiresAt,
 		MaxAge: int(sessionLifetime.Seconds()), HttpOnly: true,

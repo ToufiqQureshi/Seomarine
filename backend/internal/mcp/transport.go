@@ -119,7 +119,7 @@ func decodeRequests(body []byte) (requests []rpcRequest, isBatch bool, ok bool) 
 func (h *handler) executeNotification(_ context.Context, _ rpcRequest, _ Auth) {}
 
 // execute runs one JSON-RPC request locally with panic recovery.
-func (h *handler) execute(ctx context.Context, r *http.Request, req rpcRequest, auth Auth) (resp rpcResponse) {
+func (h *handler) execute(ctx context.Context, _ *http.Request, req rpcRequest, auth Auth) (resp rpcResponse) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			h.deps.Logger.ErrorContext(ctx, "panic in mcp handler",

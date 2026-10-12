@@ -4,6 +4,7 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -85,6 +86,8 @@ type sharePage struct {
 }
 
 func writeSharePage(w http.ResponseWriter, p sharePage, status int) {
+	// These are fixed application constants, not user-supplied stylesheet or script content.
+	// #nosec G203 -- CSS and JavaScript values are immutable package constants.
 	p.Styles, p.Script = template.CSS(shareStyles), template.JS(shareScript)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// The head carries the title and summary, so a revoked link must not
@@ -136,6 +139,7 @@ func (d Deps) sharedPage(w http.ResponseWriter, r *http.Request) {
 			page.Branded = true
 			siteName, byline = b.BrandName, "Prepared by "+b.BrandName
 			page.BrandName = b.BrandName
+			// #nosec G203 -- safeAccent accepts only a six-digit hex color.
 			page.Accent = template.CSS(safeAccent(b))
 			page.VisitURL = visitURL(b)
 		}
@@ -162,8 +166,10 @@ func visitURL(b branding.Branding) template.URL {
 	if b.WebsiteURL == nil {
 		return ""
 	}
-	if !strings.HasPrefix(*b.WebsiteURL, "https://") && !strings.HasPrefix(*b.WebsiteURL, "http://") {
+	u, err := url.Parse(*b.WebsiteURL)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil {
 		return ""
 	}
-	return template.URL(*b.WebsiteURL)
+	// #nosec G203 -- the URL has a validated HTTP(S) scheme and non-empty host.
+	return template.URL(u.String())
 }

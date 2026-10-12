@@ -12,17 +12,21 @@ import (
 
 const businessUpdatesPostPath = "/v3/business_data/google/my_business_updates/task_post"
 
+// BusinessUpdatesTaskInput contains a business updates task request.
 type BusinessUpdatesTaskInput struct {
 	Keyword, Coordinate string
 	LocationCode        int
 	LanguageCode        string
 	Depth               int
 }
+
+// BusinessUpdatesTaskProvider starts and reads business update tasks.
 type BusinessUpdatesTaskProvider interface {
 	StartBusinessUpdatesTask(context.Context, string, BusinessUpdatesTaskInput) (string, error)
 	PollBusinessUpdatesTask(context.Context, string) (bool, map[string]any, error)
 }
 
+// StartBusinessUpdatesTask starts a DataForSEO business updates task.
 func (p DataForSEOProvider) StartBusinessUpdatesTask(ctx context.Context, org string, in BusinessUpdatesTaskInput) (string, error) {
 	body := map[string]any{"keyword": in.Keyword, "language_code": in.LanguageCode, "depth": in.Depth, "priority": 2}
 	if in.Coordinate != "" {
@@ -62,6 +66,8 @@ func (p DataForSEOProvider) StartBusinessUpdatesTask(ctx context.Context, org st
 	}
 	return t.ID, nil
 }
+
+// PollBusinessUpdatesTask checks a DataForSEO business updates task.
 func (p DataForSEOProvider) PollBusinessUpdatesTask(ctx context.Context, id string) (bool, map[string]any, error) {
 	raw, err := p.Client.DoUnmetered(ctx, http.MethodGet, "/v3/business_data/google/my_business_updates/task_get/"+url.PathEscape(id), nil, true)
 	if err != nil {

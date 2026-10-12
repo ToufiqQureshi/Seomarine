@@ -1,3 +1,4 @@
+// Package activation serves the signup activation endpoints.
 package activation
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
+// Deps provides the dependencies used by the activation handlers.
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
@@ -18,6 +20,7 @@ type Deps struct {
 	WithProjectAccess func(http.Handler) http.Handler
 }
 
+// Mount registers activation endpoints on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	mux.Handle("POST /api/v1/projects/{projectId}/activation/click", protect(http.HandlerFunc(d.click)))

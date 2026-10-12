@@ -13,33 +13,42 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 )
 
+// Service validates and manages reports and report templates.
 type Service struct {
 	Store         Store
 	Now           func() time.Time
 	NewShareToken func() (string, error)
 }
 
+// SaveInput contains report fields to create or update.
 type SaveInput struct {
 	ProjectID, OrganizationID, ReportID, Title, Summary, HTML, CreatedBy, CreatedByUserID string
 	Skill, TemplateID                                                                     *string
 }
+
+// SaveResult contains a saved report and its limits.
 type SaveResult struct {
 	ReportID  string `json:"reportId"`
 	Title     string `json:"title"`
 	Created   bool   `json:"created"`
 	HTMLBytes int    `json:"htmlBytes"`
 }
+
+// ListResult contains a page of report metadata.
 type ListResult struct {
 	Reports    []Metadata `json:"reports"`
 	TotalCount int        `json:"totalCount"`
 	RowCount   int        `json:"rowCount"`
 	Remaining  int        `json:"remaining"`
 }
+
+// ListTemplateResult contains the report templates for a project.
 type ListTemplateResult struct {
 	Templates []Template `json:"templates"`
 	Remaining int        `json:"remaining"`
 }
 
+// Save validates and persists a report.
 func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 	if s == nil || s.Store == nil {
 		return SaveResult{}, fail("reports_unavailable", "Reports are not available on this server.")
@@ -134,6 +143,7 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 	return SaveResult{ReportID: id, Title: in.Title, Created: true, HTMLBytes: size}, nil
 }
 
+// List returns a page of report metadata for a project.
 func (s *Service) List(ctx context.Context, projectID string, limit, offset int) (ListResult, error) {
 	if limit == 0 {
 		limit = DefaultListLimit
@@ -151,6 +161,8 @@ func (s *Service) List(ctx context.Context, projectID string, limit, offset int)
 	}
 	return ListResult{Reports: rows, TotalCount: total, RowCount: len(rows), Remaining: max(0, MaxReportsPerProject-total)}, nil
 }
+
+// Get returns report metadata by project and ID.
 func (s *Service) Get(ctx context.Context, projectID, id string) (Metadata, error) {
 	item, err := s.Store.Get(ctx, projectID, id)
 	if errors.Is(err, ErrNotFound) {
@@ -161,6 +173,8 @@ func (s *Service) Get(ctx context.Context, projectID, id string) (Metadata, erro
 	}
 	return item, nil
 }
+
+// GetWithHTML returns report metadata and the HTML document.
 func (s *Service) GetWithHTML(ctx context.Context, projectID, id string) (Metadata, string, error) {
 	item, html, err := s.Store.GetHTML(ctx, projectID, id)
 	if errors.Is(err, ErrNotFound) {
@@ -171,6 +185,8 @@ func (s *Service) GetWithHTML(ctx context.Context, projectID, id string) (Metada
 	}
 	return item, html, nil
 }
+
+// Delete removes a report from a project.
 func (s *Service) Delete(ctx context.Context, projectID, id string) error {
 	ok, err := s.Store.Delete(ctx, projectID, id)
 	if err != nil {
@@ -182,6 +198,7 @@ func (s *Service) Delete(ctx context.Context, projectID, id string) error {
 	return nil
 }
 
+// Share creates a public link for a report.
 func (s *Service) Share(ctx context.Context, projectID, id string) (Metadata, error) {
 	item, err := s.Get(ctx, projectID, id)
 	if err != nil {
@@ -206,6 +223,8 @@ func (s *Service) Share(ctx context.Context, projectID, id string) (Metadata, er
 	item.SharedAt = &stamp
 	return item, nil
 }
+
+// Unshare revokes a report public link.
 func (s *Service) Unshare(ctx context.Context, projectID, id string) (Metadata, error) {
 	item, err := s.Get(ctx, projectID, id)
 	if err != nil {
@@ -221,6 +240,8 @@ func (s *Service) Unshare(ctx context.Context, projectID, id string) (Metadata, 
 	item.SharedAt = nil
 	return item, nil
 }
+
+// GetShared returns a report through its share token.
 func (s *Service) GetShared(ctx context.Context, token string) (SharedReport, error) {
 	if !validShareToken(token) {
 		return SharedReport{}, fail("NOT_FOUND", "Shared report not found.")
@@ -232,6 +253,7 @@ func (s *Service) GetShared(ctx context.Context, token string) (SharedReport, er
 	return item, err
 }
 
+// ListTemplates returns project report templates.
 func (s *Service) ListTemplates(ctx context.Context, projectID string) (ListTemplateResult, error) {
 	rows, err := s.Store.ListTemplates(ctx, projectID)
 	if err != nil {
@@ -239,6 +261,8 @@ func (s *Service) ListTemplates(ctx context.Context, projectID string) (ListTemp
 	}
 	return ListTemplateResult{Templates: rows, Remaining: max(0, MaxTemplatesPerProject-len(rows))}, nil
 }
+
+// GetTemplate returns a report template by project and ID.
 func (s *Service) GetTemplate(ctx context.Context, projectID, id string) (Template, error) {
 	item, err := s.Store.GetTemplate(ctx, projectID, id)
 	if errors.Is(err, ErrNotFound) {
@@ -247,13 +271,17 @@ func (s *Service) GetTemplate(ctx context.Context, projectID, id string) (Templa
 	return item, err
 }
 
+// SaveTemplateInput contains fields to create or update a report template.
 type SaveTemplateInput struct{ ProjectID, TemplateID, Name, Description, Instructions, CreatedBy, CreatedByUserID string }
+
+// SaveTemplateResult contains a saved report template.
 type SaveTemplateResult struct {
 	TemplateID string `json:"templateId"`
 	Name       string `json:"name"`
 	Created    bool   `json:"created"`
 }
 
+// SaveTemplate validates and persists a project report template.
 func (s *Service) SaveTemplate(ctx context.Context, in SaveTemplateInput) (SaveTemplateResult, error) {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Description = strings.TrimSpace(in.Description)
@@ -311,6 +339,8 @@ func (s *Service) SaveTemplate(ctx context.Context, in SaveTemplateInput) (SaveT
 	}
 	return SaveTemplateResult{TemplateID: item.ID, Name: item.Name, Created: created}, nil
 }
+
+// DeleteTemplate removes a project report template.
 func (s *Service) DeleteTemplate(ctx context.Context, projectID, id string) error {
 	ok, err := s.Store.DeleteTemplate(ctx, projectID, id)
 	if err != nil {

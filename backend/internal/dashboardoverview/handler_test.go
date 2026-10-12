@@ -2,13 +2,14 @@ package dashboardoverview
 
 import (
 	"context"
-	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 )
 
 func TestHandlerRejectsUnexpectedBodyAndScopesProject(t *testing.T) {
@@ -24,12 +25,12 @@ func TestHandlerRejectsUnexpectedBodyAndScopesProject(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
 	bad := httptest.NewRecorder()
-	mux.ServeHTTP(bad, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/dashboard/overview", strings.NewReader(`{"unexpected":true}`)))
+	mux.ServeHTTP(bad, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/dashboard/overview", strings.NewReader(`{"unexpected":true}`)))
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("invalid status=%d", bad.Code)
 	}
 	response := httptest.NewRecorder()
-	mux.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/dashboard/overview", strings.NewReader(`{}`)))
+	mux.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/dashboard/overview", strings.NewReader(`{}`)))
 	if response.Code != http.StatusOK || store.project != "p" || store.organization != "org-1" {
 		t.Fatalf("response=%d %s scope=%s/%s", response.Code, response.Body.String(), store.project, store.organization)
 	}

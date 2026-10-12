@@ -77,7 +77,11 @@ func fetchOnce(ctx context.Context, client *http.Client, target string) (body, r
 	if err != nil {
 		return "", "", false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			body, redirect, ok = "", "", false
+		}
+	}()
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 		return "", resp.Header.Get("Location"), false
 	}

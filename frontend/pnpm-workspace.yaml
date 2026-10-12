@@ -1,3 +1,7 @@
+allowBuilds:
+  "@mongodb-js/zstd": false
+  core-js: false
+  esbuild: true
 minimumReleaseAge: 11520
 minimumReleaseAgeExclude:
   # TEMPORARY (remove after 2026-10-01): DOMPurify security fix, GHSA-p98j-92pf-mc4p.

@@ -14,22 +14,34 @@ import (
 )
 
 const (
-	MaxTitleLength      = 180
-	MaxKeywordLength    = 120
-	MaxSlugLength       = 300
-	MaxMetaLength       = 320
-	MaxContentLength    = 150_000
+	// MaxTitleLength is the maximum allowed draft title length.
+	MaxTitleLength = 180
+	// MaxKeywordLength is the maximum allowed target keyword length.
+	MaxKeywordLength = 120
+	// MaxSlugLength is the maximum allowed draft URL slug length.
+	MaxSlugLength = 300
+	// MaxMetaLength is the maximum allowed meta description length.
+	MaxMetaLength = 320
+	// MaxContentLength is the maximum allowed draft content size in bytes.
+	MaxContentLength = 150_000
+	// MaxDraftsPerProject is the maximum number of drafts allowed per project.
 	MaxDraftsPerProject = 100
-	DraftListLimit      = 100
+	// DraftListLimit is the number of drafts returned by one list request.
+	DraftListLimit = 100
 )
 
+// ErrNotFound indicates that a requested content draft does not exist.
 var ErrNotFound = errors.New("content draft not found")
+
+// ErrDraftLimit indicates that the project has reached its draft limit.
 var ErrDraftLimit = errors.New("project has reached the content draft limit")
 
+// ValidationError describes invalid content draft input.
 type ValidationError struct{ Message string }
 
 func (e *ValidationError) Error() string { return e.Message }
 
+// Draft is a saved content draft.
 type Draft struct {
 	ID              string    `json:"id"`
 	ProjectID       string    `json:"projectId"`
@@ -42,6 +54,7 @@ type Draft struct {
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
+// DraftSummary is the list view of a saved content draft.
 type DraftSummary struct {
 	ID            string    `json:"id"`
 	ProjectID     string    `json:"projectId"`
@@ -50,6 +63,7 @@ type DraftSummary struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
+// Input contains the values used to create or update a draft.
 type Input struct {
 	ID              string `json:"id"`
 	Title           string `json:"title"`
@@ -59,8 +73,10 @@ type Input struct {
 	Content         string `json:"content"`
 }
 
+// Repository stores and retrieves content drafts.
 type Repository struct{ DB *pgxpool.Pool }
 
+// List returns the drafts for a project.
 func (r Repository) List(ctx context.Context, projectID string) ([]DraftSummary, error) {
 	rows, err := r.DB.Query(ctx, `SELECT id, project_id, title, target_keyword, updated_at
 		FROM go_content_drafts WHERE project_id=$1 ORDER BY updated_at DESC, id LIMIT $2`, projectID, DraftListLimit)
@@ -81,6 +97,7 @@ func (r Repository) List(ctx context.Context, projectID string) ([]DraftSummary,
 	return drafts, nil
 }
 
+// Get returns a project draft by ID.
 func (r Repository) Get(ctx context.Context, projectID, id string) (Draft, error) {
 	draft, err := scanDraft(r.DB.QueryRow(ctx, `SELECT id, project_id, title, target_keyword, slug, meta_description, content, created_at, updated_at
 		FROM go_content_drafts WHERE project_id=$1 AND id=$2`, projectID, id))
@@ -93,7 +110,8 @@ func (r Repository) Get(ctx context.Context, projectID, id string) (Draft, error
 	return draft, nil
 }
 
-func (r Repository) Save(ctx context.Context, projectID string, input Input) (Draft, error) {
+// Save creates or updates a project draft.
+func (r Repository) Save(ctx context.Context, projectID string, input Input) (result Draft, retErr error) {
 	if err := validate(input); err != nil {
 		return Draft{}, err
 	}
@@ -119,7 +137,11 @@ func (r Repository) Save(ctx context.Context, projectID string, input Input) (Dr
 	if err != nil {
 		return Draft{}, fmt.Errorf("begin create content draft: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func(rollbackCtx context.Context) {
+		if err := tx.Rollback(rollbackCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback create content draft: %w", err))
+		}
+	}(ctx)
 	var lockedProjectID string
 	if err := tx.QueryRow(ctx, `SELECT id FROM projects WHERE id=$1 AND archived_at IS NULL FOR UPDATE`, projectID).Scan(&lockedProjectID); errors.Is(err, pgx.ErrNoRows) {
 		return Draft{}, ErrNotFound
@@ -147,6 +169,7 @@ func (r Repository) Save(ctx context.Context, projectID string, input Input) (Dr
 	return draft, nil
 }
 
+// Delete removes a project draft.
 func (r Repository) Delete(ctx context.Context, projectID, id string) error {
 	tag, err := r.DB.Exec(ctx, `DELETE FROM go_content_drafts WHERE project_id=$1 AND id=$2`, projectID, id)
 	if err != nil {

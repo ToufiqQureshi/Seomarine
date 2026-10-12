@@ -29,15 +29,19 @@ import (
 const keyDirectory = "https://shopify.com/.well-known/http-message-signatures-directory"
 
 var (
+	// ErrInvalidCredential indicates the supplied crawler signature is invalid.
 	ErrInvalidCredential = errors.New("invalid Shopify crawler signature")
-	ErrWrongDomain       = errors.New("shopify crawler signature belongs to another domain")
-	ErrNotFound          = errors.New("crawler credential not found")
-	signatureParams      = regexp.MustCompile(`^\w+=(\(.+)$`)
-	keyIDPattern         = regexp.MustCompile(`;keyid="([^"]+)"`)
-	signaturePattern     = regexp.MustCompile(`^\w+=:([A-Za-z0-9+/]+={0,2}):$`)
-	expiresPattern       = regexp.MustCompile(`expires=(\d+)`)
+	// ErrWrongDomain means the signature is valid for a different domain.
+	ErrWrongDomain = errors.New("shopify crawler signature belongs to another domain")
+	// ErrNotFound indicates that no crawler credential matched the request.
+	ErrNotFound      = errors.New("crawler credential not found")
+	signatureParams  = regexp.MustCompile(`^\w+=(\(.+)$`)
+	keyIDPattern     = regexp.MustCompile(`;keyid="([^"]+)"`)
+	signaturePattern = regexp.MustCompile(`^\w+=:([A-Za-z0-9+/]+={0,2}):$`)
+	expiresPattern   = regexp.MustCompile(`expires=(\d+)`)
 )
 
+// Credential contains Shopify crawler access credentials.
 type Credential struct {
 	ID        string  `json:"id"`
 	ProjectID string  `json:"projectId"`
@@ -47,23 +51,27 @@ type Credential struct {
 	ExpiresAt *string `json:"expiresAt"`
 }
 
+// SaveResult contains saved crawler access and a one-time secret.
 type SaveResult struct {
 	Credential *Credential       `json:"credential,omitempty"`
 	Problem    *SignatureProblem `json:"problem,omitempty"`
 }
 
+// SignatureProblem describes a crawler signature verification failure.
 type SignatureProblem struct {
 	Reason     string `json:"reason"`
 	Host       string `json:"host"`
 	SignedHost string `json:"signedHost,omitempty"`
 }
 
+// Service manages Shopify crawler access for organizations.
 type Service struct {
 	DB     *pgxpool.Pool
 	Secret string
 	Client *http.Client
 }
 
+// List returns crawler access entries for an organization.
 func (s *Service) List(ctx context.Context, organizationID string) ([]Credential, error) {
 	rows, err := s.DB.Query(ctx, `SELECT c.id,c.project_id,c.host,c.provider,c.created_at,c.expires_at FROM crawler_credentials c JOIN projects p ON p.id=c.project_id WHERE p.organization_id=$1 AND p.archived_at IS NULL ORDER BY c.host`, organizationID)
 	if err != nil {
@@ -84,6 +92,7 @@ func (s *Service) List(ctx context.Context, organizationID string) ([]Credential
 	return out, nil
 }
 
+// Save creates or updates crawler access for a project.
 func (s *Service) Save(ctx context.Context, organizationID, projectID, userID, rawHost, signatureInput, signature string) (SaveResult, error) {
 	host, ok := audit.NormalizeCrawlerHost(rawHost)
 	if !ok {
@@ -130,6 +139,7 @@ func (s *Service) Save(ctx context.Context, organizationID, projectID, userID, r
 	return SaveResult{Credential: &saved}, nil
 }
 
+// Delete removes crawler access from an organization.
 func (s *Service) Delete(ctx context.Context, organizationID, id string) error {
 	tag, err := s.DB.Exec(ctx, `DELETE FROM crawler_credentials c USING projects p WHERE c.project_id=p.id AND p.organization_id=$1 AND c.id=$2`, organizationID, id)
 	if err != nil {
@@ -141,6 +151,7 @@ func (s *Service) Delete(ctx context.Context, organizationID, id string) error {
 	return nil
 }
 
+// Resolve checks request host and signature against project access.
 func (s *Service) Resolve(ctx context.Context, organizationID, projectID, host string) (*audit.CrawlerAccess, string, error) {
 	host, ok := audit.NormalizeCrawlerHost(host)
 	if !ok {
@@ -213,7 +224,7 @@ func decrypt(secret, ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
-func (s *Service) checkSignature(ctx context.Context, host, input, signature string) (*SignatureProblem, error) {
+func (s *Service) checkSignature(ctx context.Context, host, input, signature string) (problem *SignatureProblem, retErr error) {
 	params := signatureParams.FindStringSubmatch(input)
 	keyID := keyIDPattern.FindStringSubmatch(input)
 	encoded := signaturePattern.FindStringSubmatch(signature)
@@ -236,7 +247,11 @@ func (s *Service) checkSignature(ctx context.Context, host, input, signature str
 	if err != nil {
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close signature key response: %w", err))
+		}
+	}()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, nil
 	}
@@ -261,7 +276,7 @@ func (s *Service) checkSignature(ctx context.Context, host, input, signature str
 	if verify(host) {
 		return nil, nil
 	}
-	twin := host
+	var twin string
 	if strings.HasPrefix(host, "www.") {
 		twin = strings.TrimPrefix(host, "www.")
 	} else {

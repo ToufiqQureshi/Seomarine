@@ -89,13 +89,13 @@ func TestMountRejectsUnknownFieldsAndScopesCreateToProjectMember(t *testing.T) {
 	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
 
 	invalid := httptest.NewRecorder()
-	mux.ServeHTTP(invalid, httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/sam/sessions/list", strings.NewReader(`{"extra":true}`)))
+	mux.ServeHTTP(invalid, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/project-1/sam/sessions/list", strings.NewReader(`{"extra":true}`)))
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("unknown field status = %d", invalid.Code)
 	}
 
 	created := httptest.NewRecorder()
-	mux.ServeHTTP(created, httptest.NewRequest(http.MethodPost, "/api/v1/projects/project-1/sam/sessions/create", strings.NewReader(`{}`)))
+	mux.ServeHTTP(created, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/project-1/sam/sessions/create", strings.NewReader(`{}`)))
 	if created.Code != http.StatusOK || created.Body.String() != "{\"id\":\"session-2\"}\n" {
 		t.Fatalf("create response = %d %s", created.Code, created.Body.String())
 	}

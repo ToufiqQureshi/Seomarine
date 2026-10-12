@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -37,21 +38,21 @@ func TestDecodeJSONLimit(t *testing.T) {
 
 func TestParsePageLimit(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
-		page, limit, err := ParsePageLimit(httptest.NewRequest(http.MethodGet, "/?page=222&limit=50", http.NoBody).URL.Query())
+		page, limit, err := ParsePageLimit(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/?page=222&limit=50", http.NoBody).URL.Query())
 		if err != nil || page != 222 || limit != 50 {
 			t.Fatalf("ParsePageLimit() = (%d, %d), want (222, 50)", page, limit)
 		}
 	})
 
 	t.Run("validation", func(t *testing.T) {
-		_, _, err := ParsePageLimit(httptest.NewRequest(http.MethodGet, "/?page=0&limit=999", http.NoBody).URL.Query())
+		_, _, err := ParsePageLimit(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/?page=0&limit=999", http.NoBody).URL.Query())
 		if !errors.Is(err, ErrInvalidPage) {
 			t.Fatalf("ParsePageLimit() error = %v, want ErrInvalidPage", err)
 		}
 	})
 
 	t.Run("rejects duplicate page parameters", func(t *testing.T) {
-		_, _, err := ParsePageLimit(httptest.NewRequest(http.MethodGet, "/?page=1&page=2", http.NoBody).URL.Query())
+		_, _, err := ParsePageLimit(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/?page=1&page=2", http.NoBody).URL.Query())
 		if !errors.Is(err, ErrInvalidPage) {
 			t.Fatalf("ParsePageLimit() error = %v, want ErrInvalidPage", err)
 		}
@@ -110,7 +111,7 @@ func TestRequestLoggingSetsSafeRequestID(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusAccepted)
 			}))
-			req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", nil)
 			for _, id := range tt.ids {
 				req.Header.Add("X-Request-Id", id)
 			}
@@ -135,7 +136,7 @@ func TestRequestLoggingRecordsResponseStatus(t *testing.T) {
 		_, _ = w.Write([]byte("accepted"))
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", nil))
 	if recorder.Code != http.StatusAccepted {
 		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusAccepted)
 	}
@@ -160,7 +161,7 @@ func TestRecoverReturnsInternalErrorAndLogsPanic(t *testing.T) {
 		panic("unexpected")
 	})))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/panic", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil))
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusInternalServerError)
 	}
@@ -178,7 +179,7 @@ func TestRecoverDoesNotWriteAfterResponseStarted(t *testing.T) {
 		panic("after response")
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/panic", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil))
 	if recorder.Code != http.StatusAccepted {
 		t.Fatalf("response status = %d, want %d", recorder.Code, http.StatusAccepted)
 	}
@@ -206,7 +207,7 @@ func TestClientIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/collect", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/collect", nil)
 			req.RemoteAddr = tt.remote
 			for _, value := range tt.xff {
 				req.Header.Add("X-Forwarded-For", value)

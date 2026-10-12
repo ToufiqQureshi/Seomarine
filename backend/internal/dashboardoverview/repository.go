@@ -9,10 +9,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ErrProjectNotFound indicates the dashboard project does not exist.
 var ErrProjectNotFound = errors.New("dashboard project not found")
 
+// Repository reads and writes dashboard overview data.
 type Repository struct{ DB *pgxpool.Pool }
 
+// ProjectDomain returns the active project domain for an organization.
 func (r Repository) ProjectDomain(ctx context.Context, projectID, organizationID string) (*string, error) {
 	var domain *string
 	err := r.DB.QueryRow(ctx, `SELECT domain FROM projects WHERE id=$1 AND organization_id=$2 AND archived_at IS NULL`, projectID, organizationID).Scan(&domain)
@@ -24,6 +27,8 @@ func (r Repository) ProjectDomain(ctx context.Context, projectID, organizationID
 	}
 	return domain, nil
 }
+
+// LatestAudit returns the latest audit summary for a project.
 func (r Repository) LatestAudit(ctx context.Context, projectID string) (*AuditSummary, error) {
 	var row AuditSummary
 	err := r.DB.QueryRow(ctx, `SELECT status,pages_crawled,started_at FROM audits WHERE project_id=$1 ORDER BY started_at DESC,id DESC LIMIT 1`, projectID).Scan(&row.Status, &row.PagesCrawled, &row.StartedAt)
@@ -57,6 +62,8 @@ func (r Repository) LatestAudit(ctx context.Context, projectID string) (*AuditSu
 	row.TopIssues = issues
 	return &row, nil
 }
+
+// LatestBacklinkSnapshot returns the latest stored backlink summary.
 func (r Repository) LatestBacklinkSnapshot(ctx context.Context, projectID string) (BacklinkSummary, bool, error) {
 	var item BacklinkSummary
 	err := r.DB.QueryRow(ctx, `SELECT domain,rank,backlinks,referring_domains,new_backlinks,lost_backlinks,new_referring_domains,lost_referring_domains,captured_at FROM backlink_snapshots WHERE project_id=$1 ORDER BY id DESC LIMIT 1`, projectID).Scan(&item.Domain, &item.Rank, &item.Backlinks, &item.ReferringDomains, &item.NewBacklinks, &item.LostBacklinks, &item.NewReferringDomains, &item.LostReferringDomains, &item.CapturedAt)
@@ -69,6 +76,7 @@ func (r Repository) LatestBacklinkSnapshot(ctx context.Context, projectID string
 	return item, true, nil
 }
 
+// InsertBacklinkSnapshot stores a backlink summary for a project.
 func (r Repository) InsertBacklinkSnapshot(ctx context.Context, projectID string, item BacklinkSummary) error {
 	_, err := r.DB.Exec(ctx, `INSERT INTO backlink_snapshots
 		(project_id,domain,rank,backlinks,referring_domains,new_backlinks,lost_backlinks,new_referring_domains,lost_referring_domains,captured_at)

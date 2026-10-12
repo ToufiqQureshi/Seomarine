@@ -266,6 +266,7 @@ func (s *Service) verifyEmail(w http.ResponseWriter, r *http.Request) error {
 	}
 	if outcome.ErrorCode != "" {
 		if callbackURL != "" {
+			// #nosec G710 -- VerifyEmail rejects callback URLs outside the configured site origins.
 			http.Redirect(w, r, redirectWith(callbackURL, "error", outcome.ErrorCode), http.StatusFound)
 			return nil
 		}
@@ -275,6 +276,7 @@ func (s *Service) verifyEmail(w http.ResponseWriter, r *http.Request) error {
 		s.jar.setSession(w, outcome.Session.Token, outcome.Remember)
 	}
 	if callbackURL != "" {
+		// #nosec G710 -- VerifyEmail rejects callback URLs outside the configured site origins.
 		http.Redirect(w, r, callbackURL, http.StatusFound)
 		return nil
 	}
@@ -343,9 +345,11 @@ func (s *Service) resetCallback(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if !valid {
+		// #nosec G710 -- callbackURL passed the configured same-origin allowlist above.
 		http.Redirect(w, r, redirectWith(callbackURL, "error", "INVALID_TOKEN"), http.StatusFound)
 		return nil
 	}
+	// #nosec G710 -- callbackURL passed the configured same-origin allowlist above.
 	http.Redirect(w, r, redirectWith(callbackURL, "token", token), http.StatusFound)
 	return nil
 }

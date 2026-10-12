@@ -22,7 +22,7 @@ func partTypes(m Message) []string {
 func TestTextTurnStreamsAndStores(t *testing.T) {
 	h := newHarness(t, scriptStep{reasoning: []string{"hm"}, text: []string{"Hello ", "there"}})
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "What should I do next?", sink)
+	h.run(context.Background(), t, "What should I do next?", sink)
 
 	want := []string{"start", "start-step", "reasoning-start", "reasoning-delta", "reasoning-end",
 		"text-start", "text-delta", "text-delta", "text-end", "finish-step", "finish"}
@@ -47,7 +47,7 @@ func TestTextTurnStreamsAndStores(t *testing.T) {
 func TestSecondTurnTouchesInsteadOfRetitling(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
 	h.sc.Title = "Already named"
-	h.run(t, context.Background(), "hello", &recordingSink{})
+	h.run(context.Background(), t, "hello", &recordingSink{})
 	if len(h.titles.titles) != 0 || h.titles.touched != 1 {
 		t.Fatalf("titles = %v touched = %d", h.titles.titles, h.titles.touched)
 	}
@@ -55,7 +55,7 @@ func TestSecondTurnTouchesInsteadOfRetitling(t *testing.T) {
 
 func TestSystemPromptCarriesMemoryAndProject(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
-	h.run(t, context.Background(), "hello", &recordingSink{})
+	h.run(context.Background(), t, "hello", &recordingSink{})
 	system := h.llm.requests[0].Messages[0]
 	if system.Role != "system" {
 		t.Fatalf("first message role = %s", system.Role)
@@ -74,7 +74,7 @@ func TestToolTurnBindsProjectAndFeedsResultBack(t *testing.T) {
 	)
 	h.runner.results["get_domain_overview"] = []mcp.ToolResult{{Text: "Domain overview", Structured: map[string]any{"rows": []any{"a", "b"}}}}
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "overview please", sink)
+	h.run(context.Background(), t, "overview please", sink)
 
 	if len(h.runner.calls) != 1 {
 		t.Fatalf("tool calls = %d", len(h.runner.calls))
@@ -123,7 +123,7 @@ func TestModelCannotTargetAnotherProject(t *testing.T) {
 		scriptStep{toolCalls: []openrouter.ToolCall{toolCall("c", "get_domain_overview", `{"projectId":"someone-elses","domain":"x.test"}`)}},
 		scriptStep{text: []string{"done"}},
 	)
-	h.run(t, context.Background(), "go", &recordingSink{})
+	h.run(context.Background(), t, "go", &recordingSink{})
 	var args map[string]any
 	_ = json.Unmarshal(h.runner.calls[0].args, &args)
 	if args["projectId"] != "project-1" {
@@ -133,7 +133,7 @@ func TestModelCannotTargetAnotherProject(t *testing.T) {
 
 func TestToolSchemaHidesProjectID(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
-	h.run(t, context.Background(), "hi", &recordingSink{})
+	h.run(context.Background(), t, "hi", &recordingSink{})
 	for _, tool := range h.llm.requests[0].Tools {
 		if tool.Name == "get_domain_overview" {
 			if strings.Contains(string(tool.Parameters), "projectId") {
@@ -156,7 +156,7 @@ func TestToolFailuresGoBackToTheModel(t *testing.T) {
 	)
 	h.runner.results["get_domain_overview"] = []mcp.ToolResult{{Text: "out of credits", IsError: true}}
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "go", sink)
+	h.run(context.Background(), t, "go", sink)
 
 	assistant := h.lastAssistant(t)
 	states := map[string]string{}
@@ -204,7 +204,7 @@ func TestOutOfCreditsRefusesWithoutCallingTheModel(t *testing.T) {
 	h.agent.Meter = h.meter
 	h.meter.hasCred = false
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "hi", sink)
+	h.run(context.Background(), t, "hi", sink)
 
 	if h.llm.callCount() != 0 {
 		t.Fatalf("model called %d times for a refused turn", h.llm.callCount())
@@ -222,7 +222,7 @@ func TestRemovedMemberIsRefused(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"should not run"}})
 	h.agent.Meter = h.meter
 	h.sc.Role = ""
-	h.run(t, context.Background(), "hi", &recordingSink{})
+	h.run(context.Background(), t, "hi", &recordingSink{})
 	if h.llm.callCount() != 0 || h.lastAssistant(t).Parts[1].Text != refuseNoAccess {
 		t.Fatalf("calls = %d reply = %+v", h.llm.callCount(), h.lastAssistant(t).Parts)
 	}
@@ -232,7 +232,7 @@ func TestCreditCheckFailureDoesNotLockUsersOut(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
 	h.agent.Meter = h.meter
 	h.meter.credErr = errors.New("ledger down")
-	h.run(t, context.Background(), "hi", &recordingSink{})
+	h.run(context.Background(), t, "hi", &recordingSink{})
 	if h.llm.callCount() != 1 {
 		t.Fatal("a billing outage must fail open")
 	}
@@ -245,7 +245,7 @@ func TestSpendIsMeteredInChunksAndFlushedAtTheEnd(t *testing.T) {
 		scriptStep{text: []string{"done"}, cost: 0.01},
 	)
 	h.agent.Meter = h.meter
-	h.run(t, context.Background(), "go", &recordingSink{})
+	h.run(context.Background(), t, "go", &recordingSink{})
 
 	// 0.03 stays unbilled; 0.03+0.04 crosses the chunk size; 0.01 flushes at the end.
 	if len(h.meter.charges) != 2 {
@@ -267,7 +267,7 @@ func TestMeteringFailureDoesNotFailTheTurn(t *testing.T) {
 	h.agent.Meter = h.meter
 	h.meter.chargeFn = func() error { return errors.New("ledger down") }
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "hi", sink)
+	h.run(context.Background(), t, "hi", sink)
 	if contains(sink.types(), "error") || len(h.lastAssistant(t).Parts) == 0 {
 		t.Fatalf("chunks = %v", sink.types())
 	}
@@ -280,7 +280,7 @@ func TestStoppedTurnKeepsPartialReplyAndStillBills(t *testing.T) {
 	h.llm.steps[0].err = nil
 	h.agent.LLM = cancelingLLM{inner: h.llm, cancel: cancel}
 	sink := &recordingSink{}
-	h.run(t, ctx, "hi", sink)
+	h.run(ctx, t, "hi", sink)
 
 	assistant := h.lastAssistant(t)
 	text := assistant.Parts[len(assistant.Parts)-1]
@@ -318,7 +318,13 @@ func TestInterruptedToolIsNotLeftRunning(t *testing.T) {
 	h.runner.results["get_audit_status"] = []mcp.ToolResult{{Text: "running", Structured: map[string]any{"status": map[string]any{"status": "running"}}}}
 	// Cancel as soon as the tool is invoked.
 	h.agent.Runner = cancelOnCall{fakeRunner: h.runner, cancel: cancel}
-	h.run(t, ctx, "go", &recordingSink{})
+	user := Message{ID: "user-msg-go", Role: "user", Parts: []Part{{Type: "text", Text: "go"}}}
+	if err := h.store.Append(ctx, h.sc.SessionID, user); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.agent.Run(ctx, h.sc, user, &recordingSink{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v, want context cancellation", err)
+	}
 
 	for _, p := range h.lastAssistant(t).Parts {
 		if strings.HasPrefix(p.Type, "tool-") && p.State != stateOutputError && p.State != stateOutputAvailable {
@@ -340,7 +346,7 @@ func (c cancelOnCall) Call(ctx context.Context, a mcp.Auth, name string, args js
 func TestModelFailureReachesTheClientAsAnErrorChunk(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"half a sent"}, err: errors.New("upstream 502 secret detail")})
 	sink := &recordingSink{}
-	h.run(t, context.Background(), "hi", sink)
+	h.run(context.Background(), t, "hi", sink)
 
 	var errorText string
 	for _, c := range sink.chunks {
@@ -362,7 +368,7 @@ func TestModelFailureReachesTheClientAsAnErrorChunk(t *testing.T) {
 func TestStepLimitEndsRunawayLoops(t *testing.T) {
 	h := newHarness(t, scriptStep{toolCalls: []openrouter.ToolCall{toolCall("x", "whoami", `{}`)}})
 	h.llm.repeat = true
-	h.run(t, context.Background(), "loop", &recordingSink{})
+	h.run(context.Background(), t, "loop", &recordingSink{})
 	if h.llm.callCount() != maxSteps {
 		t.Fatalf("model calls = %d, want %d", h.llm.callCount(), maxSteps)
 	}
@@ -375,7 +381,7 @@ func TestStepLimitEndsRunawayLoops(t *testing.T) {
 func TestClientLeavingStopsTheTurnQuietly(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"a", "b", "c"}})
 	sink := &recordingSink{failAfter: 4}
-	h.run(t, context.Background(), "hi", sink)
+	h.run(context.Background(), t, "hi", sink)
 	if h.llm.callCount() != 1 {
 		t.Fatalf("calls = %d", h.llm.callCount())
 	}
@@ -388,7 +394,7 @@ func TestSummaryReplacesOlderHistory(t *testing.T) {
 		_ = h.store.Append(ctx, h.sc.SessionID, Message{ID: "u" + string(rune('a'+i)), Role: "user", Parts: []Part{{Type: "text", Text: text}}})
 	}
 	_ = h.store.SaveSummary(ctx, h.sc.SessionID, Summary{Text: "They sell anvils.", ThroughSeq: 1})
-	h.run(t, ctx, "latest", &recordingSink{})
+	h.run(ctx, t, "latest", &recordingSink{})
 
 	req := h.llm.requests[0].Messages
 	if !strings.Contains(req[0].Content, "They sell anvils.") {

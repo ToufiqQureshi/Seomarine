@@ -14,6 +14,7 @@ import (
 
 const maxRequestBytes = 1 << 20
 
+// HandlerDeps contains the dependencies for project context handlers.
 type HandlerDeps struct {
 	Logger            *slog.Logger
 	Service           APIService
@@ -27,6 +28,7 @@ type APIService interface {
 	Apply(context.Context, string, []json.RawMessage, string) (ProjectContext, error)
 }
 
+// Mount registers project context endpoints on mux.
 func Mount(mux *http.ServeMux, d HandlerDeps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	mux.Handle("POST /api/v1/projects/{projectId}/context/get", protect(http.HandlerFunc(d.get)))

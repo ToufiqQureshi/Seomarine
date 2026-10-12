@@ -90,9 +90,10 @@ func handleSearchLocalBusinesses(ctx context.Context, raw json.RawMessage, env *
 		filters = append(filters, []any{"rating.votes_count", ">=", *a.MinReviews})
 	}
 	var order []string
-	if a.SortBy == "rating" {
+	switch a.SortBy {
+	case "rating":
 		order = []string{"rating.value,desc"}
-	} else if a.SortBy == "reviews" {
+	case "reviews":
 		order = []string{"rating.votes_count,desc"}
 	}
 	rows, e := provider.BusinessListingsSearch(ctx, access.Auth.OrganizationID, keywords.BusinessListingsSearchInput{Categories: a.Categories, Title: strings.TrimSpace(a.Query), Coordinate: keywords.FormatBusinessListingsCoordinate(*a.Near.Latitude, *a.Near.Longitude, *a.Near.RadiusKm), IsClaimed: a.IsClaimed, Filters: filters, OrderBy: order, Limit: limit, Offset: a.Offset})

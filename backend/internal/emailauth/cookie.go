@@ -67,6 +67,7 @@ func (j cookieJar) sign(value string) string {
 // setSession writes the signed session token. A session the user did not want
 // remembered gets a browser-session cookie and the dont_remember marker.
 func (j cookieJar) setSession(w http.ResponseWriter, token string, remember bool) {
+	// #nosec G124 -- the Secure bit follows the configured public origin, allowing plain HTTP only in local development.
 	cookie := &http.Cookie{
 		Name: j.name(sessionCookieName), Value: j.sign(token), Path: "/",
 		HttpOnly: true, Secure: j.secure, SameSite: http.SameSiteLaxMode,
@@ -74,8 +75,10 @@ func (j cookieJar) setSession(w http.ResponseWriter, token string, remember bool
 	if remember {
 		cookie.MaxAge = int(sessionLifetime.Seconds())
 	}
+	// #nosec G124 -- the Secure bit follows the configured public origin, allowing plain HTTP only in local development.
 	http.SetCookie(w, cookie)
 	if !remember {
+		// #nosec G124 -- the Secure bit follows the configured public origin, allowing plain HTTP only in local development.
 		http.SetCookie(w, &http.Cookie{
 			Name: j.name(dontRememberCookieName), Value: j.sign("true"), Path: "/",
 			HttpOnly: true, Secure: j.secure, SameSite: http.SameSiteLaxMode,
@@ -88,6 +91,7 @@ func (j cookieJar) setSession(w http.ResponseWriter, token string, remember bool
 // never reads it, but the legacy app does, and a snapshot of the previous user
 // must not outlive a new sign-in.
 func (j cookieJar) clearSessionData(w http.ResponseWriter) {
+	// #nosec G124 -- the Secure bit follows the configured public origin, allowing plain HTTP only in local development.
 	http.SetCookie(w, &http.Cookie{
 		Name: j.name(sessionDataCookieName), Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, Secure: j.secure, SameSite: http.SameSiteLaxMode,

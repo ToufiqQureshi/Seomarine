@@ -13,15 +13,19 @@ import (
 
 const businessInfoPath = "/v3/business_data/google/my_business_info/live"
 
+// BusinessInfoInput contains a business identity and location search.
 type BusinessInfoInput struct {
 	Keyword, Coordinate string
 	LocationCode        int
 	LanguageCode        string
 }
+
+// BusinessInfoProvider searches for business information.
 type BusinessInfoProvider interface {
 	BusinessInfo(context.Context, string, BusinessInfoInput) (map[string]any, error)
 }
 
+// BusinessInfo searches DataForSEO for matching businesses.
 func (p DataForSEOProvider) BusinessInfo(ctx context.Context, org string, in BusinessInfoInput) (map[string]any, error) {
 	body := map[string]any{"keyword": in.Keyword, "language_code": in.LanguageCode}
 	if in.Coordinate != "" {
@@ -55,6 +59,8 @@ func (p DataForSEOProvider) BusinessInfo(ctx context.Context, org string, in Bus
 	}
 	return profile, nil
 }
+
+// FormatBusinessDataCoordinate formats a geographic point and radius for DataForSEO.
 func FormatBusinessDataCoordinate(lat, lon, radiusKm float64) string {
 	f := func(v float64) string { return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.7f", v), "0"), ".") }
 	meters := int(math.Round(radiusKm * 1000))

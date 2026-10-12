@@ -2,6 +2,7 @@
 package httpx
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -70,16 +71,16 @@ func Recover(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			response := &statusRecorder{ResponseWriter: w}
-			defer func() {
+			defer func(requestCtx context.Context) {
 				if recovered := recover(); recovered != nil {
 					if logger != nil {
-						logger.ErrorContext(r.Context(), "panic serving request", "panic_type", fmt.Sprintf("%T", recovered), "stack", string(debug.Stack()))
+						logger.ErrorContext(requestCtx, "panic serving request", "panic_type", fmt.Sprintf("%T", recovered), "stack", string(debug.Stack()))
 					}
 					if !response.wroteHeader {
 						WriteError(response, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 					}
 				}
-			}()
+			}(r.Context())
 			next.ServeHTTP(response, r)
 		})
 	}

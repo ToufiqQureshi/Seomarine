@@ -2,6 +2,7 @@ package emailauth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -348,7 +349,7 @@ func TestConcurrentResetsOfOneTokenSucceedOnce(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resp := e.request("POST", "/api/auth/reset-password", map[string]any{"newPassword": "a brand new password " + string(rune('a'+i)), "token": token}, originHeaders())
+			resp := e.request("POST", "/api/auth/reset-password", map[string]any{"newPassword": fmt.Sprintf("a brand new password %d", i), "token": token}, originHeaders())
 			statuses <- resp.StatusCode
 		}()
 	}

@@ -7,10 +7,13 @@ import (
 	"strings"
 )
 
+// MCPInspectionInput contains a Search Console URL inspection request.
 type MCPInspectionInput struct {
 	URLs         []string
 	LanguageCode string
 }
+
+// MCPInspectionResult contains a Search Console URL inspection response.
 type MCPInspectionResult struct {
 	URL    string         `json:"url"`
 	Result map[string]any `json:"result,omitempty"`

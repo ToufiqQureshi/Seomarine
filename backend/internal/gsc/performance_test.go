@@ -249,7 +249,7 @@ func TestDecodePerformanceRejectsNonObjectUnknownFieldsAndTrailingJSON(t *testin
 	tests := []string{`null`, `[]`, `{"unknown":true}`, `{} {}`, `{"device":null}`, `{"pageFilter":{"operator":null,"expression":"x"}}`}
 	for _, body := range tests {
 		t.Run(body, func(t *testing.T) {
-			req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+			req := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(body))
 			var input PerformanceInput
 			if err := decodePerformance(httptest.NewRecorder(), req, &input); err == nil {
 				t.Fatal("expected invalid request")
@@ -261,7 +261,7 @@ func TestDecodePerformanceRejectsNonObjectUnknownFieldsAndTrailingJSON(t *testin
 func TestTableInputRejectsNullAndNonPositivePageValues(t *testing.T) {
 	for _, body := range []string{`{"dimension":"query","page":null}`, `{"dimension":"query","page":0}`, `{"dimension":"query","pageSize":0}`} {
 		t.Run(body, func(t *testing.T) {
-			req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+			req := httptest.NewRequestWithContext(context.Background(), "POST", "/", strings.NewReader(body))
 			var input TableInput
 			if err := decodePerformance(httptest.NewRecorder(), req, &input); err != nil {
 				if strings.Contains(body, "null") {

@@ -16,7 +16,7 @@ export type ScoreCheck = {
   weight: number;
 };
 
-export type ContentScore = {
+type ContentScore = {
   score: number;
   checks: ScoreCheck[];
 };

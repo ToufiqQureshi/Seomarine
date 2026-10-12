@@ -38,7 +38,7 @@ type MCPRankedKeywordsResult struct {
 
 // RankedKeywordsForMCP returns scoped, filtered ranked keyword rows for MCP.
 // Validation is completed before the provider is called because requests are billed.
-func (s *Service) RankedKeywordsForMCP(ctx context.Context, organizationID, projectID string, input MCPRankedKeywordsInput) (MCPRankedKeywordsResult, error) {
+func (s *Service) RankedKeywordsForMCP(ctx context.Context, organizationID, _ string, input MCPRankedKeywordsInput) (MCPRankedKeywordsResult, error) {
 	target, err := parseResearchTarget(input.Target, input.Scope)
 	if err != nil {
 		return MCPRankedKeywordsResult{}, badRequest(err.Error())

@@ -13,6 +13,7 @@ const serpCompetitorsPath = "/v3/dataforseo_labs/google/serp_competitors/live"
 
 var competitorDomainPattern = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
 
+// MCPSerpCompetitorInput contains the keyword and location for competitor research.
 type MCPSerpCompetitorInput struct {
 	Keywords          []string
 	LocationCode      int
@@ -22,6 +23,8 @@ type MCPSerpCompetitorInput struct {
 	Limit             int
 	Offset            int
 }
+
+// MCPSerpCompetitor contains a domain and its search result position.
 type MCPSerpCompetitor struct {
 	Domain         *string  `json:"domain"`
 	AvgPosition    *float64 `json:"avg_position"`
@@ -31,6 +34,7 @@ type MCPSerpCompetitor struct {
 	KeywordsCount  *float64 `json:"keywords_count"`
 }
 
+// SerpCompetitorsForMCP returns the competing domains for a keyword and location.
 func (s *Service) SerpCompetitorsForMCP(ctx context.Context, org string, in MCPSerpCompetitorInput) ([]MCPSerpCompetitor, error) {
 	if len(in.Keywords) < 1 || len(in.Keywords) > 100 {
 		return nil, badRequest("keywords must contain between 1 and 100 values.")
@@ -88,6 +92,8 @@ func (s *Service) SerpCompetitorsForMCP(ctx context.Context, org string, in MCPS
 	}
 	return response.Items, nil
 }
+
+// ValidMCPCompetitorDomain reports whether a domain can be used in competitor research.
 func ValidMCPCompetitorDomain(domain string) bool {
 	v := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(domain), "www."))
 	return competitorDomainPattern.MatchString(v)
