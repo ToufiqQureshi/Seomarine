@@ -212,8 +212,11 @@ func run(logger *slog.Logger) error {
 	gscService := buildGSCService(db, googleAPIClient)
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
 	var localSEOData localseo.Data
-	if provider, ok := keywordResearch.Data.(localseo.Data); ok {
-		localSEOData = provider
+	// keywordResearch is nil when DATAFORSEO_API_KEY is not set.
+	if keywordResearch != nil {
+		if provider, ok := keywordResearch.Data.(localseo.Data); ok {
+			localSEOData = provider
+		}
 	}
 	localSEOService := &localseo.Service{Data: localSEOData}
 	mcpDeps := &mcp.Deps{
