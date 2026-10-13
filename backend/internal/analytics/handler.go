@@ -9,7 +9,10 @@ import (
 	"net/netip"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
@@ -19,6 +22,8 @@ const (
 	maxCollectBody = 4 << 10
 	maxSiteKey     = 64
 	maxURL         = 2048
+	// maxEventName is the longest custom event name, in characters.
+	maxEventName   = 64
 	maxScreenWidth = 100_000
 )
 
@@ -59,12 +64,7 @@ func collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		var req struct {
-			SiteKey     string `json:"k"`
-			URL         string `json:"u"`
-			Referrer    string `json:"r"`
-			ScreenWidth int    `json:"w"`
-		}
+		var req collectRequest
 		err := httpx.DecodeJSONLimit(r.Body, maxCollectBody, &req)
 		if errors.Is(err, httpx.ErrPayloadTooLarge) {
 			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "payload_too_large", "The event is too large.")
@@ -85,6 +85,7 @@ func collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.Han
 			Page:        page,
 			Referrer:    req.Referrer,
 			ScreenWidth: req.ScreenWidth,
+			EventName:   strings.TrimSpace(req.EventName),
 			IP:          httpx.ClientIP(r, trusted),
 			UserAgent:   r.UserAgent(),
 		})
@@ -104,13 +105,18 @@ func collect(logger *slog.Logger, svc *Service, trusted []netip.Prefix) http.Han
 	}
 }
 
-// validateCollect checks an event's fields and returns the parsed page URL.
-func validateCollect(req struct {
+// collectRequest is what the tracker posts. EventName is empty for a
+// pageview and names a custom event, such as a button click, otherwise.
+type collectRequest struct {
 	SiteKey     string `json:"k"`
 	URL         string `json:"u"`
 	Referrer    string `json:"r"`
 	ScreenWidth int    `json:"w"`
-}) (*url.URL, string) {
+	EventName   string `json:"n"`
+}
+
+// validateCollect checks an event's fields and returns the parsed page URL.
+func validateCollect(req collectRequest) (*url.URL, string) {
 	if req.SiteKey == "" || len(req.SiteKey) > maxSiteKey {
 		return nil, "k must be a site key."
 	}
@@ -123,6 +129,11 @@ func validateCollect(req struct {
 	}
 	if req.ScreenWidth < 0 || req.ScreenWidth > maxScreenWidth {
 		return nil, fmt.Sprintf("w must be a screen width from 0 to %d.", maxScreenWidth)
+	}
+	if name := strings.TrimSpace(req.EventName); req.EventName != "" &&
+		(name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > maxEventName ||
+			strings.ContainsFunc(name, unicode.IsControl)) {
+		return nil, fmt.Sprintf("n must be an event name of 1 to %d characters.", maxEventName)
 	}
 	return page, ""
 }

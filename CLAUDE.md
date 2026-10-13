@@ -3,6 +3,22 @@
 Every coding agent (Claude, Codex, Cursor, others) follows this file.
 `AGENTS.md` only points here.
 
+## 0. Where Uplumo is today
+
+- Live at `https://uplumo.com` on Railway (one Go server that also serves
+  the React build, plus Postgres and Redis). Merging to `main` does **not**
+  deploy: see `docs/DEPLOY.md`.
+- Razorpay is connected with **test-mode** keys: checkout works with test
+  cards, no real money moves yet. Live keys go in only after a full test
+  payment, renewal and cancel on the site.
+- `DATAFORSEO_API_KEY` and `OPENROUTER_API_KEY` are not set in production,
+  so paid data and AI answer `503` there.
+- One person runs the company. You are the engineering team, QA, security,
+  SRE and the person who thinks about money: act like it (section 3).
+
+The current status of every feature is in `ROADMAP.md`; check it and the
+code before you trust this section.
+
 ## 1. What to read, and when
 
 | You are about to...                      | Read first                                                    |
@@ -40,6 +56,59 @@ cases and production limits. Say **why**, not what the code already says.
 Code and README change in the same PR.
 
 ## 3. How to write code
+
+### Before you write a line
+
+1. **Is it needed?** Build what a real customer or a real failure needs,
+   nothing for an imagined future. No unused parameters, options, layers,
+   files or "just in case" branches. Under-engineering is a defect too: a
+   missing timeout, limit, check or test is not "simple".
+2. **Does it already exist?** Look in this repo, then the standard library,
+   then `go.mod` and `package.json`. Read the current docs before you code:
+   Go release notes (`go.dev/doc/go1.27`, e.g. `errors.AsType`,
+   `sync.WaitGroup.Go`, `testing.T.Context`, `slices`, `maps`,
+   `strings.SplitSeq`, the `uuid` package) and `go doc`; for the frontend the
+   React 19, TanStack Query/Router/Form, Zod 4, Base UI and Tailwind 4 docs.
+   Search the web for the established way when you are not sure. A
+   hand-rolled copy of something that exists is a defect.
+3. **Is this the right way?** Prefer the boring, documented approach. If two
+   ways work, pick the one with less code and fewer moving parts, and say
+   why in the PR.
+4. **What can it cost us?** For every change that touches money, data,
+   providers or other customers, write down the scenarios and how the code
+   stops each one from losing money or trust, then test them:
+   - a bug or loop calls a paid provider again and again;
+   - one customer's heavy use slows, blocks or bills another;
+   - a provider, Postgres or Redis is down, slow or answers garbage;
+   - the same request, webhook or job runs twice (retries, double clicks);
+   - two requests race for the same row, credit or limit;
+   - a user reaches another workspace's data;
+   - a public page promises something the product does not do.
+     Put the list, and what you did about each, in the PR.
+5. **Is every line production-ready?** Errors wrapped and handled, inputs
+   validated, timeouts and limits on every outside call, idempotent where it
+   can repeat, logged where an on-call person needs it, and a way back if it
+   goes wrong (migrations only move forward, so design for that).
+
+Then delete every line that does not earn its place.
+
+### Mistakes we already made (do not repeat them)
+
+- **One shared limit for every customer.** A global $25/day stop meant one
+  heavy workspace paused all the others, and they would leave. A limit that
+  protects Uplumo must be scoped to whoever causes the cost (per workspace,
+  per plan); a global stop is only an emergency brake, set far above normal
+  use. Before you ship any limit, work it with real numbers: "5 customers on
+  Pro, one uses 10x the others: who gets blocked, when, and what do they see?"
+- **Building before recommending.** Writing code first and explaining later
+  hides the decision from the owner. When there is an established tool or
+  pattern (TanStack Query for server state instead of `useEffect` fetches,
+  `errors.AsType`, a provider's own limit or webhook), say so **before**
+  coding, with the trade-off, and let the owner choose.
+- **Rules that look safe but punish paying users.** A check that fails
+  closed is right; a check that blocks a paying customer for something they
+  did not do is a bug. Ask "who does this stop, and is that the person who
+  caused the problem?"
 
 **Go is the backend.** There is no TypeScript backend: the React app is a
 static SPA that the Go server serves and that calls `/api/v1/`. No Next.js.
@@ -132,6 +201,13 @@ Do not commit with a failing check, and do not commit secrets.
 
 The owner (Toufiq) decides product scope, pricing, branding and architecture.
 Propose with a recommendation; do not decide silently.
+
+- Speak up first. If you see a better tool, a risk, or a cheaper way, say it
+  before you build, even when nobody asked. Silence about a known problem is
+  a defect.
+- Anything that touches money, limits, pricing or every customer at once:
+  post the plan and the real-number scenario to the owner and wait for a yes
+  before coding.
 
 - Keep answers short, in Hinglish, senior-dev tone. No long essays.
 - Before planning a new feature, search the web for current competitor

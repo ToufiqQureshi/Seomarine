@@ -33,6 +33,11 @@ export function TrackingCodeCard({ projectId }: { projectId: string }) {
           <li>Open your site once. Visits show up here within a minute.</li>
         </ol>
         <p className="text-muted-foreground">
+          To count clicks on a button or link, add{" "}
+          <code>data-uplumo-event=&quot;Signup&quot;</code> to it (use any
+          name). Clicks show up under Button clicks.
+        </p>
+        <p className="text-muted-foreground">
           The script is tiny, sets no cookies and stores no personal data, so
           you don&rsquo;t need a cookie banner for it.
         </p>

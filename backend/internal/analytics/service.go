@@ -44,8 +44,11 @@ type Hit struct {
 	Page        *url.URL // absolute http(s) URL
 	Referrer    string
 	ScreenWidth int
-	IP          string
-	UserAgent   string
+	// EventName names a custom event, such as a button click; empty for a
+	// pageview.
+	EventName string
+	IP        string
+	UserAgent string
 }
 
 // Summary is a project's traffic over a date range.
@@ -58,6 +61,15 @@ type Summary struct {
 	AISources []AISourceCount `json:"aiSources"`
 	Referrers []ReferrerCount `json:"referrers"`
 	Devices   []DeviceCount   `json:"devices"`
+	// Events are the site's custom events, such as button clicks.
+	Events []EventCount `json:"events"`
+}
+
+// EventCount is how often a custom event happened and for how many visitors.
+type EventCount struct {
+	Name     string `json:"name"`
+	Count    int64  `json:"count"`
+	Visitors int64  `json:"visitors"`
 }
 
 // DayCount is one UTC day of a summary's series.
@@ -121,7 +133,7 @@ func (s *Service) EnsureSite(ctx context.Context, projectID string) (string, err
 	return key, nil
 }
 
-// Collect records one pageview. It returns nil without recording anything
+// Collect records one pageview, or one custom event when h.EventName is set. It returns nil without recording anything
 // for crawlers, and ErrRateLimited, ErrUnknownSite or ErrForeignHost when
 // the hit is refused.
 //
@@ -156,6 +168,10 @@ func (s *Service) Collect(ctx context.Context, h Hit) error {
 	if path == "" {
 		path = "/"
 	}
+	visitor := hash(salt, h.SiteKey, h.IP, h.UserAgent)
+	if h.EventName != "" {
+		return s.repo.insertCustomEvent(ctx, st.ID, now, h.EventName, path, visitor)
+	}
 	var country string
 	if s.geo != nil {
 		country, err = s.geo.Country(h.IP)
@@ -169,7 +185,7 @@ func (s *Service) Collect(ctx context.Context, h Hit) error {
 		Path:        path,
 		Source:      classify(h.Page, h.Referrer, st.Domain),
 		Device:      deviceOf(h.UserAgent, h.ScreenWidth),
-		VisitorHash: hash(salt, h.SiteKey, h.IP, h.UserAgent),
+		VisitorHash: visitor,
 		CountryCode: country,
 	})
 }

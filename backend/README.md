@@ -72,7 +72,8 @@ are in its own `internal/<feature>/README.md` and, where one exists,
   does nothing when Do Not Track or Global Privacy Control is on. Cached for
   an hour, then revalidated by ETag.
 - `POST /collect`: tracker events, `{"k": siteKey, "u": url, "r": referrer,
-"w": screenWidth}`, answered with `202`. Open CORS, 4 KB body limit,
+"w": screenWidth, "n": eventName}` (`n` only for a custom event such as a
+  button click), answered with `202`. Open CORS, 4 KB body limit,
   120 events a minute per IP and site (`429` above that). The page host must
   be the project's domain or a subdomain of it when the project has one
   (`403` otherwise). Crawlers and headless browsers are accepted and dropped.
@@ -80,12 +81,14 @@ are in its own `internal/<feature>/README.md` and, where one exists,
   and tracker snippet, created on first call.
 - `GET /api/v1/projects/{projectId}/analytics/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`:
   visitors, pageviews, a daily series and the top pages, channels, AI
-  sources, referrers and devices for whole UTC days, at most 366 of them.
+  sources, referrers, devices and custom events (button clicks) for whole
+  UTC days, at most 366 of them.
 - `GET /api/v1/billing/status`: the plan of the session's active workspace,
-  `{"plan": "free"|"pro", "status": "<Razorpay status>"|"none",
+  `{"plan": "free"|"basic"|"pro"|"agency", "status": "<Razorpay status>"|"none",
 "currentPeriodEnd": RFC 3339|null, "cancelAtPeriodEnd": bool}`. Any member
   may read it.
-- `POST /api/v1/billing/checkout`: starts a Pro subscription and returns
+- `POST /api/v1/billing/checkout` (`{"plan": "basic"|"pro"|"agency"}`):
+  starts a subscription to that plan and returns
   `{"subscriptionId", "keyId"}` for Razorpay Checkout. Owners and admins
   only (`403` otherwise); `409` when the workspace already has a live
   subscription; `502` when Razorpay fails.

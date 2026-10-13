@@ -91,6 +91,16 @@ func (r repository) insertEvent(ctx context.Context, e event) error {
 	return nil
 }
 
+func (r repository) insertCustomEvent(ctx context.Context, siteID int64, at time.Time, name, path string, visitor []byte) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO go_analytics_custom_events (site_id, occurred_at, name, path, visitor_hash)
+		VALUES ($1, $2, $3, $4, $5)`, siteID, at, name, path, visitor)
+	if err != nil {
+		return fmt.Errorf("insert custom event: %w", err)
+	}
+	return nil
+}
+
 // eventsInRange selects the project's events from $2 (inclusive) to $3
 // (exclusive). A project without a site matches no events.
 const eventsInRange = `
@@ -142,6 +152,13 @@ func (r repository) summary(ctx context.Context, projectID string, start, end ti
 	b.Queue(`SELECT device, count(DISTINCT visitor_hash)`+eventsInRange+`
 		GROUP BY device ORDER BY 2 DESC, device`, args...).
 		Query(collectInto(&s.Devices, pgx.RowToStructByPos[DeviceCount]))
+
+	b.Queue(`SELECT name, count(*), count(DISTINCT visitor_hash)
+		FROM go_analytics_custom_events
+		WHERE site_id = (SELECT id FROM go_analytics_sites WHERE project_id = $1)
+			AND occurred_at >= $2 AND occurred_at < $3
+		GROUP BY name ORDER BY 2 DESC, name LIMIT $4`, append(args, topLimit)...).
+		Query(collectInto(&s.Events, pgx.RowToStructByPos[EventCount]))
 
 	if err := r.db.SendBatch(ctx, b).Close(); err != nil {
 		return Summary{}, fmt.Errorf("query analytics summary: %w", err)
