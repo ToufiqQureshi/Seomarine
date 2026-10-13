@@ -45,9 +45,11 @@ const (
 	// of whoever runs Uplumo. The legal and contact pages print them once
 	// they are set; a payment gateway and Google's app review both look for
 	// them.
-	operatorName    = ""
-	operatorAddress = ""
-	contentType     = "text/html; charset=utf-8"
+	operatorName    = "Toufiq Qureshi"
+	operatorAddress = "Mumbai, Maharashtra, India"
+	// supportPhone is the number the contact page gives for support calls.
+	supportPhone = "+91 96654 58841"
+	contentType  = "text/html; charset=utf-8"
 	// The pages load nothing from other origins and run no script; the
 	// JSON-LD block is data, which script-src does not govern.
 	contentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; font-src 'self'; " +
@@ -91,6 +93,7 @@ type page struct {
 	Updated     string
 	Operator    string
 	Address     string
+	Phone       string
 	ProPriceINR int
 	Plans       []Plan
 	FAQ         []QA
@@ -150,7 +153,7 @@ func New(publicURL *url.URL) (*Site, error) {
 	plans := plans()
 	base := page{
 		OGImage: origin + ogImage, SignUp: signUpPath, Support: SupportEmail, Updated: policyUpdated,
-		Operator: operatorName, Address: operatorAddress,
+		Operator: operatorName, Address: operatorAddress, Phone: supportPhone,
 		ProPriceINR: ProPriceINR, Plans: plans,
 	}
 
