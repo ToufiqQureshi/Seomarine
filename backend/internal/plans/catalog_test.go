@@ -98,3 +98,23 @@ func TestNoPlanCanCostMoreThanAThirdOfItsPrice(t *testing.T) {
 		}
 	}
 }
+
+// A plan's tracked keywords, checked weekly on desktop at its deepest
+// allowed depth with the scheduled (queued) price, must fit in its monthly
+// credits, or the rank tracking it sells runs out of credits mid-month.
+func TestWeeklyRankTrackingFitsInTheMonthlyCredits(t *testing.T) {
+	const checksPerMonth = 4.35
+	for _, plan := range Catalog() {
+		if plan.TrackedKeywords == 0 {
+			continue
+		}
+		if plan.MaxSerpDepth < 10 || plan.MaxSerpDepth > 100 || plan.MaxSerpDepth%10 != 0 {
+			t.Fatalf("%s: MaxSerpDepth %d is not 10 to 100 in steps of 10", plan.ID, plan.MaxSerpDepth)
+		}
+		perCheckUSD := 0.0006 + float64(plan.MaxSerpDepth/10-1)*0.00045
+		credits := float64(plan.TrackedKeywords) * checksPerMonth * perCheckUSD * 1280
+		if credits > float64(plan.MonthlyCredits)*0.9 {
+			t.Errorf("%s: weekly rank tracking costs %.0f credits a month, over 90%% of the %d it grants", plan.ID, credits, plan.MonthlyCredits)
+		}
+	}
+}

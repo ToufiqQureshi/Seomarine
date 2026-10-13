@@ -79,6 +79,8 @@ type Service struct {
 // track; 0 is no limit.
 type KeywordLimits interface {
 	KeywordLimit(ctx context.Context, organizationID string) (int, error)
+	// SerpDepthLimit is the deepest check the plan allows; 0 is no limit.
+	SerpDepthLimit(ctx context.Context, organizationID string) (int, error)
 }
 
 // KeywordUsage reports the organization that owns a project and how many
@@ -233,6 +235,9 @@ func (s *Service) CreateConfig(ctx context.Context, in CreateInput) (Config, err
 	if !validDevices(devices) || !validDepth(in.SerpDepth) {
 		return Config{}, ValidationError("Devices or SERP depth is not valid")
 	}
+	if err := s.checkPlanDepth(ctx, in.ProjectID, in.SerpDepth); err != nil {
+		return Config{}, err
+	}
 	pair := market.Resolve(market.Pair{LocationCode: in.LocationCode, LanguageCode: in.LanguageCode}, in.ProjectMarket)
 	if _, ok := market.Lookup(pair.LocationCode); !ok || !market.IsSupportedLanguageCode(pair.LanguageCode) {
 		return Config{}, ValidationError("Location or language is not supported")
@@ -311,6 +316,9 @@ func (s *Service) UpdateConfig(ctx context.Context, projectID, configID string, 
 	if in.SerpDepth != nil {
 		if !validDepth(*in.SerpDepth) {
 			return Config{}, ValidationError("SERP depth must be 10 to 100 in steps of 10")
+		}
+		if err := s.checkPlanDepth(ctx, projectID, *in.SerpDepth); err != nil {
+			return Config{}, err
 		}
 		u.SerpDepth = in.SerpDepth
 	}
@@ -427,6 +435,26 @@ func (s *Service) AddKeywords(ctx context.Context, projectID, configID string, r
 	}
 	result.Added, result.AddedIDs = len(added), added
 	return result, nil
+}
+
+// checkPlanDepth refuses a SERP depth deeper than the workspace's plan
+// allows: deeper checks cost more credits per keyword.
+func (s *Service) checkPlanDepth(ctx context.Context, projectID string, depth int) error {
+	if s.Limits == nil || s.Usage == nil {
+		return nil
+	}
+	organizationID, _, err := s.Usage.OrganizationKeywords(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	limit, err := s.Limits.SerpDepthLimit(ctx, organizationID)
+	if err != nil {
+		return fmt.Errorf("check SERP depth limit: %w", err)
+	}
+	if limit > 0 && depth > limit {
+		return fmt.Errorf("%w: your plan checks rankings up to the top %d results. Choose %d or less, or upgrade the plan", ErrLimit, limit, limit)
+	}
+	return nil
 }
 
 // planRoom returns how many more keywords the project's workspace may track

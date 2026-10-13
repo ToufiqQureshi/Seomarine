@@ -291,6 +291,13 @@ func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
 	return definition.TrackedKeywords, err
 }
 
+// SerpDepthLimit returns how deep orgID's rank tracking may look; 0 is no
+// limit.
+func (s *Service) SerpDepthLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.MaxSerpDepth, err
+}
+
 // MemberLimit returns how many people orgID's workspace may hold; 0 is no
 // limit.
 func (s *Service) MemberLimit(ctx context.Context, orgID string) (int, error) {

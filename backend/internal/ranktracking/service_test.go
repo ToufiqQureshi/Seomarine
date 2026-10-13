@@ -458,10 +458,53 @@ func TestEstimateCost(t *testing.T) {
 
 type fakeKeywordLimits struct {
 	limit int
+	depth int
 	err   error
 }
 
 func (f fakeKeywordLimits) KeywordLimit(context.Context, string) (int, error) { return f.limit, f.err }
+func (f fakeKeywordLimits) SerpDepthLimit(context.Context, string) (int, error) {
+	return f.depth, f.err
+}
+
+func TestSerpDepthStopsAtThePlanLimit(t *testing.T) {
+	ctx := context.Background()
+	pool := openPool(t)
+	s, project := newTestService(t, nil)
+	org := "org-" + project
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Depth', $1, now())`, org); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM organization WHERE id = $1`, org); err != nil {
+			t.Errorf("clean organization: %v", err)
+		}
+	})
+	if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name, location_code, language_code) VALUES ($1, $2, 'Live', 2840, 'en')`, project, org); err != nil {
+		t.Fatal(err)
+	}
+	s.Usage = Store{DB: pool}
+	s.Limits = fakeKeywordLimits{depth: 30}
+
+	in := CreateInput{ProjectID: project, ProjectMarket: usMarket, Domain: "deep.example", SerpDepth: 40}
+	if _, err := s.CreateConfig(ctx, in); !errors.Is(err, ErrLimit) {
+		t.Fatalf("create at depth 40 on a top-30 plan error = %v, want ErrLimit", err)
+	}
+	cfg := create(t, s, project, func(in *CreateInput) { in.SerpDepth = 30 })
+	deeper := 50
+	if _, err := s.UpdateConfig(ctx, project, cfg.ID, UpdateInput{SerpDepth: &deeper}); !errors.Is(err, ErrLimit) {
+		t.Fatalf("update to depth 50 error = %v, want ErrLimit", err)
+	}
+	s.Limits = fakeKeywordLimits{depth: 0}
+	if _, err := s.UpdateConfig(ctx, project, cfg.ID, UpdateInput{SerpDepth: &deeper}); err != nil {
+		t.Fatalf("update without a depth limit error = %v", err)
+	}
+	failure := errors.New("billing down")
+	s.Limits = fakeKeywordLimits{err: failure}
+	if _, err := s.UpdateConfig(ctx, project, cfg.ID, UpdateInput{SerpDepth: &deeper}); !errors.Is(err, failure) {
+		t.Fatalf("error when the limit cannot be read = %v, want it passed on", err)
+	}
+}
 
 func TestAddKeywordsStopsAtThePlanLimit(t *testing.T) {
 	ctx := context.Background()

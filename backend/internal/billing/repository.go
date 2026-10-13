@@ -157,7 +157,8 @@ func (r repository) applyEvent(ctx context.Context, eventID string, s subscripti
 		if grantCredits > 0 {
 			// Same transaction as the event record, so a failed grant is
 			// retried by Razorpay's redelivery instead of being lost.
-			if err := grantCreditsTx(ctx, tx, s.OrganizationID, grantCredits, "monthly plan credits"); err != nil {
+			// Unused credits roll over, up to two months of the plan.
+			if err := grantUpToTx(ctx, tx, s.OrganizationID, grantCredits, 2*grantCredits, "monthly plan credits"); err != nil {
 				return err
 			}
 		}

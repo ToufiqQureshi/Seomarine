@@ -102,7 +102,9 @@ Secrets go into Railway variables only, never into the repo or chat.
   of a dollar of provider cost). No credits means no request is sent. A
   daily limit on all provider spend (`PROVIDER_DAILY_LIMIT_USD`, default $25)
   pauses paid work for everyone as the last safety net. Rules:
-  `backend/internal/billing/README.md`.
+  `backend/internal/billing/README.md`. Unused credits roll over up to two
+  months. Rank tracking depth is capped per plan (Basic top 30, Pro and
+  Agency top 40) so weekly checks of every tracked keyword fit the credits.
 - Plans (owner, 12 October 2026, confirmed 13 October). Built: the table
   below is `backend/internal/plans/catalog.go`. Free is one site with
   analytics and a starter audit.
@@ -127,11 +129,6 @@ Secrets go into Railway variables only, never into the repo or chat.
 
 - Credits on the public pricing page: today only in the app. Showing "10,000
   credits a month" would set expectations; hiding it avoids explaining them.
-- Unused credits roll over every month. Cap the rollover (for example at two
-  months) or reset each month.
-- Pro's 500 tracked keywords checked weekly at top-100 depth cost about 12,800
-  credits a month, more than Pro's 10,000. Top-30 fits easily. Either raise
-  Pro's credits, cap the depth, or let customers choose with the estimate.
 - The typical costs on Billing (`backend/internal/billing/costs.go`) are from
   published prices; check them against the first real DataForSEO and
   OpenRouter invoices.

@@ -46,12 +46,19 @@ it) is what one workspace may cost us at the providers. 1,000 credits are one
 US dollar of provider cost before the 1.28 markup, so a credit is 1/1280 of a
 dollar of provider cost. Each paid charge of a plan grants that plan's
 `MonthlyCredits` (`internal/plans`: Basic 4,000, Pro 10,000, Agency 25,000)
-once per webhook event; unused credits roll over. The test
+once per webhook event; unused credits roll over up to two months of the
+plan (`grantUpToTx`). The test
 `TestNoPlanCanCostMoreThanAThirdOfItsPrice` keeps every grant under a third
 of the plan's price. `GET /api/v1/billing/credits` returns the plan and
 balance, `GET /api/v1/billing/usage` this month's spend by feature and the
 typical cost of each action (`costs.go`, `api/billing.yaml`), and `POST
 /api/v1/billing/usage-events` lists settled spends.
+
+Plan-wise limits beside credits: sites, tracked keywords, members and the
+deepest rank-tracking check (`MaxSerpDepth`: Basic top 30, Pro and Agency
+top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
+tracked keywords, checked weekly at its deepest depth, under 90% of its
+monthly credits.
 
 Credits are shown in the app (Billing, and next to paid actions) but not on
 the public pricing page; `internal/site` tests keep them off it.

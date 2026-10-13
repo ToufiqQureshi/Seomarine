@@ -88,6 +88,20 @@ func (s *CreditLedgerService) AddCredits(ctx context.Context, orgID string, amou
 	})
 }
 
+// grantUpToTx grants amount, but never past a balance of ceiling, inside the
+// caller's transaction. It grants nothing when the balance is already there.
+func grantUpToTx(ctx context.Context, tx pgx.Tx, orgID string, amount, ceiling int64, reason string) error {
+	var balance int64
+	err := tx.QueryRow(ctx, `SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE`, orgID).Scan(&balance)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("lock balance for grant: %w", err)
+	}
+	if grant := min(amount, ceiling-balance); grant > 0 {
+		return grantCreditsTx(ctx, tx, orgID, grant, reason)
+	}
+	return nil
+}
+
 // grantCreditsTx adds amount to the balance and writes the ledger row inside
 // the caller's transaction.
 func grantCreditsTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, reason string) error {
