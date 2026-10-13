@@ -45,21 +45,6 @@ function headings(content: string) {
 function checksFor(mode: EditorMode, draft: ContentDraftInput): ScoreCheck[] {
   const keyword = draft.targetKeyword.trim();
   const count = countWords(draft.content);
-  const escapedKeyword = normalized(keyword).replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&",
-  );
-  const keywordCount = keyword
-    ? (
-        normalized(draft.content).match(
-          new RegExp(
-            `(^|[^\\p{L}\\p{N}])${escapedKeyword}(?=$|[^\\p{L}\\p{N}])`,
-            "giu",
-          ),
-        ) ?? []
-      ).length
-    : 0;
-  const density = count ? (keywordCount / count) * 100 : 0;
   const bodyHeadings = headings(draft.content);
   const links = [
     ...draft.content.matchAll(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g),
@@ -83,78 +68,70 @@ function checksFor(mode: EditorMode, draft: ContentDraftInput): ScoreCheck[] {
   if (mode === "seo") {
     return [
       {
-        id: "keyword-title",
-        label: "Target keyword in title",
-        detail: keyword
-          ? "Use your exact target phrase in the page title."
-          : "Add a target keyword first.",
-        passed: keywordMatches(draft.title, keyword),
+        id: "title-present",
+        label: "Page title added",
+        detail: "Use one clear title that matches what the page is about.",
+        passed: Boolean(draft.title.trim()),
         weight: 15,
       },
       {
-        id: "title-length",
-        label: "Title length",
-        detail: `${draft.title.length} characters; aim for 30–60 so it is less likely to be cut off.`,
-        passed: draft.title.length >= 30 && draft.title.length <= 60,
+        id: "topic-title",
+        label: "Topic is clear in the title",
+        detail: keyword
+          ? "Mention the main topic naturally when it fits the title."
+          : "Add a topic to check how clearly the title describes the page.",
+        passed: keywordMatches(draft.title, keyword),
         weight: 10,
       },
       {
-        id: "meta-length",
-        label: "Meta description length",
-        detail: `${draft.metaDescription.length} characters; aim for 120–160.`,
-        passed:
-          draft.metaDescription.length >= 120 &&
-          draft.metaDescription.length <= 160,
-        weight: 10,
-      },
-      {
-        id: "keyword-meta",
-        label: "Target keyword in description",
-        detail: "Mention the target phrase naturally in the search snippet.",
-        passed: keywordMatches(draft.metaDescription, keyword),
+        id: "search-description",
+        label: "Search description added",
+        detail:
+          "Summarize this page clearly. Search engines may choose a different snippet.",
+        passed: Boolean(draft.metaDescription.trim()),
         weight: 10,
       },
       {
         id: "slug",
         label: "Readable page URL",
-        detail: "Use a short, readable URL with the target topic when it fits.",
-        passed: Boolean(draft.slug.trim()) && !/[\sA-Z]/u.test(draft.slug),
+        detail: "Use a short, readable URL that reflects the page when it fits.",
+        passed: Boolean(draft.slug.trim()) && !/[\\sA-Z]/u.test(draft.slug),
         weight: 10,
       },
       {
-        id: "keyword-coverage",
-        label: "Natural topic coverage",
+        id: "topic-body",
+        label: "Topic appears in the article",
         detail: keyword
-          ? `Keyword appears ${keywordCount} times (${density.toFixed(1)}% of words); a light, natural use is best.`
-          : "Add a target keyword to measure topic coverage.",
-        passed: density >= 0.3 && density <= 2.5,
+          ? "Use the topic naturally where it helps readers understand the page."
+          : "Add a topic to check whether the article addresses it.",
+        passed: keywordMatches(draft.content, keyword),
         weight: 15,
       },
       {
         id: "headings",
-        label: "Organized with subheadings",
-        detail: `${bodyHeadings.length} Markdown heading${bodyHeadings.length === 1 ? "" : "s"} found in the draft.`,
-        passed: bodyHeadings.length >= 2,
-        weight: 10,
-      },
-      {
-        id: "depth",
-        label: "Useful content depth",
-        detail: `${count} words; add enough detail to fully answer the reader's need (300+ is a starting signal).`,
-        passed: count >= 300,
-        weight: 10,
+        label: "Article has clear sections",
+        detail: `${bodyHeadings.length} Markdown heading${bodyHeadings.length === 1 ? "" : "s"} found; organize the page where it helps readers.`,
+        passed: bodyHeadings.length >= 1,
+        weight: 15,
       },
       {
         id: "links",
         label: "Supporting links",
-        detail: `${links.length} link${links.length === 1 ? "" : "s"} found; cite relevant sources and related pages.`,
+        detail: `${links.length} link${links.length === 1 ? "" : "s"} found; cite sources when claims need evidence and link to useful related pages.`,
         passed: links.length >= 1,
         weight: 10,
+      },
+      {
+        id: "substance",
+        label: "Article content added",
+        detail: `${count} words so far. There is no universal word-count target; cover the reader's need.`,
+        passed: count > 0,
+        weight: 15,
       },
     ];
   }
 
-  const hasDirectAnswer = openingWords >= 20 && openingWords <= 70;
+  const hasDirectAnswer = openingWords > 0;
   const hasQuestions = bodyHeadings.some((heading) => heading.includes("?"));
   const hasList = draft.content
     .split("\n")
@@ -167,7 +144,7 @@ function checksFor(mode: EditorMode, draft: ContentDraftInput): ScoreCheck[] {
     {
       id: "direct-answer",
       label: "Answer the main question early",
-      detail: `Opening paragraph has ${openingWords} words; put a clear answer in the first 20–70 words.`,
+      detail: `Opening paragraph has ${openingWords} words; lead with a clear answer when it suits the page.`,
       passed: hasDirectAnswer,
       weight: 20,
     },
@@ -214,9 +191,9 @@ function checksFor(mode: EditorMode, draft: ContentDraftInput): ScoreCheck[] {
       id: "readability",
       label: "Keep paragraphs easy to scan",
       detail: paragraphs.length
-        ? `Average paragraph length is ${Math.round(averageParagraph)} words; aim for shorter, focused blocks.`
+        ? `Average paragraph length is ${Math.round(averageParagraph)} words; break long ideas into shorter, focused blocks.`
         : "Break the draft into short, focused paragraphs.",
-      passed: paragraphs.length >= 2 && averageParagraph <= 100,
+      passed: paragraphs.length >= 2,
       weight: 10,
     },
     {
