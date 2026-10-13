@@ -15,14 +15,14 @@
 
 `research`, `serp`, `saved/refresh` (billed, paid-plan gated when billing is wired), `saved/save|list|export|remove`, `saved/tags/assign|update|delete`.
 
-- Tables: `go_saved_keywords`, `go_saved_keyword_tags`, `go_saved_keyword_tag_assignments`, `go_keyword_metrics` (migration 00011). They start empty: one-time copy from the legacy tables is an owner step.
+- Tables: `go_saved_keywords`, `go_saved_keyword_tags`, `go_saved_keyword_tag_assignments`, `go_keyword_metrics` (migration 00011).
 - Env: needs `DATAFORSEO_*` for research/serp; Redis for caches (research v5 24h, SERP 12h).
 - Never break: validate before any provider call (failed tasks are billed); tag delete locks the tag so a concurrent assign cannot orphan rows; metrics persist under the requested language even when Labs served another.
 - Deliberate differences from legacy: NULL metrics sort last in saved lists; research language is normalized to the one Labs serves.
 
-## Migration status
+## Markets
 
-Market tables and resolution are in `platform/market`. Domain analysis now reads the project market server-side. Keyword research, saved keywords, SERP analysis and SERP location API are being ported here; legacy TypeScript remains active until each response contract and caller is switched.
+Market tables and resolution are in `platform/market`. Labs covers 94 countries; the rest are served by the Google Ads endpoints, which have no keyword difficulty or search intent.
 
 
 The Go MCP `get_serp_results` tool uses the shared keyword SERP provider for

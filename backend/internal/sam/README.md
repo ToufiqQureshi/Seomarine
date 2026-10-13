@@ -101,7 +101,7 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
   Stopping the reply is aborting the request. There is no reconnect or
   "recovering" state because no process holds a turn that can be reset.
 - **Credits.** Every turn is gated and charged against the Go credit ledger
-  (`go_billing_credits`), not Autumn. 1 credit = $0.001 of provider cost with the
+  (`go_billing_credits`). 1 credit = $0.001 of provider cost with the
   usual 1.28 markup, rounded up. Uplumo is SaaS: there is no bring-your-own-key
   or unmetered mode.
 - **Telemetry.** The `sam:turn` PostHog events are not ported; failures are
@@ -112,4 +112,4 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 - **Dev tools.** The dev-only "clear history" button is gone; rewind covers it.
 - **Skills and fact sheet.** `skills/*.md` and `product_fact_sheet.md` are copies
   of files outside the Go module. `TestEmbeddedCopiesMatchTheirSources` fails
-  when they drift. The legacy fact sheet is deleted at cutover.
+  when they drift.

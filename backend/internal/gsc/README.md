@@ -17,8 +17,8 @@
 The Go backend serves Search Console grant status, property listing and
 selection, disconnect, URL inspection, and Search Performance
 report/table/export routes. It reads the existing `gsc_connections` mapping
-and uses the shared Google API client. GSC consent, MCP wrappers and the React
-call-site switch remain on the TypeScript side.
+and uses the shared Google API client. Consent is in `internal/google`. The
+React integration settings and the Search Performance page call these routes.
 
 Property selection and disconnect require an owner or admin role. Selecting a
 property verifies that the chosen Google grant belongs to the user, that the

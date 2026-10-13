@@ -66,10 +66,10 @@ and path (path only under URL scopes); for prompts the model, resolved model
 name, whitespace-collapsed prompt (case kept), web search and country. The
 highlight brand is deliberately **not** in the key: it is re-applied on every
 read. The organization is in the clear so everything it cached can be deleted by
-prefix. **Privacy erasure:** cached prompts can hold personal data, and the
-TypeScript erasure job does not know this Redis namespace yet. Entries expire
-within 7 days; the job must `SCAN`/`UNLINK` `ai-search:*:<organizationId>:*` when
-it is ported.
+prefix. **Privacy erasure:** cached prompts can hold personal data, and
+`cmd/erase-user` works on Postgres only, so it does not clear this Redis
+namespace. Entries expire within 7 days. To erase sooner, `SCAN`/`UNLINK`
+`ai-search:*:<organizationId>:*`.
 
 ## Configuration
 

@@ -2,9 +2,8 @@
 
 This package serves the dashboard's existing audit and backlink snapshot cards.
 It performs only database reads; visits never trigger a paid DataForSEO request.
-The snapshot can be refreshed by a separate explicit operation after credit
-reservation is implemented. Existing TypeScript dashboard routes remain the
-client source until the frontend cutover.
+The backlink snapshot is refreshed only by the explicit
+`dashboard/backlinks/refresh` call in `internal/dashboard`.
 
 All reads are scoped to the authenticated project and organization. Latest
 audits and snapshots use stable newest-first ordering, and stale snapshots are

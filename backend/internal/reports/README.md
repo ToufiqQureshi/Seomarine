@@ -12,9 +12,8 @@ document and storage ceilings before writing. Share tokens are bearer
 capabilities with 192 bits of random entropy; only hosted deployments issue
 them, and revoking a token must make the public read fail immediately.
 
-The tables predate Go and remain in the existing Drizzle schema until schema
-cutover. Go uses plain SQL against `reports` and `report_templates`; it does not
-add or rename columns in this port.
+The tables `reports` and `report_templates` are part of migration version 1
+and are read and written with plain SQL.
 
 MCP clients use the Go reports service for report read/write, public sharing,
 and template tools. Every operation first authorizes the requested project;
@@ -22,8 +21,7 @@ repository reads and writes then scope records to that project. Share tokens
 are never included
 in report lists or ordinary report metadata. API clients use the same Go
 service through the authenticated `/api/v1/projects/{projectId}/reports/*`
-routes. Go also serves the public report document at `/s/{token}/raw` with a
-strict sandbox CSP; the wrapper page and social image remain on their existing
-frontend routes. The legacy TypeScript tools remain registered but are shadowed by the
-Go registry while the dispatcher runs; remove their implementation only after
-the external MCP contract suite passes.
+routes. Go also serves the member viewer at `/r/{reportId}`, the public share
+page at `/s/{token}` and the report document it frames at `/s/{token}/raw`,
+with a strict sandbox CSP. The share page's preview image is the static
+`/social-card.png`.
