@@ -60,7 +60,7 @@ redirect URI is `${BETTER_AUTH_URL}/api/auth/callback/google`),
   success, instead of an error that would reveal the address exists.
 - Rate limits are Redis fixed windows per IP and route (sign-up 5/min, sign-in
   10/min, verification and reset emails 3/min); a Redis outage fails open.
-- Referral (Dub) capture on sign-up is not ported yet.
+- Referral capture on sign-up is not built.
 - Google sign-in does not store Google's access or refresh tokens. They are not
   needed to sign someone in again; the data grants for Search Console and
   Analytics are a separate flow in `internal/google`.

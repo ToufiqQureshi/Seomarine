@@ -29,7 +29,10 @@ DATABASE_URL=... go run ./cmd/erase-user -email person@example.com -execute \
   database.
 - A workspace with other members is never erased. A member who joins between the
   dry run and the erasure also aborts it.
-- Nothing outside the one transaction is changed: there is no second store.
+- Nothing outside the one transaction is changed. Redis is not touched: it
+  holds only caches that expire on their own, the longest being cached AI
+  search prompts (7 days, see `internal/aisearch/README.md`). Loops contacts
+  and the Razorpay customer are outside this command too.
   (The TypeScript version also called a Worker to clear R2 and Durable Objects.
   The Go server has neither: audit payloads and SAM transcripts are Postgres rows
   that cascade.)
