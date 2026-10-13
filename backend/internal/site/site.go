@@ -201,12 +201,12 @@ func New(publicURL *url.URL) (*Site, error) {
 // ServeLanding writes the landing page. It is revalidated on every visit
 // because the server answers / with the app for signed-in users.
 func (s *Site) ServeLanding(w http.ResponseWriter, r *http.Request) {
-	servePage(w, r, s.landing, "no-cache")
+	servePage(w, r, s.landing, "no-cache, no-transform")
 }
 
 // ServePricing writes the pricing page.
 func (s *Site) ServePricing(w http.ResponseWriter, r *http.Request) {
-	servePage(w, r, s.pricing, "public, max-age=300")
+	servePage(w, r, s.pricing, "public, max-age=300, no-transform")
 }
 
 // InfoPaths lists the URL paths ServeInfo answers, for the router.
@@ -225,7 +225,7 @@ func (s *Site) ServeInfo(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	servePage(w, r, p, "public, max-age=300")
+	servePage(w, r, p, "public, max-age=300, no-transform")
 }
 
 // ServeRobots writes robots.txt: everything public may be crawled, the API
@@ -288,6 +288,10 @@ func (s *Site) ServeAsset(w http.ResponseWriter, r *http.Request) {
 	http.ServeFileFS(w, r, s.static, file)
 }
 
+// servePage writes a rendered page. Every caller passes no-transform: the
+// pages allow no script, so a proxy that rewrites them (Cloudflare swaps each
+// email address for a script-decoded placeholder) leaves "[email protected]"
+// on screen.
 func servePage(w http.ResponseWriter, r *http.Request, p renderedPage, cacheControl string) {
 	h := w.Header()
 	h.Set("Content-Type", contentType)
@@ -359,6 +363,8 @@ var infoPages = []struct {
 		"What data Uplumo collects, how it uses Google account data, who processes it and how to delete it."},
 	{"/refunds", "refunds.html", "Cancellation and Refund Policy | Uplumo",
 		"How to cancel Uplumo Pro, what happens after you cancel and when we refund a payment."},
+	{"/shipping", "shipping.html", "Shipping and Delivery Policy | Uplumo",
+		"Uplumo is online software: nothing is shipped, and access starts as soon as you sign up or pay."},
 }
 
 func plans() []Plan {

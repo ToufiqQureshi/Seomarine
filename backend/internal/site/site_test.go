@@ -88,8 +88,8 @@ func TestPagesCarryTheirMetadata(t *testing.T) {
 		canonical string
 		cache     string
 	}{
-		{name: "landing", serve: s.ServeLanding, canonical: "https://uplumo.com/", cache: "no-cache"},
-		{name: "pricing", serve: s.ServePricing, canonical: "https://uplumo.com/pricing", cache: "public, max-age=300"},
+		{name: "landing", serve: s.ServeLanding, canonical: "https://uplumo.com/", cache: "no-cache, no-transform"},
+		{name: "pricing", serve: s.ServePricing, canonical: "https://uplumo.com/pricing", cache: "public, max-age=300, no-transform"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -240,6 +240,11 @@ func TestInfoPages(t *testing.T) {
 			}
 			if got := rec.Header().Get("Content-Security-Policy"); got != contentSecurityPolicy {
 				t.Errorf("Content-Security-Policy = %q", got)
+			}
+			// Without no-transform Cloudflare rewrites the support address
+			// into a placeholder that only a script can decode.
+			if got := rec.Header().Get("Cache-Control"); !strings.Contains(got, "no-transform") {
+				t.Errorf("Cache-Control = %q, want no-transform", got)
 			}
 			body := rec.Body.String()
 			for _, want := range []string{
