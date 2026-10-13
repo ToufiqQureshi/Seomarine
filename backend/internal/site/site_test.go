@@ -335,3 +335,29 @@ func TestRobotsAndSitemap(t *testing.T) {
 		}
 	}
 }
+
+func TestPricingPageShowsWhatThePlanCatalogEnforces(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+	rec := httptest.NewRecorder()
+	s.ServePricing(rec, httptest.NewRequest(http.MethodGet, "/pricing", nil))
+	body := rec.Body.String()
+	for _, want := range []string{
+		"<th scope=\"row\">Websites</th><td>1</td><td>1</td><td>2</td><td>10</td>",
+		"<th scope=\"row\">Team members</th><td>1</td><td>1</td><td>3</td><td>10</td>",
+		"<th scope=\"row\">Rank tracking</th><td>—</td><td>100 keywords</td><td>500 keywords</td><td>2,000 keywords</td>",
+		"<th scope=\"row\">Keyword research</th><td>—</td><td>Included</td><td>Included</td><td>Included</td>",
+		"<th scope=\"row\">AI Visibility</th><td>—</td><td>—</td><td>Included</td><td>Included</td>",
+		"<th scope=\"row\">White-label reports</th><td>—</td><td>—</td><td>—</td><td>Included</td>",
+		"<th scope=\"row\">Monthly price</th><td>Free</td><td>₹999</td><td>₹2,499</td><td>₹5,999</td>",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("pricing page lacks the row %s", want)
+		}
+	}
+	// Credits are an internal cost cap, never something a customer is sold.
+	for _, unwanted := range []string{"credit", "$3", "$10"} {
+		if strings.Contains(strings.ToLower(body), unwanted) {
+			t.Errorf("pricing page mentions %q", unwanted)
+		}
+	}
+}

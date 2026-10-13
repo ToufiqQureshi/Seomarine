@@ -4,6 +4,7 @@ import (
 	"maps"
 	"net/url"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -226,5 +227,57 @@ func TestLoadErrorReporting(t *testing.T) {
 	}
 	if cfg.Environment != "production" {
 		t.Errorf("environment on a live https site = %q, want production", cfg.Environment)
+	}
+}
+
+func TestLoadRazorpayNeedsCredentialsAndAPlanTogether(t *testing.T) {
+	base := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	with := func(extra map[string]string) error {
+		env := maps.Clone(base)
+		maps.Copy(env, extra)
+		_, err := Load(func(key string) string { return env[key] })
+		return err
+	}
+	credentials := map[string]string{"RAZORPAY_KEY_ID": "id", "RAZORPAY_KEY_SECRET": "secret", "RAZORPAY_WEBHOOK_SECRET": "hook"}
+
+	if err := with(credentials); err == nil || !strings.Contains(err.Error(), "RAZORPAY_PLAN_ID_") {
+		t.Errorf("credentials without a plan id: error = %v, want one naming the plan variables", err)
+	}
+	if err := with(map[string]string{"RAZORPAY_PLAN_ID_AGENCY": "plan_agency"}); err == nil || !strings.Contains(err.Error(), "RAZORPAY_KEY_ID") {
+		t.Errorf("a plan id without credentials: error = %v, want one naming the missing credentials", err)
+	}
+	one := maps.Clone(credentials)
+	one["RAZORPAY_PLAN_ID_BASIC"] = "plan_basic"
+	if err := with(one); err != nil {
+		t.Errorf("credentials with one plan id: error = %v, want billing on", err)
+	}
+}
+
+func TestLoadStaffEmails(t *testing.T) {
+	env := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	load := func() []string {
+		t.Helper()
+		cfg, err := Load(func(key string) string { return env[key] })
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		return cfg.StaffEmails
+	}
+	if got := load(); len(got) != 0 {
+		t.Errorf("without STAFF_EMAILS = %v, want nobody", got)
+	}
+	env["STAFF_EMAILS"] = " Owner@Uplumo.com ,, second@uplumo.com	"
+	if got := load(); !slices.Equal(got, []string{"owner@uplumo.com", "second@uplumo.com"}) {
+		t.Errorf("STAFF_EMAILS = %v, want both addresses trimmed and lower case", got)
 	}
 }
