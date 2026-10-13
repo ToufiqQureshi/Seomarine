@@ -60,6 +60,13 @@ type Config struct {
 	OpenAIAppsChallenge string
 	// BypassEmailVerification skips email verification (development only).
 	BypassEmailVerification bool
+	// SentryDSN turns on error reporting to Sentry when set.
+	SentryDSN string
+	// Environment names where the server runs in error reports: production
+	// on a live site, development anywhere else.
+	Environment string
+	// Release is the deployed commit, which Railway provides.
+	Release string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
 }
@@ -156,7 +163,9 @@ func Load(getenv func(string) string) (Config, error) {
 	dataForSEOKey := strings.TrimSpace(getenv("DATAFORSEO_API_KEY"))
 	openRouterKey := strings.TrimSpace(getenv("OPENROUTER_API_KEY"))
 	bypassVerification := strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true"
+	environment := "development"
 	if isLive(public) {
+		environment = "production"
 		if bypassVerification {
 			return Config{}, errors.New("BYPASS_EMAIL_VERIFICATION is for local development and cannot be set on a live site")
 		}
@@ -190,6 +199,9 @@ func Load(getenv func(string) string) (Config, error) {
 		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
 		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
 		BypassEmailVerification:      bypassVerification,
+		SentryDSN:                    strings.TrimSpace(getenv("SENTRY_DSN")),
+		Environment:                  environment,
+		Release:                      strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
 		TrustedProxyCIDRs:            trusted,
 	}, nil
 }

@@ -30,6 +30,7 @@ PORT=8080 go run ./cmd/server
 | `LOOPS_API_KEY`, `LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID`, `LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID`, `LOOPS_TRANSACTIONAL_INVITATION_ID` | no | Transactional email. The key, the verify ID and the reset ID are needed together. See `internal/email/README.md`. |
 | `TURNSTILE_SECRET_KEY` | no | Bot check on sign-up. |
 | `BYPASS_EMAIL_VERIFICATION` | no | `true` lets a local sign-up skip the email. Refused on an `https` site. |
+| `SENTRY_DSN` | no | Sends error-level logs and panics to Sentry. See `internal/platform/errreport/README.md`. |
 | `OPENAI_APPS_CHALLENGE` | no | Token served at `/.well-known/openai-apps-challenge`. |
 
 On an `https` site the server also refuses to start when `DATAFORSEO_API_KEY`

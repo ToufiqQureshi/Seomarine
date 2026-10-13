@@ -45,6 +45,10 @@ Needed before real users sign up:
 | `DATAFORSEO_API_KEY`                                     | No keywords, rank tracking, backlinks or AI visibility (`503`).                                                                                  |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`                 | No AI assistant or AI writing.                                                                                                                   |
 
+`SENTRY_DSN` turns on error reporting: every error the server logs is sent
+to Sentry (`backend/internal/platform/errreport/README.md`). Without it
+errors stay in the Railway logs only.
+
 Optional: `GOOGLE_TOKEN_ENCRYPTION_KEY` (base64, 32 bytes) encrypts Google
 tokens with its own key instead of one derived from `BETTER_AUTH_SECRET`.
 `TRUSTED_PROXY_CIDRS` and `OPENAI_APPS_CHALLENGE` are described in

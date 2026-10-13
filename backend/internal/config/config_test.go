@@ -180,3 +180,39 @@ func TestLoadDataForSEOKey(t *testing.T) {
 		t.Errorf("key = %q, want it trimmed", got)
 	}
 }
+
+func TestLoadErrorReporting(t *testing.T) {
+	env := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	load := func() Config {
+		t.Helper()
+		cfg, err := Load(func(key string) string { return env[key] })
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		return cfg
+	}
+
+	cfg := load()
+	if cfg.SentryDSN != "" || cfg.Release != "" {
+		t.Errorf("unset: DSN %q, release %q; want both empty (reporting off)", cfg.SentryDSN, cfg.Release)
+	}
+	if cfg.Environment != "development" {
+		t.Errorf("environment on localhost = %q, want development", cfg.Environment)
+	}
+
+	env["SENTRY_DSN"] = "  https://public@example.invalid/1 \n"
+	env["RAILWAY_GIT_COMMIT_SHA"] = " abc123 "
+	env["PUBLIC_URL"] = "https://uplumo.com"
+	cfg = load()
+	if cfg.SentryDSN != "https://public@example.invalid/1" || cfg.Release != "abc123" {
+		t.Errorf("DSN %q, release %q; want both trimmed", cfg.SentryDSN, cfg.Release)
+	}
+	if cfg.Environment != "production" {
+		t.Errorf("environment on a live https site = %q, want production", cfg.Environment)
+	}
+}
