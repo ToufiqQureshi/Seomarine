@@ -72,7 +72,7 @@ func TestBillingEndToEnd(t *testing.T) {
 
 	as := func(h http.Handler, sessionToken, method, target string) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, method, target, nil)
-		req.AddCookie(&http.Cookie{Name: "better-auth.session_token", Value: sign(sessionToken)})
+		req.AddCookie(&http.Cookie{Name: "better-auth.session_token", Value: sign(sessionToken), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		return rec

@@ -3,6 +3,7 @@ package reports
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -51,6 +52,29 @@ func TestWithBrandBar(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := withBrandBar(tt.doc, tt.bar); !tt.want(got) {
 				t.Errorf("withBrandBar() = %q", got)
+			}
+		})
+	}
+}
+
+func TestVisitURLAllowsOnlyCredentialFreeHTTPURLs(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "https", url: "https://example.test/path", want: "https://example.test/path"},
+		{name: "http", url: "http://example.test/path", want: "http://example.test/path"},
+		{name: "script scheme", url: "javascript:alert(1)"},
+		{name: "relative URL", url: "//example.test/path"},
+		{name: "credentials", url: (&url.URL{Scheme: "https", User: url.UserPassword("username", strings.Repeat("x", 8)), Host: "example.test"}).String()},
+		{name: "malformed", url: "https://%zz"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := string(visitURL(branding.Branding{WebsiteURL: &tt.url}))
+			if got != tt.want {
+				t.Errorf("visitURL() = %q, want %q", got, tt.want)
 			}
 		})
 	}

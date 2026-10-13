@@ -1,3 +1,4 @@
+// Package projectcontext stores structured project memory and context.
 package projectcontext
 
 import (
@@ -28,7 +29,7 @@ const (
 	researchLogRetention   = 90
 )
 
-// projectContext is the digest both project-context tools return. Its JSON
+// ProjectContext is the digest both project-context tools return. Its JSON
 // shape matches the legacy ProjectContextService.getProjectContext result.
 type ProjectContext struct {
 	Sections        []ContextSection    `json:"sections"`
@@ -40,6 +41,7 @@ type ProjectContext struct {
 	ReportTemplates []ContextTemplate   `json:"reportTemplates"`
 }
 
+// ContextSection is a named project context section.
 type ContextSection struct {
 	Key       string `json:"key"`
 	Content   string `json:"content"`
@@ -47,6 +49,7 @@ type ContextSection struct {
 	UpdatedBy string `json:"updatedBy"`
 }
 
+// CustomSection is a user-defined project context section.
 type CustomSection struct {
 	Slug      string  `json:"slug"`
 	Title     *string `json:"title"`
@@ -55,6 +58,7 @@ type CustomSection struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
+// ContextCompetitor describes a project competitor.
 type ContextCompetitor struct {
 	ID        string  `json:"id"`
 	ProjectID string  `json:"projectId"`
@@ -65,6 +69,7 @@ type ContextCompetitor struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
+// ContextKeyPage describes a key page for the project.
 type ContextKeyPage struct {
 	ID        string  `json:"id"`
 	ProjectID string  `json:"projectId"`
@@ -76,6 +81,7 @@ type ContextKeyPage struct {
 	UpdatedBy string  `json:"updatedBy"`
 }
 
+// ContextResearch contains saved research context.
 type ContextResearch struct {
 	ID        string `json:"id"`
 	EntryDate string `json:"entryDate"`
@@ -83,12 +89,13 @@ type ContextResearch struct {
 	CreatedBy string `json:"createdBy"`
 }
 
+// ContextTemplate describes a reusable project context template.
 type ContextTemplate struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// loadProjectContext reads every block of a project's memory.
+// Load reads every block of a project's memory.
 func Load(ctx context.Context, db querier, projectID string) (ProjectContext, error) {
 	sections, err := listContextSections(ctx, db, projectID)
 	if err != nil {
@@ -265,7 +272,7 @@ func listContextTemplates(ctx context.Context, db querier, projectID string) ([]
 	return out, rows.Err()
 }
 
-// renderProjectContextMarkdown is a byte-for-byte port of the legacy digest so
+// RenderMarkdown is a byte-for-byte port of the legacy digest so
 // the text block a cached client already renders stays identical.
 func RenderMarkdown(c ProjectContext) string {
 	lines := []string{"# Project context", ""}

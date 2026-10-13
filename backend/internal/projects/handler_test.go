@@ -1,6 +1,7 @@
 package projects
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -28,17 +29,17 @@ func TestProjectRoutesUseSessionAndProjectScope(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, Deps{Logger: logger, Service: &Service{Store: store}, WithSession: withSession, WithProjectAccess: withProject})
 	created := httptest.NewRecorder()
-	mux.ServeHTTP(created, httptest.NewRequest(http.MethodPost, "/api/v1/projects/create", strings.NewReader(`{"name":" New "}`)))
+	mux.ServeHTTP(created, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/create", strings.NewReader(`{"name":" New "}`)))
 	if created.Code != http.StatusOK || !strings.Contains(created.Body.String(), `"name":"New"`) {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
 	got := httptest.NewRecorder()
-	mux.ServeHTTP(got, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/get", strings.NewReader(`{}`)))
+	mux.ServeHTTP(got, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/get", strings.NewReader(`{}`)))
 	if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), `"id":"p1"`) {
 		t.Fatalf("get status=%d body=%s", got.Code, got.Body.String())
 	}
 	invalid := httptest.NewRecorder()
-	mux.ServeHTTP(invalid, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/get", strings.NewReader(`{"unknown":true}`)))
+	mux.ServeHTTP(invalid, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/get", strings.NewReader(`{"unknown":true}`)))
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("unknown field status=%d", invalid.Code)
 	}

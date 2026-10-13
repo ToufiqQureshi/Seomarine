@@ -67,7 +67,7 @@ func TestBacklinksEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganizat
 	lookup := func(project string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/backlinks/overview", strings.NewReader(`{"target":"example.com","scope":"exact_url"}`))
 		if signed {
-			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
+			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)

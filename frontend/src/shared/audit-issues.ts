@@ -258,8 +258,6 @@ export const AUDIT_ISSUE_TYPES = {
   },
 } as const satisfies Record<string, AuditIssueDescriptor>;
 
-type AuditIssueType = keyof typeof AUDIT_ISSUE_TYPES;
-
 export const ISSUE_SEVERITY_ORDER: Record<IssueSeverity, number> = {
   critical: 0,
   warning: 1,

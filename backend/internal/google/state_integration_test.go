@@ -26,14 +26,14 @@ func TestStateSingleUseExpiryAndOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	if err := database.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
 	legacySchema, err := os.ReadFile("../database/testdata/legacy_schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, string(legacySchema)); err != nil {
-		t.Fatal(err)
-	}
-	if err := database.Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now()

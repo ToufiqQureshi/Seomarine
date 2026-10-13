@@ -1,3 +1,4 @@
+// Package onboarding serves onboarding preferences and setup state.
 package onboarding
 
 import (
@@ -11,12 +12,14 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
+// Deps provides dependencies for onboarding handlers.
 type Deps struct {
 	Logger      *slog.Logger
 	Service     *Service
 	WithSession func(http.Handler) http.Handler
 }
 
+// Mount registers onboarding endpoints on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(h) }
 	mux.Handle("POST /api/v1/onboarding/answers/get", protect(http.HandlerFunc(d.get)))

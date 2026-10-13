@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/database"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
 	"github.com/toufiqqureshi/uplumo/backend/internal/site"
@@ -58,7 +59,7 @@ const appShell = "<!doctype html><title>app shell</title>"
 func testStaticDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	for name, body := range map[string]string{"index.html": appShell, "assets/app-abc123.js": "console.log(1)"} {
@@ -88,7 +89,7 @@ func TestHealthRoutes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			newTestHandler(t, nil, tt.db, tt.redis).
-				ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
+				ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, tt.path, nil))
 
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
@@ -144,7 +145,7 @@ func TestSPAServesClientRoutesAndAssets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			handler.ServeHTTP(rec, httptest.NewRequest(tt.method, tt.target, nil))
+			handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), tt.method, tt.target, nil))
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
 			}
@@ -160,7 +161,7 @@ func TestSPAServesClientRoutesAndAssets(t *testing.T) {
 
 func TestSPAIndexCannotBeFramedByOtherSites(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newTestHandler(t, nil, healthy, healthy).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	newTestHandler(t, nil, healthy, healthy).ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/dashboard", nil))
 	if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'self'" {
 		t.Errorf("Content-Security-Policy = %q", got)
 	}
@@ -173,7 +174,7 @@ func TestSPAWithoutABuildAnswers503(t *testing.T) {
 	}
 	handler := NewHandler(Deps{Logger: discardLogger, DB: healthy, Redis: healthy, Auth: auth.NewService(nil, testSecret), Site: pages, StaticDir: t.TempDir()})
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/dashboard", nil))
 	assertError(t, rec, http.StatusServiceUnavailable, "frontend_unavailable")
 }
 
@@ -189,7 +190,7 @@ func TestMCPRouteIsServedByGo(t *testing.T) {
 	})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d from the Go dispatcher", rec.Code, http.StatusUnauthorized)
@@ -245,7 +246,7 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 			}
 			req := httptest.NewRequestWithContext(ctx, method, tt.target, nil)
 			if tt.cookie != "" {
-				req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: tt.cookie})
+				req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: tt.cookie, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 			}
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
@@ -273,7 +274,7 @@ func TestLandingPageIsForVisitorsWithoutASession(t *testing.T) {
 func TestSiteAssetsAreServed(t *testing.T) {
 	rec := httptest.NewRecorder()
 	newTestHandler(t, nil, healthy, healthy).
-		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/site/logo.svg", nil))
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/site/logo.svg", nil))
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/svg+xml" {
 		t.Errorf("GET /site/logo.svg: status %d, Content-Type %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
@@ -284,7 +285,7 @@ func TestAPIRequiresASessionBeforeTouchingTheDatabase(t *testing.T) {
 		rec := httptest.NewRecorder()
 		// A nil pool would panic if the handler reached the database.
 		newTestHandler(t, nil, healthy, healthy).
-			ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+			ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil))
 		assertError(t, rec, http.StatusUnauthorized, "unauthenticated")
 	}
 }
@@ -328,7 +329,7 @@ func TestAPIAuthorization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, tt.path, nil)
-			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(tt.token)})
+			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(tt.token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 			rec := httptest.NewRecorder()
 			handler.ServeHTTP(rec, req)
 			assertError(t, rec, tt.wantCode, tt.wantErr)
@@ -343,7 +344,7 @@ func TestAPIReportsDatabaseErrorsAsInternal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/billing/status", nil)
-	req.AddCookie(&http.Cookie{Name: "better-auth.session_token", Value: sign("any-token")})
+	req.AddCookie(&http.Cookie{Name: "better-auth.session_token", Value: sign("any-token"), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 	rec := httptest.NewRecorder()
 	newTestHandler(t, pool, healthy, healthy).ServeHTTP(rec, req)
 	assertError(t, rec, http.StatusInternalServerError, "internal")
@@ -402,6 +403,9 @@ func openTestDB(ctx context.Context, t *testing.T) *pgxpool.Pool {
 		t.Fatalf("connect: %v", err)
 	}
 	t.Cleanup(pool.Close)
+	if err := database.Migrate(ctx, pool); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
 	schema, err := os.ReadFile("../database/testdata/legacy_schema.sql")
 	if err != nil {
 		t.Fatalf("read legacy schema: %v", err)

@@ -20,20 +20,32 @@ const (
 	writerChargeWait = 10 * time.Second
 )
 
+// ErrWriterUnavailable indicates the writing assistant is not configured.
 var ErrWriterUnavailable = errors.New("content writing assistant is unavailable")
+
+// ErrWriterNoCredits indicates the organization has no AI credits.
 var ErrWriterNoCredits = errors.New("organization has no AI credits")
+
+// ErrWriterTimeout indicates the writing assistant timed out.
 var ErrWriterTimeout = errors.New("content writing assistant timed out")
 
+// WriterAction identifies a writing assistant operation.
 type WriterAction string
 
 const (
+	// WriterOutline asks the assistant to create an outline.
 	WriterOutline WriterAction = "outline"
-	WriterDraft   WriterAction = "draft"
+	// WriterDraft asks the assistant to draft content.
+	WriterDraft WriterAction = "draft"
+	// WriterImprove asks the assistant to improve existing content.
 	WriterImprove WriterAction = "improve"
+	// WriterRewrite asks the assistant to rewrite existing content.
 	WriterRewrite WriterAction = "rewrite"
-	WriterFAQ     WriterAction = "faq"
+	// WriterFAQ asks the assistant to create frequently asked questions.
+	WriterFAQ WriterAction = "faq"
 )
 
+// WriterInput contains the context and request for a writing operation.
 type WriterInput struct {
 	Action        WriterAction `json:"action"`
 	Mode          string       `json:"mode"`
@@ -44,19 +56,24 @@ type WriterInput struct {
 	Content       string       `json:"content"`
 }
 
+// WriterOutput contains the result of a writing operation.
 type WriterOutput struct {
 	Content string `json:"content"`
 }
 
+// WriterService generates content for a project.
 type WriterService interface {
+	// Generate creates the requested content and records its usage.
 	Generate(context.Context, string, WriterInput) (WriterOutput, error)
 }
 
+// WriterMeter accounts for AI usage.
 type WriterMeter interface {
 	HasCredits(context.Context, string) (bool, error)
 	Charge(context.Context, string, float64, string) error
 }
 
+// WriterAgent uses a language model to generate content.
 type WriterAgent struct {
 	LLM interface {
 		Stream(context.Context, openrouter.Request, openrouter.Handler) (openrouter.Result, error)
@@ -66,6 +83,7 @@ type WriterAgent struct {
 	Logger *slog.Logger
 }
 
+// Generate creates the requested content and records its usage.
 func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input WriterInput) (WriterOutput, error) {
 	if a == nil || a.LLM == nil {
 		return WriterOutput{}, ErrWriterUnavailable

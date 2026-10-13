@@ -14,6 +14,7 @@ import (
 
 const loopsTransactionalURL = "https://app.loops.so/api/v1/transactional"
 
+// ErrLoopsUnavailable indicates the Loops email provider is not configured.
 var ErrLoopsUnavailable = errors.New("loops email provider unavailable")
 
 // LoopsClient sends transactional messages through Loops. Keep the HTTP client
@@ -25,7 +26,7 @@ type LoopsClient struct {
 
 // SendTransactional sends one Loops transactional email without adding the
 // recipient to the marketing audience.
-func (c LoopsClient) SendTransactional(ctx context.Context, email, templateID string, dataVariables map[string]string) error {
+func (c LoopsClient) SendTransactional(ctx context.Context, email, templateID string, dataVariables map[string]string) (retErr error) {
 	if strings.TrimSpace(c.APIKey) == "" || strings.TrimSpace(templateID) == "" {
 		return ErrLoopsUnavailable
 	}
@@ -57,7 +58,11 @@ func (c LoopsClient) SendTransactional(ctx context.Context, email, templateID st
 	if err != nil {
 		return fmt.Errorf("send Loops transactional email: %w", errors.Join(ErrLoopsUnavailable, err))
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close Loops response: %w", err))
+		}
+	}()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return fmt.Errorf("loops transactional email returned %s: %w", resp.Status, ErrLoopsUnavailable)
 	}

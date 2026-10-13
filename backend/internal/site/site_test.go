@@ -1,6 +1,7 @@
 package site
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"maps"
@@ -22,7 +23,7 @@ func newSite(t *testing.T, publicURL *url.URL) *Site {
 }
 
 func get(handler http.HandlerFunc, target string, header http.Header) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
 	maps.Copy(req.Header, header)
 	rec := httptest.NewRecorder()
 	handler(rec, req)

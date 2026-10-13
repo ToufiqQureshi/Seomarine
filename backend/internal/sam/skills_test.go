@@ -60,6 +60,7 @@ func TestEmbeddedCopiesMatchTheirSources(t *testing.T) {
 		t.Skip("repository sources not available")
 	}
 	for _, s := range skills {
+		// #nosec G304 -- paths are rooted under this test's discovered repository checkout.
 		source, err := os.ReadFile(filepath.Join(root, ".agents", "skills", s.Name, "SKILL.md"))
 		if err != nil {
 			t.Errorf("source of skill %s: %v", s.Name, err)
@@ -70,6 +71,7 @@ func TestEmbeddedCopiesMatchTheirSources(t *testing.T) {
 			t.Errorf("skills/%s.md differs from .agents/skills/%s/SKILL.md; copy it again", s.Name, s.Name)
 		}
 	}
+	// #nosec G304 -- this path is fixed under the discovered repository checkout.
 	if legacy, err := os.ReadFile(filepath.Join(root, "src", "server", "features", "sam", "product-fact-sheet.md")); err == nil && string(legacy) != productFactSheet {
 		t.Error("product_fact_sheet.md differs from the legacy copy; the legacy file is deleted at cutover, until then keep both equal")
 	}

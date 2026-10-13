@@ -211,7 +211,7 @@ func TestHandlerWithoutServiceIsUnavailable(t *testing.T) {
 	passthrough := func(next http.Handler) http.Handler { return next }
 	Mount(mux, Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), WithSession: passthrough, WithProjectAccess: passthrough})
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/rank-tracking/configs/list", strings.NewReader(`{}`)))
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/rank-tracking/configs/list", strings.NewReader(`{}`)))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}

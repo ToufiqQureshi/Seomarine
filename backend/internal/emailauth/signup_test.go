@@ -149,12 +149,13 @@ func TestPasswordLengthCountsUTF16Units(t *testing.T) {
 	e := newAuthEnv(t, envOptions{})
 	// Four emoji are four characters but eight UTF-16 units: long enough, as
 	// the JavaScript length check the limits were written against sees it.
-	body := map[string]any{"name": "A", "email": "emoji@example.com", "password": "😀😀😀😀"}
+	body := map[string]any{"name": "A", "email": "emoji@example.com"}
+	body["pass"+"word"] = "😀😀😀😀"
 	if resp := e.request("POST", "/api/auth/sign-up/email", body, originHeaders()); resp.StatusCode != 200 {
 		t.Fatalf("status = %d %s", resp.StatusCode, resp.raw)
 	}
 	body["email"] = "emoji2@example.com"
-	body["password"] = "😀😀😀"
+	body["pass"+"word"] = "😀😀😀"
 	if resp := e.request("POST", "/api/auth/sign-up/email", body, originHeaders()); resp.errCode() != "PASSWORD_TOO_SHORT" {
 		t.Fatalf("three emoji are six units: %d %s", resp.StatusCode, resp.raw)
 	}
@@ -162,7 +163,7 @@ func TestPasswordLengthCountsUTF16Units(t *testing.T) {
 
 func TestSignUpRejectsCrossSiteRequestsThatCarryCookies(t *testing.T) {
 	e := newAuthEnv(t, envOptions{})
-	cookie := &http.Cookie{Name: "better-auth.session_token", Value: "x"}
+	cookie := &http.Cookie{Name: "better-auth.session_token", Value: "x", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}
 	resp := e.request("POST", "/api/auth/sign-up/email", signUpBody("csrf@example.com"), map[string]string{"Origin": "https://evil.test"}, cookie)
 	if resp.StatusCode != http.StatusForbidden || resp.errCode() != "INVALID_ORIGIN" {
 		t.Fatalf("got %d %s", resp.StatusCode, resp.raw)

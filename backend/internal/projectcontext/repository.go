@@ -15,6 +15,7 @@ import (
 // row lock so concurrently validated batches cannot exceed storage caps.
 type Repository struct{ DB *pgxpool.Pool }
 
+// Get returns the context stored for a project.
 func (r Repository) Get(ctx context.Context, projectID string) (ProjectContext, error) {
 	if r.DB == nil {
 		return ProjectContext{}, fmt.Errorf("project context database unavailable")
@@ -22,7 +23,8 @@ func (r Repository) Get(ctx context.Context, projectID string) (ProjectContext, 
 	return Load(ctx, r.DB, projectID)
 }
 
-func (r Repository) Apply(ctx context.Context, projectID, author string, now time.Time, resolveBatch func(ProjectContext) ([]resolvedOp, error)) (ProjectContext, error) {
+// Apply applies a validated batch of project context updates.
+func (r Repository) Apply(ctx context.Context, projectID, author string, now time.Time, resolveBatch func(ProjectContext) ([]resolvedOp, error)) (result ProjectContext, retErr error) {
 	if r.DB == nil {
 		return ProjectContext{}, fmt.Errorf("project context database unavailable")
 	}
@@ -30,7 +32,11 @@ func (r Repository) Apply(ctx context.Context, projectID, author string, now tim
 	if err != nil {
 		return ProjectContext{}, fmt.Errorf("begin project context update: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func(rollbackCtx context.Context) {
+		if err := tx.Rollback(rollbackCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback project context update: %w", err))
+		}
+	}(ctx)
 	var locked string
 	err = tx.QueryRow(ctx, `SELECT id FROM projects WHERE id=$1 AND archived_at IS NULL FOR UPDATE`, projectID).Scan(&locked)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -53,7 +59,7 @@ func (r Repository) Apply(ctx context.Context, projectID, author string, now tim
 			return ProjectContext{}, fmt.Errorf("apply project context %s: %w", op.kind, err)
 		}
 	}
-	result, err := Load(ctx, tx, projectID)
+	result, err = Load(ctx, tx, projectID)
 	if err != nil {
 		return ProjectContext{}, fmt.Errorf("read updated project context: %w", err)
 	}

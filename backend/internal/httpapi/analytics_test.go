@@ -22,7 +22,7 @@ import (
 func TestTrackerScriptIsCacheable(t *testing.T) {
 	handler := newTestHandler(t, nil, healthy, healthy)
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/t.js", nil))
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t.js", nil))
 
 	if rec.Code != http.StatusOK || rec.Body.String() != string(trackerJS) {
 		t.Fatalf("status = %d, body matches script = %v", rec.Code, rec.Body.String() == string(trackerJS))
@@ -34,7 +34,7 @@ func TestTrackerScriptIsCacheable(t *testing.T) {
 		t.Errorf("Cache-Control = %q", cc)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/t.js", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t.js", nil)
 	req.Header.Set("If-None-Match", rec.Header().Get("ETag"))
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -89,7 +89,7 @@ func TestAnalyticsEndToEnd(t *testing.T) {
 	api := func(method, target string) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, method, "http://app.uplumo.com"+target, nil)
 		req.Header.Set("X-Forwarded-Proto", "https")
-		req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
+		req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 		return rec

@@ -2,11 +2,13 @@ package dashboardoverview
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func dashboardDB(t *testing.T) *pgxpool.Pool {
@@ -62,7 +64,7 @@ func TestRepositoryReadsProjectScopedDashboardCards(t *testing.T) {
 	if err != nil || !found || snapshot.Domain != "old.example" {
 		t.Fatalf("snapshot=%+v found=%v err=%v", snapshot, found, err)
 	}
-	if _, err = repo.ProjectDomain(context.Background(), "p", "other-org"); err != ErrProjectNotFound {
+	if _, err = repo.ProjectDomain(context.Background(), "p", "other-org"); !errors.Is(err, ErrProjectNotFound) {
 		t.Fatalf("unauthorized organization err=%v", err)
 	}
 }

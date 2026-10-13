@@ -193,7 +193,7 @@ func TestSaveHandlerRejectsInvalidPayload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/api/v1/branding", strings.NewReader(tt.body))
+			r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/branding", strings.NewReader(tt.body))
 			r = r.WithContext(auth.WithUser(r.Context(), auth.User{ID: testUserID, OrganizationID: testOrg, Role: "owner"}))
 			h.ServeHTTP(rec, r)
 			if rec.Code != tt.want {
@@ -225,7 +225,7 @@ func TestSaveHandlerRequiresPermissionAndWorkspace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/api/v1/branding", strings.NewReader(body))
+			r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/branding", strings.NewReader(body))
 			r = r.WithContext(auth.WithUser(r.Context(), tt.user))
 			h.ServeHTTP(rec, r)
 			if rec.Code != tt.want {

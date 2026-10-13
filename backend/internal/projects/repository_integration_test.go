@@ -125,7 +125,7 @@ func seedProjectOwner(ctx context.Context, t *testing.T, pool *pgxpool.Pool) (st
 		t.Fatalf("insert owner membership: %v", err)
 	}
 	t.Cleanup(func() {
-		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cleanupCancel()
 		if _, err := pool.Exec(cleanupCtx, `DELETE FROM organization WHERE id=$1`, orgID); err != nil {
 			t.Errorf("delete test organization: %v", err)

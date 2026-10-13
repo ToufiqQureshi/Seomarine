@@ -104,9 +104,8 @@ function AiPage() {
                     <h2>Set up your agent</h2>
                   </CardTitle>
                   <CardDescription>
-                    Paste the setup prompt into your agent to connect Uplumo.
-                    It will walk you through any steps it can&apos;t do on its
-                    own.
+                    Paste the setup prompt into your agent to connect Uplumo. It
+                    will walk you through any steps it can&apos;t do on its own.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -52,7 +52,7 @@ func (m LoopsMailer) SendPasswordReset(ctx context.Context, address, resetURL st
 }
 
 // UpsertSignupContact records the new user as a Loops contact.
-func (m LoopsMailer) UpsertSignupContact(ctx context.Context, userID, address, name string) error {
+func (m LoopsMailer) UpsertSignupContact(ctx context.Context, userID, address, name string) (retErr error) {
 	if strings.TrimSpace(m.Client.APIKey) == "" {
 		return nil
 	}
@@ -89,7 +89,11 @@ func (m LoopsMailer) UpsertSignupContact(ctx context.Context, userID, address, n
 	if err != nil {
 		return fmt.Errorf("update Loops contact: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close Loops contact response: %w", err))
+		}
+	}()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return errors.New("Loops contact update returned " + resp.Status)
 	}

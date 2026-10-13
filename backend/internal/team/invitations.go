@@ -20,12 +20,18 @@ import (
 )
 
 var (
-	ErrForbidden           = errors.New("team invitation forbidden")
-	ErrInvalidEmail        = errors.New("invalid email address")
-	ErrConflict            = errors.New("invitee is already a member")
-	ErrRateLimited         = errors.New("invitation email limit reached")
+	// ErrForbidden indicates the caller cannot manage team invitations.
+	ErrForbidden = errors.New("team invitation forbidden")
+	// ErrInvalidEmail indicates that an invitation email address is invalid.
+	ErrInvalidEmail = errors.New("invalid email address")
+	// ErrConflict indicates that the invitee already belongs to the organization.
+	ErrConflict = errors.New("invitee is already a member")
+	// ErrRateLimited indicates that the invitation email limit was reached.
+	ErrRateLimited = errors.New("invitation email limit reached")
+	// ErrUpstreamUnavailable indicates that the invitation email provider failed.
 	ErrUpstreamUnavailable = errors.New("invitation email provider unavailable")
-	ErrTooManyPending      = errors.New("organization invitation limit reached")
+	// ErrTooManyPending indicates that the organization has reached its invitation limit.
+	ErrTooManyPending = errors.New("organization invitation limit reached")
 )
 
 const invitationTTL = 7 * 24 * time.Hour
@@ -65,13 +71,16 @@ func (s *Service) Invite(ctx context.Context, user auth.User, email string) (str
 	return id, nil
 }
 
-func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time) (string, string, error) {
+func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time) (invitationID, organizationName string, retErr error) {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return "", "", fmt.Errorf("begin team invitation: %w", err)
 	}
-	defer tx.Rollback(ctx)
-	var organizationName string
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback team invitation: %w", err))
+		}
+	}()
 	if err := tx.QueryRow(ctx, `SELECT name FROM organization WHERE id=$1 FOR UPDATE`, user.OrganizationID).Scan(&organizationName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", ErrForbidden
@@ -95,7 +104,6 @@ func (s *Service) saveInvitation(ctx context.Context, user auth.User, email stri
 	if isMember {
 		return "", "", ErrConflict
 	}
-	var invitationID string
 	err = tx.QueryRow(ctx, `SELECT id FROM invitation WHERE organization_id=$1 AND lower(email)=lower($2) AND status='pending' AND expires_at>now() ORDER BY created_at DESC LIMIT 1`, user.OrganizationID, email).Scan(&invitationID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", "", fmt.Errorf("find pending invitation: %w", err)
@@ -130,17 +138,24 @@ func (s *Service) consumeBudget(ctx context.Context, organizationID, email strin
 		return errors.New("invitation rate limiter unavailable")
 	}
 	day := s.now().UTC().Format("2006-01-02")
-	for _, entry := range []struct {
-		key   string
-		limit int64
-	}{{"invite-sends:" + organizationID + ":" + day, 50}, {"invite-sends:" + organizationID + ":" + email + ":" + day, 5}} {
-		count, err := s.Redis.Eval(ctx, `local current=tonumber(redis.call('GET',KEYS[1]) or '0'); if current>=tonumber(ARGV[1]) then return current end; local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],86400) end; return n`, []string{entry.key}, entry.limit).Int64()
-		if err != nil {
-			return fmt.Errorf("consume invitation send budget: %w", err)
-		}
-		if count > entry.limit {
-			return ErrRateLimited
-		}
+	keys := []string{
+		"invite-sends:" + organizationID + ":" + day,
+		"invite-sends:" + organizationID + ":" + email + ":" + day,
+	}
+	allowed, err := s.Redis.Eval(ctx, `
+		local organizationCount=tonumber(redis.call('GET',KEYS[1]) or '0')
+		local recipientCount=tonumber(redis.call('GET',KEYS[2]) or '0')
+		if organizationCount>=tonumber(ARGV[1]) or recipientCount>=tonumber(ARGV[2]) then return 0 end
+		for i=1,2 do
+			local n=redis.call('INCR',KEYS[i])
+			if n==1 then redis.call('EXPIRE',KEYS[i],86400) end
+		end
+		return 1`, keys, 50, 5).Int64()
+	if err != nil {
+		return fmt.Errorf("consume invitation send budget: %w", err)
+	}
+	if allowed != 1 {
+		return ErrRateLimited
 	}
 	return nil
 }

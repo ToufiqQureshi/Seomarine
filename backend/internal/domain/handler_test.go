@@ -69,7 +69,7 @@ func serve(t *testing.T, opts serveOptions, endpoint, body string) *httptest.Res
 		ProjectMarkets: markets,
 		WithSession:    identity, WithProjectAccess: setOrg,
 	})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/domain/"+endpoint, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/proj-1/domain/"+endpoint, strings.NewReader(body))
 	if opts.ctx != nil {
 		req = req.WithContext(opts.ctx)
 	}
@@ -324,7 +324,7 @@ func TestHandlerServerSideFailures(t *testing.T) {
 		identity := func(next http.Handler) http.Handler { return next }
 		Mount(mux, Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), WithSession: identity, WithProjectAccess: identity})
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/projects/p/domain/overview", nil))
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/projects/p/domain/overview", nil))
 		if rec.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("GET status = %d, want 405", rec.Code)
 		}

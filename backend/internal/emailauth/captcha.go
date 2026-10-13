@@ -3,6 +3,7 @@ package emailauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,7 +33,7 @@ type Turnstile struct {
 }
 
 // Verify asks Cloudflare whether the response is valid.
-func (t Turnstile) Verify(ctx context.Context, response, remoteIP string) error {
+func (t Turnstile) Verify(ctx context.Context, response, remoteIP string) (retErr error) {
 	target := t.URL
 	if target == "" {
 		target = turnstileVerifyURL
@@ -56,7 +57,11 @@ func (t Turnstile) Verify(ctx context.Context, response, remoteIP string) error 
 	if err != nil {
 		return fmt.Errorf("call turnstile: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close turnstile response: %w", err))
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("turnstile returned %s", resp.Status)
 	}

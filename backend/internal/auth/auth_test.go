@@ -41,20 +41,20 @@ func TestAuthenticate(t *testing.T) {
 		cookie *http.Cookie
 		wantOK bool
 	}{
-		{name: "golden cookie", cookie: &http.Cookie{Name: sessionCookie, Value: goldenCookie}, wantOK: true},
-		{name: "golden cookie under the __Secure- name", cookie: &http.Cookie{Name: secureSessionCookie, Value: goldenCookie}, wantOK: true},
-		{name: "cookie that was never URL-encoded", cookie: &http.Cookie{Name: sessionCookie, Value: goldenToken + "." + "zc6+kvqyJnR7Rf+kjANpojy00IheL4EjkbJukkoq89k="}, wantOK: true},
+		{name: "golden cookie", cookie: &http.Cookie{Name: sessionCookie, Value: goldenCookie, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}, wantOK: true},
+		{name: "golden cookie under the __Secure- name", cookie: &http.Cookie{Name: secureSessionCookie, Value: goldenCookie, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}, wantOK: true},
+		{name: "cookie that was never URL-encoded", cookie: &http.Cookie{Name: sessionCookie, Value: goldenToken + "." + "zc6+kvqyJnR7Rf+kjANpojy00IheL4EjkbJukkoq89k=", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}, wantOK: true},
 		{name: "no cookie"},
-		{name: "other cookie name", cookie: &http.Cookie{Name: "session_token", Value: goldenCookie}},
-		{name: "tampered signature", cookie: &http.Cookie{Name: sessionCookie, Value: strings.Replace(goldenCookie, "zc6", "zc7", 1)}},
-		{name: "tampered token", cookie: &http.Cookie{Name: sessionCookie, Value: "Y" + goldenCookie[1:]}},
-		{name: "signature without padding", cookie: &http.Cookie{Name: sessionCookie, Value: strings.TrimSuffix(goldenCookie, "%3D")}},
-		{name: "signed with another secret", cookie: &http.Cookie{Name: sessionCookie, Value: sign(goldenToken, strings.Repeat("x", 40))}},
-		{name: "token without signature", cookie: &http.Cookie{Name: sessionCookie, Value: goldenToken}},
-		{name: "empty token", cookie: &http.Cookie{Name: sessionCookie, Value: sign("", testSecret)}},
-		{name: "bad percent-encoding", cookie: &http.Cookie{Name: sessionCookie, Value: goldenCookie + "%zz"}},
-		{name: "expired session", cookie: &http.Cookie{Name: sessionCookie, Value: sign(expiredToken, testSecret)}},
-		{name: "validly signed token with no session", cookie: &http.Cookie{Name: sessionCookie, Value: sign(unknownToken, testSecret)}},
+		{name: "other cookie name", cookie: &http.Cookie{Name: "session_token", Value: goldenCookie, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "tampered signature", cookie: &http.Cookie{Name: sessionCookie, Value: strings.Replace(goldenCookie, "zc6", "zc7", 1), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "tampered token", cookie: &http.Cookie{Name: sessionCookie, Value: "Y" + goldenCookie[1:], HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "signature without padding", cookie: &http.Cookie{Name: sessionCookie, Value: strings.TrimSuffix(goldenCookie, "%3D"), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "signed with another secret", cookie: &http.Cookie{Name: sessionCookie, Value: sign(goldenToken, strings.Repeat("x", 40)), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "token without signature", cookie: &http.Cookie{Name: sessionCookie, Value: goldenToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "empty token", cookie: &http.Cookie{Name: sessionCookie, Value: sign("", testSecret), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "bad percent-encoding", cookie: &http.Cookie{Name: sessionCookie, Value: goldenCookie + "%zz", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "expired session", cookie: &http.Cookie{Name: sessionCookie, Value: sign(expiredToken, testSecret), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
+		{name: "validly signed token with no session", cookie: &http.Cookie{Name: sessionCookie, Value: sign(unknownToken, testSecret), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}},
 	}
 
 	for _, tt := range tests {
@@ -87,7 +87,7 @@ func TestAuthenticateReportsDatabaseErrors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: goldenCookie})
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: goldenCookie, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 
 	_, err := f.svc.Authenticate(req)
 	if err == nil || errors.Is(err, ErrUnauthenticated) {
@@ -119,7 +119,7 @@ func TestAuthenticateResolvesTheActiveOrganization(t *testing.T) {
 			f.addSession(ctx, t, token, time.Now().Add(time.Hour))
 			exec(ctx, t, f.pool, `UPDATE session SET active_organization_id = $1 WHERE token = $2`, tt.activeOrg, token)
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: sign(token, testSecret)})
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: sign(token, testSecret), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 
 			user, err := f.svc.Authenticate(req)
 			if err != nil {

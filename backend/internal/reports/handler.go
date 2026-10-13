@@ -1,3 +1,4 @@
+// Package reports serves project reports, templates, and capability links.
 package reports
 
 import (
@@ -15,6 +16,7 @@ import (
 
 const maxRequestBody = 4 << 20
 
+// Deps provides dependencies for report handlers.
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
@@ -24,6 +26,7 @@ type Deps struct {
 	View              ViewDeps
 }
 
+// Mount registers report, template, and share endpoints.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /s/{token}/raw", d.sharedRaw)
 	mux.HandleFunc("GET /s/{token}", d.sharedPage)
@@ -50,11 +53,13 @@ func (d Deps) sharedRaw(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if r.URL.RawQuery != "" {
 		w.Header().Set("Cache-Control", "no-store")
+		// #nosec G710 -- token is one path segment and the destination remains under /s/.
 		http.Redirect(w, r, "/s/"+token+"/raw", http.StatusFound)
 		return
 	}
 	if r.Header.Get("Sec-Fetch-Dest") == "document" {
 		w.Header().Set("Cache-Control", "no-store")
+		// #nosec G710 -- token is one path segment and the destination remains under /s/.
 		http.Redirect(w, r, "/s/"+token, http.StatusFound)
 		return
 	}
@@ -314,11 +319,11 @@ func (d Deps) deleteTemplate(w http.ResponseWriter, r *http.Request) {
 
 func (d Deps) projectURL(r *http.Request, path string) string {
 	if d.PublicURL != nil {
-		copy := *d.PublicURL
-		copy.Path = strings.TrimRight(copy.Path, "/") + path
-		copy.RawQuery = ""
-		copy.Fragment = ""
-		return copy.String()
+		baseURL := *d.PublicURL
+		baseURL.Path = strings.TrimRight(baseURL.Path, "/") + path
+		baseURL.RawQuery = ""
+		baseURL.Fragment = ""
+		return baseURL.String()
 	}
 	return "https://" + r.Host + path
 }

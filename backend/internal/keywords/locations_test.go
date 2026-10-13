@@ -226,7 +226,7 @@ func locationRequestTo(t *testing.T, service *LocationService, path, body string
 			})
 		},
 	})
-	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, path, strings.NewReader(body))
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, request)
 	return recorder

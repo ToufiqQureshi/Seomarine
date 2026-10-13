@@ -205,7 +205,7 @@ func (s *Service) getInvitation(w http.ResponseWriter, r *http.Request, user Use
 	return nil
 }
 
-func (s *Service) acceptInvitation(w http.ResponseWriter, r *http.Request, user User) error {
+func (s *Service) acceptInvitation(w http.ResponseWriter, r *http.Request, user User) (retErr error) {
 	var in struct {
 		InvitationID string `json:"invitationId"`
 	}
@@ -220,7 +220,11 @@ func (s *Service) acceptInvitation(w http.ResponseWriter, r *http.Request, user 
 	if err != nil {
 		return fmt.Errorf("begin accept invitation: %w", err)
 	}
-	defer tx.Rollback(r.Context())
+	defer func(ctx context.Context) {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback accepted invitation: %w", err))
+		}
+	}(r.Context())
 
 	invitation, ok, err := loadInvitation(r.Context(), tx, in.InvitationID, true)
 	if err != nil {
@@ -347,7 +351,7 @@ func (s *Service) cancelInvitation(w http.ResponseWriter, r *http.Request, user 
 	return nil
 }
 
-func (s *Service) removeMember(w http.ResponseWriter, r *http.Request, user User) error {
+func (s *Service) removeMember(w http.ResponseWriter, r *http.Request, user User) (retErr error) {
 	var in struct {
 		MemberIDOrEmail string `json:"memberIdOrEmail"`
 		OrganizationID  string `json:"organizationId"`
@@ -393,7 +397,11 @@ func (s *Service) removeMember(w http.ResponseWriter, r *http.Request, user User
 	if err != nil {
 		return fmt.Errorf("begin remove member: %w", err)
 	}
-	defer tx.Rollback(r.Context())
+	defer func(ctx context.Context) {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback removed member: %w", err))
+		}
+	}(r.Context())
 	if _, err := tx.Exec(r.Context(), `DELETE FROM member WHERE id = $1`, target.ID); err != nil {
 		return fmt.Errorf("delete member: %w", err)
 	}

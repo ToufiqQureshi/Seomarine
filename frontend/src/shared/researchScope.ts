@@ -39,10 +39,6 @@ export const RESEARCH_SCOPE_LABELS: Record<ResearchScope, string> = {
   subdomains: "Subdomains",
 };
 
-/** Base wording for MCP `scope` params; tools append their own caveats. */
-export const RESEARCH_SCOPE_PARAM_DESCRIPTION =
-  "Research scope: 'domain' (hostname without subdomains), 'subdomains' (hostname plus all subdomains), 'subfolder' (path and its children), or 'exact_url' (one page). Defaults to 'subdomains' for root inputs and 'subfolder' when the input has a path.";
-
 /** One-line explanations shown in the scope dropdown. */
 export const RESEARCH_SCOPE_DESCRIPTIONS: Record<ResearchScope, string> = {
   exact_url: "One page only",

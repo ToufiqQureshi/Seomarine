@@ -23,9 +23,11 @@ var (
 	// ErrProjectNotFound means the project does not exist, is archived, or
 	// belongs to an organization the user is not a member of. The cases are
 	// indistinguishable so project ids from other organizations don't leak.
-	ErrProjectNotFound       = errors.New("project not found")
+	ErrProjectNotFound = errors.New("project not found")
+	// ErrOrganizationForbidden indicates the caller cannot manage this organization.
 	ErrOrganizationForbidden = errors.New("organization operation forbidden")
-	ErrOrganizationConflict  = errors.New("organization operation conflicts with current state")
+	// ErrOrganizationConflict indicates an organization operation conflicts with current state.
+	ErrOrganizationConflict = errors.New("organization operation conflicts with current state")
 )
 
 // better-auth names the cookie with a __Secure- prefix when its base URL is
@@ -121,12 +123,16 @@ func hasRole(roles, target string) bool {
 
 // TransferOrganizationOwnership promotes a current member and demotes the
 // current owner in one transaction.
-func (s *Service) TransferOrganizationOwnership(ctx context.Context, organizationID, ownerUserID, newOwnerMemberID string) error {
+func (s *Service) TransferOrganizationOwnership(ctx context.Context, organizationID, ownerUserID, newOwnerMemberID string) (retErr error) {
 	tx, err := s.repo.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin ownership transfer: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func(rollbackCtx context.Context) {
+		if err := tx.Rollback(rollbackCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback ownership transfer: %w", err))
+		}
+	}(ctx)
 	var ownerRole string
 	if err := tx.QueryRow(ctx, `SELECT role FROM member WHERE organization_id=$1 AND user_id=$2 FOR UPDATE`, organizationID, ownerUserID).Scan(&ownerRole); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -161,7 +167,7 @@ func (s *Service) TransferOrganizationOwnership(ctx context.Context, organizatio
 
 // SwitchOrganization changes the active organization only when the user has
 // a current membership in it.
-func (s *Service) SwitchOrganization(r *http.Request, userID, organizationID string) error {
+func (s *Service) SwitchOrganization(r *http.Request, userID, organizationID string) (retErr error) {
 	cookie, err := r.Cookie(secureSessionCookie)
 	if errors.Is(err, http.ErrNoCookie) {
 		cookie, err = r.Cookie(sessionCookie)
@@ -177,7 +183,11 @@ func (s *Service) SwitchOrganization(r *http.Request, userID, organizationID str
 	if err != nil {
 		return fmt.Errorf("begin organization switch: %w", err)
 	}
-	defer tx.Rollback(r.Context())
+	defer func(rollbackCtx context.Context) {
+		if err := tx.Rollback(rollbackCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			retErr = errors.Join(retErr, fmt.Errorf("rollback organization switch: %w", err))
+		}
+	}(r.Context())
 	var exists bool
 	if err := tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM member WHERE user_id = $1 AND organization_id = $2)`, userID, organizationID).Scan(&exists); err != nil {
 		return fmt.Errorf("check organization membership: %w", err)

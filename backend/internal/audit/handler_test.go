@@ -34,7 +34,7 @@ func testMux(service *Service) *http.ServeMux {
 
 func doJSON(t *testing.T, mux http.Handler, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, request)

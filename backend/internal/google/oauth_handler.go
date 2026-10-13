@@ -74,9 +74,11 @@ func MountOAuth(mux *http.ServeMux, deps OAuthDeps) {
 				return
 			}
 			path, resultError := deps.Service.Complete(r.Context(), user.ID, provider, stateValue, code, googleError)
+			path = SafeCallbackPath(path, deps.Service.PublicOrigin)
 			if resultError != "" {
 				path = appendLinkError(path, provider, resultError, deps.Service.PublicOrigin)
 			}
+			// #nosec G710 -- path is normalized to a same-origin route above.
 			http.Redirect(w, r, path, http.StatusSeeOther)
 		})
 	}

@@ -35,7 +35,7 @@ func requestHandler(t *testing.T, body string, plans PaidPlans, providerCalls *i
 	svc := newService(client, &memoryCache{values: map[string][]byte{}}, slog.New(slog.NewTextHandler(io.Discard, nil)), time.Now)
 	d := Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Service: svc, Plans: plans}
 	handler := overviewHandler(d)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj/backlinks/overview", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/proj/backlinks/overview", strings.NewReader(body))
 	req.SetPathValue("projectId", "proj")
 	req = req.WithContext(auth.WithProjectOrganization(req.Context(), "org-a"))
 	rec := httptest.NewRecorder()
@@ -86,7 +86,7 @@ func TestRowsHandlerRejectsInvalidFiltersBeforeProvider(t *testing.T) {
 		`{"target":"example.com","page":1,"pageSize":25,"sortField":"rank","filters":{"minLinkAuthority":100}}`,
 		`{"target":"example.com","pageSize":50,"filters":{"include":"a,b,c,d","exclude":"e,f,g,h"}}`,
 	} {
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p/backlinks/rows", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/backlinks/rows", strings.NewReader(body))
 		req = req.WithContext(auth.WithProjectOrganization(req.Context(), "org"))
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)

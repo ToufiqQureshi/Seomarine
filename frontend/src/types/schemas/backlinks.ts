@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  RESEARCH_SCOPES,
-  RESEARCH_SCOPE_PARAM_DESCRIPTION,
-  type ResearchScope,
-} from "@/shared/researchScope";
+import { RESEARCH_SCOPES, type ResearchScope } from "@/shared/researchScope";
 
 export const backlinksTabSchema = z.enum(["backlinks", "domains", "pages"]);
 
@@ -31,19 +27,7 @@ const backlinksScopeParamSchema = backlinksScopeWithLegacySchema.transform(
   resolveBacklinksScope,
 );
 
-/** Shared wording for the MCP tools that take a backlinks scope. */
-const BACKLINKS_SCOPE_DESCRIPTION = `${RESEARCH_SCOPE_PARAM_DESCRIPTION} 'page' is a deprecated alias of 'exact_url'. Subfolder counts are computed from filtered backlink totals; rank, trends, and the referring-domains breakdown are unavailable for subfolders.`;
-
 export const DEFAULT_BACKLINKS_SPAM_THRESHOLD = 40;
-
-type BacklinksSpamFilterOptions = {
-  hideSpam?: boolean;
-};
-
-const backlinksLookupSchema = z.object({
-  target: z.string().min(1, "Target is required").max(2048),
-  scope: backlinksScopeParamSchema.optional(),
-});
 
 /* ------------------------------------------------------------------ */
 /*  Paginated tab requests                                             */
@@ -83,13 +67,6 @@ export const backlinksRowsFiltersSchema = z.object({
   /** Exact-match on the linking domain; used to expand one domain's links. */
   domainFrom: z.string().max(255).optional(),
 });
-
-/**
- * DataForSEO result grouping for the backlinks list: `one_per_domain` returns
- * each referring domain's strongest link (the default, denoised view);
- * `as_is` returns every individual backlink.
- */
-const backlinksRowsModeSchema = z.enum(["one_per_domain", "as_is"]);
 
 export const referringDomainsFiltersSchema = z.object({
   include: z.string().optional(),
@@ -149,42 +126,6 @@ export const BACKLINKS_DEFAULT_SORT = {
   { field: string; order: z.infer<typeof backlinksSortOrderSchema> }
 >;
 
-const backlinksPageRequestBase = backlinksLookupSchema.extend({
-  projectId: z.string().min(1),
-  page: z.number().int().positive().default(1),
-  pageSize: z
-    .number()
-    .int()
-    .refine((value) =>
-      (BACKLINKS_PAGE_SIZES as readonly number[]).includes(value),
-    )
-    .default(DEFAULT_BACKLINKS_PAGE_SIZE),
-  sortOrder: backlinksSortOrderSchema.default("desc"),
-});
-
-const backlinksRowsPageRequestSchema = backlinksPageRequestBase.extend({
-  hideSpam: z.boolean().optional(),
-  sortField: backlinksRowsSortFieldSchema.default(
-    BACKLINKS_DEFAULT_SORT.backlinks.field,
-  ),
-  filters: backlinksRowsFiltersSchema.default({}),
-  mode: backlinksRowsModeSchema.default("one_per_domain"),
-});
-
-const referringDomainsPageRequestSchema = backlinksPageRequestBase.extend({
-  sortField: referringDomainsSortFieldSchema.default(
-    BACKLINKS_DEFAULT_SORT.domains.field,
-  ),
-  filters: referringDomainsFiltersSchema.default({}),
-});
-
-const topPagesPageRequestSchema = backlinksPageRequestBase.extend({
-  sortField: topPagesSortFieldSchema.default(
-    BACKLINKS_DEFAULT_SORT.pages.field,
-  ),
-  filters: topPagesFiltersSchema.default({}),
-});
-
 export const backlinksSearchSchema = z.object({
   includeSpam: z.boolean().optional().catch(undefined),
   target: z.string().optional(),
@@ -208,7 +149,6 @@ export const backlinksSearchSchema = z.object({
   view: z.literal("all").optional().catch(undefined),
 });
 
-type BacklinksLookupInput = z.infer<typeof backlinksLookupSchema>;
 export type BacklinksTab = z.infer<typeof backlinksTabSchema>;
 export type BacklinksSortOrder = z.infer<typeof backlinksSortOrderSchema>;
 export type BacklinksRowsSortField = z.infer<
@@ -223,8 +163,3 @@ export type ReferringDomainsFilters = z.infer<
   typeof referringDomainsFiltersSchema
 >;
 export type TopPagesFilters = z.infer<typeof topPagesFiltersSchema>;
-type BacklinksRowsPageInput = z.infer<typeof backlinksRowsPageRequestSchema>;
-type ReferringDomainsPageInput = z.infer<
-  typeof referringDomainsPageRequestSchema
->;
-type TopPagesPageInput = z.infer<typeof topPagesPageRequestSchema>;

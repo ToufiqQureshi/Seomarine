@@ -51,7 +51,7 @@ func TestRankTrackingIsScopedToTheSignedInOrganizationAndUsesProjectMarket(t *te
 	call := func(project, path, body string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/rank-tracking/"+path, strings.NewReader(body))
 		if signed {
-			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
+			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -117,7 +117,7 @@ func TestSavedKeywordsAreScopedToTheSignedInOrganization(t *testing.T) {
 	call := func(project, path, body string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/keywords/saved/"+path, strings.NewReader(body))
 		if signed {
-			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
+			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)

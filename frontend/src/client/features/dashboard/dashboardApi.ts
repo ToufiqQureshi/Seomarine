@@ -59,10 +59,6 @@ const dashboardBacklinksSchema = z.object({
 export type DashboardActivation = z.infer<typeof dashboardActivationSchema>;
 export type DashboardAuditSummary = z.infer<typeof dashboardAuditSchema>;
 export type DashboardBacklinkSummary = z.infer<typeof dashboardBacklinksSchema>;
-type DashboardOverview = {
-  audit: DashboardAuditSummary | null;
-  backlinks: DashboardBacklinkSummary | null;
-};
 
 export async function getDashboardActivation({ data }: ProjectInput) {
   projectInput.projectId.parse(data.projectId);

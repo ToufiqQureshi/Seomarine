@@ -37,17 +37,17 @@ func TestContextAPIReadsAndAppliesUserUpdatesProjectScoped(t *testing.T) {
 	mux := http.NewServeMux()
 	Mount(mux, HandlerDeps{Logger: logger, Service: service, WithSession: withSession, WithProjectAccess: withProject})
 	get := httptest.NewRecorder()
-	mux.ServeHTTP(get, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/context/get", strings.NewReader(`{"projectId":"p1"}`)))
+	mux.ServeHTTP(get, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/context/get", strings.NewReader(`{"projectId":"p1"}`)))
 	if get.Code != http.StatusOK || service.project != "p1" {
 		t.Fatalf("get status=%d project=%q body=%s", get.Code, service.project, get.Body.String())
 	}
 	update := httptest.NewRecorder()
-	mux.ServeHTTP(update, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/context/update", strings.NewReader(`{"projectId":"p1","updates":[{"section":"current_goal","content":"Grow"}]}`)))
+	mux.ServeHTTP(update, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/context/update", strings.NewReader(`{"projectId":"p1","updates":[{"section":"current_goal","content":"Grow"}]}`)))
 	if update.Code != http.StatusOK || service.project != "p1" || service.author != "user" || len(service.updates) != 1 {
 		t.Fatalf("update status=%d service=%+v body=%s", update.Code, service, update.Body.String())
 	}
 	mismatch := httptest.NewRecorder()
-	mux.ServeHTTP(mismatch, httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/context/get", strings.NewReader(`{"projectId":"p2"}`)))
+	mux.ServeHTTP(mismatch, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/context/get", strings.NewReader(`{"projectId":"p2"}`)))
 	if mismatch.Code != http.StatusBadRequest {
 		t.Fatalf("cross-project body status=%d", mismatch.Code)
 	}

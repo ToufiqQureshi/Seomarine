@@ -17,10 +17,10 @@ export function SamBetaGate({ onContinue }: { onContinue: () => void }) {
       description={
         <>
           <p>
-            Sam is Uplumo&apos;s agent tools in a chat window. The AI agent
-            you already use, like Claude Code, ChatGPT, or Hermes, can run the
-            same tools and is usually more capable, so we recommend connecting
-            Uplumo there.
+            Sam is Uplumo&apos;s agent tools in a chat window. The AI agent you
+            already use, like Claude Code, ChatGPT, or Hermes, can run the same
+            tools and is usually more capable, so we recommend connecting Uplumo
+            there.
           </p>
           <p>You can still use Sam, but it is early and has rough edges.</p>
         </>

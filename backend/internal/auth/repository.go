@@ -23,6 +23,7 @@ type OrganizationMembership struct {
 	Role             string `json:"role"`
 }
 
+// OrganizationMember is a member of an organization.
 type OrganizationMember struct {
 	ID     string `json:"id"`
 	UserID string `json:"userId"`
@@ -33,6 +34,7 @@ type OrganizationMember struct {
 	} `json:"user"`
 }
 
+// OrganizationInvitation is an invitation to join an organization.
 type OrganizationInvitation struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
@@ -40,6 +42,7 @@ type OrganizationInvitation struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+// OrganizationTeam contains the members and invitations for an organization.
 type OrganizationTeam struct {
 	Members            []OrganizationMember     `json:"members"`
 	PendingInvitations []OrganizationInvitation `json:"pendingInvitations"`

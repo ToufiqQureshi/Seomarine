@@ -74,11 +74,11 @@ CREATE TABLE sam_sessions (id text PRIMARY KEY, project_id text NOT NULL REFEREN
 	if _, err := pool.Exec(ctx, up); err != nil {
 		t.Fatalf("apply migration: %v", err)
 	}
-	seedSamRows(t, ctx, pool)
+	seedSamRows(ctx, t, pool)
 	return pool
 }
 
-func seedSamRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+func seedSamRows(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	statements := []string{
 		`INSERT INTO "user" VALUES ('user-1', 'owner@example.test'), ('user-2', 'other@example.test')`,

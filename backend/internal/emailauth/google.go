@@ -25,9 +25,10 @@ const (
 	oauthHTTPTimeout  = 10 * time.Second
 	maxOAuthBodyBytes = 1 << 20
 
-	googleAuthURL     = "https://accounts.google.com/o/oauth2/v2/auth"
-	googleTokenURL    = "https://oauth2.googleapis.com/token"
-	googleUserInfoURL = "https://openidconnect.googleapis.com/v1/userinfo"
+	googleAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
+	// #nosec G101 -- this is Google's public OAuth endpoint, not a credential.
+	googleTokenEndpoint = "https://oauth2.googleapis.com/token"
+	googleUserInfoURL   = "https://openidconnect.googleapis.com/v1/userinfo"
 )
 
 // GoogleProvider is the Google sign-in client. Its zero endpoints are Google's;
@@ -74,7 +75,7 @@ func (g *GoogleProvider) exchange(ctx context.Context, code, verifier, redirectU
 	}
 	ctx, cancel := context.WithTimeout(ctx, oauthHTTPTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pick(g.TokenURL, googleTokenURL), strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pick(g.TokenURL, googleTokenEndpoint), strings.NewReader(form.Encode()))
 	if err != nil {
 		return googleProfile{}, fmt.Errorf("build token request: %w", err)
 	}
@@ -84,14 +85,25 @@ func (g *GoogleProvider) exchange(ctx context.Context, code, verifier, redirectU
 	if err != nil {
 		return googleProfile{}, fmt.Errorf("exchange authorization code: %w", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return googleProfile{}, fmt.Errorf("token endpoint returned %s", resp.Status)
+		statusErr := fmt.Errorf("token endpoint returned %s", resp.Status)
+		if err := resp.Body.Close(); err != nil {
+			return googleProfile{}, errors.Join(statusErr, fmt.Errorf("close token response: %w", err))
+		}
+		return googleProfile{}, statusErr
 	}
 	var tokens struct {
 		AccessToken string `json:"access_token"`
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxOAuthBodyBytes)).Decode(&tokens); err != nil || tokens.AccessToken == "" {
+	decodeErr := json.NewDecoder(io.LimitReader(resp.Body, maxOAuthBodyBytes)).Decode(&tokens)
+	closeErr := resp.Body.Close()
+	if decodeErr != nil {
+		return googleProfile{}, fmt.Errorf("decode token response: %w", errors.Join(decodeErr, closeErr))
+	}
+	if closeErr != nil {
+		return googleProfile{}, fmt.Errorf("close token response: %w", closeErr)
+	}
+	if tokens.AccessToken == "" {
 		return googleProfile{}, errors.New("token endpoint returned no access token")
 	}
 
@@ -104,13 +116,21 @@ func (g *GoogleProvider) exchange(ctx context.Context, code, verifier, redirectU
 	if err != nil {
 		return googleProfile{}, fmt.Errorf("fetch userinfo: %w", err)
 	}
-	defer infoResp.Body.Close()
 	if infoResp.StatusCode != http.StatusOK {
-		return googleProfile{}, fmt.Errorf("userinfo endpoint returned %s", infoResp.Status)
+		statusErr := fmt.Errorf("userinfo endpoint returned %s", infoResp.Status)
+		if err := infoResp.Body.Close(); err != nil {
+			return googleProfile{}, errors.Join(statusErr, fmt.Errorf("close userinfo response: %w", err))
+		}
+		return googleProfile{}, statusErr
 	}
 	var profile googleProfile
-	if err := json.NewDecoder(io.LimitReader(infoResp.Body, maxOAuthBodyBytes)).Decode(&profile); err != nil {
-		return googleProfile{}, fmt.Errorf("decode userinfo: %w", err)
+	decodeErr = json.NewDecoder(io.LimitReader(infoResp.Body, maxOAuthBodyBytes)).Decode(&profile)
+	closeErr = infoResp.Body.Close()
+	if decodeErr != nil {
+		return googleProfile{}, fmt.Errorf("decode userinfo: %w", errors.Join(decodeErr, closeErr))
+	}
+	if closeErr != nil {
+		return googleProfile{}, fmt.Errorf("close userinfo response: %w", closeErr)
 	}
 	return profile, nil
 }
@@ -185,6 +205,7 @@ func (s *Service) signInSocial(w http.ResponseWriter, r *http.Request) error {
 	}
 	// The cookie ties the callback to the browser that started the sign-in, so
 	// a link someone else crafted cannot finish a login in this browser.
+	// #nosec G124 -- Secure follows the configured public origin, allowing plain HTTP only in local development.
 	http.SetCookie(w, &http.Cookie{
 		Name: s.jar.name(stateCookieName), Value: s.jar.sign(state), Path: "/", MaxAge: int(stateTTL.Seconds()),
 		HttpOnly: true, Secure: s.jar.secure, SameSite: http.SameSiteLaxMode,
@@ -211,6 +232,7 @@ func (s *Service) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		return &apiError{Status: http.StatusNotFound, Code: "PROVIDER_NOT_FOUND", Message: "Provider not found"}
 	}
 	fail := func(errorURL, code string) error {
+		// #nosec G710 -- errorURL comes from SafeCallbackPath or defaultErrorURL.
 		http.Redirect(w, r, redirectWith(errorURL, "error", code), http.StatusFound)
 		return nil
 	}
@@ -273,6 +295,7 @@ func (s *Service) googleCallback(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.jar.setSession(w, session.Token, true)
 	// The state cookie has done its job.
+	// #nosec G124 -- Secure follows the configured public origin, allowing plain HTTP only in local development.
 	http.SetCookie(w, &http.Cookie{Name: s.jar.name(stateCookieName), Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.jar.secure, SameSite: http.SameSiteLaxMode})
 
 	target := saved.CallbackURL
@@ -280,7 +303,7 @@ func (s *Service) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		target = saved.NewUserURL
 	}
 	if registered {
-		s.syncSignupContact(user)
+		s.syncSignupContact(r.Context(), user)
 	}
 	http.Redirect(w, r, target, http.StatusFound)
 	return nil

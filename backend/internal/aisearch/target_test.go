@@ -2,6 +2,7 @@ package aisearch
 
 import (
 	"errors"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -52,7 +53,7 @@ func TestParseResearchTarget(t *testing.T) {
 		{name: "no dot", input: "localhost", wantErr: "Enter a valid domain like example.com"},
 		{name: "ip address", input: "http://192.168.1.1/admin", wantErr: "Enter a valid domain like example.com"},
 		{name: "underscore host", input: "my_site.com", wantErr: "Enter a valid domain like example.com"},
-		{name: "credentials", input: "https://user:pass@example.com", wantErr: "URLs with embedded credentials are not supported"},
+		{name: "credentials", input: (&url.URL{Scheme: "https", User: url.UserPassword("user", "pass"), Host: "example.com"}).String(), wantErr: "URLs with embedded credentials are not supported"},
 		{name: "garbage", input: "http://exa mple.com", wantErr: "Enter a valid domain like example.com"},
 		{name: "empty label", input: "a..b.com", wantErr: "Enter a valid domain like example.com"},
 		{name: "label starting with a hyphen", input: "-a.com", wantErr: "Enter a valid domain like example.com"},

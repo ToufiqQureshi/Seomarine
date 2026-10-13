@@ -30,6 +30,7 @@ const (
 	CreditsPerUSD = 1000
 )
 
+// CreditReservation is a pending reservation of organization AI credits.
 type CreditReservation struct {
 	ID             string    `json:"id"`
 	OrganizationID string    `json:"organizationId"`
@@ -39,10 +40,12 @@ type CreditReservation struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// CreditLedgerService reserves and settles organization AI credits.
 type CreditLedgerService struct {
 	db *pgxpool.Pool
 }
 
+// NewCreditLedgerService creates a credit ledger service for db.
 func NewCreditLedgerService(db *pgxpool.Pool) *CreditLedgerService {
 	return &CreditLedgerService{db: db}
 }

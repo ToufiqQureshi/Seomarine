@@ -32,11 +32,13 @@ type Error struct{ Code, Message string }
 func (e *Error) Error() string     { return e.Message }
 func invalid(message string) error { return &Error{Code: "VALIDATION_ERROR", Message: message} }
 
+// Service validates and updates project context.
 type Service struct {
 	Repo Repository
 	Now  func() time.Time
 }
 
+// Get returns the context for a project.
 func (s *Service) Get(ctx context.Context, projectID string) (ProjectContext, error) {
 	if s == nil || s.Repo.DB == nil {
 		return ProjectContext{}, fmt.Errorf("project context database unavailable")
@@ -401,17 +403,17 @@ func titleValue(v *string) string {
 	}
 	return *v
 }
-func optionalText(v *string, max int) (*string, error) {
+func optionalText(v *string, limit int) (*string, error) {
 	if v == nil {
 		return nil, nil
 	}
 	x := strings.TrimSpace(*v)
-	if !fits(x, max) {
-		return nil, invalid(fmt.Sprintf("Text must be no more than %d characters.", max))
+	if !fits(x, limit) {
+		return nil, invalid(fmt.Sprintf("Text must be no more than %d characters.", limit))
 	}
 	return &x, nil
 }
-func fits(s string, max int) bool { return len(utf16.Encode([]rune(s))) <= max }
+func fits(s string, limit int) bool { return len(utf16.Encode([]rune(s))) <= limit }
 func normalizePageURL(raw string) (string, error) {
 	if !fits(raw, 2048) || strings.TrimSpace(raw) == "" {
 		return "", invalid("Key page URL must be 1 to 2048 characters.")

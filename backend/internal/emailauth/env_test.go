@@ -51,7 +51,7 @@ func (m *fakeMailer) SendPasswordReset(_ context.Context, address, link string) 
 	return nil
 }
 
-func (m *fakeMailer) UpsertSignupContact(_ context.Context, userID, address, _ string) error {
+func (m *fakeMailer) UpsertSignupContact(_ context.Context, _, address, _ string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.contacts = append(m.contacts, address)
@@ -184,7 +184,7 @@ func newAuthEnv(t *testing.T, opts envOptions) *authEnv {
 		DB: pool, Hasher: NewHasher(4), Sessions: AuthSessions{Auth: e.authSvc},
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: e.clock.Now,
 		Cfg:      Config{Secret: string(testSecret), BaseURL: base, BypassEmailVerification: opts.bypass, BlockDisposableEmail: opts.disposable},
-		ClientIP: func(r *http.Request) string { return "203.0.113.9" },
+		ClientIP: func(_ *http.Request) string { return "203.0.113.9" },
 		Limiter:  e.limiter,
 	}
 	if !opts.noMailer {
@@ -237,8 +237,15 @@ func (e *authEnv) request(method, path string, body any, headers map[string]stri
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			e.t.Errorf("close response: %v", err)
+		}
+	}()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		e.t.Fatalf("read response: %v", err)
+	}
 	r := &response{Response: resp, raw: raw}
 	_ = json.Unmarshal(raw, &r.json)
 	return r
@@ -274,7 +281,7 @@ func (r *response) sessionCookie() *http.Cookie {
 // proves the cookies this package writes are the ones the rest of the server
 // accepts.
 func (e *authEnv) authenticate(c *http.Cookie) (auth.User, error) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.AddCookie(c)
 	return e.authSvc.Authenticate(req)
 }

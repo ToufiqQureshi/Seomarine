@@ -63,18 +63,6 @@ export const updateProjectSchema = z
   })
   .refine(hasLocationForLanguage, marketPairMessage);
 
-const setProjectWebsiteSchema = z.object({
-  projectId: z.string().min(1),
-  domain: z.string().trim().min(1).max(255),
-  locationCode: z
-    .number()
-    .int()
-    .refine(isSupportedLocationCode, "Unsupported DataForSEO location code"),
-  languageCode: z
-    .string()
-    .refine(isSupportedLanguageCode, "Unsupported language code"),
-});
-
 export const archiveProjectSchema = z.object({
   projectId: z.string().min(1),
 });
@@ -90,5 +78,3 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type ArchiveProjectInput = z.infer<typeof archiveProjectSchema>;
 export type RestoreProjectInput = z.infer<typeof restoreProjectSchema>;
-
-type SetProjectWebsiteInput = z.infer<typeof setProjectWebsiteSchema>;

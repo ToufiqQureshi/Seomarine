@@ -105,6 +105,7 @@ func severityOf(issueType IssueType) IssueSeverity {
 	return SeverityWarning
 }
 
+// IssueDescriptor describes an audit issue and its recommended action.
 type IssueDescriptor struct {
 	Severity IssueSeverity
 	Title    string
@@ -144,6 +145,7 @@ var issueRemediation = map[IssueType]string{
 	IssueType("deep-page"):                      "Add links from higher-level pages (hubs, category pages, navigation) to flatten the path to this page.",
 }
 
+// DescribeIssueType returns the descriptor for a known audit issue type.
 func DescribeIssueType(issueType string) (IssueDescriptor, bool) {
 	key := IssueType(issueType)
 	descriptor, ok := issueRegistry[key]

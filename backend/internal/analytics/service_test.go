@@ -409,15 +409,15 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 		t.Fatalf("open database: %v", err)
 	}
 	t.Cleanup(pool.Close)
+	if err := database.Migrate(ctx, pool); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
 	schema, err := os.ReadFile("../database/testdata/legacy_schema.sql")
 	if err != nil {
 		t.Fatalf("read legacy schema: %v", err)
 	}
 	if _, err := pool.Exec(ctx, string(schema)); err != nil {
 		t.Fatalf("create legacy schema: %v", err)
-	}
-	if err := database.Migrate(ctx, pool); err != nil {
-		t.Fatalf("migrate: %v", err)
 	}
 	opts, err := redis.ParseURL(testEnv(t, "TEST_REDIS_URL"))
 	if err != nil {

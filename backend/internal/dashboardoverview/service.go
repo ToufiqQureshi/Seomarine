@@ -9,6 +9,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
 )
 
+// Store provides project and dashboard overview data.
 type Store interface {
 	ProjectDomain(context.Context, string, string) (*string, error)
 	LatestAudit(context.Context, string) (*AuditSummary, error)
@@ -17,6 +18,8 @@ type Store interface {
 type backlinkSnapshotWriter interface {
 	InsertBacklinkSnapshot(context.Context, string, BacklinkSummary) error
 }
+
+// Service combines project, audit, and backlink data for the dashboard.
 type Service struct {
 	Store     Store
 	Backlinks interface {
@@ -25,6 +28,7 @@ type Service struct {
 	Now func() time.Time
 }
 
+// Get assembles the dashboard overview for an organization project.
 func (s *Service) Get(ctx context.Context, organizationID, projectID string) (Overview, error) {
 	if s == nil || s.Store == nil {
 		return Overview{}, fmt.Errorf("dashboard overview store unavailable")

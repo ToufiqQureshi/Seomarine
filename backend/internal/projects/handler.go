@@ -1,3 +1,4 @@
+// Package projects serves project creation, updates, and archival.
 package projects
 
 import (
@@ -14,6 +15,7 @@ import (
 
 const maxBody = 16 << 10
 
+// Deps provides dependencies for project handlers.
 type Deps struct {
 	Logger            *slog.Logger
 	Service           *Service
@@ -21,6 +23,7 @@ type Deps struct {
 	WithProjectAccess func(http.Handler) http.Handler
 }
 
+// Mount registers project endpoints on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /api/v1/projects/list", d.WithSession(http.HandlerFunc(d.list)))
 	mux.Handle("POST /api/v1/projects/create", d.WithSession(http.HandlerFunc(d.create)))

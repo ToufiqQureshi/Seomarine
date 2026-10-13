@@ -1,16 +1,4 @@
-// Shared vocabulary for report templates. The caps are enforced in
-// ReportTemplateService with actionable copy; Zod at each boundary validates
-// shape only.
-
-/**
- * Small on purpose: the list is read by agents inside the project-context
- * digest, and a long menu of near-identical formats makes the choice worse.
- */
-const REPORT_TEMPLATE_MAX_PER_PROJECT = 10;
-const REPORT_TEMPLATE_MAX_NAME_CHARS = 80;
-const REPORT_TEMPLATE_MAX_DESCRIPTION_CHARS = 200;
-/** A brief, not a document. Ten at the cap is the 30 KB list_report_templates worst case. */
-const REPORT_TEMPLATE_MAX_INSTRUCTIONS_CHARS = 3_000;
+// Report template limits are enforced by the Go service.
 
 /** A stored template. A plain type, as ReportMetadata: rows come from the repository's own column selection. */
 export type ReportTemplate = {

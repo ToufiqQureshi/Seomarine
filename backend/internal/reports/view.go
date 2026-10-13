@@ -32,8 +32,8 @@ const (
 
 // ReportCSP is the policy for one response; print mode adds exactly one
 // hashed script.
-func ReportCSP(print bool) string {
-	if !print {
+func ReportCSP(printMode bool) string {
+	if !printMode {
 		return "sandbox " + iframeSandbox + "; " + cspTail
 	}
 	return "sandbox " + iframeSandbox + " allow-scripts allow-modals; script-src 'sha256-" + printScriptSHA256 + "'; " + cspTail
@@ -83,8 +83,10 @@ func withBrandBar(doc string, b *branding.Branding) string {
 		Name   string
 		Site   string
 		Host   string
-	}{Accent: template.CSS(accent), Name: b.BrandName}
+	}{ // #nosec G203 -- accent is validated as a six-digit hex color above.
+		Accent: template.CSS(accent), Name: b.BrandName}
 	if b.LogoDataURL != nil && strings.HasPrefix(*b.LogoDataURL, "data:image/") {
+		// #nosec G203 -- only an image data URL is placed in an img src; the report sandbox blocks scripts and network access.
 		data.Logo = template.URL(*b.LogoDataURL)
 	}
 	if b.WebsiteURL != nil {
@@ -175,18 +177,19 @@ func (d Deps) viewReport(w http.ResponseWriter, r *http.Request) {
 			bar = &b
 		}
 	}
-	print := r.URL.Query().Get("print") == "1"
+	printMode := r.URL.Query().Get("print") == "1"
 	doc = withBrandBar(doc, bar)
-	if print {
+	if printMode {
 		doc = withPrintScript(doc)
 	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Content-Security-Policy", ReportCSP(print))
+	h.Set("Content-Security-Policy", ReportCSP(printMode))
 	h.Set("Cross-Origin-Opener-Policy", "same-origin")
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "private, no-store")
+	// #nosec G705 -- the report is intentionally raw HTML, served with a sandbox CSP and no scripts in normal view mode.
 	_, _ = io.WriteString(w, doc)
 }
 

@@ -79,7 +79,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 	lookup := func(project string, signed bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/projects/"+project+"/domain/overview", strings.NewReader(`{"domain":"example.com","scope":"domain"}`))
 		if signed {
-			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token)})
+			req.AddCookie(&http.Cookie{Name: "__Secure-better-auth.session_token", Value: sign(token), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)

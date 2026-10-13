@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// BusinessReviewTaskInput contains a business review task request.
 type BusinessReviewTaskInput struct {
 	Endpoint     string
 	Keyword      string
@@ -21,11 +22,14 @@ type BusinessReviewTaskInput struct {
 	Depth        int
 	SortBy       string
 }
+
+// BusinessReviewTaskProvider starts and reads business review tasks.
 type BusinessReviewTaskProvider interface {
 	StartBusinessReviewTask(context.Context, string, BusinessReviewTaskInput) (string, error)
 	PollBusinessReviewTask(context.Context, string, string) (bool, map[string]any, error)
 }
 
+// StartBusinessReviewTask starts a DataForSEO business review task.
 func (p DataForSEOProvider) StartBusinessReviewTask(ctx context.Context, org string, in BusinessReviewTaskInput) (string, error) {
 	if in.Endpoint != "reviews" && in.Endpoint != "extended_reviews" {
 		return "", errors.New("invalid business review task endpoint")
@@ -72,6 +76,8 @@ func (p DataForSEOProvider) StartBusinessReviewTask(ctx context.Context, org str
 	}
 	return task.ID, nil
 }
+
+// PollBusinessReviewTask checks a DataForSEO business review task.
 func (p DataForSEOProvider) PollBusinessReviewTask(ctx context.Context, endpoint, taskID string) (bool, map[string]any, error) {
 	if endpoint != "reviews" && endpoint != "extended_reviews" {
 		return false, nil, errors.New("invalid business review task endpoint")

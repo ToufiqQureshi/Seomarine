@@ -127,8 +127,8 @@ type requestMeta struct {
 	UserAgent string
 }
 
-// authResult is a successful sign-in or sign-up.
-type authResult struct {
+// AuthResult is the result of a successful sign-in or sign-up.
+type AuthResult struct {
 	User    User
 	Session *Session
 	// Remember is false when the user asked not to be remembered.
@@ -150,28 +150,28 @@ type SignUpInput struct {
 // SignUp creates an account. With email verification required (the hosted
 // default) it never signs the user in and answers an existing address exactly
 // like a new one, so the response does not reveal which addresses have accounts.
-func (s *Service) SignUp(ctx context.Context, in SignUpInput) (authResult, error) {
+func (s *Service) SignUp(ctx context.Context, in SignUpInput) (AuthResult, error) {
 	if !validEmail(in.Email) {
-		return authResult{}, errInvalidEmail
+		return AuthResult{}, errInvalidEmail
 	}
 	if in.Password == "" {
-		return authResult{}, errInvalidPassword
+		return AuthResult{}, errInvalidPassword
 	}
 	if err := s.checkPassword(in.Password); err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	if !s.origins.callbackAllowed(in.CallbackURL) {
-		return authResult{}, errInvalidCallback
+		return AuthResult{}, errInvalidCallback
 	}
 	email := strings.ToLower(in.Email)
 	if s.Cfg.BlockDisposableEmail && isDisposableEmail(email) {
-		return authResult{}, errDisposableEmail
+		return AuthResult{}, errDisposableEmail
 	}
 
 	now := s.Now()
 	_, exists, err := userByEmail(ctx, s.DB, email)
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	if exists {
 		return s.duplicateSignUp(ctx, in, email, now)
@@ -179,15 +179,15 @@ func (s *Service) SignUp(ctx context.Context, in SignUpInput) (authResult, error
 
 	hash, err := s.Hasher.Hash(ctx, in.Password)
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	userID, err := newID(32)
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	accountID, err := newID(32)
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	optedOut := false
 	if in.AnalyticsOptedOut != nil {
@@ -195,7 +195,7 @@ func (s *Service) SignUp(ctx context.Context, in SignUpInput) (authResult, error
 	}
 	user := User{ID: userID, Name: in.Name, Email: email, Image: in.Image, CreatedAt: now, UpdatedAt: now, AnalyticsOptedOut: &optedOut}
 
-	var result authResult
+	var result AuthResult
 	err = pgdb.InTx(ctx, s.DB, func(tx pgx.Tx) error {
 		if err := insertUser(ctx, tx, user); err != nil {
 			return err
@@ -210,7 +210,7 @@ func (s *Service) SignUp(ctx context.Context, in SignUpInput) (authResult, error
 			if err != nil {
 				return err
 			}
-			result = authResult{User: user, Session: &session, Remember: in.RememberMe == nil || *in.RememberMe}
+			result = AuthResult{User: user, Session: &session, Remember: in.RememberMe == nil || *in.RememberMe}
 		}
 		return nil
 	})
@@ -219,51 +219,51 @@ func (s *Service) SignUp(ctx context.Context, in SignUpInput) (authResult, error
 		return s.duplicateSignUp(ctx, in, email, now)
 	}
 	if err != nil {
-		return authResult{}, fmt.Errorf("sign up: %w", err)
+		return AuthResult{}, fmt.Errorf("sign up: %w", err)
 	}
 	if result.Session == nil {
-		result = authResult{User: user}
+		result = AuthResult{User: user}
 	}
 
-	s.syncSignupContact(user)
+	s.syncSignupContact(ctx, user)
 	if s.emailRequired() && s.Mailer != nil {
 		if err := s.sendVerification(ctx, user.Email, in.CallbackURL); err != nil {
-			return authResult{}, fmt.Errorf("send verification email: %w", err)
+			return AuthResult{}, fmt.Errorf("send verification email: %w", err)
 		}
 	}
 	return result, nil
 }
 
 // duplicateSignUp answers a sign-up for an existing address.
-func (s *Service) duplicateSignUp(ctx context.Context, in SignUpInput, email string, now time.Time) (authResult, error) {
+func (s *Service) duplicateSignUp(ctx context.Context, in SignUpInput, email string, now time.Time) (AuthResult, error) {
 	if !s.emailRequired() {
-		return authResult{}, errUserExists
+		return AuthResult{}, errUserExists
 	}
 	// Spend the time hashing would take, so the two paths cost the same.
 	if _, err := s.Hasher.Hash(ctx, in.Password); err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	id, err := newID(32)
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	optedOut := false
-	return authResult{User: User{ID: id, Name: in.Name, Email: email, Image: in.Image, CreatedAt: now, UpdatedAt: now, AnalyticsOptedOut: &optedOut}}, nil
+	return AuthResult{User: User{ID: id, Name: in.Name, Email: email, Image: in.Image, CreatedAt: now, UpdatedAt: now, AnalyticsOptedOut: &optedOut}}, nil
 }
 
 // syncSignupContact adds the user to the marketing audience in the background.
 // It must never delay or fail sign-up.
-func (s *Service) syncSignupContact(user User) {
+func (s *Service) syncSignupContact(ctx context.Context, user User) {
 	if s.Mailer == nil {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	go func(ctx context.Context) {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 		defer cancel()
 		if err := s.Mailer.UpsertSignupContact(ctx, user.ID, user.Email, user.Name); err != nil {
 			s.Logger.WarnContext(ctx, "sync signup contact failed", "user", user.ID, "err", err)
 		}
-	}()
+	}(ctx)
 }
 
 // startSession creates a session for user in tx, in the workspace they should
@@ -318,42 +318,42 @@ type SignInInput struct {
 // SignIn checks the credentials and starts a session. Every failure before the
 // password check costs one hash, so an unknown address and a wrong password
 // take the same time.
-func (s *Service) SignIn(ctx context.Context, in SignInInput) (authResult, error) {
+func (s *Service) SignIn(ctx context.Context, in SignInInput) (AuthResult, error) {
 	if !validEmail(in.Email) {
-		return authResult{}, errInvalidEmail
+		return AuthResult{}, errInvalidEmail
 	}
 	if !s.origins.callbackAllowed(in.CallbackURL) {
-		return authResult{}, errInvalidCallback
+		return AuthResult{}, errInvalidCallback
 	}
 	user, ok, err := userByEmail(ctx, s.DB, strings.ToLower(in.Email))
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	var hash string
 	if ok {
 		hash, ok, err = credentialHash(ctx, s.DB, user.ID)
 		if err != nil {
-			return authResult{}, err
+			return AuthResult{}, err
 		}
 	}
 	if !ok {
 		if _, err := s.Hasher.Hash(ctx, in.Password); err != nil {
-			return authResult{}, err
+			return AuthResult{}, err
 		}
-		return authResult{}, errBadCredentials
+		return AuthResult{}, errBadCredentials
 	}
 	match, err := s.Hasher.Verify(ctx, hash, in.Password)
 	if errors.Is(err, ErrInvalidHash) {
-		return authResult{}, errBadCredentials
+		return AuthResult{}, errBadCredentials
 	}
 	if err != nil {
-		return authResult{}, err
+		return AuthResult{}, err
 	}
 	if !match {
-		return authResult{}, errBadCredentials
+		return AuthResult{}, errBadCredentials
 	}
 	if s.emailRequired() && !user.EmailVerified {
-		return authResult{}, errEmailNotVerified
+		return AuthResult{}, errEmailNotVerified
 	}
 
 	remember := in.RememberMe == nil || *in.RememberMe
@@ -364,9 +364,9 @@ func (s *Service) SignIn(ctx context.Context, in SignInInput) (authResult, error
 		return err
 	})
 	if err != nil {
-		return authResult{}, fmt.Errorf("start session: %w", err)
+		return AuthResult{}, fmt.Errorf("start session: %w", err)
 	}
-	return authResult{User: user, Session: &session, Remember: remember}, nil
+	return AuthResult{User: user, Session: &session, Remember: remember}, nil
 }
 
 func (s *Service) verificationURL(address, callbackURL string) (string, error) {
@@ -441,8 +441,8 @@ func (s *Service) SendVerificationEmail(ctx context.Context, address, callbackUR
 	return sendErr
 }
 
-// verifyOutcome says where a verify-email request ends up.
-type verifyOutcome struct {
+// VerifyOutcome describes the result of verifying an email token.
+type VerifyOutcome struct {
 	// ErrorCode is set when the link was bad; the handler redirects with it.
 	ErrorCode string
 	// Session is set when the user was signed in by the link.
@@ -453,36 +453,37 @@ type verifyOutcome struct {
 
 // VerifyEmail checks a verification link, marks the address verified, and signs
 // the user in unless the request already carries their session.
-func (s *Service) VerifyEmail(ctx context.Context, token, callbackURL string, sessionUserID string, meta requestMeta) (verifyOutcome, error) {
+func (s *Service) VerifyEmail(ctx context.Context, token, callbackURL string, sessionUserID string, meta requestMeta) (VerifyOutcome, error) {
 	if !s.origins.callbackAllowed(callbackURL) {
-		return verifyOutcome{}, errInvalidCallback
+		return VerifyOutcome{}, errInvalidCallback
 	}
 	claims, err := verifyJWT([]byte(s.Cfg.Secret), token, s.Now())
 	switch {
 	case errors.Is(err, ErrTokenExpired):
-		return verifyOutcome{ErrorCode: "TOKEN_EXPIRED"}, nil
+		return VerifyOutcome{ErrorCode: "TOKEN_EXPIRED"}, nil
 	case err != nil:
-		return verifyOutcome{ErrorCode: "INVALID_TOKEN"}, nil
+		// The handler returns token failures as an outcome to preserve Better Auth's redirect contract.
+		return VerifyOutcome{ErrorCode: "INVALID_TOKEN"}, nil //nolint:nilerr
 	}
 	address, _ := claims["email"].(string)
 	// This server never issues change-email tokens; one that carries a target
 	// address was not made here.
 	if _, isChange := claims["updateTo"]; isChange || !validEmail(address) {
-		return verifyOutcome{ErrorCode: "INVALID_TOKEN"}, nil
+		return VerifyOutcome{ErrorCode: "INVALID_TOKEN"}, nil
 	}
 	user, ok, err := userByEmail(ctx, s.DB, strings.ToLower(address))
 	if err != nil {
-		return verifyOutcome{}, err
+		return VerifyOutcome{}, err
 	}
 	if !ok {
-		return verifyOutcome{ErrorCode: "USER_NOT_FOUND"}, nil
+		return VerifyOutcome{ErrorCode: "USER_NOT_FOUND"}, nil
 	}
 	if user.EmailVerified {
-		return verifyOutcome{User: user}, nil
+		return VerifyOutcome{User: user}, nil
 	}
 
 	user.EmailVerified = true
-	outcome := verifyOutcome{User: user, Remember: true}
+	outcome := VerifyOutcome{User: user, Remember: true}
 	err = pgdb.InTx(ctx, s.DB, func(tx pgx.Tx) error {
 		if err := markEmailVerified(ctx, tx, user.Email, s.Now()); err != nil {
 			return err
@@ -498,7 +499,7 @@ func (s *Service) VerifyEmail(ctx context.Context, token, callbackURL string, se
 		return nil
 	})
 	if err != nil {
-		return verifyOutcome{}, fmt.Errorf("verify email: %w", err)
+		return VerifyOutcome{}, fmt.Errorf("verify email: %w", err)
 	}
 	return outcome, nil
 }
