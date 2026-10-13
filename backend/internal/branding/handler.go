@@ -1,6 +1,7 @@
 package branding
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,14 +25,41 @@ type Deps struct {
 	Logger      *slog.Logger
 	Service     *Service
 	WithSession func(http.Handler) http.Handler
+	Plans       interface {
+		HasAgencyPlan(context.Context, string) (bool, error)
+	}
 }
 
 // Mount registers branding routes on the root mux. withSession attaches the
 // signed-in user, whose active organization is the row that is read or written.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("GET /api/v1/branding", d.WithSession(GetHandler(d.Logger, d.Service)))
-	mux.Handle("POST /api/v1/branding", d.WithSession(SaveHandler(d.Logger, d.Service)))
-	mux.Handle("POST /api/v1/branding/reset", d.WithSession(ResetHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/branding", d.WithSession(agencyOnly(d.Plans, SaveHandler(d.Logger, d.Service))))
+	mux.Handle("POST /api/v1/branding/reset", d.WithSession(agencyOnly(d.Plans, ResetHandler(d.Logger, d.Service))))
+}
+
+func agencyOnly(plans interface {
+	HasAgencyPlan(context.Context, string) (bool, error)
+}, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := auth.UserFromContext(r.Context())
+		if !ok || user.OrganizationID == "" {
+			httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
+			return
+		}
+		if plans != nil {
+			allowed, err := plans.HasAgencyPlan(r.Context(), user.OrganizationID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Could not verify the current plan.")
+				return
+			}
+			if !allowed {
+				httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Custom branding is available on the Agency plan.")
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // brandingPayload is the request body. The nullable fields are raw JSON so a

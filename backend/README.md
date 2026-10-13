@@ -21,8 +21,9 @@ PORT=8080 go run ./cmd/server
 | `STATIC_DIR` | no | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
 | `PORT` | no | Listen port, default `8080`. |
 | `TRUSTED_PROXY_CIDRS` | no | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_PLAN_ID_PRO` | no | Set all four or none; without them billing status and credits remain read-only, and checkout, cancellation and webhooks answer `503`. The plan id (`plan_...`) is the monthly Pro plan, and the webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
-| `BILLING_MONTHLY_CREDITS_USD` | no | Credits, in US dollars of provider cost, granted to a workspace on each paid subscription charge. 0 to 10000, default 0. |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | no | Set all three or none. Without them, billing status and credits remain read-only and checkout, cancellation and webhooks answer `503`. The webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
+| `RAZORPAY_PLAN_ID_BASIC`, `RAZORPAY_PLAN_ID_PRO_1899`, `RAZORPAY_PLAN_ID_AGENCY` | no | Optional monthly Razorpay plan IDs for Basic (₹899), Pro (₹1,899) and Agency (₹4,999). Each ID must match the advertised amount. A tier is offered in checkout only when its ID is configured. `RAZORPAY_PLAN_ID_PRO` is retained only to recognize existing ₹1,499 Pro subscriptions; do not use it for new checkout. |
+| `BILLING_MONTHLY_CREDITS_USD`, `BILLING_AGENCY_MONTHLY_CREDITS_USD` | no | Monthly provider-cost credits granted on a successful paid cycle: Pro defaults to $3, Agency to $10. Set values to match the public plan catalog; Basic receives no provider credits. |
 | `DATAFORSEO_API_KEY` | no | Base64 `login:password`. Without it keywords, rank tracking, backlinks, domain and AI search answer `503`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | The model behind the assistant and AI writing. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no | Google sign-in, Search Console and Analytics. |

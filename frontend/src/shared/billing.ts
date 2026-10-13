@@ -1,7 +1,6 @@
 export const BILLING_ROUTE = "/billing";
 export const SUBSCRIBE_ROUTE = "/subscribe";
 
-export const AUTUMN_PAID_PLAN_ID = "base-plan";
 // YC deal: same entitlements as the base plan with $50 of monthly credits.
 export const AUTUMN_YC_PLAN_ID = "yc-plan";
 export const AUTUMN_SEO_DATA_TOP_UP_PLAN_ID = "credit-top-up";
@@ -25,7 +24,7 @@ export const LOCAL_VOLUME_COST_USD = 0.09;
 // legal business name, tax ID (EU VAT etc.), and full billing address — makes
 // invoices valid for business customers. Display only, no Stripe Tax. Stripe
 // requires customer_update.name "auto" to collect tax IDs for an existing customer.
-export const AUTUMN_CHECKOUT_SESSION_PARAMS = {
+const AUTUMN_CHECKOUT_SESSION_PARAMS = {
   tax_id_collection: { enabled: true },
   billing_address_collection: "required",
   customer_update: { name: "auto", address: "auto" },

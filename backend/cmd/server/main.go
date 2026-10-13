@@ -140,9 +140,14 @@ func run(logger *slog.Logger) (err error) {
 	var billingSvc *billing.Service
 	billingRoutes := billing.NewReadOnlyService(db)
 	if rzp := cfg.Razorpay; rzp != nil {
-		billingSvc = billing.NewService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDPro, rzp.WebhookSecret)
+		billingSvc = billing.NewPlanService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDs, rzp.PlanIDPro, rzp.WebhookSecret)
 		billingRoutes = billingSvc
 		billingSvc.MonthlyGrantCredits = int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD)
+		billingSvc.MonthlyGrantCreditsByPlan = map[string]int64{
+			billing.PlanBasic:  0,
+			billing.PlanPro:    billingSvc.MonthlyGrantCredits,
+			billing.PlanAgency: int64(cfg.BillingAgencyMonthlyCreditsUSD * billing.CreditsPerUSD),
+		}
 	} else {
 		logger.Warn("RAZORPAY_* not set; billing status is read-only and checkout is unavailable")
 	}
@@ -276,9 +281,9 @@ func run(logger *slog.Logger) (err error) {
 			Audit:                auditSvc,
 			RankTracking:         rankTrackingService,
 			RankChecks:           rankChecks,
-			Projects:             &projects.Service{Store: projects.Repository{DB: db}},
+			Projects:             &projects.Service{Store: projects.Repository{DB: db}, Plans: billingRoutes},
 			ContentEditor:        &contenteditor.Repository{DB: db},
-			ContentWriter:        buildContentWriter(cfg, logger, credits),
+			ContentWriter:        buildContentWriter(cfg, logger, credits, billingRoutes),
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
@@ -330,7 +335,7 @@ func run(logger *slog.Logger) (err error) {
 	return nil
 }
 
-func buildContentWriter(cfg config.Config, logger *slog.Logger, credits *billing.CreditLedgerService) contenteditor.WriterService {
+func buildContentWriter(cfg config.Config, logger *slog.Logger, credits *billing.CreditLedgerService, plans contenteditor.WriterPlanAccess) contenteditor.WriterService {
 	if strings.TrimSpace(cfg.OpenRouterAPIKey) == "" {
 		return nil
 	}
@@ -338,6 +343,7 @@ func buildContentWriter(cfg config.Config, logger *slog.Logger, credits *billing
 		LLM:    &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
 		Model:  cfg.OpenRouterModel,
 		Meter:  sam.LedgerMeter{Ledger: credits},
+		Plans:  plans,
 		Logger: logger,
 	}
 }

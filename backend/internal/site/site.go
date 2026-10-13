@@ -20,14 +20,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	planCatalog "github.com/toufiqqureshi/uplumo/backend/internal/plans"
 )
 
 // Prices in rupees per month. They are the only place the public pages take
 // prices from; ProPriceINR must match the Razorpay plan RAZORPAY_PLAN_ID_PRO
 // bills.
 const (
-	FreePriceINR = 0
-	ProPriceINR  = 1499
+	FreePriceINR   = 0
+	BasicPriceINR  = 899
+	ProPriceINR    = 1899
+	AgencyPriceINR = 4999
 )
 
 // AssetsPrefix is the URL path the embedded static files are served under.
@@ -65,8 +69,10 @@ var (
 
 // Plan is a price tier as the pages show it.
 type Plan struct {
+	ID       string
 	Name     string
 	PriceINR int
+	Sites    int
 	// Period follows the price, e.g. "/month".
 	Period   string
 	Summary  string
@@ -160,17 +166,15 @@ func New(publicURL *url.URL) (*Site, error) {
 	landing := base
 	landing.Path = "/"
 	landing.Title = "Uplumo: SEO and AI search analytics with honest INR pricing"
-	landing.Description = "Track rankings, audit your site and see where ChatGPT, Perplexity, Gemini and Claude " +
-		"mention you and send visitors. AI visibility included, simple pricing, cancel in one click."
+	landing.Description = "Track Google rankings, audit your site and see where AI assistants mention you and send visitors. Choose Free, Basic, Pro or Agency pricing in rupees."
 	landing.Canonical = origin + "/"
 	landing.FAQ = landingFAQ()
 	landing.JSONLD = jsonLD(origin, landing.Description, plans)
 
 	pricing := base
 	pricing.Path = "/pricing"
-	pricing.Title = "Pricing: Free and Pro plans in INR | Uplumo"
-	pricing.Description = fmt.Sprintf("Uplumo is free to start. Pro is %s a month with AI visibility "+
-		"included, no row caps and one-click cancel. No add-ons, no credit maths.", formatINR(ProPriceINR))
+	pricing.Title = "Uplumo pricing: Free, Basic, Pro and Agency plans"
+	pricing.Description = fmt.Sprintf("Start free. Basic is %s, Pro is %s and Agency is %s per month, with site limits and SEO and AI features shown clearly.", formatINR(BasicPriceINR), formatINR(ProPriceINR), formatINR(AgencyPriceINR))
 	pricing.Canonical = origin + "/pricing"
 	pricing.FAQ = pricingFAQ()
 	pricing.JSONLD = jsonLD(origin, pricing.Description, plans)
@@ -368,35 +372,32 @@ var infoPages = []struct {
 }
 
 func plans() []Plan {
-	return []Plan{
-		{
-			Name:     "Free",
-			PriceINR: FreePriceINR,
-			Period:   "forever",
-			Summary:  "For solo owners who want to see what is working.",
-			Features: []string{
-				"Uplumo Analytics with AI traffic detection",
-				"Site audit with every issue explained in plain language",
-				"White-label client reports",
-				"No card needed to start",
-			},
-			CTA: "Start free",
-		},
-		{
-			Name:     "Pro",
-			PriceINR: ProPriceINR,
-			Period:   "/month",
-			Summary:  "For businesses and agencies growing in Google and in AI answers.",
-			Features: []string{
-				"Everything in Free",
-				"AI Visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, included",
-				"Rank tracking and keyword research",
-				"No row caps on Uplumo data",
-				"Cancel in one click, any time",
-			},
-			CTA:      "Start with Pro",
-			Featured: true,
-		},
+	catalog := planCatalog.Catalog()
+	result := make([]Plan, 0, len(catalog))
+	for _, item := range catalog {
+		period, cta := "/month", "Choose "+item.Name
+		if item.ID == planCatalog.Free {
+			period, cta = "forever", "Start free"
+		}
+		result = append(result, Plan{
+			ID: item.ID, Name: item.Name, PriceINR: item.PriceINR, Sites: item.Sites,
+			Period: period, Summary: planSummary(item.ID), Features: item.Features,
+			CTA: cta, Featured: item.ID == planCatalog.Pro,
+		})
+	}
+	return result
+}
+
+func planSummary(id string) string {
+	switch id {
+	case planCatalog.Free:
+		return "A no-cost way to connect your site and see traffic basics."
+	case planCatalog.Basic:
+		return "Core website and search performance work for one site."
+	case planCatalog.Pro:
+		return "SEO research and AI visibility for a growing business."
+	default:
+		return "A larger client portfolio with agency reporting."
 	}
 }
 
@@ -404,9 +405,7 @@ func landingFAQ() []QA {
 	return []QA{
 		{"What is Uplumo?", "An SEO and AI search platform. It tracks your Google rankings, audits your site, " +
 			"shows where AI assistants mention your brand and measures the visitors they send you."},
-		{"How is it different from Semrush or Ahrefs?", "You get the features most sites actually use, " +
-			"one clear next step on every screen and AI visibility in the plan instead of a paid add-on. " +
-			"Prices are in rupees and there are no row caps on our own data."},
+		{"How is it different from other SEO platforms?", "Uplumo combines site analytics, Google search data, SEO research and AI visibility. Choose a tier by the number of websites and tools you need."},
 		{"What is AI traffic detection?", "Most visits from ChatGPT, Perplexity or Gemini show up as \"Direct\" " +
 			"in ordinary analytics. Uplumo Analytics recognises AI referrers and AI tracking tags, " +
 			"so you can see which assistants send you visitors and which pages they land on."},
@@ -420,10 +419,12 @@ func landingFAQ() []QA {
 func pricingFAQ() []QA {
 	return []QA{
 		{"Is the Free plan really free?", "Yes. It costs " + formatINR(FreePriceINR) +
-			" and needs no card. Upgrade only when you want Pro features."},
-		{"How do I cancel Pro?", "In one click from Billing. You keep Pro until the end of the month you paid for, " +
+			" and needs no card. Basic starts at " + formatINR(BasicPriceINR) + " per month."},
+		{"How do site limits work?", "Free and Basic include one active website, Pro includes five and Agency includes twenty-five. Archiving a site frees a slot; your data stays in the workspace."},
+		{"What does Basic exclude?", "Basic does not run paid SEO-data lookups, AI visibility checks or AI writing, so those provider costs are not triggered by Basic usage."},
+		{"How do I cancel a paid plan?", "Cancel from Billing when self-service is available, or contact support. You keep the plan until the end of the month you paid for, " +
 			"and you are never charged again."},
-		{"Is AI visibility an extra charge?", "No. AI visibility is part of Pro. There is no per-domain add-on."},
+		{"Which plans include AI visibility?", "AI visibility is available on Pro and Agency, with the included AI and rendered-audit credits shown in the plan comparison."},
 		{"Will the price change without notice?", "No. If prices ever change, we tell you before your next bill " +
 			"and you can cancel in one click."},
 		{"How do I pay?", "Through Razorpay with UPI, cards or netbanking. Prices are in Indian rupees."},

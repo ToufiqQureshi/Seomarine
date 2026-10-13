@@ -35,6 +35,10 @@ type fakeWriterMeter struct {
 	key     string
 }
 
+type writerPlanResult bool
+
+func (p writerPlanResult) HasPaidPlan(context.Context, string) (bool, error) { return bool(p), nil }
+
 func (f *fakeWriterMeter) HasCredits(_ context.Context, orgID string) (bool, error) {
 	f.orgID = orgID
 	return f.allowed, nil
@@ -75,6 +79,18 @@ func TestWriterAgentDoesNotCallModelWithoutCredits(t *testing.T) {
 	}
 	if len(llm.request.Messages) != 0 {
 		t.Fatal("model was called despite empty credit balance")
+	}
+}
+
+func TestWriterAgentRequiresEligiblePlanBeforeCallingModel(t *testing.T) {
+	llm := &fakeWriterLLM{}
+	agent := &WriterAgent{LLM: llm, Plans: writerPlanResult(false), Meter: &fakeWriterMeter{allowed: true}}
+	_, err := agent.Generate(context.Background(), "org-basic", WriterInput{Action: WriterDraft, Mode: "seo", Title: "A title"})
+	if !errors.Is(err, ErrWriterPlanRequired) {
+		t.Fatalf("Generate() error = %v, want plan required", err)
+	}
+	if len(llm.request.Messages) != 0 {
+		t.Fatal("model was called for a plan without AI access")
 	}
 }
 

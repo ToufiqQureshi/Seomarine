@@ -2,12 +2,13 @@ import { z } from "zod";
 import { apiRequest, shouldRetryApiError } from "@/client/lib/uplumoApi";
 
 const statusSchema = z.object({
-  plan: z.enum(["free", "pro"]),
+  plan: z.enum(["free", "basic", "pro", "agency"]),
   status: z.string(),
   currentPeriodEnd: z.iso.datetime({ offset: true }).nullable(),
   // True once the owner cancelled: Pro runs until currentPeriodEnd, then stops.
   cancelAtPeriodEnd: z.boolean(),
   paymentsConfigured: z.boolean(),
+  availablePlans: z.array(z.enum(["basic", "pro", "agency"])),
 });
 export type BillingStatus = z.infer<typeof statusSchema>;
 
@@ -23,8 +24,12 @@ export const billingStatusQueryOptions = {
   retry: shouldRetryApiError,
 };
 
-export function createCheckout(): Promise<CheckoutSession> {
-  return apiRequest("/api/v1/billing/checkout", checkoutSchema, "POST");
+export function createCheckout(
+  plan: "basic" | "pro" | "agency",
+): Promise<CheckoutSession> {
+  return apiRequest("/api/v1/billing/checkout", checkoutSchema, "POST", {
+    plan,
+  });
 }
 
 /** Cancels the subscription and returns the plan that results. */
@@ -35,7 +40,9 @@ export function cancelSubscription(): Promise<BillingStatus> {
 // What Pro costs a month, in rupees. It must match the Razorpay plan the Go
 // API sells and ProPriceINR in backend/internal/site, which the public
 // pricing page prints.
-export const PRO_PRICE_INR = 1499;
+export const BASIC_PRICE_INR = 899;
+export const PRO_PRICE_INR = 1899;
+export const AGENCY_PRICE_INR = 4999;
 
 // Razorpay subscription states (plus "none" for no subscription), in words
 // an owner understands. Anything else shows as sent. The Go API grants Pro
@@ -45,11 +52,11 @@ const STATUS_TEXT: Record<string, { label: string; detail?: string }> = {
   none: { label: "Free" },
   created: {
     label: "Awaiting payment",
-    detail: "Finish checkout to start your Pro plan.",
+    detail: "Finish checkout to activate your selected plan.",
   },
   authenticated: {
     label: "Starting",
-    detail: "Payment approved. Your Pro plan starts within a few minutes.",
+    detail: "Payment approved. Your plan starts within a few minutes.",
   },
   active: { label: "Active" },
   pending: {
@@ -59,15 +66,16 @@ const STATUS_TEXT: Record<string, { label: string; detail?: string }> = {
   halted: {
     label: "Payment failed",
     detail:
-      "Payments failed several times, so Pro is off. Update your payment method in Razorpay to turn it back on.",
+      "Payments failed several times, so your paid plan is off. Update your payment method in Razorpay to turn it back on.",
   },
   paused: {
     label: "Paused",
-    detail: "Your subscription is paused, so Pro is off until it resumes.",
+    detail:
+      "Your subscription is paused, so your paid plan is off until it resumes.",
   },
   cancelled: {
     label: "Cancelled",
-    detail: "Your Pro plan was cancelled. You can upgrade again any time.",
+    detail: "Your paid plan was cancelled. You can subscribe again any time.",
   },
   completed: { label: "Ended" },
   expired: { label: "Expired" },

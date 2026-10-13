@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -64,6 +65,51 @@ func TestRepositoryConcurrentArchivePreservesOneActiveProject(t *testing.T) {
 	}
 	if active != 1 || archived != 1 {
 		t.Fatalf("active=%d archived=%d after concurrent archive, want 1 each", active, archived)
+	}
+}
+
+func TestRepositoryConcurrentCreateEnforcesSiteLimit(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	pool := projectTestPool(ctx, t)
+	orgID, _ := seedProjectOwner(ctx, t, pool)
+	if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name) VALUES ($1, $2, 'Existing')`, "existing-"+orgID, orgID); err != nil {
+		t.Fatalf("insert existing site: %v", err)
+	}
+	repo := Repository{DB: pool}
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var workers sync.WaitGroup
+	for i := range 2 {
+		workers.Add(1)
+		go func(i int) {
+			defer workers.Done()
+			<-start
+			_, err := repo.CreateLimited(ctx, orgID, Input{Name: fmt.Sprintf("New site %d", i)}, 2)
+			errs <- err
+		}(i)
+	}
+	close(start)
+	workers.Wait()
+	close(errs)
+	succeeded, limited := 0, 0
+	for err := range errs {
+		if err == nil {
+			succeeded++
+			continue
+		}
+		var typed *Error
+		if !errors.As(err, &typed) || typed.Code != "LIMIT_REACHED" {
+			t.Fatalf("CreateLimited() error = %v, want LIMIT_REACHED", err)
+		}
+		limited++
+	}
+	if succeeded != 1 || limited != 1 {
+		t.Fatalf("create results: succeeded=%d limited=%d, want 1 each", succeeded, limited)
+	}
+	count, err := repo.Count(ctx, orgID)
+	if err != nil || count != 2 {
+		t.Fatalf("active sites=%d err=%v, want exactly 2", count, err)
 	}
 }
 

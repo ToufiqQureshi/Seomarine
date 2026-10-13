@@ -451,8 +451,9 @@ type fixture struct {
 	pool *pgxpool.Pool
 	org  string
 	// calls counts subscription creations at the fake Razorpay.
-	calls     atomic.Int32
-	lastNotes atomic.Pointer[map[string]string]
+	calls      atomic.Int32
+	lastNotes  atomic.Pointer[map[string]string]
+	lastPlanID atomic.Value
 	// failWith makes the fake Razorpay answer with this status.
 	failWith int
 	// duringCreate runs while the fake Razorpay handles a creation.
@@ -513,12 +514,14 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 			return
 		}
 		var req struct {
-			Notes map[string]string `json:"notes"`
+			PlanID string            `json:"plan_id"`
+			Notes  map[string]string `json:"notes"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("decode request: %v", err)
 		}
 		f.lastNotes.Store(&req.Notes)
+		f.lastPlanID.Store(req.PlanID)
 		n := f.calls.Add(1)
 		if f.duringCreate != nil {
 			f.duringCreate()
@@ -537,6 +540,31 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 		}
 	})
 	return f
+}
+
+func TestCheckoutPlanUsesSelectedRazorpayPlan(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.svc = NewPlanService(f.pool, f.svc.razorpay, map[string]string{
+		PlanBasic: "plan_basic_899", PlanPro: "plan_pro_1899", PlanAgency: "plan_agency_4999",
+	}, testPlanID, testWebhookSecret)
+
+	for i, test := range []struct{ plan, wantID string }{
+		{PlanBasic, "plan_basic_899"}, {PlanPro, "plan_pro_1899"}, {PlanAgency, "plan_agency_4999"},
+	} {
+		if i > 0 {
+			// Razorpay's created state has not charged the customer, so retrying replaces it.
+			if _, err := f.pool.Exec(ctx, `DELETE FROM go_billing_subscriptions WHERE organization_id = $1`, f.org); err != nil {
+				t.Fatalf("clear prior created subscription: %v", err)
+			}
+		}
+		if _, err := f.svc.CheckoutPlan(ctx, f.org, test.plan); err != nil {
+			t.Fatalf("CheckoutPlan(%s) error = %v", test.plan, err)
+		}
+		if got := f.lastPlanID.Load(); got != test.wantID {
+			t.Fatalf("Razorpay plan_id = %v, want %s", got, test.wantID)
+		}
+	}
 }
 
 func (f *fixture) event(name, subID, status string, at time.Time) []byte {

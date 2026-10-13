@@ -3,17 +3,22 @@
 Two things live here: the plan a workspace is on, and the internal credit
 ledger.
 
-**Plan.** One Pro plan, sold as a Razorpay subscription per workspace
-(organization), stored in `go_billing_subscriptions`. `GET
+**Plan.** Basic, Pro and Agency plans are sold as Razorpay subscriptions per
+workspace (organization), stored in `go_billing_subscriptions`. Basic is
+limited to one site and excludes paid SEO-data and LLM providers. Pro includes
+up to five sites and provider features with $3 monthly provider-cost credits.
+Agency includes up to 25 sites, white-label reports and $10 monthly credits.
+`GET
 /api/v1/billing/status` reads it, `POST /api/v1/billing/checkout` starts one,
 `POST /webhooks/razorpay` keeps it in step with Razorpay. The webhook rules
 (which events, replay and ordering safety, which statuses count as Pro) are in
 `backend/README.md` under Billing. What happens without the four `RAZORPAY_*`
 variables is described below.
 
-The price is not stored here. It is the amount on the Razorpay plan
-`RAZORPAY_PLAN_ID_PRO`, and it must equal `ProPriceINR` in `internal/site` and
-`PRO_PRICE_INR` in the frontend.
+Prices are the amounts on the configured Razorpay tier plans and must match the
+plan catalog and public pricing page. The old `RAZORPAY_PLAN_ID_PRO` is used
+only to recognize existing ₹1,499 subscriptions; new Pro checkout uses
+`RAZORPAY_PLAN_ID_PRO_1899`.
 
 **Credits.** `CreditLedgerService` (`go_billing_credits` and the tables beside
 it) caps what one workspace can cost us at the providers. 1,000 credits are one

@@ -260,7 +260,7 @@ func NewHandler(d Deps) http.Handler {
 		billingRoutes = d.Billing
 	}
 	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: billingRoutes, WithSession: withSession, Credits: d.Credits})
-	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
+	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession, Plans: d.Billing})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
 	if d.Billing != nil {

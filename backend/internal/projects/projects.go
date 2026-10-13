@@ -54,9 +54,11 @@ type Store interface {
 	List(context.Context, string, bool) ([]Project, error)
 	Get(context.Context, string, string, bool) (Project, error)
 	Create(context.Context, string, Input) (Project, error)
+	CreateLimited(context.Context, string, Input, int) (Project, error)
 	Update(context.Context, string, string, Input) (Project, error)
 	Archive(context.Context, string, string, string) error
 	Restore(context.Context, string, string) error
+	RestoreLimited(context.Context, string, string, int) error
 	Count(context.Context, string) (int, error)
 	EnsureDefault(context.Context, string) error
 	Role(context.Context, string, string) (string, error)
@@ -66,6 +68,9 @@ type Store interface {
 type Service struct {
 	Store Store
 	Now   func() time.Time
+	Plans interface {
+		SiteLimit(context.Context, string) (int, error)
+	}
 }
 
 // List returns the organization projects, optionally ensuring a default exists.
@@ -102,6 +107,13 @@ func (s *Service) Create(ctx context.Context, org, user string, in Input) (Proje
 	if err := normalize(&in); err != nil {
 		return Project{}, err
 	}
+	limit, err := s.siteLimit(ctx, org)
+	if err != nil {
+		return Project{}, err
+	}
+	if limit > 0 {
+		return s.Store.CreateLimited(ctx, org, in, limit)
+	}
 	return s.Store.Create(ctx, org, in)
 }
 
@@ -136,7 +148,21 @@ func (s *Service) Restore(ctx context.Context, org, user, id string) error {
 	if err := s.requireAdmin(ctx, org, user); err != nil {
 		return err
 	}
+	limit, err := s.siteLimit(ctx, org)
+	if err != nil {
+		return err
+	}
+	if limit > 0 {
+		return s.Store.RestoreLimited(ctx, org, id, limit)
+	}
 	return s.Store.Restore(ctx, org, id)
+}
+
+func (s *Service) siteLimit(ctx context.Context, org string) (int, error) {
+	if s.Plans == nil {
+		return 0, nil
+	}
+	return s.Plans.SiteLimit(ctx, org)
 }
 func (s *Service) requireAdmin(ctx context.Context, org, user string) error {
 	role, err := s.Store.Role(ctx, org, user)
@@ -267,6 +293,49 @@ func (r Repository) Create(ctx context.Context, org string, in Input) (Project, 
 	return p, nil
 }
 
+// CreateLimited serializes site creation per organization so concurrent
+// requests cannot exceed the plan's active-site limit.
+func (r Repository) CreateLimited(ctx context.Context, org string, in Input, limit int) (Project, error) {
+	if limit <= 0 {
+		return r.Create(ctx, org, in)
+	}
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return Project{}, fmt.Errorf("begin limited project create: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT id FROM organization WHERE id=$1 FOR UPDATE`, org); err != nil {
+		return Project{}, fmt.Errorf("lock organization for project create: %w", err)
+	}
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM projects WHERE organization_id=$1 AND archived_at IS NULL`, org).Scan(&count); err != nil {
+		return Project{}, fmt.Errorf("count active sites: %w", err)
+	}
+	if count >= limit {
+		return Project{}, fail("LIMIT_REACHED", fmt.Sprintf("Your plan allows %d active website(s). Archive a site or upgrade your plan to add another.", limit))
+	}
+	id, err := ids.New()
+	if err != nil {
+		return Project{}, err
+	}
+	loc, lang := market.DefaultLocationCode, "en"
+	if in.LocationCode != nil {
+		loc, lang = *in.LocationCode, *in.LanguageCode
+	}
+	var p Project
+	err = tx.QueryRow(ctx, `INSERT INTO projects(id,organization_id,name,domain,location_code,language_code) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,name,domain,location_code,language_code,created_at`, id, org, in.Name, in.Domain, loc, lang).Scan(&p.ID, &p.Name, &p.Domain, &p.LocationCode, &p.LanguageCode, &p.CreatedAt)
+	if err != nil {
+		if isUnique(err) {
+			return Project{}, fail("CONFLICT", `A project named "Default" with no domain already exists.`)
+		}
+		return Project{}, fmt.Errorf("create project: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Project{}, fmt.Errorf("commit project create: %w", err)
+	}
+	return p, nil
+}
+
 // Update saves project details.
 func (r Repository) Update(ctx context.Context, org, id string, in Input) (Project, error) {
 	var p Project
@@ -350,6 +419,39 @@ func (r Repository) Restore(ctx context.Context, org, id string) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// RestoreLimited prevents archived sites from bypassing the current plan cap.
+func (r Repository) RestoreLimited(ctx context.Context, org, id string, limit int) error {
+	if limit <= 0 {
+		return r.Restore(ctx, org, id)
+	}
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin limited project restore: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT id FROM organization WHERE id=$1 FOR UPDATE`, org); err != nil {
+		return fmt.Errorf("lock organization for project restore: %w", err)
+	}
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM projects WHERE organization_id=$1 AND archived_at IS NULL`, org).Scan(&count); err != nil {
+		return fmt.Errorf("count active sites: %w", err)
+	}
+	if count >= limit {
+		return fail("LIMIT_REACHED", fmt.Sprintf("Your plan allows %d active website(s). Archive a site or upgrade your plan to restore this one.", limit))
+	}
+	tag, err := tx.Exec(ctx, `UPDATE projects SET archived_at=NULL WHERE organization_id=$1 AND id=$2 AND archived_at IS NOT NULL`, org, id)
+	if err != nil {
+		if isUnique(err) {
+			return fail("CONFLICT", `An active project named "Default" with no domain already exists. Rename it first, then restore this one.`)
+		}
+		return fmt.Errorf("restore project: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrNotFound
+	}
+	return tx.Commit(ctx)
 }
 
 // Role returns the user role within an organization.

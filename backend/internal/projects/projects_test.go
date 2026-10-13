@@ -2,6 +2,7 @@ package projects
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -28,6 +29,12 @@ func (f *fakeStore) Create(_ context.Context, _ string, in Input) (Project, erro
 	f.rows = append(f.rows, p)
 	return p, nil
 }
+func (f *fakeStore) CreateLimited(ctx context.Context, org string, in Input, limit int) (Project, error) {
+	if len(f.rows) >= limit {
+		return Project{}, fail("LIMIT_REACHED", "site limit reached")
+	}
+	return f.Create(ctx, org, in)
+}
 func (f *fakeStore) Update(_ context.Context, _, id string, in Input) (Project, error) {
 	f.updated = in
 	return Project{ID: id, Name: in.Name, Domain: in.Domain}, nil
@@ -37,7 +44,13 @@ func (f *fakeStore) Archive(context.Context, string, string, string) error {
 	return nil
 }
 func (f *fakeStore) Restore(context.Context, string, string) error { f.restored = true; return nil }
-func (f *fakeStore) Count(context.Context, string) (int, error)    { return len(f.rows), nil }
+func (f *fakeStore) RestoreLimited(ctx context.Context, org, id string, limit int) error {
+	if len(f.rows) >= limit {
+		return fail("LIMIT_REACHED", "site limit reached")
+	}
+	return f.Restore(ctx, org, id)
+}
+func (f *fakeStore) Count(context.Context, string) (int, error) { return len(f.rows), nil }
 func (f *fakeStore) EnsureDefault(context.Context, string) error {
 	f.rows = []Project{{ID: "default", Name: "Default"}}
 	return nil
@@ -63,6 +76,20 @@ func TestProjectServiceEnsuresOneProjectAndValidatesOwnerOperations(t *testing.T
 	}
 	if created.Name != "Site" || created.Domain == nil || *created.Domain != "example.com" {
 		t.Fatalf("created=%+v", created)
+	}
+}
+
+type fixedSiteLimit int
+
+func (limit fixedSiteLimit) SiteLimit(context.Context, string) (int, error) { return int(limit), nil }
+
+func TestProjectServiceEnforcesPlanSiteLimit(t *testing.T) {
+	store := &fakeStore{role: "owner", rows: []Project{{ID: "one", Name: "One"}}}
+	svc := &Service{Store: store, Plans: fixedSiteLimit(1)}
+	_, err := svc.Create(context.Background(), "org", "u", Input{Name: "Second"})
+	var typed *Error
+	if !errors.As(err, &typed) || typed.Code != "LIMIT_REACHED" {
+		t.Fatalf("Create() error = %v, want LIMIT_REACHED", err)
 	}
 }
 

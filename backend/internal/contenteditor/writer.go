@@ -26,6 +26,9 @@ var ErrWriterUnavailable = errors.New("content writing assistant is unavailable"
 // ErrWriterNoCredits indicates the organization has no AI credits.
 var ErrWriterNoCredits = errors.New("organization has no AI credits")
 
+// ErrWriterPlanRequired indicates the writer is not in the organization's plan.
+var ErrWriterPlanRequired = errors.New("an eligible paid plan is required for AI writing")
+
 // ErrWriterTimeout indicates the writing assistant timed out.
 var ErrWriterTimeout = errors.New("content writing assistant timed out")
 
@@ -73,6 +76,10 @@ type WriterMeter interface {
 	Charge(context.Context, string, float64, string) error
 }
 
+type WriterPlanAccess interface {
+	HasPaidPlan(context.Context, string) (bool, error)
+}
+
 // WriterAgent uses a language model to generate content.
 type WriterAgent struct {
 	LLM interface {
@@ -80,6 +87,7 @@ type WriterAgent struct {
 	}
 	Model  string
 	Meter  WriterMeter
+	Plans  WriterPlanAccess
 	Logger *slog.Logger
 }
 
@@ -90,6 +98,15 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 	}
 	if err := validateWriterInput(input); err != nil {
 		return WriterOutput{}, err
+	}
+	if a.Plans != nil {
+		allowed, err := a.Plans.HasPaidPlan(ctx, organizationID)
+		if err != nil {
+			return WriterOutput{}, fmt.Errorf("check writing assistant plan: %w", err)
+		}
+		if !allowed {
+			return WriterOutput{}, ErrWriterPlanRequired
+		}
 	}
 	if a.Meter != nil {
 		allowed, err := a.Meter.HasCredits(ctx, organizationID)

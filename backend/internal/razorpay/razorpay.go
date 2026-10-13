@@ -53,6 +53,7 @@ func (c *Client) KeyID() string { return c.keyID }
 // Subscription is the part of a Razorpay subscription entity the app uses.
 type Subscription struct {
 	ID     string `json:"id"`
+	PlanID string `json:"plan_id"`
 	Status string `json:"status"`
 	// CurrentEnd is the end of the paid billing cycle in Unix seconds, nil
 	// before the first charge.

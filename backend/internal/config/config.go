@@ -42,9 +42,10 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey is Uplumo's own model key for SAM.
 	OpenRouterAPIKey string
-	// BillingMonthlyCreditsUSD is granted to an organization on each paid
-	// subscription charge. Zero grants nothing; the owner sets the amount.
+	// BillingMonthlyCreditsUSD is granted on each Pro subscription charge.
 	BillingMonthlyCreditsUSD float64
+	// BillingAgencyMonthlyCreditsUSD is granted on each Agency charge.
+	BillingAgencyMonthlyCreditsUSD float64
 	// OpenRouterModel overrides the SAM chat model (OPENROUTER_MODEL).
 	OpenRouterModel string
 	// Loops configures hosted teammate invitation email.
@@ -76,7 +77,10 @@ type Razorpay struct {
 	KeyID         string
 	KeySecret     string
 	WebhookSecret string
-	PlanIDPro     string
+	// PlanIDs contains current checkout plan IDs. Pro is deliberately separate
+	// from PlanIDPro, which is retained for existing ₹1,499 subscriptions.
+	PlanIDs   map[string]string
+	PlanIDPro string // legacy Pro plan ID, used only to recognize its webhooks
 }
 
 const (
@@ -151,13 +155,21 @@ func Load(getenv func(string) string) (Config, error) {
 		port = parsed
 	}
 
-	var monthlyCredits float64
+	monthlyCredits := 3.0
 	if raw := getenv("BILLING_MONTHLY_CREDITS_USD"); raw != "" {
 		parsed, err := strconv.ParseFloat(raw, 64)
 		if err != nil || parsed < 0 || parsed > 10000 {
 			return Config{}, fmt.Errorf("BILLING_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
 		}
 		monthlyCredits = parsed
+	}
+	agencyMonthlyCredits := 10.0
+	if raw := getenv("BILLING_AGENCY_MONTHLY_CREDITS_USD"); raw != "" {
+		parsed, err := strconv.ParseFloat(raw, 64)
+		if err != nil || parsed < 0 || parsed > 10000 {
+			return Config{}, fmt.Errorf("BILLING_AGENCY_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
+		}
+		agencyMonthlyCredits = parsed
 	}
 
 	dataForSEOKey := strings.TrimSpace(getenv("DATAFORSEO_API_KEY"))
@@ -177,32 +189,33 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		BillingMonthlyCreditsUSD:     monthlyCredits,
-		Addr:                         fmt.Sprintf(":%d", port),
-		DatabaseURL:                  databaseURL,
-		RedisURL:                     redisURL,
-		BetterAuthSecret:             secret,
-		GoogleClientID:               strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret:           strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleTokenEncryptionKey:     strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		StaticDir:                    staticDir,
-		PublicURL:                    public,
-		BetterAuthURL:                betterAuthURL,
-		Razorpay:                     rzp,
-		DataForSEOAPIKey:             dataForSEOKey,
-		OpenRouterAPIKey:             openRouterKey,
-		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
-		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
-		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
-		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
-		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
-		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
-		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
-		BypassEmailVerification:      bypassVerification,
-		SentryDSN:                    strings.TrimSpace(getenv("SENTRY_DSN")),
-		Environment:                  environment,
-		Release:                      strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
-		TrustedProxyCIDRs:            trusted,
+		BillingMonthlyCreditsUSD:       monthlyCredits,
+		BillingAgencyMonthlyCreditsUSD: agencyMonthlyCredits,
+		Addr:                           fmt.Sprintf(":%d", port),
+		DatabaseURL:                    databaseURL,
+		RedisURL:                       redisURL,
+		BetterAuthSecret:               secret,
+		GoogleClientID:                 strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:             strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey:       strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		StaticDir:                      staticDir,
+		PublicURL:                      public,
+		BetterAuthURL:                  betterAuthURL,
+		Razorpay:                       rzp,
+		DataForSEOAPIKey:               dataForSEOKey,
+		OpenRouterAPIKey:               openRouterKey,
+		OpenRouterModel:                strings.TrimSpace(getenv("OPENROUTER_MODEL")),
+		LoopsAPIKey:                    strings.TrimSpace(getenv("LOOPS_API_KEY")),
+		LoopsInvitationTemplateID:      strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		LoopsVerifyEmailTemplateID:     strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
+		LoopsResetPasswordTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
+		TurnstileSecretKey:             strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
+		OpenAIAppsChallenge:            strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
+		BypassEmailVerification:        bypassVerification,
+		SentryDSN:                      strings.TrimSpace(getenv("SENTRY_DSN")),
+		Environment:                    environment,
+		Release:                        strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
+		TrustedProxyCIDRs:              trusted,
 	}, nil
 }
 
@@ -218,7 +231,7 @@ func isLive(public *url.URL) bool {
 // runs without billing, and an error when only some are: a half-configured
 // payment setup would fail at checkout or drop webhooks.
 func loadRazorpay(getenv func(string) string) (*Razorpay, error) {
-	names := []string{"RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "RAZORPAY_PLAN_ID_PRO"}
+	names := []string{"RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"}
 	values := make([]string, len(names))
 	var missing []string
 	for i, name := range names {
@@ -229,9 +242,20 @@ func loadRazorpay(getenv func(string) string) (*Razorpay, error) {
 	}
 	switch len(missing) {
 	case len(names):
+		if getenv("RAZORPAY_PLAN_ID_BASIC") != "" || getenv("RAZORPAY_PLAN_ID_PRO_1899") != "" || getenv("RAZORPAY_PLAN_ID_AGENCY") != "" {
+			return nil, fmt.Errorf("set Razorpay credentials before plan IDs")
+		}
 		return nil, nil
 	case 0:
-		return &Razorpay{KeyID: values[0], KeySecret: values[1], WebhookSecret: values[2], PlanIDPro: values[3]}, nil
+		return &Razorpay{
+			KeyID: values[0], KeySecret: values[1], WebhookSecret: values[2],
+			PlanIDPro: strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_PRO")),
+			PlanIDs: map[string]string{
+				"basic":  strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_BASIC")),
+				"pro":    strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_PRO_1899")),
+				"agency": strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_AGENCY")),
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("set all RAZORPAY_* variables or none; missing %s", strings.Join(missing, ", "))
 	}

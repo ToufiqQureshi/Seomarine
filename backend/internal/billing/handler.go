@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -14,7 +15,8 @@ const maxWebhookBody = 256 << 10
 
 type statusResponse struct {
 	Status
-	PaymentsConfigured bool `json:"paymentsConfigured"`
+	PaymentsConfigured bool     `json:"paymentsConfigured"`
+	AvailablePlans     []string `json:"availablePlans"`
 }
 
 // Deps contains billing services and the root router's authentication middleware.
@@ -48,7 +50,7 @@ func statusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured()})
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans()})
 	}
 }
 
@@ -63,14 +65,28 @@ func checkoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only workspace owners and admins can change the plan.")
 			return
 		}
-		checkout, err := svc.Checkout(r.Context(), user.OrganizationID)
+		var input struct {
+			Plan string `json:"plan"`
+		}
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&input); err != nil && !errors.Is(err, io.EOF) {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid plan.")
+			return
+		}
+		if input.Plan == "" {
+			input.Plan = PlanPro
+		}
+		checkout, err := svc.CheckoutPlan(r.Context(), user.OrganizationID, input.Plan)
 		if errors.Is(err, ErrAlreadySubscribed) {
 			httpx.WriteError(w, http.StatusConflict, "already_subscribed", "This workspace already has a subscription.")
 			return
 		}
 		if err != nil {
 			logger.ErrorContext(r.Context(), "billing checkout", "err", err)
-			if errors.Is(err, ErrPaymentUnavailable) {
+			if errors.Is(err, ErrPlanUnavailable) {
+				httpx.WriteError(w, http.StatusServiceUnavailable, "plan_unavailable", "Checkout for this plan is not configured yet. Please contact support.")
+			} else if errors.Is(err, ErrPaymentUnavailable) {
 				httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Payments are not available yet. Please contact support.")
 			} else if errors.Is(err, ErrPaymentProvider) {
 				httpx.WriteError(w, http.StatusBadGateway, "payment_provider_error", "Could not start the payment. Please try again.")
@@ -111,7 +127,7 @@ func cancelHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			}
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured()})
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans()})
 	}
 }
 

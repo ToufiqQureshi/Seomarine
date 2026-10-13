@@ -85,7 +85,7 @@ export function useBillingCustomer({
     if (planId === AUTUMN_SEO_DATA_TOP_UP_PLAN_ID) {
       throw new Error("Credit top-ups are not available yet.");
     }
-    const checkout = await createCheckout();
+    const checkout = await createCheckout("pro");
     const paid = await openRazorpayCheckout(checkout);
     if (!paid) throw new Error("The payment window was closed before paying.");
     if (successUrl) window.location.assign(successUrl);

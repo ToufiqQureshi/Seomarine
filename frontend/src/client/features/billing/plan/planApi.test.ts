@@ -19,6 +19,7 @@ describe("billing status", () => {
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
       paymentsConfigured: false,
+      availablePlans: [],
     },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
@@ -27,6 +28,7 @@ describe("billing status", () => {
       currentPeriodEnd: "2026-11-07T10:15:30.123456+05:30",
       cancelAtPeriodEnd: true,
       paymentsConfigured: true,
+      availablePlans: ["pro"],
     },
   ])("accepts $plan / $status", async (body) => {
     respondWith(body);
@@ -35,7 +37,7 @@ describe("billing status", () => {
 
   it.each([
     { plan: "enterprise", status: "active", currentPeriodEnd: null },
-    { plan: "pro", status: "active", currentPeriodEnd: "next month" },
+    { plan: "basic", status: "active", currentPeriodEnd: "next month" },
     { plan: "pro", status: "active" },
   ])("rejects %o", async (body) => {
     respondWith(body);
@@ -48,10 +50,10 @@ describe("billing status", () => {
 describe("createCheckout", () => {
   it("POSTs and rejects a session without a Razorpay key", async () => {
     const fetchMock = respondWith({ subscriptionId: "sub_1", keyId: "" });
-    await expect(createCheckout()).rejects.toBeInstanceOf(ApiError);
+    await expect(createCheckout("pro")).rejects.toBeInstanceOf(ApiError);
     expect(fetchMock.mock.calls[0]).toMatchObject([
       "/api/v1/billing/checkout",
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ plan: "pro" }) },
     ]);
   });
 });
@@ -64,6 +66,7 @@ describe("cancelSubscription", () => {
       currentPeriodEnd: "2026-11-07T10:15:30Z",
       cancelAtPeriodEnd: true,
       paymentsConfigured: true,
+      availablePlans: ["pro"],
     };
     const fetchMock = respondWith(body);
     await expect(cancelSubscription()).resolves.toEqual(body);
