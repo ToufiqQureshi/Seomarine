@@ -29,7 +29,7 @@ Needed before real users sign up:
 
 | Variables                                                      | Without them                                 |
 | -------------------------------------------------------------- | -------------------------------------------- |
-| `LOOPS_API_KEY` and the three `LOOPS_TRANSACTIONAL_*_ID`        | No verification or reset email: nobody can finish sign-up. |
+| `LOOPS_API_KEY` and the three `LOOPS_TRANSACTIONAL_*_ID`        | No verification or reset email: nobody can finish sign-up. The key, the verify ID and the reset ID must all be set, or none of the three works. |
 | `TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY`                    | No bot check on sign-up.                     |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                      | No Google sign-in, Search Console or Analytics. |
 | The four `RAZORPAY_*`                                           | No paid plan.                                |
@@ -53,7 +53,7 @@ The server refuses to start on a live `https` site when:
 | Domain   | In Railway add `uplumo.com` as a custom domain, then add the DNS record it shows at the registrar. |
 | Google   | Authorised redirect URIs: `https://uplumo.com/api/auth/callback/google` (sign-in), `https://uplumo.com/api/gsc/oauth/callback` (Search Console) and `https://uplumo.com/api/ga4/oauth/callback` (Analytics). |
 | Razorpay | Webhook URL `https://uplumo.com/webhooks/razorpay`, with the same secret as `RAZORPAY_WEBHOOK_SECRET`. |
-| Loops    | Verify the sending domain `uplumo.com` and create the three transactional templates. |
+| Loops    | Verify the sending domain `mail.uplumo.com` and publish the three transactional templates. Template variables and checks are in `backend/internal/email/README.md`. |
 | Email    | Create the mailbox `support@uplumo.com`: every public page links to it.  |
 
 ## 4. Check the live site
