@@ -52,10 +52,6 @@ func MountOAuth(mux *http.ServeMux, deps OAuthDeps) {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Choose a valid return page.")
 			return
 		}
-		if deps.Service == nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "unavailable", "Google connection is not configured.")
-			return
-		}
 		user, _ := auth.UserFromContext(r.Context())
 		// Only a new connection is stopped: a workspace that downgrades
 		// keeps reading the properties it already connected.
@@ -70,6 +66,10 @@ func MountOAuth(mux *http.ServeMux, deps OAuthDeps) {
 				httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Connecting Google Search Console and Google Analytics is part of the Basic plan and above.")
 				return
 			}
+		}
+		if deps.Service == nil {
+			httpx.WriteError(w, http.StatusServiceUnavailable, "unavailable", "Google connection is not configured.")
+			return
 		}
 		authorizationURL, err := deps.Service.Start(r.Context(), user.ID, r.PathValue("provider"), input.CallbackURL)
 		if err != nil {

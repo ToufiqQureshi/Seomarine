@@ -61,14 +61,14 @@ func (s *Service) Invite(ctx context.Context, user auth.User, email string) (str
 	if err != nil {
 		return "", err
 	}
-	if err := s.consumeBudget(ctx, user.OrganizationID, address); err != nil {
-		return "", err
-	}
 	seats := 0
 	if s.Limits != nil {
 		if seats, err = s.Limits.MemberLimit(ctx, user.OrganizationID); err != nil {
 			return "", fmt.Errorf("check member limit: %w", err)
 		}
+	}
+	if err := s.consumeBudget(ctx, user.OrganizationID, address); err != nil {
+		return "", err
 	}
 	now := s.now().UTC()
 	id, organizationName, err := s.saveInvitation(ctx, user, address, now, seats)

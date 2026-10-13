@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 )
 
@@ -30,11 +31,32 @@ type Deps struct {
 // Mount registers billing routes on mux.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /webhooks/razorpay", webhookHandler(d.Logger, d.Service))
+	mux.Handle("GET /api/v1/billing/plans", d.WithSession(http.HandlerFunc(plansHandler)))
 	mux.Handle("GET /api/v1/billing/status", d.WithSession(statusHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/billing/checkout", d.WithSession(checkoutHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/billing/cancel", d.WithSession(cancelHandler(d.Logger, d.Service)))
 	mux.Handle("GET /api/v1/billing/credits", d.WithSession(creditsHandler(d.Logger, d.Service, d.Credits)))
 	mux.Handle("POST /api/v1/billing/usage-events", d.WithSession(usageEventsHandler(d.Logger, d.Credits)))
+}
+
+// planInfo is a plan as the billing screens show it.
+type planInfo struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	PriceINR   int      `json:"priceInr"`
+	Summary    string   `json:"summary"`
+	Highlights []string `json:"highlights"`
+}
+
+// plansHandler returns the plan catalog, so the app shows the same prices
+// and promises as the public pricing page.
+func plansHandler(w http.ResponseWriter, _ *http.Request) {
+	catalog := plans.Catalog()
+	out := make([]planInfo, len(catalog))
+	for i, plan := range catalog {
+		out[i] = planInfo{ID: plan.ID, Name: plan.Name, PriceINR: plan.PriceINR, Summary: plan.Summary, Highlights: plan.Highlights}
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"plans": out})
 }
 
 // statusHandler returns the plan of the signed-in user's active organization.

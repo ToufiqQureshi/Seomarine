@@ -116,9 +116,9 @@ func TestPagesCarryTheirMetadata(t *testing.T) {
 				`<meta property="og:image" content="https://uplumo.com/site/social-card.png?v=` + s.versions["social-card.png"] + `">`,
 				`<meta name="twitter:card" content="summary_large_image">`,
 				`href="/sign-up"`,
-				"₹899",
-				"₹1,899",
-				"₹4,999",
+				"₹999",
+				"₹2,499",
+				"₹5,999",
 			} {
 				if !strings.Contains(body, want) {
 					t.Errorf("page lacks %s", want)
@@ -144,7 +144,7 @@ func TestPagesCarryTheirMetadata(t *testing.T) {
 			if app.Type != "SoftwareApplication" || app.Name != "Uplumo" || len(app.Offers) != 4 {
 				t.Fatalf("SoftwareApplication = %+v", app)
 			}
-			for i, want := range []string{"0", "899", "1899", "4999"} {
+			for i, want := range []string{"0", "999", "2499", "5999"} {
 				if o := app.Offers[i]; o.Price != want || o.Currency != "INR" {
 					t.Errorf("offer %d = %+v, want %s INR", i, o, want)
 				}

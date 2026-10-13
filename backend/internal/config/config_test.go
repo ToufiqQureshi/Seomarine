@@ -140,7 +140,7 @@ func TestLoadRazorpay(t *testing.T) {
 	}
 
 	cfg, err = load(full)
-	want := Razorpay{KeyID: "rzp_test_key", KeySecret: "key-secret", WebhookSecret: "webhook-secret", PlanIDPro: "plan_pro", PlanIDs: map[string]string{"basic": "", "pro": "", "agency": ""}}
+	want := Razorpay{KeyID: "rzp_test_key", KeySecret: "key-secret", WebhookSecret: "webhook-secret", PlanIDs: map[string]string{"pro": "plan_pro"}}
 	if err != nil || cfg.Razorpay == nil || !reflect.DeepEqual(*cfg.Razorpay, want) {
 		t.Fatalf("with every RAZORPAY_* Load() = %+v, %v; want %+v", cfg.Razorpay, err, want)
 	}
@@ -158,12 +158,12 @@ func TestLoadRazorpay(t *testing.T) {
 
 	plans := maps.Clone(full)
 	maps.Copy(plans, map[string]string{
-		"RAZORPAY_PLAN_ID_BASIC":    "plan_basic",
-		"RAZORPAY_PLAN_ID_PRO_1899": "plan_pro_1899",
-		"RAZORPAY_PLAN_ID_AGENCY":   "plan_agency",
+		"RAZORPAY_PLAN_ID_BASIC":  "plan_basic",
+		"RAZORPAY_PLAN_ID_PRO":    " plan_pro_tier ",
+		"RAZORPAY_PLAN_ID_AGENCY": "plan_agency",
 	})
 	cfg, err = load(plans)
-	if err != nil || cfg.Razorpay.PlanIDs["basic"] != "plan_basic" || cfg.Razorpay.PlanIDs["pro"] != "plan_pro_1899" || cfg.Razorpay.PlanIDs["agency"] != "plan_agency" {
+	if err != nil || cfg.Razorpay.PlanIDs["basic"] != "plan_basic" || cfg.Razorpay.PlanIDs["pro"] != "plan_pro_tier" || cfg.Razorpay.PlanIDs["agency"] != "plan_agency" {
 		t.Fatalf("tier Razorpay config = %+v, %v", cfg.Razorpay, err)
 	}
 }

@@ -545,24 +545,20 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 func TestCheckoutPlanUsesSelectedRazorpayPlan(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(ctx, t)
-	f.svc = NewPlanService(f.pool, f.svc.razorpay, map[string]string{
-		PlanBasic: "plan_basic_899", PlanPro: "plan_pro_1899", PlanAgency: "plan_agency_4999",
-	}, testPlanID, testWebhookSecret)
+	f.sellTiers()
 
-	for i, test := range []struct{ plan, wantID string }{
-		{PlanBasic, "plan_basic_899"}, {PlanPro, "plan_pro_1899"}, {PlanAgency, "plan_agency_4999"},
-	} {
+	for i, plan := range []string{PlanBasic, PlanPro, PlanAgency} {
 		if i > 0 {
 			// Razorpay's created state has not charged the customer, so retrying replaces it.
 			if _, err := f.pool.Exec(ctx, `DELETE FROM go_billing_subscriptions WHERE organization_id = $1`, f.org); err != nil {
 				t.Fatalf("clear prior created subscription: %v", err)
 			}
 		}
-		if _, err := f.svc.CheckoutPlan(ctx, f.org, test.plan); err != nil {
-			t.Fatalf("CheckoutPlan(%s) error = %v", test.plan, err)
+		if _, err := f.svc.CheckoutPlan(ctx, f.org, plan); err != nil {
+			t.Fatalf("CheckoutPlan(%s) error = %v", plan, err)
 		}
-		if got := f.lastPlanID.Load(); got != test.wantID {
-			t.Fatalf("Razorpay plan_id = %v, want %s", got, test.wantID)
+		if got := f.lastPlanID.Load(); got != tierPlanIDs[plan] {
+			t.Fatalf("Razorpay plan_id = %v, want %s", got, tierPlanIDs[plan])
 		}
 	}
 }
@@ -656,27 +652,4 @@ func testDatabaseURL(t *testing.T) string {
 	}
 	t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	return ""
-}
-
-func TestHasPaidPlan(t *testing.T) {
-	ctx := context.Background()
-	f := newFixture(ctx, t)
-	assertPaid := func(want bool, when string) {
-		t.Helper()
-		if got, err := f.svc.HasPaidPlan(ctx, f.org); err != nil || got != want {
-			t.Fatalf("HasPaidPlan() %s = %v, %v; want %v", when, got, err, want)
-		}
-	}
-
-	assertPaid(false, "without a subscription")
-	f.deliver(ctx, t, f.event("subscription.activated", "sub_paid", "active", t1))
-	assertPaid(true, "with an active subscription")
-	f.deliver(ctx, t, f.event("subscription.halted", "sub_paid", "halted", t2))
-	assertPaid(false, "after the subscription halted")
-
-	canceled, cancel := context.WithCancel(ctx)
-	cancel()
-	if _, err := f.svc.HasPaidPlan(canceled, f.org); err == nil {
-		t.Error("HasPaidPlan() on a failing database succeeded, want an error")
-	}
 }

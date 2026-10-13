@@ -3,6 +3,7 @@ package branding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -367,4 +368,38 @@ func openBrandingDB(ctx context.Context, t *testing.T) *pgxpool.Pool {
 		t.Fatalf("clear branding: %v", err)
 	}
 	return pool
+}
+
+type fakePlans struct {
+	allowed bool
+	err     error
+}
+
+func (f fakePlans) HasPaidPlan(context.Context, string) (bool, error) { return f.allowed, f.err }
+
+func TestBrandingChangesNeedAPlanThatIncludesThem(t *testing.T) {
+	owner := auth.User{ID: testUserID, OrganizationID: testOrg, Role: "owner"}
+	for _, tt := range []struct {
+		name  string
+		plans PaidPlans
+		user  auth.User
+		want  int
+	}{
+		{"plan without white-label", fakePlans{}, owner, http.StatusPaymentRequired},
+		{"plan with white-label", fakePlans{allowed: true}, owner, http.StatusNoContent},
+		{"no billing on this server", nil, owner, http.StatusNoContent},
+		{"plan check fails", fakePlans{err: errors.New("database down")}, owner, http.StatusInternalServerError},
+		{"no workspace", fakePlans{allowed: true}, auth.User{ID: testUserID, Role: "owner"}, http.StatusForbidden},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+			r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/branding", nil)
+			r = r.WithContext(auth.WithUser(r.Context(), tt.user))
+			rec := httptest.NewRecorder()
+			agencyOnly(tt.plans, next).ServeHTTP(rec, r)
+			if rec.Code != tt.want {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.want)
+			}
+		})
+	}
 }

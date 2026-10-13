@@ -220,8 +220,9 @@ func (s *Service) subscribedStatus(ctx context.Context, orgID string) (Status, e
 		plan = sub.Plan
 	}
 	periodEnd := sub.CurrentPeriodEnd
-	if plan == PlanFree {
-		periodEnd = nil
+	if periodEnd != nil {
+		utc := periodEnd.UTC()
+		periodEnd = &utc
 	}
 	return Status{
 		Plan: plan, Status: sub.Status, CurrentPeriodEnd: periodEnd,
