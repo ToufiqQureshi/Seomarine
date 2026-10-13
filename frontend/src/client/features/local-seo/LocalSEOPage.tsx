@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   findLocalBusinesses,
   getLocalBusinessProfile,
@@ -129,6 +129,8 @@ export function LocalSEOPage({ projectId }: { projectId: string }) {
         <label className="space-y-1 text-sm">
           Grid size
           <select
+            id="local-seo-grid-size"
+            name="gridSize"
             className="block w-full rounded-md border px-3 py-2"
             value={gridSize}
             onChange={(event) => {
@@ -149,6 +151,8 @@ export function LocalSEOPage({ projectId }: { projectId: string }) {
         <label className="space-y-1 text-sm">
           Device
           <select
+            id="local-seo-device"
+            name="device"
             className="block w-full rounded-md border px-3 py-2"
             value={device}
             onChange={(event) => {
@@ -216,10 +220,13 @@ function TextField({
   placeholder?: string;
   type?: "text" | "number";
 }) {
+  const id = useId();
   return (
     <label className="space-y-1 text-sm">
       {label}
       <input
+        id={id}
+        name={id}
         className="w-full rounded-md border px-3 py-2"
         type={type}
         step={type === "number" ? "any" : undefined}

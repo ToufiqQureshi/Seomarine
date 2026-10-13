@@ -74,6 +74,8 @@ export function WriterAssistant({
           <span className="text-muted-foreground">(optional)</span>
         </span>
         <input
+          id="content-assistant-language"
+          name="content-assistant-language"
           value={language}
           onChange={(event) => setLanguage(event.target.value)}
           maxLength={80}
@@ -87,6 +89,8 @@ export function WriterAssistant({
           Instructions <span className="text-muted-foreground">(optional)</span>
         </span>
         <Textarea
+          id="content-assistant-instructions"
+          name="content-assistant-instructions"
           value={instructions}
           onChange={(event) => setInstructions(event.target.value)}
           maxLength={2_000}

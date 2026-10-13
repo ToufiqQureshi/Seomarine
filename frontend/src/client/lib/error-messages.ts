@@ -25,6 +25,8 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
     "The connected DataForSEO account has a billing or balance issue.",
   AI_SEARCH_BILLING_ISSUE:
     "The connected DataForSEO account has a billing or balance issue.",
+  KEYWORDS_UNAVAILABLE:
+    "Keyword research is not configured on this server yet. Contact support for help.",
   DATAFORSEO_AUTH_FAILED:
     "DataForSEO rejected the API key. Check that DATAFORSEO_API_KEY is the base64 of your DataForSEO login:password.",
   RATE_LIMITED: "Too many requests. Please wait and try again.",
