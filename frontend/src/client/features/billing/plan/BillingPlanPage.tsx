@@ -156,7 +156,8 @@ function PlanCard({ status }: { status: BillingStatus }) {
             To change or cancel your plan, email{" "}
             <a className="underline" href="mailto:support@uplumo.com">
               support@uplumo.com
-            </a>.
+            </a>
+            .
           </p>
         </CardFooter>
       ) : canUpgrade ? (
