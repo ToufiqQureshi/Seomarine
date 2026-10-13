@@ -133,7 +133,9 @@ function PlanCard({ status }: { status: BillingStatus }) {
               : renews
                 ? `Renews on ${renews}.`
                 : "Your Pro plan is set up."
-            : `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`}
+            : status.paymentsConfigured
+              ? `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`
+              : "Your current plan. Online payments are temporarily unavailable."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -147,7 +149,13 @@ function PlanCard({ status }: { status: BillingStatus }) {
           ))}
         </ul>
       </CardContent>
-      {canUpgrade ? (
+      {!status.paymentsConfigured ? (
+        <CardFooter>
+          <p role="status" className="text-sm text-muted-foreground">
+            To change or cancel your plan, email <a className="underline" href="mailto:support@uplumo.com">support@uplumo.com</a>.
+          </p>
+        </CardFooter>
+      ) : canUpgrade ? (
         isPro ? null : (
           <CardFooter>
             <UpgradeButton />
