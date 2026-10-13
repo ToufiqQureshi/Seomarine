@@ -76,6 +76,7 @@ type WriterMeter interface {
 	Charge(context.Context, string, float64, string) error
 }
 
+// WriterPlanAccess checks whether the organization may use paid writing features.
 type WriterPlanAccess interface {
 	HasPaidPlan(context.Context, string) (bool, error)
 }

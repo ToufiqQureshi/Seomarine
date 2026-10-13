@@ -1,6 +1,7 @@
 // Package plans is the server-authoritative Uplumo plan catalog.
 package plans
 
+// Definition describes the prices and entitlements for one Uplumo plan.
 type Definition struct {
 	ID                string
 	Name              string
@@ -12,6 +13,7 @@ type Definition struct {
 	Features          []string
 }
 
+// Free, Basic, Pro, and Agency are stable plan identifiers stored in billing records.
 const (
 	Free   = "free"
 	Basic  = "basic"
@@ -38,6 +40,7 @@ var catalog = []Definition{
 	}},
 }
 
+// Catalog returns every available plan in display order.
 func Catalog() []Definition {
 	result := make([]Definition, len(catalog))
 	for i, definition := range catalog {
@@ -47,17 +50,19 @@ func Catalog() []Definition {
 	return result
 }
 
+// Get returns a plan definition and whether the identifier is known.
 func Get(id string) (Definition, bool) {
 	for _, definition := range catalog {
 		if definition.ID == id {
-			copy := definition
-			copy.Features = append([]string(nil), definition.Features...)
-			return copy, true
+			result := definition
+			result.Features = append([]string(nil), definition.Features...)
+			return result, true
 		}
 	}
 	return Definition{}, false
 }
 
+// PaidProviderAccess reports whether a plan may call paid SEO or AI providers.
 func PaidProviderAccess(id string) bool {
 	definition, ok := Get(id)
 	return ok && definition.PaidSEOData

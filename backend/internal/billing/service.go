@@ -163,6 +163,7 @@ func (s *Service) AvailablePlans() []string {
 	return available
 }
 
+// MonthlyGrantFor returns the monthly usage-credit grant for a plan.
 func (s *Service) MonthlyGrantFor(plan string) int64 {
 	if amount, ok := s.MonthlyGrantCreditsByPlan[plan]; ok {
 		return amount
@@ -219,6 +220,7 @@ func (s *Service) SiteLimit(ctx context.Context, orgID string) (int, error) {
 	return definition.Sites, nil
 }
 
+// HasAgencyPlan reports whether the organization has active Agency entitlements.
 func (s *Service) HasAgencyPlan(ctx context.Context, orgID string) (bool, error) {
 	status, err := s.Status(ctx, orgID)
 	if err != nil {
