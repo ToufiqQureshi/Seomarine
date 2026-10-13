@@ -116,7 +116,8 @@ function PlanCard({ status }: { status: BillingStatus }) {
     : null;
   let description: string;
   if (!isPro && !status.paymentsConfigured) {
-    description = "Your current plan. Online payments are temporarily unavailable.";
+    description =
+      "Your current plan. Online payments are temporarily unavailable.";
   } else if (!isPro) {
     description = `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`;
   } else if (status.cancelAtPeriodEnd) {
