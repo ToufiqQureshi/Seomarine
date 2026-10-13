@@ -89,30 +89,39 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
       saveContentDraft({
         data: { ...draft, projectId, ...(draftId ? { id: draftId } : {}) },
       }),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       const snapshot = asInput(saved);
       setDraftId(saved.id);
       setDraft(snapshot);
       setSavedSnapshot(snapshot);
+      await queryClient.cancelQueries({
+        queryKey: contentEditorQueryKeys.drafts(projectId),
+        exact: true,
+      });
       queryClient.setQueryData(
         contentEditorQueryKeys.draft(projectId, saved.id),
         saved,
       );
-      queryClient.setQueryData<ContentDraftSummary[]>(
-        contentEditorQueryKeys.drafts(projectId),
-        (current) => {
-          if (!current) return current;
-          const summary: ContentDraftSummary = {
-            id: saved.id,
-            projectId: saved.projectId,
-            title: saved.title,
-            targetKeyword: saved.targetKeyword,
-            updatedAt: saved.updatedAt,
-          };
-          return [summary, ...current.filter((item) => item.id !== saved.id)]
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-        },
-      );
+      const draftListKey = contentEditorQueryKeys.drafts(projectId);
+      const currentDrafts =
+        queryClient.getQueryData<ContentDraftSummary[]>(draftListKey);
+      if (currentDrafts) {
+        const summary: ContentDraftSummary = {
+          id: saved.id,
+          projectId: saved.projectId,
+          title: saved.title,
+          targetKeyword: saved.targetKeyword,
+          updatedAt: saved.updatedAt,
+        };
+        queryClient.setQueryData(
+          draftListKey,
+          [summary, ...currentDrafts.filter((item) => item.id !== saved.id)].sort(
+            (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+          ),
+        );
+      } else {
+        void queryClient.invalidateQueries({ queryKey: draftListKey, exact: true });
+      }
       toast.success("Draft saved");
     },
     onError: (error) =>
@@ -126,7 +135,11 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
       deleteContentDraft({ data: { projectId, draftId: id } }),
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
+      await queryClient.cancelQueries({
+        queryKey: contentEditorQueryKeys.drafts(projectId),
+        exact: true,
+      });
       if (id === draftId) {
         setDraftId(undefined);
         setDraft(blankDraft);
@@ -136,10 +149,17 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
         queryKey: contentEditorQueryKeys.draft(projectId, id),
         exact: true,
       });
-      queryClient.setQueryData<ContentDraftSummary[]>(
-        contentEditorQueryKeys.drafts(projectId),
-        (current) => current?.filter((item) => item.id !== id),
-      );
+      const draftListKey = contentEditorQueryKeys.drafts(projectId);
+      const currentDrafts =
+        queryClient.getQueryData<ContentDraftSummary[]>(draftListKey);
+      if (currentDrafts) {
+        queryClient.setQueryData(
+          draftListKey,
+          currentDrafts.filter((item) => item.id !== id),
+        );
+      } else {
+        void queryClient.invalidateQueries({ queryKey: draftListKey, exact: true });
+      }
       toast.success("Draft deleted");
     },
     onError: (error) =>
@@ -200,7 +220,13 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     const start = editor?.selectionStart ?? draft.content.length;
     const end = editor?.selectionEnd ?? start;
     try {
-      const result = insertImageContent(draft.content, start, end, imageUrl, imageAlt);
+      const result = insertImageContent(
+        draft.content,
+        start,
+        end,
+        imageUrl,
+        imageAlt,
+      );
       update("content", result.content);
       setImageError("");
       setImageUrl("");
@@ -418,7 +444,10 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
                   media storage.
                 </p>
                 {imageError ? (
-                  <p role="alert" className="text-sm text-destructive sm:col-span-3">
+                  <p
+                    role="alert"
+                    className="text-sm text-destructive sm:col-span-3"
+                  >
                     {imageError}
                   </p>
                 ) : null}
