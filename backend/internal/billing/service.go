@@ -19,6 +19,9 @@ var (
 	// ErrAlreadySubscribed means the organization's subscription is live, so
 	// a second checkout would bill it twice.
 	ErrAlreadySubscribed = errors.New("organization already has a subscription")
+	// ErrNoSubscription means the organization has no subscription that
+	// could still charge it, so there is nothing to cancel.
+	ErrNoSubscription = errors.New("organization has no live subscription")
 	// ErrPaymentProvider means Razorpay failed or refused the request.
 	ErrPaymentProvider = errors.New("payment provider failed")
 	// ErrInvalidSignature means the webhook is not signed with the webhook
@@ -70,6 +73,9 @@ type Status struct {
 	// Status is the Razorpay subscription state, or "none".
 	Status           string     `json:"status"`
 	CurrentPeriodEnd *time.Time `json:"currentPeriodEnd"`
+	// CancelAtPeriodEnd is true when the customer cancelled: the plan runs
+	// until CurrentPeriodEnd and is not charged again.
+	CancelAtPeriodEnd bool `json:"cancelAtPeriodEnd"`
 }
 
 // Checkout is what Razorpay Checkout in the browser needs to start paying
@@ -124,7 +130,10 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 		utc := periodEnd.UTC()
 		periodEnd = &utc
 	}
-	return Status{Plan: plan, Status: sub.Status, CurrentPeriodEnd: periodEnd}, nil
+	return Status{
+		Plan: plan, Status: sub.Status, CurrentPeriodEnd: periodEnd,
+		CancelAtPeriodEnd: sub.CancelAtPeriodEnd && slices.Contains(liveStatuses, sub.Status),
+	}, nil
 }
 
 // HasPaidPlan reports whether orgID is on a paid plan.
@@ -165,6 +174,43 @@ func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) 
 		return Checkout{}, ErrAlreadySubscribed
 	}
 	return Checkout{SubscriptionID: sub.ID, KeyID: s.razorpay.KeyID()}, nil
+}
+
+// Cancel stops orgID's subscription from charging again and returns the
+// plan that results. The caller must have checked that the user may manage
+// the organization's billing. It returns ErrNoSubscription when there is
+// nothing live to cancel.
+//
+// A subscription with a paid cycle running is cancelled at the end of that
+// cycle, so the customer keeps what they paid for. Any other live state
+// (the first charge has not happened, or a charge is failing) has no paid
+// time left and ends now. Cancelling twice is not an error.
+func (s *Service) Cancel(ctx context.Context, orgID string) (Status, error) {
+	current, found, err := s.repo.subscription(ctx, orgID)
+	if err != nil {
+		return Status{}, fmt.Errorf("cancel for organization %s: %w", orgID, err)
+	}
+	if !found || !slices.Contains(liveStatuses, current.Status) {
+		return Status{}, ErrNoSubscription
+	}
+	if current.CancelAtPeriodEnd {
+		return s.Status(ctx, orgID)
+	}
+
+	atPeriodEnd := current.Status == "active"
+	sub, err := s.razorpay.CancelSubscription(ctx, current.ID, atPeriodEnd)
+	if err != nil {
+		return Status{}, fmt.Errorf("cancel for organization %s: %w: %w", orgID, ErrPaymentProvider, err)
+	}
+	if !slices.Contains(knownStatuses, sub.Status) {
+		return Status{}, fmt.Errorf("cancel for organization %s: %w: subscription has status %q", orgID, ErrPaymentProvider, sub.Status)
+	}
+	// Razorpay has cancelled it either way. If the row moved on to another
+	// subscription meanwhile, that one is not the one cancelled.
+	if _, err := s.repo.markCancelled(ctx, orgID, current.ID, sub.Status, atPeriodEnd && slices.Contains(liveStatuses, sub.Status)); err != nil {
+		return Status{}, fmt.Errorf("cancel for organization %s: %w", orgID, err)
+	}
+	return s.Status(ctx, orgID)
 }
 
 // HandleWebhook applies a Razorpay webhook delivery. body is the raw request

@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -125,6 +127,113 @@ func TestCheckoutReportsRazorpayFailures(t *testing.T) {
 		t.Fatalf("Checkout() error = %v, want ErrPaymentProvider wrapping the 400", err)
 	}
 	f.assertStatus(ctx, t, Status{Plan: PlanFree, Status: "none"})
+}
+
+func TestCancelKeepsThePlanUntilThePaidCycleEnds(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	periodEnd := t0.Add(30 * 24 * time.Hour)
+	f.deliver(ctx, t, f.eventWithEnd("subscription.charged", "sub_1", "active", t1, &periodEnd))
+
+	got, err := f.svc.Cancel(ctx, f.org)
+	if err != nil {
+		t.Fatalf("Cancel() error = %v", err)
+	}
+	want := Status{Plan: PlanPro, Status: "active", CurrentPeriodEnd: &periodEnd, CancelAtPeriodEnd: true}
+	if got.Plan != want.Plan || got.Status != want.Status || !got.CancelAtPeriodEnd || !got.CurrentPeriodEnd.Equal(periodEnd) {
+		t.Fatalf("Cancel() = %+v, want %+v", got, want)
+	}
+	f.assertStatus(ctx, t, want)
+	if want := []cancelCall{{Path: "/subscriptions/sub_1/cancel", AtCycleEnd: true}}; !slices.Equal(f.cancels, want) {
+		t.Fatalf("Razorpay cancellations = %+v, want %+v", f.cancels, want)
+	}
+
+	// A second click must not ask Razorpay again: it would refuse.
+	if _, err := f.svc.Cancel(ctx, f.org); err != nil {
+		t.Fatalf("second Cancel() error = %v", err)
+	}
+	if len(f.cancels) != 1 {
+		t.Fatalf("Razorpay got %d cancellations, want 1", len(f.cancels))
+	}
+
+	// When the cycle ends Razorpay says so, and the plan is gone.
+	f.deliver(ctx, t, f.eventWithEnd("subscription.cancelled", "sub_1", "cancelled", t2, &periodEnd))
+	f.assertStatus(ctx, t, Status{Plan: PlanFree, Status: "cancelled", CurrentPeriodEnd: &periodEnd})
+}
+
+func TestCancelEndsASubscriptionWithNoPaidCycleNow(t *testing.T) {
+	for _, status := range []string{"authenticated", "pending", "halted", "paused"} {
+		t.Run(status, func(t *testing.T) {
+			ctx := context.Background()
+			f := newFixture(ctx, t)
+			f.deliver(ctx, t, f.event("subscription.activated", "sub_1", status, t1))
+
+			got, err := f.svc.Cancel(ctx, f.org)
+			if err != nil {
+				t.Fatalf("Cancel() error = %v", err)
+			}
+			if got.Plan != PlanFree || got.Status != "cancelled" || got.CancelAtPeriodEnd {
+				t.Fatalf("Cancel() = %+v, want the free plan, cancelled", got)
+			}
+			if want := []cancelCall{{Path: "/subscriptions/sub_1/cancel", AtCycleEnd: false}}; !slices.Equal(f.cancels, want) {
+				t.Fatalf("Razorpay cancellations = %+v, want %+v", f.cancels, want)
+			}
+		})
+	}
+}
+
+func TestCancelWithNothingToCancel(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+
+	if _, err := f.svc.Cancel(ctx, f.org); !errors.Is(err, ErrNoSubscription) {
+		t.Fatalf("Cancel() without a subscription: error = %v, want ErrNoSubscription", err)
+	}
+	// Created but never paid: Razorpay expires it, there is nothing to stop.
+	if _, err := f.svc.Checkout(ctx, f.org); err != nil {
+		t.Fatalf("Checkout() error = %v", err)
+	}
+	if _, err := f.svc.Cancel(ctx, f.org); !errors.Is(err, ErrNoSubscription) {
+		t.Fatalf("Cancel() of an unpaid subscription: error = %v, want ErrNoSubscription", err)
+	}
+	f.deliver(ctx, t, f.event("subscription.cancelled", "sub_1", "cancelled", t1))
+	if _, err := f.svc.Cancel(ctx, f.org); !errors.Is(err, ErrNoSubscription) {
+		t.Fatalf("Cancel() of a cancelled subscription: error = %v, want ErrNoSubscription", err)
+	}
+	if len(f.cancels) != 0 {
+		t.Fatalf("Razorpay got %d cancellations, want none", len(f.cancels))
+	}
+}
+
+func TestCancelReportsRazorpayFailuresAndChangesNothing(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	periodEnd := t0.Add(30 * 24 * time.Hour)
+	f.deliver(ctx, t, f.eventWithEnd("subscription.charged", "sub_1", "active", t1, &periodEnd))
+	f.failWith = http.StatusBadGateway
+
+	if _, err := f.svc.Cancel(ctx, f.org); !errors.Is(err, ErrPaymentProvider) {
+		t.Fatalf("Cancel() error = %v, want ErrPaymentProvider", err)
+	}
+	f.assertStatus(ctx, t, Status{Plan: PlanPro, Status: "active", CurrentPeriodEnd: &periodEnd})
+}
+
+func TestCheckoutAfterCancelStartsClean(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	periodEnd := t0.Add(30 * 24 * time.Hour)
+	f.deliver(ctx, t, f.eventWithEnd("subscription.charged", "sub_old", "active", t1, &periodEnd))
+	if _, err := f.svc.Cancel(ctx, f.org); err != nil {
+		t.Fatalf("Cancel() error = %v", err)
+	}
+	f.deliver(ctx, t, f.eventWithEnd("subscription.cancelled", "sub_old", "cancelled", t2, &periodEnd))
+
+	if _, err := f.svc.Checkout(ctx, f.org); err != nil {
+		t.Fatalf("Checkout() error = %v", err)
+	}
+	f.deliver(ctx, t, f.eventWithEnd("subscription.charged", "sub_1", "active", t2.Add(time.Minute), &periodEnd))
+	// The new subscription was never cancelled.
+	f.assertStatus(ctx, t, Status{Plan: PlanPro, Status: "active", CurrentPeriodEnd: &periodEnd})
 }
 
 func TestHandleWebhookSignature(t *testing.T) {
@@ -332,6 +441,14 @@ type fixture struct {
 	failWith int
 	// duringCreate runs while the fake Razorpay handles a creation.
 	duringCreate func()
+	// cancels are the cancellations the fake Razorpay received, in order.
+	cancels []cancelCall
+}
+
+// cancelCall is one cancellation request as Razorpay saw it.
+type cancelCall struct {
+	Path       string
+	AtCycleEnd bool
 }
 
 // newFixture migrates the test database, creates an organization (deleting
@@ -359,6 +476,24 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 		if f.failWith != 0 {
 			w.WriteHeader(f.failWith)
 			_, _ = io.WriteString(w, `{"error":{"code":"BAD_REQUEST_ERROR","description":"plan not found"}}`)
+			return
+		}
+		if id, ok := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, "/subscriptions/"), "/cancel"); ok {
+			var req struct {
+				AtCycleEnd bool `json:"cancel_at_cycle_end"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode cancel request: %v", err)
+			}
+			f.cancels = append(f.cancels, cancelCall{Path: r.URL.Path, AtCycleEnd: req.AtCycleEnd})
+			// Razorpay keeps a subscription active until its cycle ends.
+			status := "cancelled"
+			if req.AtCycleEnd {
+				status = "active"
+			}
+			if err := json.NewEncoder(w).Encode(map[string]any{"id": id, "status": status, "current_end": nil, "created_at": t0.Unix()}); err != nil {
+				t.Errorf("encode cancel answer: %v", err)
+			}
 			return
 		}
 		var req struct {
@@ -443,7 +578,7 @@ func (f *fixture) assertStatus(ctx context.Context, t *testing.T, want Status) {
 	if err != nil {
 		t.Fatalf("Status() error = %v", err)
 	}
-	if got.Plan != want.Plan || got.Status != want.Status ||
+	if got.Plan != want.Plan || got.Status != want.Status || got.CancelAtPeriodEnd != want.CancelAtPeriodEnd ||
 		(got.CurrentPeriodEnd == nil) != (want.CurrentPeriodEnd == nil) ||
 		(want.CurrentPeriodEnd != nil && !got.CurrentPeriodEnd.Equal(*want.CurrentPeriodEnd)) {
 		t.Fatalf("Status() = %+v (period end %v), want %+v (period end %v)", got, got.CurrentPeriodEnd, want, want.CurrentPeriodEnd)

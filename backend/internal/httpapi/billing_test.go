@@ -103,7 +103,7 @@ func TestBillingEndToEnd(t *testing.T) {
 
 	t.Run("a plain member sees the plan but cannot check out", func(t *testing.T) {
 		assertJSON(t, as(handler, memberToken, http.MethodGet, "/api/v1/billing/status"), http.StatusOK,
-			`{"plan":"free","status":"none","currentPeriodEnd":null}`)
+			`{"plan":"free","status":"none","currentPeriodEnd":null,"cancelAtPeriodEnd":false}`)
 		assertError(t, as(handler, memberToken, http.MethodPost, "/api/v1/billing/checkout"), http.StatusForbidden, "forbidden")
 	})
 
@@ -129,7 +129,7 @@ func TestBillingEndToEnd(t *testing.T) {
 		assertJSON(t, webhook(handler, event, hmacHex(event), eventID), http.StatusOK, `{"status":"duplicate"}`)
 
 		assertJSON(t, as(handler, memberToken, http.MethodGet, "/api/v1/billing/status"), http.StatusOK,
-			`{"plan":"pro","status":"active","currentPeriodEnd":"2026-11-07T00:00:00Z"}`)
+			`{"plan":"pro","status":"active","currentPeriodEnd":"2026-11-07T00:00:00Z","cancelAtPeriodEnd":false}`)
 		assertError(t, as(handler, ownerToken, http.MethodPost, "/api/v1/billing/checkout"), http.StatusConflict, "already_subscribed")
 	})
 

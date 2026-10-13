@@ -227,7 +227,7 @@ function BillingPage() {
                     {BASE_PLAN_OFFER.name}
                   </span>
                   <span className="text-sm font-medium tabular-nums">
-                    ${BASE_PLAN_OFFER.priceUsd}/month
+                    {BASE_PLAN_OFFER.price}/month
                   </span>
                 </div>
                 <ul className="space-y-1.5">

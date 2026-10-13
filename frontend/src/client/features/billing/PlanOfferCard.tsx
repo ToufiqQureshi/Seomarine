@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
 import type { PlanOffer } from "@/client/features/billing/plan-offers";
 import { Card, CardContent } from "@/client/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/client/components/ui/tooltip";
-import { SUPPORT_EMAIL } from "@/client/lib/support";
 
 // Shared card for the full-page checkout screens (/subscribe, /yc). Callers
 // pass the CTA and any extra notes as children.
@@ -27,7 +21,7 @@ export function PlanOfferCard({
         <div className="flex items-baseline justify-between gap-4">
           <span className="font-semibold">{offer.name}</span>
           <span className="text-lg font-semibold tabular-nums">
-            ${offer.priceUsd}/month
+            {offer.price}/month
           </span>
         </div>
 
@@ -49,16 +43,12 @@ export function PlanOfferCard({
         {children}
 
         <p className="text-center text-xs text-muted-foreground">
-          <Tooltip>
-            <TooltipTrigger className="cursor-help underline decoration-dotted">
-              30-day money-back guarantee
-            </TooltipTrigger>
-            <TooltipContent>
-              Not for you yet? Email {SUPPORT_EMAIL} within 30 days of your
-              charge and we'll refund your subscription.
-            </TooltipContent>
-          </Tooltip>
-          . Cancel anytime. Powered by Stripe.
+          Cancel in one click from Billing. Payments are handled by Razorpay.
+          See the{" "}
+          <a className="underline underline-offset-2" href="/refunds">
+            refund policy
+          </a>
+          .
         </p>
       </CardContent>
     </Card>

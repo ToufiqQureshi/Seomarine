@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
   billingStatusQueryOptions,
+  cancelSubscription,
   createCheckout,
   describeStatus,
 } from "./planApi";
@@ -12,12 +13,18 @@ function respondWith(body: unknown) {
 
 describe("billing status", () => {
   it.each([
-    { plan: "free", status: "none", currentPeriodEnd: null },
+    {
+      plan: "free",
+      status: "none",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
       plan: "pro",
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30.123456+05:30",
+      cancelAtPeriodEnd: true,
     },
   ])("accepts $plan / $status", async (body) => {
     respondWith(body);
@@ -44,6 +51,28 @@ describe("createCheckout", () => {
       "/api/v1/billing/checkout",
       { method: "POST" },
     ]);
+  });
+});
+
+describe("cancelSubscription", () => {
+  it("POSTs and returns the plan that results", async () => {
+    const body = {
+      plan: "pro",
+      status: "active",
+      currentPeriodEnd: "2026-11-07T10:15:30Z",
+      cancelAtPeriodEnd: true,
+    };
+    const fetchMock = respondWith(body);
+    await expect(cancelSubscription()).resolves.toEqual(body);
+    expect(fetchMock.mock.calls[0]).toMatchObject([
+      "/api/v1/billing/cancel",
+      { method: "POST" },
+    ]);
+  });
+
+  it("rejects an answer that does not say whether Pro was cancelled", async () => {
+    respondWith({ plan: "pro", status: "active", currentPeriodEnd: null });
+    await expect(cancelSubscription()).rejects.toBeInstanceOf(ApiError);
   });
 });
 

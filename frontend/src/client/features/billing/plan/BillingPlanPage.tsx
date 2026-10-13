@@ -20,15 +20,13 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
   billingStatusQueryOptions,
+  cancelSubscription,
   createCheckout,
   describeStatus,
+  PRO_PRICE_INR,
   type BillingStatus,
 } from "./planApi";
 import { openRazorpayCheckout } from "./razorpay";
-
-// Owner decision pending (ROADMAP open decisions): keep in sync with the
-// amount on the Razorpay plan the Go API subscribes customers to.
-const PRO_PRICE_INR = 1999;
 
 const PRO_FEATURES = [
   "AI traffic analytics: visitors from ChatGPT, Perplexity, Gemini, Claude and Copilot",
@@ -128,9 +126,13 @@ function PlanCard({ status }: { status: BillingStatus }) {
         </CardTitle>
         <CardDescription>
           {isPro
-            ? renews
-              ? `Renews on ${renews}.`
-              : "Your Pro plan is set up."
+            ? status.cancelAtPeriodEnd
+              ? renews
+                ? `Cancelled. Pro stays on until ${renews}, and you will not be charged again.`
+                : "Cancelled. You will not be charged again."
+              : renews
+                ? `Renews on ${renews}.`
+                : "Your Pro plan is set up."
             : `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`}
         </CardDescription>
       </CardHeader>
@@ -145,12 +147,55 @@ function PlanCard({ status }: { status: BillingStatus }) {
           ))}
         </ul>
       </CardContent>
-      {isPro || !canUpgrade ? null : (
+      {canUpgrade ? (
+        isPro ? null : (
+          <CardFooter>
+            <UpgradeButton />
+          </CardFooter>
+        )
+      ) : status.cancelAtPeriodEnd ? null : (
+        // Any subscription that can still charge can be cancelled, including
+        // one whose payments are failing.
         <CardFooter>
-          <UpgradeButton />
+          <CancelButton keepsPro={status.status === "active"} />
         </CardFooter>
       )}
     </Card>
+  );
+}
+
+function CancelButton({ keepsPro }: { keepsPro: boolean }) {
+  const queryClient = useQueryClient();
+  const cancel = useMutation({
+    mutationFn: cancelSubscription,
+    meta: { errorToast: false },
+    onSuccess: (status) => {
+      queryClient.setQueryData(billingStatusQueryOptions.queryKey, status);
+      toast.success("Pro is cancelled. You will not be charged again.");
+    },
+  });
+
+  return (
+    <div className="w-full space-y-3">
+      <Button
+        variant="outline"
+        onClick={() => cancel.mutate()}
+        disabled={cancel.isPending}
+      >
+        {cancel.isPending ? "Cancelling…" : "Cancel Pro"}
+      </Button>
+      <p className="text-sm text-muted-foreground">
+        {keepsPro
+          ? "One click, no forms. You keep Pro until the end of the month you paid for."
+          : "One click, no forms. You will not be charged again."}
+      </p>
+      {cancel.isError ? (
+        <ErrorState
+          variant="inline"
+          message={getStandardErrorMessage(cancel.error)}
+        />
+      ) : null}
+    </div>
   );
 }
 
