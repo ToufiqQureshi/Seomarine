@@ -50,14 +50,15 @@ mean each one has been tried on production with real provider keys.
 | Local SEO            | Business search, profile, Google Maps rank grid                                               |
 | Assistant (SAM)      | Chat with tools over the project's data                                                       |
 | MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                              |
-| Billing              | Free and one Pro plan (₹1,499 a month) on Razorpay Subscriptions, webhooks, cancel, internal credit ledger |
+| Billing              | Free, Basic, Pro and Agency on Razorpay Subscriptions, with site, tracked-keyword and member limits; webhooks, cancel, internal credit ledger |
 | Privacy              | `cmd/erase-user` erases one account                                                           |
 
 ## Not built yet
 
 | Feature                                                                 | Status |
 | ----------------------------------------------------------------------- | ------ |
-| The Basic / Pro / Agency plans decided below, with their limits         | ⏳     |
+| Changing from one paid plan to another without writing to support       | ⏳     |
+| Agency: client access, and extra sites at ₹400 each                     | ⏳     |
 | Live usage on the Billing page                                          | ⏳     |
 | AI Visibility: sentiment, tracking over time, drop alerts               | ⏳     |
 | "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics) | ⏳ |
@@ -76,11 +77,11 @@ mean each one has been tried on production with real provider keys.
    live keys.
 2. Put the DataForSEO key in production, or hide the features that need it.
 3. Walk through every page on production as a real user and fix what breaks.
-4. Build the three paid plans and their limits.
+4. Let a customer change plan from Billing.
 
 ## Owner actions
 
-- Razorpay: create the Pro plan and the webhook, put the four `RAZORPAY_*`
+- Razorpay: create the three plans and the webhook, put the `RAZORPAY_*`
   values in Railway. Steps are in `docs/DEPLOY.md`.
 - Submit the Google OAuth app for verification.
 - Have a lawyer read the terms, privacy, refund and shipping pages.
@@ -95,8 +96,9 @@ Secrets go into Railway variables only, never into the repo or chat.
 - GST: not registered at launch, so prices carry no tax line.
 - Customers never see credits. Each plan has plain limits; the credit ledger
   stays internal, as a cap on what one workspace can cost us.
-- Plans (owner, 12 October 2026). Not built yet: today the code has Free and
-  one Pro plan at ₹1,499.
+- Plans (owner, 12 October 2026, confirmed 13 October). Built: the table
+  below is `backend/internal/plans/catalog.go`. Free is one site with
+  analytics and a starter audit.
 
   | Limit               | Basic | Pro    | Agency             |
   | ------------------- | ----- | ------ | ------------------ |
@@ -108,13 +110,16 @@ Secrets go into Railway variables only, never into the repo or chat.
   | Team members        | 1     | 3      | 10                 |
 
   Sites and white-label are what separate Pro from Agency: a small agency
-  with four client sites must not fit in Pro.
+  with four client sites must not fit in Pro. Basic and Pro differ by
+  feature: Basic is keywords, rankings and Google data for one site; Pro
+  adds backlinks, competitor research, AI Visibility and AI writing.
+- The owner's and the team's own workspaces are never limited by a plan
+  (`STAFF_EMAILS`).
 
 ## Open decisions for the owner
 
-- Whether a Free plan stays beside the three paid plans. Today the Free plan
-  on the pricing page lists white-label reports, which the plan table above
-  gives only to Agency.
+- Keyword research on Basic has no monthly cap of its own, so a heavy Basic
+  workspace can cost more at DataForSEO than it pays. Decide a cap.
 - Data provider: keep DataForSEO, or drop the features that need it
   (keywords, rank tracking, backlinks, AI visibility). An AI model cannot
   replace it, because it has no real search data.

@@ -66,9 +66,10 @@ static SPA that the Go server serves and that calls `/api/v1/`. No Next.js.
   or in chat.
 - **External data:** DataForSEO stays behind `backend/internal/platform/dataforseo`.
   Never send a request the provider would reject, because failed tasks are billed.
-- **Money:** the price a customer reads must be the same everywhere.
-  `ProPriceINR` in `backend/internal/site/site.go`, `PRO_PRICE_INR` in the
-  frontend and the amount on the Razorpay plan change together.
+- **Plans:** prices, limits and what each plan includes live in one place,
+  `backend/internal/plans/catalog.go`. The pricing page, the Billing screen
+  and every plan check read it; never copy a price or a limit anywhere else.
+  The amount on each Razorpay plan must equal the catalog's price.
 - **Brand:** the product is Uplumo. Never add the upstream name, links,
   logos or copy. The only mention is the license attribution
   (`LICENSE-OPENSEO-MIT`, never delete it).

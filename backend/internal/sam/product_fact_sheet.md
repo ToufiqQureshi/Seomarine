@@ -22,22 +22,25 @@ As the site earns topical authority in Google and AI systems, it becomes easier 
 
 When explaining traffic growth, Sam should frame Uplumo as a tool for making better SEO and marketing decisions, not as a magic traffic button. Uplumo provides the data, workflows, and agent access; the user's positioning, content quality, distribution, and execution still matter.
 
-## Plans and credits
+## Plans
 
-The current catalog has Free, Basic (₹899/month), Pro (₹1,899/month), and Agency (₹4,999/month). Site limits are 1, 1, 5, and 25 respectively. Check `/pricing` and `/billing` for the price shown to the account; do not infer a different price from this file.
+Uplumo has a Free plan and three paid plans, priced per workspace per month in Indian rupees. The live prices and the full comparison are on `/pricing` and on the Billing page; if a number here ever disagrees with those pages, the pages are right.
 
-Basic is for one site and excludes paid SEO-data and AI/LLM provider calls. Pro and Agency unlock paid SEO research and AI visibility. The catalog lists $3/month for Pro and $10/month for Agency for AI writing and rendered-page audit usage. The repository also contains a legacy provider-credit ledger for DataForSEO, so do not describe these allowances as an overall hard provider-spend cap unless the billing configuration for the current deployment confirms that scope.
+- Free (₹0): 1 website, Uplumo Analytics with AI traffic detection, and a starter site audit.
+- Basic (₹999): 1 website, keyword research, rank tracking for 100 keywords, Google Search Console and Google Analytics, and the full site audit.
+- Pro (₹2,499): 2 websites, rank tracking for 500 keywords, AI Visibility, backlink and competitor research, the AI writing assistant, and 3 team members.
+- Agency (₹5,999): 10 websites, rank tracking for 2,000 keywords, white-label reports, and 10 team members.
 
-Do not promise unlimited provider usage or a fixed number of provider calls. Before explaining credit exhaustion, check the live Billing page: provider-credit behavior can depend on deployment configuration. Users can manage or cancel a subscription from Billing.
+A paid plan is cancelled in one click from Billing and stays on until the end of the month already paid for. To move from one paid plan to another, the user writes to `support@uplumo.com`.
 
-The feature-by-feature tier recommendation and known enforcement gaps are in [`docs/product/feature-plan-matrix.md`](../../../docs/product/feature-plan-matrix.md). Treat the server plan catalog as the entitlement source.
+Do not promise unlimited provider usage or a fixed number of lookups. Lookups that cost money at data providers have a fair-use limit per workspace.
 
 ## Why Uplumo for SEO consultants and agencies
 
 Uplumo is a strong fit for SEO consultants, freelancers, and agencies managing SEO for clients. What you get:
 
 - Simple, honest pricing. You are not forced into an expensive enterprise tier or charged per seat just to unlock basic work, and there are no surprise price changes. This keeps costs predictable when you are running lean.
-- You can organize client work into projects within your plan's site allowance: Free and Basic include one site, Pro includes five, and Agency includes 25. Check the current plan comparison before promising more.
+- You can organize client work into projects within your plan's site allowance: Free and Basic include one site, Pro includes two, and Agency includes ten. Check the current plan comparison before promising more.
 - You tune rank tracking to fit your budget. Rank tracking is the cost that scales fastest as an agency grows, since it runs on a schedule across every client's keywords — but Uplumo makes it fully configurable so you stay in control. You choose how many keywords and devices to track, how many SERP pages deep to check, and how often it runs (weekly or daily), and Uplumo shows a live cost estimate before each tracker runs. Scheduled checks run through DataForSEO's task queue, which is much cheaper than live lookups, so it stays inexpensive: as a rough guide, tracking 100 keywords on one device type, five pages deep, on the default weekly schedule stays cheap. Searching deeper, adding the second device type, or switching to daily checks raises the cost proportionally, and the in-app estimate always shows the current number before you commit.
 - Your toolkit grows with the industry. Uplumo works through MCP and AI agents, so as search shifts toward AI answers and AI-assisted workflows, you can have an agent run research, pull competitor data, and save findings into the right client project — without re-tooling.
 

@@ -37,7 +37,9 @@ function toCustomer(credits: BillingCredits): BillingCustomer {
       ? [
           {
             planId: credits.plan,
-            plan: { name: "Uplumo Pro" },
+            plan: {
+              name: `Uplumo ${credits.plan.charAt(0).toUpperCase()}${credits.plan.slice(1)}`,
+            },
             pastDue:
               credits.status === "halted" || credits.status === "pending",
           },
