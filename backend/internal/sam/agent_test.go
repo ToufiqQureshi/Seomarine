@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -228,13 +229,73 @@ func TestRemovedMemberIsRefused(t *testing.T) {
 	}
 }
 
-func TestCreditCheckFailureDoesNotLockUsersOut(t *testing.T) {
+// A turn that cannot be paid for must not run on Uplumo's money: when the
+// credit check fails, SAM refuses instead of answering for free.
+func TestCreditCheckFailureFailsClosed(t *testing.T) {
 	h := newHarness(t, scriptStep{text: []string{"ok"}})
 	h.agent.Meter = h.meter
 	h.meter.credErr = errors.New("ledger down")
 	h.run(context.Background(), t, "hi", &recordingSink{})
+	if h.llm.callCount() != 0 {
+		t.Fatalf("model calls = %d during a billing outage, want 0", h.llm.callCount())
+	}
+	if got := h.lastAssistant(t).Parts[1].Text; got != refuseBillingUnknown {
+		t.Fatalf("reply = %q", got)
+	}
+	if len(h.meter.charges) != 0 {
+		t.Fatalf("charges = %v", h.meter.charges)
+	}
+}
+
+func TestTurnStopsWhenCreditsRunOutMidTurn(t *testing.T) {
+	h := newHarness(t,
+		scriptStep{toolCalls: []openrouter.ToolCall{toolCall("1", "whoami", `{}`)}, cost: 0.06},
+		scriptStep{text: []string{"should not run"}, cost: 0.5},
+	)
+	h.agent.Meter = h.meter
+	h.meter.credFn = func(n int) bool { return n == 1 }
+	h.run(context.Background(), t, "go", &recordingSink{})
 	if h.llm.callCount() != 1 {
-		t.Fatal("a billing outage must fail open")
+		t.Fatalf("model calls = %d, want 1: the second step must not start without credits", h.llm.callCount())
+	}
+	parts := h.lastAssistant(t).Parts
+	if got := parts[len(parts)-1].Text; got != refuseRanOutMidTurn {
+		t.Fatalf("last part = %q, want the ran-out message", got)
+	}
+	var charged float64
+	for _, c := range h.meter.charges {
+		charged += c
+	}
+	if charged < 0.0599 || charged > 0.0601 {
+		t.Fatalf("charged %v, want the first step's 0.06", charged)
+	}
+}
+
+func TestTurnStopsAtTheCostLimit(t *testing.T) {
+	steps := make([]scriptStep, 0, 5)
+	for i := range 5 {
+		steps = append(steps, scriptStep{toolCalls: []openrouter.ToolCall{toolCall(strconv.Itoa(i), "whoami", `{}`)}, cost: 0.6})
+	}
+	h := newHarness(t, steps...)
+	h.agent.Meter = h.meter
+	h.meter.hasCred = true
+	h.run(context.Background(), t, "go", &recordingSink{})
+	if h.llm.callCount() != 2 {
+		t.Fatalf("model calls = %d, want 2: the turn passed %v after two steps", h.llm.callCount(), maxTurnUSD)
+	}
+	parts := h.lastAssistant(t).Parts
+	if got := parts[len(parts)-1].Text; got != refuseTurnLimit {
+		t.Fatalf("last part = %q, want the turn-limit message", got)
+	}
+}
+
+func TestAnAnswerWithoutAReportedCostIsStillCharged(t *testing.T) {
+	h := newHarness(t, scriptStep{text: []string{"a reply that the provider forgot to price"}})
+	h.agent.Meter = h.meter
+	h.meter.hasCred = true
+	h.run(context.Background(), t, "hi", &recordingSink{})
+	if len(h.meter.charges) != 1 || h.meter.charges[0] <= 0 {
+		t.Fatalf("charges = %v, want one estimated charge", h.meter.charges)
 	}
 }
 

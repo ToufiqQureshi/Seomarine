@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 type fakeQueued struct {
@@ -379,7 +380,7 @@ func TestDataForSEOQueuedTasks(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	recorder := &countingRecorder{}
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-password")), Recorder: recorder})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: &spendtest.Guard{}, BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-password")), Recorder: recorder})
 	if err != nil {
 		t.Fatal(err)
 	}

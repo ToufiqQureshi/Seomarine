@@ -9,8 +9,9 @@ conversation routes, the agent loop and its tool surface.
 1. `POST .../sam/sessions/chat` validates the body, loads the caller's own
    active session (`ContextLoader`), claims the session (one turn at a time) and
    stores the user message.
-2. `Agent.Run` opens the event stream and gates the turn: no credits or no
-   membership means a canned reply, with no provider call.
+2. `Agent.Run` opens the event stream and gates the turn: no credits, no
+   membership, or credits that cannot be checked (it fails closed) means a
+   canned reply, with no provider call.
 3. The system prompt is rebuilt fresh: identity, the project's shared memory
    (`projectcontext`), the skill catalog, and the rolling summary if the chat has
    one. Context written by another session, the settings UI or an MCP client is
@@ -100,10 +101,14 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 - **Transport.** HTTP + SSE replaces the Cloudflare Durable Object websocket.
   Stopping the reply is aborting the request. There is no reconnect or
   "recovering" state because no process holds a turn that can be reset.
-- **Credits.** Every turn is gated and charged against the Go credit ledger
-  (`go_billing_credits`). 1 credit = $0.001 of provider cost with the
-  usual 1.28 markup, rounded up. Uplumo is SaaS: there is no bring-your-own-key
-  or unmetered mode.
+- **Credits.** Every turn is gated and charged through the billing spend
+  guard (`billing.AIMeter`, feature `ai_assistant`). Credits are checked again
+  before every step, so a turn stops when they run out or the daily limit is
+  reached, and a turn stops at `maxTurnUSD` ($1) of provider cost. A step
+  whose cost OpenRouter did not report is charged an estimate
+  (`openrouter.Usage.BillableUSD`). The legacy turn failed open on a billing
+  outage; this one fails closed. Uplumo is SaaS: there is no
+  bring-your-own-key or unmetered mode.
 - **Telemetry.** The `sam:turn` PostHog events are not ported; failures are
   logged with `slog`.
 - **Transcripts.** Existing Durable Object transcripts are not migrated.

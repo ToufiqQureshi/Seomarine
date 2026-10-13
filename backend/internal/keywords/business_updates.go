@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const businessUpdatesPostPath = "/v3/business_data/google/my_business_updates/task_post"
@@ -38,7 +40,7 @@ func (p DataForSEOProvider) StartBusinessUpdatesTask(ctx context.Context, org st
 	if err != nil {
 		return "", err
 	}
-	raw, err := p.Client.Do(ctx, org, http.MethodPost, businessUpdatesPostPath, payload, false)
+	raw, err := p.Client.Do(ctx, org, spend.LocalSEO, http.MethodPost, businessUpdatesPostPath, payload, false)
 	if err != nil {
 		return "", err
 	}

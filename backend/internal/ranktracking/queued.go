@@ -85,10 +85,10 @@ func (c *Checks) executeQueued(ctx context.Context, e *execution) error {
 			// Nothing was posted, and a live lookup would be refused the same
 			// way, so stop instead of paying for each pair.
 			if errors.Is(err, dataforseo.ErrBillingIssue) || isInvalidField(err) {
-				if err := c.Runs.SetRunErrorIfEmpty(ctx, e.run.ID, err.Error()); err != nil {
+				if err := c.Runs.SetRunErrorIfEmpty(ctx, e.run.ID, runErrorText(err)); err != nil {
 					return err
 				}
-				e.firstError = err.Error()
+				e.firstError = runErrorText(err)
 				return c.finalize(ctx, e.run, e.firstError)
 			}
 			// Earlier chunks are already charged, so their results still have to

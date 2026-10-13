@@ -1,16 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { AppBanner } from "@/client/layout/AppBanner";
-import { useCreditBalance } from "@/client/features/billing/useCreditBalance";
+import {
+  creditLevel,
+  useBillingUsage,
+} from "@/client/features/billing/usageApi";
 import { BILLING_ROUTE, SUBSCRIBE_ROUTE } from "@/shared/billing";
 
 export function FreePlanBanner() {
-  const { customerQuery, isFreePlan, isOutOfCredits, isLowCredits } =
-    useCreditBalance();
+  const { data: usage } = useBillingUsage();
+  if (!usage) return null;
 
-  if (customerQuery.isLoading || !customerQuery.data) {
-    return null;
-  }
-
+  const isFreePlan = usage.plan === "free";
+  const level = creditLevel(usage);
   const creditsActionLink = isFreePlan ? (
     <Link
       to={SUBSCRIBE_ROUTE}
@@ -24,24 +25,23 @@ export function FreePlanBanner() {
       to={BILLING_ROUTE}
       className="font-medium text-primary underline-offset-4 hover:underline"
     >
-      Buy more credits
+      See your credits
     </Link>
   );
 
-  if (isOutOfCredits) {
+  if (!isFreePlan && level === "out") {
     return (
       <AppBanner variant="destructive">
-        You&rsquo;ve used all your credits. {creditsActionLink} to continue
-        using Uplumo.
+        You&rsquo;ve used this month&rsquo;s credits. {creditsActionLink} to see
+        when they refill.
       </AppBanner>
     );
   }
 
-  if (isLowCredits) {
+  if (!isFreePlan && level === "low") {
     return (
       <AppBanner variant="warning">
-        You&rsquo;re running low on credits. {creditsActionLink} to keep using
-        Uplumo.
+        You&rsquo;re running low on credits. {creditsActionLink}.
       </AppBanner>
     );
   }

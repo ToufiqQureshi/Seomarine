@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // CheckRequest is one live SERP lookup: where a domain ranks for a keyword.
@@ -73,7 +74,7 @@ func (p DataForSEOSerp) CheckLive(ctx context.Context, organizationID string, re
 		return CheckResult{}, fmt.Errorf("encode rank check request: %w", err)
 	}
 	// Not retry-safe: a repeated billed call would be charged twice.
-	response, err := p.Client.Do(ctx, organizationID, http.MethodPost, serpLivePath, body, false)
+	response, err := p.Client.Do(ctx, organizationID, spend.RankTracking, http.MethodPost, serpLivePath, body, false)
 	if err != nil {
 		return CheckResult{}, fmt.Errorf("DataForSEO %s: %w", serpLivePath, err)
 	}

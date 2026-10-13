@@ -9,11 +9,12 @@ func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
 	want := []struct {
 		id                              string
 		price, sites, keywords, members int
+		credits                         int64
 	}{
-		{Free, 0, 1, 0, 1},
-		{Basic, 999, 1, 100, 1},
-		{Pro, 2499, 2, 500, 3},
-		{Agency, 5999, 10, 2000, 10},
+		{Free, 0, 1, 0, 1, 0},
+		{Basic, 999, 1, 100, 1, 4000},
+		{Pro, 2499, 2, 500, 3, 10000},
+		{Agency, 5999, 10, 2000, 10, 25000},
 	}
 	got := Catalog()
 	if len(got) != len(want) {
@@ -21,9 +22,9 @@ func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
 	}
 	for i, w := range want {
 		g := got[i]
-		if g.ID != w.id || g.PriceINR != w.price || g.Sites != w.sites || g.TrackedKeywords != w.keywords || g.Members != w.members {
-			t.Errorf("plan %d = %s ₹%d, %d sites, %d keywords, %d members; want %+v",
-				i, g.ID, g.PriceINR, g.Sites, g.TrackedKeywords, g.Members, w)
+		if g.ID != w.id || g.PriceINR != w.price || g.Sites != w.sites || g.TrackedKeywords != w.keywords || g.Members != w.members || g.MonthlyCredits != w.credits {
+			t.Errorf("plan %d = %s ₹%d, %d sites, %d keywords, %d members, %d credits; want %+v",
+				i, g.ID, g.PriceINR, g.Sites, g.TrackedKeywords, g.Members, g.MonthlyCredits, w)
 		}
 		if g.Name == "" || g.Summary == "" || len(g.Highlights) == 0 {
 			t.Errorf("plan %s has no name, summary or highlights to show a customer", g.ID)
@@ -82,5 +83,38 @@ func TestCallersCannotChangeTheCatalog(t *testing.T) {
 	// Basic's list is the base of Pro's and Agency's; they must not share it.
 	if basic, _ := Get(Basic); basic.Allows(Backlinks) || basic.Allows(WhiteLabel) {
 		t.Fatal("Basic picked up a feature of a higher plan")
+	}
+}
+
+// Credits are worth 1/1280 of a US dollar of provider cost (1,000 per dollar
+// with a 1.28 markup). A plan's grant is the most one workspace can cost
+// Uplumo in a month, so it must stay well under the price.
+func TestNoPlanCanCostMoreThanAThirdOfItsPrice(t *testing.T) {
+	const inrPerUSD = 90.0 // a rupee that has weakened, to keep a margin
+	for _, plan := range Catalog() {
+		providerINR := float64(plan.MonthlyCredits) / 1280 * inrPerUSD
+		if providerINR > float64(plan.PriceINR)/3 {
+			t.Errorf("%s: credits can cost ₹%.0f a month at the provider, more than a third of ₹%d", plan.ID, providerINR, plan.PriceINR)
+		}
+	}
+}
+
+// A plan's tracked keywords, checked weekly on desktop at its deepest
+// allowed depth with the scheduled (queued) price, must fit in its monthly
+// credits, or the rank tracking it sells runs out of credits mid-month.
+func TestWeeklyRankTrackingFitsInTheMonthlyCredits(t *testing.T) {
+	const checksPerMonth = 4.35
+	for _, plan := range Catalog() {
+		if plan.TrackedKeywords == 0 {
+			continue
+		}
+		if plan.MaxSerpDepth < 10 || plan.MaxSerpDepth > 100 || plan.MaxSerpDepth%10 != 0 {
+			t.Fatalf("%s: MaxSerpDepth %d is not 10 to 100 in steps of 10", plan.ID, plan.MaxSerpDepth)
+		}
+		perCheckUSD := 0.0006 + float64(plan.MaxSerpDepth/10-1)*0.00045
+		credits := float64(plan.TrackedKeywords) * checksPerMonth * perCheckUSD * 1280
+		if credits > float64(plan.MonthlyCredits)*0.9 {
+			t.Errorf("%s: weekly rank tracking costs %.0f credits a month, over 90%% of the %d it grants", plan.ID, credits, plan.MonthlyCredits)
+		}
 	}
 }

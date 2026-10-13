@@ -6,6 +6,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@/client/components/ui/input-group";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 export function ChatComposer({
   busy,
@@ -76,6 +77,7 @@ export function ChatComposer({
           )}
         </InputGroupAddon>
       </InputGroup>
+      <CreditCostHint feature="ai_assistant" className="mt-1.5 px-1" />
     </form>
   );
 }

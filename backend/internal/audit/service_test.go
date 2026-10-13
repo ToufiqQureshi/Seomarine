@@ -283,3 +283,22 @@ func TestFormatISO(t *testing.T) {
 		t.Fatal("nil time must format as nil")
 	}
 }
+
+func TestStartAuditSkipsLighthouseOnTheFreePlan(t *testing.T) {
+	store := newMemoryStore()
+	service := newTestService(store, &recordingScheduler{}, nil, nil, nil, false, nil)
+	if _, err := service.StartAudit(context.Background(), StartAuditInput{
+		ActorUserID: "user-1", OrganizationID: "org-1", ProjectID: "proj-1",
+		StartURL: "example.com", MaxPages: 10, LighthouseStrategy: LighthouseAuto, LimitTier: TierFree,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	audit, err := store.GetAuditForProject(context.Background(), "audit-1", "proj-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, ok := ParseAuditConfig(audit.Config)
+	if !ok || config.LighthouseStrategy != LighthouseNone || audit.LighthouseTotal != 0 {
+		t.Fatalf("free audit config = %+v, lighthouse total %d; want no paid Lighthouse checks", config, audit.LighthouseTotal)
+	}
+}

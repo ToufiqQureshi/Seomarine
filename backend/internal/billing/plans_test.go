@@ -136,11 +136,11 @@ func TestWebhookForAnUnknownPlanFailsAndChangesNothing(t *testing.T) {
 
 func TestEachPlanGrantsItsOwnCredits(t *testing.T) {
 	ctx := context.Background()
-	for plan, want := range map[string]int64{PlanBasic: 0, PlanPro: 3000, PlanAgency: 10000} {
+	// Basic grants credits too: its keyword research and rank tracking spend them.
+	for plan, want := range map[string]int64{PlanBasic: 4000, PlanPro: 10000, PlanAgency: 25000} {
 		t.Run(plan, func(t *testing.T) {
 			f := newFixture(ctx, t)
 			f.sellTiers()
-			f.svc.MonthlyGrantCreditsByPlan = map[string]int64{PlanPro: 3000, PlanAgency: 10000}
 			f.deliver(ctx, t, f.eventOnPlan(plan, "subscription.charged", "sub_1", "active"))
 
 			got, err := NewCreditLedgerService(f.pool).GetBalance(ctx, f.org)
@@ -265,5 +265,39 @@ func TestStaffWorkspaceIsToppedUpInsteadOfRefused(t *testing.T) {
 	}
 	if got, _ := ledger.GetBalance(ctx, f.org); got != 0 {
 		t.Errorf("balance after a reservation above the top-up = %d, want 0", got)
+	}
+}
+
+func TestUnusedCreditsRollOverUpToTwoMonths(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.sellTiers()
+	ledger := NewCreditLedgerService(f.pool)
+	balance := func() int64 {
+		t.Helper()
+		got, err := ledger.GetBalance(ctx, f.org)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	charge := func() { f.deliver(ctx, t, f.eventOnPlan(PlanPro, "subscription.charged", "sub_1", "active")) }
+
+	charge()
+	charge()
+	if got := balance(); got != 20000 {
+		t.Fatalf("after two unused Pro months balance = %d, want 20000", got)
+	}
+	charge()
+	if got := balance(); got != 20000 {
+		t.Fatalf("after a third unused month balance = %d, want it capped at two months (20000)", got)
+	}
+	// Spend some: the next charge tops up to the cap, not past it.
+	if _, err := f.pool.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = 15000 WHERE organization_id = $1`, f.org); err != nil {
+		t.Fatal(err)
+	}
+	charge()
+	if got := balance(); got != 20000 {
+		t.Fatalf("after a top-up from 15000 balance = %d, want 20000", got)
 	}
 }

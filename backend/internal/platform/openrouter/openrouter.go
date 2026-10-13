@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -76,6 +77,34 @@ type Usage struct {
 	PromptTokens     int     `json:"prompt_tokens"`
 	CompletionTokens int     `json:"completion_tokens"`
 	CostUSD          float64 `json:"cost"`
+}
+
+// Prices used when OpenRouter reports no cost, from the expensive end of the
+// models Uplumo uses, so a missing field never makes an answer free.
+const (
+	fallbackInputUSDPerToken  = 5.0 / 1_000_000
+	fallbackOutputUSDPerToken = 25.0 / 1_000_000
+	// charsPerToken is a low guess at characters per token, for output that
+	// streamed before the stream broke and no usage arrived.
+	charsPerToken = 3
+)
+
+// BillableUSD is what to charge for a call: the cost OpenRouter reported, or,
+// when it reported none, an estimate from the token counts or, failing those,
+// from generatedChars, the characters that streamed. estimated says which.
+func (u Usage) BillableUSD(generatedChars int) (usd float64, estimated bool) {
+	if u.CostUSD > 0 && !math.IsInf(u.CostUSD, 0) {
+		return u.CostUSD, false
+	}
+	outputTokens := u.CompletionTokens
+	if outputTokens <= 0 && generatedChars > 0 {
+		outputTokens = (generatedChars + charsPerToken - 1) / charsPerToken
+	}
+	inputTokens := max(u.PromptTokens, 0)
+	if outputTokens <= 0 && inputTokens == 0 {
+		return 0, false
+	}
+	return float64(inputTokens)*fallbackInputUSDPerToken + float64(max(outputTokens, 0))*fallbackOutputUSDPerToken, true
 }
 
 // Result is the assembled response once the stream ends.

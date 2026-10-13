@@ -241,9 +241,20 @@ type fakeMeter struct {
 	charges  []float64
 	keys     []string
 	chargeFn func() error
+	// credFn, when set, answers the nth credit check (from 1) instead of hasCred.
+	credFn func(n int) bool
+	checks int
 }
 
-func (m *fakeMeter) HasCredits(context.Context, string) (bool, error) { return m.hasCred, m.credErr }
+func (m *fakeMeter) HasCredits(context.Context, string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.checks++
+	if m.credFn != nil {
+		return m.credFn(m.checks), m.credErr
+	}
+	return m.hasCred, m.credErr
+}
 
 func (m *fakeMeter) Charge(_ context.Context, _ string, cost float64, key string) error {
 	m.mu.Lock()

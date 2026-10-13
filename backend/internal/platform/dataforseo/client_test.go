@@ -12,6 +12,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 type recordedCost struct {
@@ -40,9 +43,14 @@ func (r *testRecorder) snapshot() []recordedCost {
 
 func testClient(t *testing.T, server *httptest.Server, recorder CostRecorder, retries int) *Client {
 	t.Helper()
+	return guardedClient(t, server, recorder, &spendtest.Guard{}, retries)
+}
+
+func guardedClient(t *testing.T, server *httptest.Server, recorder CostRecorder, guard spend.Guard, retries int) *Client {
+	t.Helper()
 	client, err := NewClient(Options{
 		BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("user:secret")),
-		Recorder: recorder, HTTPClient: server.Client(), Timeout: 2 * time.Second,
+		Recorder: recorder, Guard: guard, HTTPClient: server.Client(), Timeout: 2 * time.Second,
 		MaxRetries: retries, RetryBackoff: time.Nanosecond,
 	})
 	if err != nil {
@@ -63,7 +71,7 @@ func TestDoAuthenticatesRecordsPerOrganizationAndReturnsTaskFailures(t *testing.
 	defer server.Close()
 	recorder := &testRecorder{}
 	client := testClient(t, server, recorder, 0)
-	response, err := client.Do(context.Background(), "org-a", http.MethodPost, "/v3/serp/live/advanced", []byte(`[{"keyword":"café"}]`), false)
+	response, err := client.Do(context.Background(), "org-a", spend.RankTracking, http.MethodPost, "/v3/serp/live/advanced", []byte(`[{"keyword":"café"}]`), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +101,7 @@ func TestDoRetriesOnlyRetrySafeRequests(t *testing.T) {
 			}))
 			defer server.Close()
 			client := testClient(t, server, &testRecorder{}, 1)
-			_, err := client.Do(context.Background(), "org", http.MethodGet, "/v3/appendix/status", nil, retrySafe)
+			_, err := client.Do(context.Background(), "org", spend.Reference, http.MethodGet, "/v3/appendix/status", nil, retrySafe)
 			if retrySafe && err != nil {
 				t.Fatalf("retry-safe Do() error = %v", err)
 			}
@@ -120,16 +128,23 @@ func TestDoValidatesPathAndOrganization(t *testing.T) {
 	for _, input := range []struct{ organizationID, path string }{
 		{"", "/v3/serp"}, {"org", "https://example.com/steal"}, {"org", "//example.com/steal"},
 	} {
-		if _, err := client.Do(context.Background(), input.organizationID, http.MethodGet, input.path, nil, true); !errors.Is(err, ErrInvalidRequest) {
+		if _, err := client.Do(context.Background(), input.organizationID, spend.Reference, http.MethodGet, input.path, nil, true); !errors.Is(err, ErrInvalidRequest) {
 			t.Errorf("Do(%q, %q) error = %v", input.organizationID, input.path, err)
 		}
 	}
 }
 
 func TestNewClientRejectsMissingCostRecorder(t *testing.T) {
-	_, err := NewClient(Options{APIKey: base64.StdEncoding.EncodeToString([]byte("user:secret"))})
+	_, err := NewClient(Options{APIKey: base64.StdEncoding.EncodeToString([]byte("user:secret")), Guard: &spendtest.Guard{}})
 	if err == nil || !strings.Contains(err.Error(), "cost recorder") {
 		t.Fatalf("NewClient() error = %v, want cost recorder error", err)
+	}
+}
+
+func TestNewClientRejectsMissingSpendGuard(t *testing.T) {
+	_, err := NewClient(Options{APIKey: base64.StdEncoding.EncodeToString([]byte("user:secret")), Recorder: &testRecorder{}})
+	if err == nil || !strings.Contains(err.Error(), "spend guard") {
+		t.Fatalf("NewClient() error = %v, want spend guard error", err)
 	}
 }
 
@@ -143,7 +158,7 @@ func TestDoDoesNotFollowRedirects(t *testing.T) {
 	}))
 	defer redirect.Close()
 	client := testClient(t, redirect, &testRecorder{}, 0)
-	_, err := client.Do(context.Background(), "org", http.MethodGet, "/v3/appendix/status", nil, false)
+	_, err := client.Do(context.Background(), "org", spend.Reference, http.MethodGet, "/v3/appendix/status", nil, false)
 	if apiErr, ok := errors.AsType[*HTTPError](err); !ok || apiErr.StatusCode != http.StatusTemporaryRedirect {
 		t.Fatalf("Do() error = %v, want HTTP 307", err)
 	}
@@ -159,7 +174,7 @@ func TestDoReturnsCostRecordingFailureWithReconciliationData(t *testing.T) {
 	defer server.Close()
 	recorder := &testRecorder{err: errors.New("ledger unavailable")}
 	client := testClient(t, server, recorder, 0)
-	_, err := client.Do(context.Background(), "org-123", http.MethodPost, "/v3/serp/live", []byte(`[]`), false)
+	_, err := client.Do(context.Background(), "org-123", spend.RankTracking, http.MethodPost, "/v3/serp/live", []byte(`[]`), false)
 	if recordingErr, ok := errors.AsType[*CostRecordingError](err); !ok || recordingErr.OrganizationID != "org-123" || recordingErr.Cost.USD != 0.01 {
 		t.Fatalf("Do() error = %#v, want cost recording context", err)
 	}

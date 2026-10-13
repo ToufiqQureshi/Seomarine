@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -184,5 +185,29 @@ func TestStreamRejectsOversizedLine(t *testing.T) {
 	client := serve(t, 200, "data: "+strings.Repeat("x", maxLine+10)+"\n", nil)
 	if _, err := client.Stream(context.Background(), Request{Model: "m"}, Handler{}); err == nil {
 		t.Fatal("expected scanner error for oversized line")
+	}
+}
+
+func TestBillableUSDNeverMakesAnAnswerFree(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		usage         Usage
+		chars         int
+		want          float64
+		wantEstimated bool
+	}{
+		{"reported cost wins", Usage{PromptTokens: 1000, CompletionTokens: 1000, CostUSD: 0.002}, 50, 0.002, false},
+		{"no cost, tokens known", Usage{PromptTokens: 1_000_000, CompletionTokens: 1_000_000}, 0, 30, true},
+		{"no usage at all, text streamed", Usage{}, 300, 100 * 25.0 / 1_000_000, true},
+		{"nothing happened", Usage{}, 0, 0, false},
+		{"negative cost is ignored", Usage{CompletionTokens: 1000, CostUSD: -1}, 0, 1000 * 25.0 / 1_000_000, true},
+		{"infinite cost is ignored", Usage{CompletionTokens: 1000, CostUSD: math.Inf(1)}, 0, 1000 * 25.0 / 1_000_000, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, estimated := tc.usage.BillableUSD(tc.chars)
+			if math.Abs(got-tc.want) > 1e-12 || estimated != tc.wantEstimated {
+				t.Fatalf("BillableUSD(%d) = %v, %v; want %v, %v", tc.chars, got, estimated, tc.want, tc.wantEstimated)
+			}
+		})
 	}
 }

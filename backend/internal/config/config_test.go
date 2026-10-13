@@ -281,3 +281,28 @@ func TestLoadStaffEmails(t *testing.T) {
 		t.Errorf("STAFF_EMAILS = %v, want both addresses trimmed and lower case", got)
 	}
 }
+
+func TestLoadProviderDailyLimit(t *testing.T) {
+	env := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	load := func() (Config, error) { return Load(func(key string) string { return env[key] }) }
+	cfg, err := load()
+	if err != nil || cfg.ProviderDailyLimitUSD != 25 {
+		t.Fatalf("default limit = %v, %v; want 25", cfg.ProviderDailyLimitUSD, err)
+	}
+	env["PROVIDER_DAILY_LIMIT_USD"] = "60.5"
+	if cfg, err := load(); err != nil || cfg.ProviderDailyLimitUSD != 60.5 {
+		t.Fatalf("limit = %v, %v; want 60.5", cfg.ProviderDailyLimitUSD, err)
+	}
+	// Zero would turn the safety limit off; below a dollar stops the product.
+	for _, bad := range []string{"0", "0.5", "-5", "10001", "NaN", "Inf", "ten"} {
+		env["PROVIDER_DAILY_LIMIT_USD"] = bad
+		if _, err := load(); err == nil || !strings.Contains(err.Error(), "PROVIDER_DAILY_LIMIT_USD") {
+			t.Errorf("PROVIDER_DAILY_LIMIT_USD=%q error = %v", bad, err)
+		}
+	}
+}

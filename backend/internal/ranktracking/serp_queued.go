@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // TaskInput is one keyword and device to queue.
@@ -99,7 +100,7 @@ func (p DataForSEOSerp) PostTasks(ctx context.Context, organizationID string, re
 		return nil, fmt.Errorf("encode task_post request: %w", err)
 	}
 	// Not retry-safe: posting twice would charge twice.
-	response, err := p.Client.Do(ctx, organizationID, http.MethodPost, taskPostPath, raw, false)
+	response, err := p.Client.Do(ctx, organizationID, spend.RankTracking, http.MethodPost, taskPostPath, raw, false)
 	if err != nil {
 		return nil, fmt.Errorf("DataForSEO %s: %w", taskPostPath, err)
 	}

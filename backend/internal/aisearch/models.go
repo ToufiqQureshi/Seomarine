@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // The models of a prompt run, as the provider names their endpoints.
@@ -100,7 +101,7 @@ func (c *modelCatalog) names(ctx context.Context, organizationID, model string) 
 }
 
 func (c *modelCatalog) fetch(ctx context.Context, organizationID, model string) ([]string, error) {
-	payload, err := c.client.Do(ctx, organizationID, http.MethodGet, "/v3/ai_optimization/"+model+"/llm_responses/models", nil, true)
+	payload, err := c.client.Do(ctx, organizationID, spend.Reference, http.MethodGet, "/v3/ai_optimization/"+model+"/llm_responses/models", nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("get model catalog: %w", err)
 	}

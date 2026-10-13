@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // toolCallName extracts the tool name from a tools/call params object.
@@ -73,6 +75,14 @@ func (h *handler) callTool(ctx context.Context, t *tool, params json.RawMessage,
 	env := callEnv{h: h, deps: h.deps, auth: auth}
 	result, err := t.Handler(ctx, params, &env)
 	if err != nil {
+		if message := spend.Message(err); message != "" {
+			outcome.errorCode = "INSUFFICIENT_CREDITS"
+			if errors.Is(err, spend.ErrPaused) {
+				outcome.errorCode = "USAGE_PAUSED"
+			}
+			outcome.durationMs = time.Since(started).Milliseconds()
+			return errorResult(message), outcome
+		}
 		var appErr *appError
 		if errors.As(err, &appErr) {
 			outcome.errorCode = appErr.code

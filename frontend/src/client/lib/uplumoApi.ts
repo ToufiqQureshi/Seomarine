@@ -20,12 +20,24 @@ const errorBodySchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
 
+// Server errors whose message is written for the customer, not a leak of
+// internals: paid data paused by the daily safety limit.
+const CUSTOMER_FACING_SERVER_CODES = new Set(["usage_paused"]);
+
 // Statuses whose server message is not meant for the user, or that need the
 // same wording whatever the endpoint.
-function messageForStatus(status: number, serverMessage: string | undefined) {
+function messageForStatus(
+  status: number,
+  code: string,
+  serverMessage: string | undefined,
+) {
   if (status === 401) return "Your session has ended. Sign in again.";
   if (status === 429) return "Too many requests. Wait a minute and try again.";
-  if (status >= 500) return "Something went wrong on our side. Try again.";
+  if (
+    status >= 500 &&
+    !(CUSTOMER_FACING_SERVER_CODES.has(code) && serverMessage)
+  )
+    return "Something went wrong on our side. Try again.";
   return serverMessage || "The request failed. Try again.";
 }
 
@@ -63,10 +75,11 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const parsed = errorBodySchema.safeParse(body);
+    const code = parsed.success ? parsed.data.error.code : "unknown";
     throw new ApiError(
       response.status,
-      parsed.success ? parsed.data.error.code : "unknown",
-      messageForStatus(response.status, parsed.data?.error.message),
+      code,
+      messageForStatus(response.status, code, parsed.data?.error.message),
     );
   }
 

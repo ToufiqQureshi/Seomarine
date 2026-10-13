@@ -17,6 +17,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/domain"
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
@@ -67,7 +68,7 @@ func TestDomainEndToEndAttributesPaidProviderTaskToAuthorizedProjectOrganization
 		}
 	}))
 	t.Cleanup(provider.Close)
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: provider.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-login:fake-password")), Recorder: dataforseo.NewUsageRecorder(pool)})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: &spendtest.Guard{}, BaseURL: provider.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-login:fake-password")), Recorder: dataforseo.NewUsageRecorder(pool)})
 	if err != nil {
 		t.Fatal(err)
 	}

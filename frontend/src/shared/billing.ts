@@ -15,7 +15,6 @@ export const AUTUMN_SEO_DATA_BALANCE_FEATURE_ID = "usage_credits";
 export const AUTUMN_SEO_DATA_TOPUP_BALANCE_FEATURE_ID = "topup_credits";
 const AUTUMN_SEO_DATA_CREDITS_PER_USD = 1000;
 const SEO_DATA_COST_MARKUP = 1.28;
-export const LOW_CREDITS_THRESHOLD_USD = 0.25;
 // DataForSEO's raw price for one Google Ads search_volume live call (up to
 // 1,000 keywords). Local keyword research adds one call to each search.
 export const LOCAL_VOLUME_COST_USD = 0.09;

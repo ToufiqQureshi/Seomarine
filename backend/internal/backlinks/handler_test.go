@@ -14,6 +14,8 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 type planResult bool
@@ -22,13 +24,18 @@ func (p planResult) HasPaidPlan(context.Context, string) (bool, error) { return 
 
 func requestHandler(t *testing.T, body string, plans PaidPlans, providerCalls *int) *httptest.ResponseRecorder {
 	t.Helper()
+	return requestGuardedHandler(t, body, plans, providerCalls, &spendtest.Guard{})
+}
+
+func requestGuardedHandler(t *testing.T, body string, plans PaidPlans, providerCalls *int, guard *spendtest.Guard) *httptest.ResponseRecorder {
+	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		*providerCalls++
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{map[string]any{"status_code": 20000, "path": []string{"v3", "backlinks", "summary", "live"}, "cost": 0, "result": []any{map[string]any{"backlinks": 0, "info": map[string]any{}}}}}})
 	}))
 	t.Cleanup(server.Close)
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")), Recorder: billingRecorder{}, MaxRetries: 0})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: guard, BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")), Recorder: billingRecorder{}, MaxRetries: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +83,7 @@ func TestRowsHandlerRejectsInvalidFiltersBeforeProvider(t *testing.T) {
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { calls++ }))
 	defer server.Close()
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")), Recorder: billingRecorder{}, MaxRetries: 0})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: &spendtest.Guard{}, BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")), Recorder: billingRecorder{}, MaxRetries: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,5 +116,26 @@ func TestOversizedBodyIsRejectedBeforeProviderSpend(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Fatalf("oversized request reached provider %d times", calls)
+	}
+}
+
+func TestOverviewAnswersARefusalWithItsOwnStatus(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		refusal error
+		status  int
+		code    string
+	}{
+		{spend.ErrNoCredits, http.StatusPaymentRequired, "insufficient_credits"},
+		{spend.ErrPaused, http.StatusServiceUnavailable, "usage_paused"},
+	} {
+		calls := 0
+		rec := requestGuardedHandler(t, `{"target":"example.com"}`, planResult(true), &calls, &spendtest.Guard{Refuse: tc.refusal})
+		if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.code) {
+			t.Errorf("%v: status = %d body %s, want %d %s", tc.refusal, rec.Code, rec.Body, tc.status, tc.code)
+		}
+		if calls != 0 {
+			t.Errorf("%v: provider calls = %d, want 0", tc.refusal, calls)
+		}
 	}
 }

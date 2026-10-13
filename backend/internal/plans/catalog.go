@@ -55,6 +55,14 @@ type Definition struct {
 	// Members is how many people a workspace may hold, pending invitations
 	// included.
 	Members int
+	// MonthlyCredits is granted on every paid month. Every paid data lookup
+	// and AI call spends credits at provider cost times the markup, so the
+	// grant is the most a workspace can cost Uplumo in a month.
+	MonthlyCredits int64
+	// MaxSerpDepth is the deepest rank tracking may look (top 30, top 40...).
+	// Deeper checks cost more per keyword, so it keeps a plan's tracked
+	// keywords, checked weekly, inside its monthly credits.
+	MaxSerpDepth int
 	// Highlights is the plan in the customer's words. Never list here what
 	// Features and the limits do not enforce.
 	Highlights []string
@@ -83,7 +91,7 @@ var catalog = []Definition{
 		},
 	},
 	{
-		ID: Basic, Name: "Basic", PriceINR: 999, Sites: 1, TrackedKeywords: 100, Members: 1,
+		ID: Basic, Name: "Basic", PriceINR: 999, Sites: 1, TrackedKeywords: 100, Members: 1, MonthlyCredits: 4000, MaxSerpDepth: 30,
 		Summary: "For one site that wants to rank: keywords, rankings and Google data.",
 		Highlights: []string{
 			"1 website",
@@ -96,7 +104,7 @@ var catalog = []Definition{
 		features: basicFeatures,
 	},
 	{
-		ID: Pro, Name: "Pro", PriceINR: 2499, Sites: 2, TrackedKeywords: 500, Members: 3,
+		ID: Pro, Name: "Pro", PriceINR: 2499, Sites: 2, TrackedKeywords: 500, Members: 3, MonthlyCredits: 10000, MaxSerpDepth: 40,
 		Summary: "For a growing business: competitors, backlinks and AI search.",
 		Highlights: []string{
 			"2 websites",
@@ -110,7 +118,7 @@ var catalog = []Definition{
 		features: proFeatures,
 	},
 	{
-		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10,
+		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40,
 		Summary: "For agencies: client sites and reports under your own brand.",
 		Highlights: []string{
 			"10 websites",

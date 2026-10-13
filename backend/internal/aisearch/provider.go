@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -81,7 +82,7 @@ func (p *provider) post(ctx context.Context, organizationID, path string, body a
 	if err != nil {
 		return nil, fmt.Errorf("encode %s request: %w", path, err)
 	}
-	payload, err := p.client.Do(ctx, organizationID, http.MethodPost, path, raw, false)
+	payload, err := p.client.Do(ctx, organizationID, spend.AIVisibility, http.MethodPost, path, raw, false)
 	if err != nil {
 		return nil, fmt.Errorf("call %s: %w", path, err)
 	}

@@ -42,17 +42,63 @@ refused for credits (it is topped up, and the spend is still in the ledger).
 Being a member of someone else's workspace unlocks nothing there.
 
 **Credits.** `CreditLedgerService` (`go_billing_credits` and the tables beside
-it) caps what one workspace can cost us at the providers. 1,000 credits are one
-US dollar of provider cost, charged with a 1.28 markup. A caller reserves
-before it spends, then settles the real amount or refunds. Each paid
-Pro charge grants `BILLING_MONTHLY_CREDITS_USD` and each Agency charge
-`BILLING_AGENCY_MONTHLY_CREDITS_USD`, once per webhook event; Basic grants
-none, because it includes nothing that spends credits. `GET /api/v1/billing/credits` returns the plan and balance, and `POST
+it) is what one workspace may cost us at the providers. 1,000 credits are one
+US dollar of provider cost before the 1.28 markup, so a credit is 1/1280 of a
+dollar of provider cost. Each paid charge of a plan grants that plan's
+`MonthlyCredits` (`internal/plans`: Basic 4,000, Pro 10,000, Agency 25,000)
+once per webhook event; unused credits roll over up to two months of the
+plan (`grantUpToTx`). The test
+`TestNoPlanCanCostMoreThanAThirdOfItsPrice` keeps every grant under a third
+of the plan's price. `GET /api/v1/billing/credits` returns the plan and
+balance, `GET /api/v1/billing/usage` this month's spend by feature and the
+typical cost of each action (`costs.go`, `api/billing.yaml`), and `POST
 /api/v1/billing/usage-events` lists settled spends.
 
-Customers are not meant to see credits (see `ROADMAP.md`, Decided). The old
-`/billing` page in the app still shows them; that is an open owner decision.
+Plan-wise limits beside credits: sites, tracked keywords, members and the
+deepest rank-tracking check (`MaxSerpDepth`: Basic top 30, Pro and Agency
+top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
+tracked keywords, checked weekly at its deepest depth, under 90% of its
+monthly credits.
 
+Credits are shown in the app (Billing, and next to paid actions) but not on
+the public pricing page; `internal/site` tests keep them off it.
+
+## The spend guard
+
+`SpendGuard` (`spendguard.go`) is the one gate every paid provider request
+goes through: it implements `platform/spend.Guard` for the DataForSEO client
+(which refuses to start without one) and `AIMeter` for SAM and the writing
+assistant. Rules that must never break:
+
+- **Nothing paid is sent without a hold.** Before a DataForSEO request, the
+  most it can cost (`dataforseo.EstimateUSD`, from published prices; an
+  unknown endpoint is held at one dollar per task) is reserved from the
+  workspace's credits. Not enough credits is `spend.ErrNoCredits`, answered
+  `402 insufficient_credits`, and the provider is never called. Reservations
+  lock the balance row, so parallel requests cannot overspend it.
+- **The real cost is charged afterwards**, also for failed tasks the
+  provider billed. If it is more than was held and the balance cannot cover
+  it, the balance is charged down to zero and a warning is logged: the work
+  is already paid for, so it is never refused after the fact.
+- **It fails closed.** A ledger or database error stops the request. SAM
+  refuses a turn whose credits cannot be checked.
+- **Daily safety limit.** Every settled cost, staff included, is logged in
+  `go_provider_spend`. Once today's (UTC) total plus a request's estimate
+  passes `PROVIDER_DAILY_LIMIT_USD`, every paid request for every workspace
+  is refused with `spend.ErrPaused` (`503 usage_paused`), logged at error
+  level so it reaches Sentry. This is the backstop against a bug or an
+  abuser; it does not depend on any one workspace's credits.
+- **AI.** A model's cost is only known after it answers, so AI work starts
+  only with at least a cent of credit left, is charged after each step, and
+  SAM checks again before every step and stops a turn at one dollar. When
+  OpenRouter reports no cost, a conservative estimate from tokens (or from
+  the streamed text) is charged instead of nothing.
+- Without payments (self-hosted) nobody is charged credits, but the daily
+  limit still applies.
+
+Edge cases: two requests racing the last credits are decided by the row
+lock, so one is refused. Concurrent requests can pass the daily limit by at
+most their own estimates, because the daily check is not locked.
 Never include a provider error body or a credential in a client response.
 
 ## Without Razorpay credentials

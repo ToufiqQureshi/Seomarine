@@ -52,6 +52,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/pgdb"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projects"
 	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
@@ -143,10 +144,6 @@ func run(logger *slog.Logger) (err error) {
 	if rzp := cfg.Razorpay; rzp != nil {
 		billingSvc = billing.NewPlanService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDs, rzp.WebhookSecret)
 		billingRoutes = billingSvc
-		billingSvc.MonthlyGrantCreditsByPlan = map[string]int64{
-			billing.PlanPro:    int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD),
-			billing.PlanAgency: int64(cfg.BillingAgencyMonthlyCreditsUSD * billing.CreditsPerUSD),
-		}
 	} else {
 		logger.Warn("RAZORPAY_* not set; billing status is read-only and checkout is unavailable")
 	}
@@ -154,6 +151,13 @@ func run(logger *slog.Logger) (err error) {
 	// with or without payments configured.
 	billingRoutes.SetStaffEmails(cfg.StaffEmails)
 	credits.Unlimited = billingRoutes.IsUnlimited
+	// Every paid DataForSEO request and AI call goes through this guard.
+	// Without payments (self-hosted) nobody is charged credits, but the daily
+	// provider spend limit still applies.
+	spendGuard, err := billing.NewSpendGuard(db, credits, cfg.ProviderDailyLimitUSD, billingSvc != nil, logger)
+	if err != nil {
+		return fmt.Errorf("create spend guard: %w", err)
+	}
 
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service
@@ -163,7 +167,7 @@ func run(logger *slog.Logger) (err error) {
 	var keywordResearch *keywords.ResearchService
 	var dfClient *dataforseo.Client
 	if cfg.DataForSEOAPIKey != "" {
-		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db)})
+		client, err := dataforseo.NewClient(dataforseo.Options{APIKey: cfg.DataForSEOAPIKey, Recorder: dataforseo.NewUsageRecorder(db), Guard: spendGuard})
 		if err != nil {
 			return fmt.Errorf("create DataForSEO client: %w", err)
 		}
@@ -257,7 +261,7 @@ func run(logger *slog.Logger) (err error) {
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
 	emailAuthSvc := buildEmailAuth(cfg, logger, db, rdb, authService)
-	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps, credits)
+	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps, spendGuard.AIMeter(spend.AIAssistant))
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -289,7 +293,7 @@ func run(logger *slog.Logger) (err error) {
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}, Plans: billingRoutes},
 			ContentEditor:        &contenteditor.Repository{DB: db},
-			ContentWriter:        buildContentWriter(cfg, logger, credits, billingRoutes.Gate(planCatalog.AIWriting)),
+			ContentWriter:        buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
@@ -341,14 +345,14 @@ func run(logger *slog.Logger) (err error) {
 	return nil
 }
 
-func buildContentWriter(cfg config.Config, logger *slog.Logger, credits *billing.CreditLedgerService, plans contenteditor.WriterPlanAccess) contenteditor.WriterService {
+func buildContentWriter(cfg config.Config, logger *slog.Logger, meter contenteditor.WriterMeter, plans contenteditor.WriterPlanAccess) contenteditor.WriterService {
 	if strings.TrimSpace(cfg.OpenRouterAPIKey) == "" {
 		return nil
 	}
 	return &contenteditor.WriterAgent{
 		LLM:    &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
 		Model:  cfg.OpenRouterModel,
-		Meter:  sam.LedgerMeter{Ledger: credits},
+		Meter:  meter,
 		Plans:  plans,
 		Logger: logger,
 	}
@@ -394,7 +398,7 @@ func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rd
 // customer's: it returns nil without OPENROUTER_API_KEY and the chat routes
 // then answer 503. Every turn is gated on and charged to the organization's
 // credits.
-func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps, credits *billing.CreditLedgerService) *sam.Chat {
+func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps, meter sam.Meter) *sam.Chat {
 	if cfg.OpenRouterAPIKey == "" {
 		return nil
 	}
@@ -413,7 +417,7 @@ func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memo
 		BaseURL: cfg.PublicURL.String(),
 		Logger:  logger,
 	}
-	agent.Meter = sam.LedgerMeter{Ledger: credits}
+	agent.Meter = meter
 	return sam.NewChat(agent, sam.ContextLoader{DB: db}, sam.MessageRepository{DB: db})
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -226,6 +227,8 @@ func handle(d Deps, fn func(r *http.Request, organizationID, projectID string) (
 		case r.Context().Err() != nil:
 			// The client went away; there is nobody to answer.
 			d.Logger.InfoContext(r.Context(), "ai search request canceled", "err", err)
+		case spend.Refused(err):
+			spend.WriteHTTPError(w, err)
 		case errors.Is(err, dataforseo.ErrBillingIssue):
 			d.Logger.ErrorContext(r.Context(), "data provider account needs attention", "err", err)
 			httpx.WriteError(w, http.StatusServiceUnavailable, "provider_billing_issue", "AI search data is temporarily unavailable. Please try again later.")

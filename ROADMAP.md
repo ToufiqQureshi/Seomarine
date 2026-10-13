@@ -26,7 +26,8 @@ approved, but its keys are not in production.
 | One-click cancel (`POST /api/v1/billing/cancel`, "Cancel Pro" on Billing)    | ✅ built, not yet run against Razorpay |
 | DataForSEO key in production (keywords, rank tracking, backlinks, AI visibility answer 503 without it) | ⏳ |
 | Google OAuth app verification (Search Console and Analytics scopes)          | ⏳     |
-| Live usage shown to the customer                                             | ⏳     |
+| Live usage shown to the customer (credits on Billing, cost next to paid actions) | ✅ built |
+| Spend guard: credits held before every paid lookup and AI call, daily limit   | ✅ built |
 | Lawyer review of the legal pages                                             | ⏳     |
 
 ## What is built
@@ -94,8 +95,16 @@ Secrets go into Railway variables only, never into the repo or chat.
 - Name: Uplumo. Domain: uplumo.com. Hosting: Railway. Redis: yes.
 - Launch market: India only, prices in INR. USD pricing comes later.
 - GST: not registered at launch, so prices carry no tax line.
-- Customers never see credits. Each plan has plain limits; the credit ledger
-  stays internal, as a cap on what one workspace can cost us.
+- Credits (owner, 13 October 2026). Every paid data lookup and AI call
+  spends credits; customers see them in the app (Billing, and "about N
+  credits" next to each paid action) but not on the public pricing page.
+  Monthly credits: Basic 4,000, Pro 10,000, Agency 25,000 (a credit is 1/1280
+  of a dollar of provider cost). No credits means no request is sent. A
+  daily limit on all provider spend (`PROVIDER_DAILY_LIMIT_USD`, default $25)
+  pauses paid work for everyone as the last safety net. Rules:
+  `backend/internal/billing/README.md`. Unused credits roll over up to two
+  months. Rank tracking depth is capped per plan (Basic top 30, Pro and
+  Agency top 40) so weekly checks of every tracked keyword fit the credits.
 - Plans (owner, 12 October 2026, confirmed 13 October). Built: the table
   below is `backend/internal/plans/catalog.go`. Free is one site with
   analytics and a starter audit.
@@ -118,15 +127,17 @@ Secrets go into Railway variables only, never into the repo or chat.
 
 ## Open decisions for the owner
 
-- Keyword research on Basic has no monthly cap of its own, so a heavy Basic
-  workspace can cost more at DataForSEO than it pays. Decide a cap.
+- Credits on the public pricing page: today only in the app. Showing "10,000
+  credits a month" would set expectations; hiding it avoids explaining them.
+- The typical costs on Billing (`backend/internal/billing/costs.go`) are from
+  published prices; check them against the first real DataForSEO and
+  OpenRouter invoices.
 - Data provider: keep DataForSEO, or drop the features that need it
   (keywords, rank tracking, backlinks, AI visibility). An AI model cannot
   replace it, because it has no real search data.
 - Audit page and AI-check limits per plan.
-- The old `/billing` page (credits and top-ups in USD) and the `/yc` offer
-  page are still in the app and contradict "customers never see credits".
-  Remove them or rebuild them.
+- The `/yc` offer page still talks about USD credits and top-ups. Remove it
+  or rebuild it (the `/billing` page now shows credits from the Go API).
 - Cloudflare's managed `robots.txt` blocks AI crawlers (GPTBot, ClaudeBot,
   Google-Extended) on a product that sells AI visibility. Keep or turn off.
 - Whether billing rows are kept when an account is erased (tax records). See

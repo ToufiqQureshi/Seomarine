@@ -41,6 +41,7 @@ import {
   type PromptExplorerModel,
   type WebSearchCountrySelection,
 } from "@/types/schemas/ai-search";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type FormValues = {
   prompt: string;
@@ -255,6 +256,7 @@ export function PromptExplorerForm({
             </Button>
           </div>
 
+          <CreditCostHint feature="ai_visibility" />
           {validationError ? (
             <p role="alert" className="text-sm text-destructive">
               {validationError}

@@ -142,3 +142,15 @@ func TestWriterAgentMapsProviderDeadlineToTimeout(t *testing.T) {
 		t.Fatalf("Generate() error = %v, want ErrWriterTimeout", err)
 	}
 }
+
+func TestWriterAgentChargesAnEstimateWhenTheProviderReportsNoCost(t *testing.T) {
+	llm := &fakeWriterLLM{result: openrouter.Result{Text: "A draft", Usage: openrouter.Usage{PromptTokens: 2000, CompletionTokens: 500}}}
+	meter := &fakeWriterMeter{allowed: true}
+	agent := &WriterAgent{LLM: llm, Meter: meter}
+	if _, err := agent.Generate(context.Background(), "org-1", WriterInput{Action: WriterDraft, Mode: "seo", Title: "A title"}); err != nil {
+		t.Fatal(err)
+	}
+	if meter.cost <= 0 {
+		t.Fatalf("metered cost = %v, want an estimate: a missing cost field must not make writing free", meter.cost)
+	}
+}

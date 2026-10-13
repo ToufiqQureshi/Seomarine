@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: Uplumo billing usage
+  version: 1.0.0
+  description: |
+    A workspace's credits. Every paid data lookup (DataForSEO) and AI call
+    spends credits at provider cost times the markup; each paid month of a
+    plan grants that plan's monthly credits. Only the usage summary is
+    described here; plan, checkout and webhook routes are in
+    `internal/billing/README.md`.
+
+    Any route that makes a paid lookup can answer with the two refusals
+    below. Nothing is sent to the provider when they are returned.
+servers:
+  - url: /api/v1
+paths:
+  /billing/usage:
+    get:
+      operationId: getBillingUsage
+      summary: Credits left, this month's spend by feature, and typical costs
+      responses:
+        "200":
+          description: The active workspace's credit summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NoOrganization"
+        "503":
+          description: Billing is not set up on this server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Feature:
+      type: string
+      enum: [rank_tracking, keyword_research, local_seo, domain_research, backlinks, ai_visibility, site_audit, ai_assistant, ai_writing]
+    Usage:
+      type: object
+      required: [plan, unlimited, chargesCredits, balanceCredits, monthlyCredits, periodStart, periodEnd, spent, costs]
+      properties:
+        plan:
+          type: string
+          enum: [free, basic, pro, agency]
+        unlimited:
+          type: boolean
+          description: An Uplumo staff workspace, topped up instead of refused.
+        chargesCredits:
+          type: boolean
+          description: False on a server without payments; nothing is charged.
+        balanceCredits:
+          type: integer
+          minimum: 0
+        monthlyCredits:
+          type: integer
+          minimum: 0
+          description: What one paid month of the plan grants.
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: [string, "null"]
+          format: date-time
+        spent:
+          type: array
+          description: Credits charged since periodStart, largest first. "other" holds charges made before spend was labelled.
+          items:
+            type: object
+            required: [feature, credits]
+            properties:
+              feature:
+                oneOf:
+                  - $ref: "#/components/schemas/Feature"
+                  - const: other
+              credits:
+                type: integer
+                minimum: 1
+        costs:
+          type: array
+          description: About what one action of each feature costs. The real cost is charged per request.
+          items:
+            type: object
+            required: [feature, unit, credits]
+            properties:
+              feature:
+                $ref: "#/components/schemas/Feature"
+              unit:
+                type: string
+              credits:
+                type: integer
+                minimum: 1
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+  responses:
+    Unauthorized:
+      description: Not signed in.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NoOrganization:
+      description: No active workspace.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InsufficientCredits:
+      description: "`insufficient_credits`: the workspace has not got the credits the lookup needs."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UsagePaused:
+      description: "503 `usage_paused`: today's provider spend for all workspaces reached PROVIDER_DAILY_LIMIT_USD."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

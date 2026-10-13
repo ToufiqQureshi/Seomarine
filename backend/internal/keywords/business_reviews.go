@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // BusinessReviewTaskInput contains a business review task request.
@@ -48,7 +50,7 @@ func (p DataForSEOProvider) StartBusinessReviewTask(ctx context.Context, org str
 		return "", err
 	}
 	path := "/v3/business_data/google/" + in.Endpoint + "/task_post"
-	response, err := p.Client.Do(ctx, org, http.MethodPost, path, raw, false)
+	response, err := p.Client.Do(ctx, org, spend.LocalSEO, http.MethodPost, path, raw, false)
 	if err != nil {
 		return "", err
 	}

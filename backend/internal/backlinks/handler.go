@@ -15,6 +15,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const maxBody = 32 << 10
@@ -327,6 +328,8 @@ func handle(d Deps, fn func(http.ResponseWriter, *http.Request, string) (any, er
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", invalid.Error())
 		case r.Context().Err() != nil:
 			d.Logger.InfoContext(r.Context(), "backlinks request canceled", "err", err)
+		case spend.Refused(err):
+			spend.WriteHTTPError(w, err)
 		case errors.Is(err, dataforseo.ErrBillingIssue):
 			d.Logger.ErrorContext(r.Context(), "DataForSEO billing issue", "err", err)
 			httpx.WriteError(w, http.StatusServiceUnavailable, "provider_billing_issue", "Backlinks data is temporarily unavailable. Please try again later.")

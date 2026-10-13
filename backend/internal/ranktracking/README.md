@@ -36,7 +36,8 @@ Not built: per-run credit holds (see the decisions below).
 
 - Credit maths (`costMarkup` 1.28, 1000 credits per USD) is copied from the legacy app. Uplumo's Razorpay plan model may want different numbers.
 - Scheduled checks: a task that was posted but whose id was not stored before a crash (the window is one database write) would be posted again. Posting twice is billed twice, but the window is tiny and the alternative, a live fallback for every scheduled pair, costs more.
-- Credits: the spend control is the paid-plan gate, the optional `maxCostCredits` ceiling and the usage ledger (`go_dataforseo_usage`). A real balance check waits for the owner's credit model.
+- Plan depth: a config cannot be created or changed deeper than the plan's `MaxSerpDepth` (`ErrLimit`). Configs saved deeper before this rule keep their depth until edited.
+- Credits: every check spends the workspace's credits through the spend guard in the DataForSEO client (`internal/billing/README.md`). A refused check stops the run like a provider billing issue and shows the customer's credit message as the run's error. The optional `maxCostCredits` ceiling still applies.
 - Deliberate differences from the legacy app: a tie on `checked_at` picks the later-written snapshot (the legacy join could return both); a keyword over 200 UTF-16 units is returned as rejected, not silently dropped; domains must be plain ASCII hostnames (no ports, no unicode, labels up to 63 characters), because a name the provider rejects is still billed; the MCP-only credit-ceiling approval flow is not built.
 - City-level configs (`locationName`) are checked against the registry; without a provider key they answer 503.
 - The project cap (500 active configs) is checked before insert, not locked, so two simultaneous creates could end one over.

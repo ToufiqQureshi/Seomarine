@@ -12,6 +12,7 @@ import {
   parseResearchTarget,
 } from "@/shared/researchScope";
 import type { BacklinksSearchState } from "./backlinksPageTypes";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type SearchDraft = Pick<BacklinksSearchState, "target" | "scope">;
 
@@ -77,46 +78,49 @@ export function BacklinksSearchCard({
   );
 
   return (
-    <SearchCard
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-      error={targetError}
-      errorId="backlinks-target-error"
-    >
-      <form.Field name="target">
-        {(field) => (
-          <SearchInput
-            placeholder="Enter a domain or URL"
-            aria-label="Domain or URL"
-            value={field.state.value}
-            onChange={(event) => {
-              const nextTarget = event.target.value;
-              field.handleChange(nextTarget);
-              if (!userSelectedScope) {
-                form.setFieldValue("scope", defaultScopeForInput(nextTarget));
+    <div className="space-y-2">
+      <SearchCard
+        onSubmit={(event) => {
+          event.preventDefault();
+          void form.handleSubmit();
+        }}
+        error={targetError}
+        errorId="backlinks-target-error"
+      >
+        <form.Field name="target">
+          {(field) => (
+            <SearchInput
+              placeholder="Enter a domain or URL"
+              aria-label="Domain or URL"
+              value={field.state.value}
+              onChange={(event) => {
+                const nextTarget = event.target.value;
+                field.handleChange(nextTarget);
+                if (!userSelectedScope) {
+                  form.setFieldValue("scope", defaultScopeForInput(nextTarget));
+                }
+              }}
+              aria-invalid={targetError ? true : undefined}
+              aria-describedby={
+                targetError ? "backlinks-target-error" : undefined
               }
-            }}
-            aria-invalid={targetError ? true : undefined}
-            aria-describedby={
-              targetError ? "backlinks-target-error" : undefined
-            }
-          />
-        )}
-      </form.Field>
+            />
+          )}
+        </form.Field>
 
-      <form.Field name="scope">
-        {(field) => (
-          <ResearchScopeSelect
-            value={field.state.value}
-            onChange={(scope) => {
-              setUserSelectedScope(true);
-              field.handleChange(scope);
-            }}
-          />
-        )}
-      </form.Field>
-    </SearchCard>
+        <form.Field name="scope">
+          {(field) => (
+            <ResearchScopeSelect
+              value={field.state.value}
+              onChange={(scope) => {
+                setUserSelectedScope(true);
+                field.handleChange(scope);
+              }}
+            />
+          )}
+        </form.Field>
+      </SearchCard>
+      <CreditCostHint feature="backlinks" />
+    </div>
   );
 }

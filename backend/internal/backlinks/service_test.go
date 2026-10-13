@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 type memoryCache struct {
@@ -69,7 +70,7 @@ func testClientWithTimeout(t *testing.T, handler http.Handler, recorder *usageRe
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("test-user:test-pass")), Recorder: recorder, MaxRetries: 0, Timeout: timeout})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: &spendtest.Guard{}, BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("test-user:test-pass")), Recorder: recorder, MaxRetries: 0, Timeout: timeout})
 	if err != nil {
 		t.Fatal(err)
 	}

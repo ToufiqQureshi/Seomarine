@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/plans"
@@ -37,6 +38,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /api/v1/billing/cancel", d.WithSession(cancelHandler(d.Logger, d.Service)))
 	mux.Handle("GET /api/v1/billing/credits", d.WithSession(creditsHandler(d.Logger, d.Service, d.Credits)))
 	mux.Handle("POST /api/v1/billing/usage-events", d.WithSession(usageEventsHandler(d.Logger, d.Credits)))
+	mux.Handle("GET /api/v1/billing/usage", d.WithSession(usageHandler(d.Logger, d.Service, d.Credits, time.Now)))
 }
 
 // planInfo is a plan as the billing screens show it.
