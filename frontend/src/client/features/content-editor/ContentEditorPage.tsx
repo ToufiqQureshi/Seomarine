@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
+import { sortBy } from "remeda";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
@@ -100,10 +101,10 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
         };
         queryClient.setQueryData(
           draftListKey,
-          [
-            summary,
-            ...currentDrafts.filter((item) => item.id !== saved.id),
-          ].toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          sortBy(
+            [summary, ...currentDrafts.filter((item) => item.id !== saved.id)],
+            [(item) => item.updatedAt, "desc"],
+          ),
         );
       } else {
         void queryClient.invalidateQueries({
@@ -210,7 +211,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
       <section className="min-w-0 space-y-5">
-        <WriterReminder projectId={projectId} />
+        <WriterReminder key={projectId} projectId={projectId} />
         <WritingModeToggle mode={mode} onChange={setMode} />
         <ArticleComposer
           draft={draft}
