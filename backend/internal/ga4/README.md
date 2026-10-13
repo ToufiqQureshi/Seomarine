@@ -17,8 +17,7 @@ requests.
 
 ## Rules and edge cases
 
-- The connection table remains TypeScript/Drizzle schema-owned; Go setup reads
-  and writes its existing shape without introducing a schema migration. The
+- The connection table `ga4_connections` is part of migration version 1. The
   project-access middleware is the authorization boundary for report reads.
 - A report defaults to organic search and the last 28 complete days in the
   property's IANA timezone. Future end dates clamp to yesterday in that zone;
@@ -37,8 +36,8 @@ requests.
   never includes provider error text in logs or responses.
 - Property listing, connection setup/removal, MCP reports/overview/measurement
   health/Search Opportunities, and their backing services are available in Go.
-  The React call-sites remain on the legacy implementation for later roadmap
-  work.
+  The setup UI and the dashboard card call these routes; the report,
+  measurement-health and Search Opportunity routes are used by the MCP tools.
 
 ## Property setup
 
@@ -48,10 +47,8 @@ OAuth configuration. `properties/list` lists properties from each of the
 user's grants with isolated reconnect/unavailable states. `connection/set`
 requires an owner/admin, confirms the grant belongs to the user, verifies the
 property from Google's account summaries, then reads canonical property
-metadata before saving. `connection/disconnect` has the same role gate. The
-existing `ga4_connections` table and account grants remain TypeScript-owned;
-no migration is introduced. User-info email lookup remains optional, matching
-the legacy flow. Property discovery is capped at 100 pages of 200 account
+metadata before saving. `connection/disconnect` has the same role gate.
+User-info email lookup is optional. Property discovery is capped at 100 pages of 200 account
 summaries.
 
 Deliberate difference: the Go routes do not emit the legacy PostHog

@@ -1,8 +1,8 @@
 # Google OAuth
 
-## Legacy behavior and edge cases captured before the port
+## Behavior and edge cases
 
-| Behavior | Required Go behavior |
+| Case | Required behavior |
 |---|---|
 | Consent supports GSC and GA4 with separate provider IDs, callback paths and scopes. | Bind each state to one provider and session user. |
 | Callback URL may be external or protocol relative. | Reduce it to a same origin path, defaulting to `/`. |
@@ -16,16 +16,22 @@
 
 ## Status
 
-The state store, PKCE and AES-GCM primitives are implemented. The HTTP callback,
-legacy account repository, token refresh, disconnect, GSC and GA4 callers are
-not yet ported. No React caller uses this package yet.
+Everything in the table is implemented: consent start
+(`POST /api/v1/google/oauth/{provider}/start`), the callbacks
+(`/api/gsc/oauth/callback`, `/api/ga4/oauth/callback`), grant storage, token
+refresh, and account removal (`POST /api/v1/google/accounts/impact` and
+`/remove`). `internal/gsc` and `internal/ga4` call Google through this
+package's API client. Sign-in with Google is separate: it lives in
+`internal/emailauth` and stores no Google tokens.
 
 ## Rules
 
 - `go_google_oauth_states` is a short lived state table. Expired rows are swept
   when a state is created. A state is consumed with one `DELETE ... RETURNING`.
-- `GOOGLE_TOKEN_ENCRYPTION_KEY` must supply 32 bytes, base64 encoded. The
-  ciphertext prefix is a key identifier to support future rotation.
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` is optional. When set it must supply 32
+  bytes, base64 encoded. When empty, the key is derived from
+  `BETTER_AUTH_SECRET`, which is why that secret must never change on a live
+  site. The ciphertext prefix is a key identifier to support rotation.
 - `golang.org/x/crypto/chacha20poly1305` is needed solely to read Better Auth's
   existing XChaCha20-Poly1305 grants. Go's standard library lacks XChaCha.
 - Versioned Better Auth ciphertext envelopes need the matching old key ring;

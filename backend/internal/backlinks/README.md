@@ -27,7 +27,6 @@ Routes are `POST /api/v1/projects/{projectId}/backlinks/{overview,rows,referring
 - Cache entries are organization-scoped; cache failures must not turn a valid provider call into an error.
 - DataForSEO summary/history are whole-target endpoints. Subfolder counts must stay filtered and cannot claim unavailable rank/trend data.
 - UI response fields and nullability match the TypeScript schemas. New API contracts are validated with Zod.
-- The legacy MCP tools still call `BacklinksService`; that TypeScript service and its provider helpers remain until MCP is ported.
 
 ## Configuration, limits and tests
 

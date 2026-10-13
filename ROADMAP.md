@@ -1,98 +1,92 @@
 # Uplumo roadmap
 
-Status: ✅ merged · 🔨 in progress · ⏳ pending.
-One PR per item.
-Product reasoning lives in `docs/maintainers/PRODUCT.md`; rules for agents in `CLAUDE.md`.
+Status: ✅ done · 🔨 in progress · ⏳ not started.
+Product reasoning lives in `docs/PRODUCT.md`; rules for agents in `CLAUDE.md`.
 
-## Phase 0: Foundation (must come first)
+Last reviewed against the code and the live site on 13 October 2026.
 
-| #    | Task                                                                                                                                                    | Status                                                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 0.1  | Import code into the Uplumo repo, add the proprietary license, keep the MIT attribution                                                              | ✅                                                                                      |
-| 0.2  | Make the GitHub repo private (owner does this in GitHub settings)                                                                                       | ⏳                                                                                      |
-| 0.3  | Go backend skeleton: config, Postgres pool, health/readiness, graceful shutdown, CI with all mandatory checks                                           | ✅                                                                                      |
-| 0.3b | Migrations (goose) + auth (reads the existing login session), Redis, proxy to the legacy app                                                            | ✅                                                                                      |
-| 0.4  | Go server serves the React SPA (Vite build) as static files                                                                                             | ⏳                                                                                      |
-| 0.5  | Plan the port of existing TypeScript backend features to Go (projects, keywords, rank tracking, audit, backlinks, reports, MCP)                         | 🔧                                                                                      |
-| 0.5a | MCP dispatcher, tool catalog and 58 Go tool ports; OAuth moved to Go, contract tests deferred to final phase                                            | in progress                                                                             |
-| 0.5d | Port keyword/rank-tracking market tables and resolution to Go; API and jobs remain pending                                                              | in progress                                                                             |
-| 0.5f | Rank tracking in Go: tables, rules, configs, keywords, results, manual/scheduled checks and metrics refresh done; credit holds and React switch pending | in progress                                                                             |
-| 0.5g | Keywords in Go: saved keywords, tags, research (Labs/Ads, local), SERP analysis, metrics refresh; React switch pending                                  | in progress                                                                             |
-| 0.5b | Backlinks reports API in Go; React uses Go endpoints while MCP remains on TypeScript                                                                    | in progress                                                                             |
-| 0.5c | Domain overview API in Go (overview, keyword suggestions, keywords and pages tabs); React uses it, MCP stays on TypeScript                              | in progress                                                                             |
-| 0.5e | SERP location search API in Go (city and region picker, 30-day country cache); React uses it, MCP stays on TypeScript                                   | in progress                                                                             |
-| 0.5h | GA4 reports, organic overview, measurement-health, Search Opportunity and property setup APIs in Go; MCP and report-page React switch pending           | in progress                                                                             |
-| 0.5i | GSC Search Performance API in Go (report, query/page paging and export); MCP and React switch pending                                                   | in progress                                                                             |
-| 0.5j | GSC project connection API in Go (grant status, property listing/selection, disconnect, URL inspection); OAuth, MCP and React switch pending            | in progress                                                                             |
-| 0.5k | SAM session registry API in Go; chat runtime, tools, metering and React switch pending                                                                  | SAM in Go: sessions, chat (SSE, OpenRouter), tools, credits, compaction; React switched |
-| 0.5l | Staged Goose version 1 baseline for Drizzle PostgreSQL schema; activate at cutover                                                                      | staged                                                                                  |
-| 0.5m | Project context shared Go read/update service, authenticated API and MCP writes; client switch pending                                                  | in progress                                                                             |
-| 0.5n | Auth in Go: email/password, verification, reset, Google sign-in, organization invitations, API keys                                                     | in progress                                                                             |
-| 0.5o | GDPR erasure in Go (`cmd/erase-user`) replacing the TypeScript script                                                                                   | in progress                                                                             |
+## Where we are
 
-## Phase 1: Rebrand + new UI
+Uplumo is live at `https://uplumo.com` on Railway. The whole backend is Go and
+the React app is a static SPA the Go server serves. People can sign up, verify
+their email and use the free features. **Nobody can pay yet**: Razorpay is
+approved, but its keys are not in production.
 
-| #   | Task                                                                    | Status |
-| --- | ----------------------------------------------------------------------- | ------ |
-| 1.1 | Brand kit: logo, colors, typography, icon set                           | ✅     |
-| 1.2 | New app shell: sidebar, navigation, dashboard layout                    | ✅     |
-| 1.3 | Remove every trace of the upstream brand (code, docs, links, telemetry) | ✅     |
-| 1.4 | New landing page + INR pricing page (USD pending)                       | ✅     |
-| 1.5 | Plain-language and Hinglish copy pass                                   | ⏳     |
+## Launch checklist
 
-## Phase 2: Core differentiators
+| Item                                                                         | Status |
+| ---------------------------------------------------------------------------- | ------ |
+| Railway deploy, domain, `www` redirect                                       | ✅     |
+| Sign-up, email verification, password reset, Google sign-in                  | ✅     |
+| `support@uplumo.com` (Cloudflare forwards it)                                | ✅     |
+| Loops email: verify and reset working; invitation template made, not tested  | 🔨     |
+| Public pages: landing, pricing, about, contact, terms, privacy, refunds, shipping | ✅ |
+| Razorpay account approved (KYC)                                              | ✅     |
+| Razorpay test payment through the site, then live keys in Railway            | ⏳     |
+| One-click cancel (`POST /api/v1/billing/cancel`, "Cancel Pro" on Billing)    | ✅ built, not yet run against Razorpay |
+| DataForSEO key in production (keywords, rank tracking, backlinks, AI visibility answer 503 without it) | ⏳ |
+| Google OAuth app verification (Search Console and Analytics scopes)          | ⏳     |
+| Live usage shown to the customer                                             | ⏳     |
+| Lawyer review of the legal pages                                             | ⏳     |
 
-| #    | Feature                                                                                                                                                       | Status |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 2.1  | White-label PDF/share reports (logo, name, color, website)                                                                                                    | ✅     |
-| 2.2  | **Uplumo Analytics** (Go): tracking script, ingest API, dashboard (visitors, pages, sources, devices)                                                      | ✅     |
-| 2.2b | Analytics: countries breakdown                                                                                                                                | 🔨     |
-| 2.3  | **AI traffic detection**: ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus recovery of AI traffic hiding as "Direct"                              | ✅     |
-| 2.4  | **AI Visibility**: mentions, citations, sentiment and competitor share of voice across ChatGPT, Perplexity, Gemini, AI Overviews and Claude, with drop alerts | 🔨     |
-| 2.4a | AI Visibility base in Go: Brand Lookup (mentions, citations, share of voice) and Prompt Explorer, ported from the legacy app                                  | ✅     |
-| 2.5  | Join AI visibility with analytics: "seen in AI" vs "visitors from AI"                                                                                         | ⏳     |
-| 2.6  | **Content SEO Editor** ("RankMath for every site"): project-scoped drafts, live SEO/AEO readiness checks and mode-aware AI writing actions; external-site support pending | in progress |
-| 2.7  | Content editor fix delivery: JS snippet, GitHub PR, copy-paste                                                                                                | ⏳     |
+## What is built
 
-## Phase 3: Improvements to existing features
+Built means the Go API and the page exist and are tested in CI. It does not
+mean each one has been tried on production with real provider keys.
 
-| #   | Feature                                                          | Status |
-| --- | ---------------------------------------------------------------- | ------ |
-| 3.1 | Rank tracking: India city-level locations                        | ⏳     |
-| 3.2 | Site audit: AI "how to fix" for every issue (English + Hinglish) | ⏳     |
-| 3.3 | Scheduled reports, auto-emailed to clients                       | ⏳     |
-| 3.4 | Client portal: clients log in and see only their own reports     | ⏳     |
+| Area                 | What exists                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| Accounts             | Email and password, verification, reset, Google sign-in, workspaces, invitations, roles, API keys |
+| Uplumo Analytics     | Tracking script, ingest, dashboard (visitors, pages, sources, devices, countries)             |
+| AI traffic detection | ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus AI traffic hiding as "Direct"    |
+| AI Visibility        | Brand Lookup (mentions, citations, share of voice) and Prompt Explorer                        |
+| Keywords             | Research, SERP analysis, saved keywords with tags                                             |
+| Rank tracking        | Configs, manual and scheduled checks, city-level locations                                    |
+| Site audit           | Crawl, issues, Lighthouse                                                                     |
+| Backlinks, Domain    | Overview, rows, referring domains, top pages; domain keywords and pages                       |
+| Google               | Search Console performance and URL inspection, GA4 reports and measurement health             |
+| Reports              | White-label reports (logo, name, colour, website), public share links                         |
+| Content editor       | Project drafts, live SEO/AEO checks, AI writing actions                                       |
+| Local SEO            | Business search, profile, Google Maps rank grid                                               |
+| Assistant (SAM)      | Chat with tools over the project's data                                                       |
+| MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                              |
+| Billing              | Free and one Pro plan (₹1,499 a month) on Razorpay Subscriptions, webhooks, cancel, internal credit ledger |
+| Privacy              | `cmd/erase-user` erases one account                                                           |
 
-## Phase 4: Local SEO
+## Not built yet
 
-| #   | Feature                                           | Status |
-| --- | ------------------------------------------------- | ------ |
-| 4.1 | Google Maps rank grid ("dentist near me" by area) | ⏳     |
-| 4.2 | Google Business Profile audit + review tracking   | ⏳     |
+| Feature                                                                 | Status |
+| ----------------------------------------------------------------------- | ------ |
+| The Basic / Pro / Agency plans decided below, with their limits         | ⏳     |
+| Live usage on the Billing page                                          | ⏳     |
+| AI Visibility: sentiment, tracking over time, drop alerts               | ⏳     |
+| "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics) | ⏳ |
+| Content editor on an external site; delivering fixes (JS snippet, GitHub PR, copy-paste) | ⏳ |
+| Site audit: AI "how to fix" for every issue (English + Hinglish)        | ⏳     |
+| Scheduled reports, emailed to clients                                   | ⏳     |
+| Client portal: clients log in and see only their own reports            | ⏳     |
+| Google Business Profile audit and review tracking                       | ⏳     |
+| Plain-language and Hinglish copy pass across the app                    | ⏳     |
+| USD pricing                                                             | ⏳     |
+| Account deletion and data export from Settings                          | ⏳     |
 
-## Phase 5: Launch
+## Next up
 
-| #   | Task                                                                                             | Status |
-| --- | ------------------------------------------------------------------------------------------------ | ------ |
-| 5.1 | Railway deploy: Dockerfile, `railway.json` and `docs/DEPLOY.md` done; go live pending | 🔨     |
-| 5.2 | Domain, email, payments (Razorpay checkout + webhooks and Go Loops transactional client started) | 🔨     |
-| 5.3 | One-click cancel, live usage, AI visibility in the base plan                                     | ⏳     |
-
-## Next up (engineering)
-
-1. 5.1 Railway deploy, so the product is live.
-2. 5.3 One-click cancel and live usage (part of the pricing promise).
-3. 0.4 Go serves the React build, retiring the legacy proxy route by route.
-4. 2.4 AI Visibility, then 2.5 joining it with analytics.
-
-Backlinks Go API is implemented for the React pages. Legacy MCP tools continue
-using the TypeScript service until MCP is ported.
+1. Take a Razorpay test payment through the site, cancel it, then switch to
+   live keys.
+2. Put the DataForSEO key in production, or hide the features that need it.
+3. Walk through every page on production as a real user and fix what breaks.
+4. Build the three paid plans and their limits.
 
 ## Owner actions
 
-- Make the GitHub repo private (0.2).
-- Buy the domain, create the Razorpay account and the Railway project.
-  Secrets go into Railway variables only, never into the repo or chat.
+- Razorpay: create the Pro plan and the webhook, put the four `RAZORPAY_*`
+  values in Railway. Steps are in `docs/DEPLOY.md`.
+- Submit the Google OAuth app for verification.
+- Have a lawyer read the terms, privacy, refund and shipping pages.
+- Make the GitHub repo private if it is not already.
+
+Secrets go into Railway variables only, never into the repo or chat.
 
 ## Decided
 
@@ -104,22 +98,31 @@ using the TypeScript service until MCP is ported.
 - Plans (owner, 12 October 2026). Not built yet: today the code has Free and
   one Pro plan at ₹1,499.
 
-  | Limit               | Basic  | Pro    | Agency          |
-  | ------------------- | ------ | ------ | --------------- |
-  | Price per month     | ₹999   | ₹2,499 | ₹5,999          |
-  | Sites               | 1      | 2      | 10, then ₹400 each |
-  | Tracked keywords    | 100    | 500    | 2,000           |
-  | White-label reports | no     | no     | yes             |
-  | Client access       | no     | no     | yes             |
-  | Team members        | 1      | 3      | 10              |
+  | Limit               | Basic | Pro    | Agency             |
+  | ------------------- | ----- | ------ | ------------------ |
+  | Price per month     | ₹999  | ₹2,499 | ₹5,999             |
+  | Sites               | 1     | 2      | 10, then ₹400 each |
+  | Tracked keywords    | 100   | 500    | 2,000              |
+  | White-label reports | no    | no     | yes                |
+  | Client access       | no    | no     | yes                |
+  | Team members        | 1     | 3      | 10                 |
 
   Sites and white-label are what separate Pro from Agency: a small agency
   with four client sites must not fit in Pro.
 
 ## Open decisions for the owner
 
-- Whether a Free plan stays beside the three paid plans.
+- Whether a Free plan stays beside the three paid plans. Today the Free plan
+  on the pricing page lists white-label reports, which the plan table above
+  gives only to Agency.
 - Data provider: keep DataForSEO, or drop the features that need it
   (keywords, rank tracking, backlinks, AI visibility). An AI model cannot
   replace it, because it has no real search data.
 - Audit page and AI-check limits per plan.
+- The old `/billing` page (credits and top-ups in USD) and the `/yc` offer
+  page are still in the app and contradict "customers never see credits".
+  Remove them or rebuild them.
+- Cloudflare's managed `robots.txt` blocks AI crawlers (GPTBot, ClaudeBot,
+  Google-Extended) on a product that sells AI visibility. Keep or turn off.
+- Whether billing rows are kept when an account is erased (tax records). See
+  `backend/internal/gdpr/README.md`.

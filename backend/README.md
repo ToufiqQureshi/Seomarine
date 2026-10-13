@@ -11,20 +11,30 @@ PUBLIC_URL=http://localhost:8080 \
 PORT=8080 go run ./cmd/server
 ```
 
-| Variable                  | Required | Meaning                                                                                                         |
-| ------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`            | yes      | Postgres. A new database is fully built by the migrations.                                                                            |
-| `REDIS_URL`               | yes      | Redis, e.g. `redis://localhost:6379/0` or `rediss://` for TLS.                                                  |
-| `BETTER_AUTH_SECRET`      | yes      | At least 32 characters. Signs the `better-auth.session_token` cookie and email tokens. |
-| `STATIC_DIR`              | no       | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
-| `PUBLIC_URL`              | yes      | The site's public origin, e.g. `https://uplumo.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
-| `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
-| `DATAFORSEO_API_KEY`      | no       | Base64 `login:password` for AI search, backlinks and domain. Without it those endpoints answer `503`. |
-| `TRUSTED_PROXY_CIDRS`     | no       | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
-| `RAZORPAY_KEY_ID`         | no       | Razorpay API key id. Set all four `RAZORPAY_*` variables or none; without them billing endpoints answer `503`.  |
-| `RAZORPAY_KEY_SECRET`     | no       | Razorpay API key secret.                                                                                        |
-| `RAZORPAY_WEBHOOK_SECRET` | no       | Secret of the Razorpay webhook pointed at `/webhooks/razorpay`.                                                 |
-| `RAZORPAY_PLAN_ID_PRO`    | no       | Razorpay plan id (`plan_...`) of the monthly Pro plan.                                                          |
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Postgres. A new database is fully built by the migrations. |
+| `REDIS_URL` | yes | Redis, e.g. `redis://localhost:6379/0` or `rediss://` for TLS. |
+| `BETTER_AUTH_SECRET` | yes | At least 32 characters. Signs the `better-auth.session_token` cookie and email tokens, and by default derives the key that encrypts Google tokens. Never change it on a live site. |
+| `PUBLIC_URL` | yes | The site's public origin, e.g. `https://uplumo.com`, no path. Canonical, Open Graph and JSON-LD URLs use it. |
+| `BETTER_AUTH_URL` | no | Origin used in sign-in, verification and invitation links. Set it to the same value as `PUBLIC_URL`. |
+| `STATIC_DIR` | no | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
+| `PORT` | no | Listen port, default `8080`. |
+| `TRUSTED_PROXY_CIDRS` | no | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_PLAN_ID_PRO` | no | Set all four or none; without them billing endpoints answer `503`. The plan id (`plan_...`) is the monthly Pro plan, and the webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
+| `BILLING_MONTHLY_CREDITS_USD` | no | Credits, in US dollars of provider cost, granted to a workspace on each paid subscription charge. 0 to 10000, default 0. |
+| `DATAFORSEO_API_KEY` | no | Base64 `login:password`. Without it keywords, rank tracking, backlinks, domain and AI search answer `503`. |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | The model behind the assistant and AI writing. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no | Google sign-in, Search Console and Analytics. |
+| `GOOGLE_TOKEN_ENCRYPTION_KEY` | no | Base64, 32 bytes. Encrypts Google tokens with its own key instead of the one derived from `BETTER_AUTH_SECRET`. |
+| `LOOPS_API_KEY`, `LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID`, `LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID`, `LOOPS_TRANSACTIONAL_INVITATION_ID` | no | Transactional email. The key, the verify ID and the reset ID are needed together. See `internal/email/README.md`. |
+| `TURNSTILE_SECRET_KEY` | no | Bot check on sign-up. |
+| `BYPASS_EMAIL_VERIFICATION` | no | `true` lets a local sign-up skip the email. Refused on an `https` site. |
+| `OPENAI_APPS_CHALLENGE` | no | Token served at `/.well-known/openai-apps-challenge`. |
+
+On an `https` site the server also refuses to start when `DATAFORSEO_API_KEY`
+or `OPENROUTER_API_KEY` is set without the `RAZORPAY_*` variables: without
+billing nothing limits what a workspace can cost us.
 
 At startup the server connects to Postgres, applies pending migrations,
 connects to Redis, and fails if any step fails. It shuts down gracefully on
@@ -32,14 +42,22 @@ SIGINT or SIGTERM.
 
 ## Routes
 
-- `GET /healthz`: liveness. The process is up.
+This list covers the routes owned by the server itself. Each feature's routes
+are in its own `internal/<feature>/README.md` and, where one exists,
+`api/<feature>.yaml`.
+
+- `GET /healthz`: liveness. The process is up. `GET /api/health` answers
+  `{"status":"ok"}` and is what Railway checks.
 - `GET /readyz`: readiness. Postgres and Redis answer within 2 seconds,
   otherwise 503.
 - `GET /`: the landing page for visitors without a valid session; signed-in
-  users get the app. `GET /pricing`: the pricing page, for
-  everyone. Both are rendered once at startup from `internal/site`
-  (`html/template`, no JavaScript) and send `ETag`, a strict CSP and
-  `Vary: Cookie` on `/`. Prices are the `FreePriceINR`/`ProPriceINR`
+  users get the app. `GET /pricing`, `/about`, `/contact`, `/terms`,
+  `/privacy`, `/refunds` and `/shipping`: public pages, for everyone, plus
+  `/robots.txt` and `/sitemap.xml`. All are rendered once at startup from
+  `internal/site` (`html/template`, no JavaScript) and send `ETag`, a strict
+  CSP, `no-transform` (so Cloudflare does not rewrite the support address)
+  and `Vary: Cookie` on `/`. The operator name, address, phone and the
+  "last updated" date of the legal pages are constants in the same file. Prices are the `FreePriceINR`/`ProPriceINR`
   constants in `internal/site/site.go`; keep `ProPriceINR` equal to the
   Razorpay plan's amount.
 - `GET /site/...`: the pages' embedded assets (logo, font, social card).
@@ -63,11 +81,15 @@ SIGINT or SIGTERM.
   sources, referrers and devices for whole UTC days, at most 366 of them.
 - `GET /api/v1/billing/status`: the plan of the session's active workspace,
   `{"plan": "free"|"pro", "status": "<Razorpay status>"|"none",
-"currentPeriodEnd": RFC 3339|null}`. Any member may read it.
+"currentPeriodEnd": RFC 3339|null, "cancelAtPeriodEnd": bool}`. Any member
+  may read it.
 - `POST /api/v1/billing/checkout`: starts a Pro subscription and returns
   `{"subscriptionId", "keyId"}` for Razorpay Checkout. Owners and admins
   only (`403` otherwise); `409` when the workspace already has a live
   subscription; `502` when Razorpay fails.
+- `POST /api/v1/billing/cancel`: stops the subscription from charging again
+  and returns the status. Owners and admins only; `409` when there is nothing
+  to cancel. See `internal/billing/README.md`.
 - `POST /webhooks/razorpay`: Razorpay subscription webhooks, verified by
   `X-Razorpay-Signature` (`401` when it is missing or wrong).
 - `POST /api/v1/projects/{projectId}/ai-search/brand-lookup` and
@@ -143,6 +165,8 @@ Hosts compare case-insensitively without `www.`. The tables are in
 ## Billing
 
 One Pro plan, sold as a Razorpay subscription per workspace (organization).
+More, including cancelling and the credit ledger, is in
+`internal/billing/README.md`.
 Checkout creates the subscription with the workspace id in its notes; the
 browser then pays for it with Razorpay Checkout. Razorpay reports what
 happens next through webhooks, so subscribe the webhook to
@@ -163,16 +187,16 @@ happens next through webhooks, so subscribe the webhook to
 ## Database
 
 Migrations live in `internal/database/migrations` (goose, embedded SQL) and
-run at startup under a Postgres advisory lock. Version 1 is the full
-legacy schema; Go-owned tables, including the `go_schema_migrations` history,
-are prefixed `go_`.
+run at startup under a Postgres advisory lock. Version 1 holds the tables
+the product started with; tables added since, and the `go_schema_migrations`
+history, are prefixed `go_`. See `internal/database/README.md`.
 
 ## Checks (all mandatory, see /CLAUDE.md)
 
 ```sh
 go mod tidy && gofmt -l . && go vet ./... && staticcheck ./... \
-  && golangci-lint run ./... && go test -race -count=1 -cover ./... \
-  && govulncheck ./... && deadcode ./...
+  && golangci-lint run ./... && go test -p 1 -race -count=1 -cover ./... \
+  && govulncheck ./... && deadcode -test ./...
 ```
 
 Integration tests need `TEST_DATABASE_URL` (Postgres) and `TEST_REDIS_URL`
