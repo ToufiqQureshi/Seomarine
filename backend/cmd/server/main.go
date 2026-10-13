@@ -46,6 +46,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/errreport"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
@@ -66,21 +67,36 @@ const (
 	// the database can be in another region.
 	migrateTimeout  = 5 * time.Minute
 	shutdownTimeout = 15 * time.Second
+	// How long the last error reports get to leave before the process exits.
+	reportFlushTimeout = 2 * time.Second
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(logger); err != nil {
-		logger.Error("server stopped", "err", err)
+	if err := run(slog.New(slog.NewJSONHandler(os.Stdout, nil))); err != nil {
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
+func run(logger *slog.Logger) (err error) {
+	var reporter *errreport.Reporter
+	// Logged here, not in main, so the reason the server stopped is reported
+	// too and is delivered before the process exits.
+	defer func() {
+		if err != nil {
+			logger.Error("server stopped", "err", err)
+		}
+		reporter.Flush(reportFlushTimeout)
+	}()
+
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+	reporter, err = errreport.New(errreport.Options{DSN: cfg.SentryDSN, Environment: cfg.Environment, Release: cfg.Release})
+	if err != nil {
+		return err
+	}
+	logger = slog.New(reporter.Handler(logger.Handler()))
 
 	pages, err := site.New(cfg.PublicURL)
 	if err != nil {

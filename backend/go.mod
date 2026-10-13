@@ -3,6 +3,7 @@ module github.com/toufiqqureshi/uplumo/backend
 go 1.27.2
 
 require (
+	github.com/getsentry/sentry-go v0.50.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/pressly/goose/v3 v3.27.0
