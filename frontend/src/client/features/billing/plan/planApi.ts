@@ -7,6 +7,8 @@ const statusSchema = z.object({
   currentPeriodEnd: z.iso.datetime({ offset: true }).nullable(),
   // True once the owner cancelled: Pro runs until currentPeriodEnd, then stops.
   cancelAtPeriodEnd: z.boolean(),
+  // True for Uplumo's own workspaces: every feature, nothing to pay.
+  unlimited: z.boolean(),
   paymentsConfigured: z.boolean(),
   availablePlans: z.array(z.enum(["basic", "pro", "agency"])),
 });
@@ -37,12 +39,30 @@ export function cancelSubscription(): Promise<BillingStatus> {
   return apiRequest("/api/v1/billing/cancel", statusSchema, "POST");
 }
 
-// What Pro costs a month, in rupees. It must match the Razorpay plan the Go
-// API sells and ProPriceINR in backend/internal/site, which the public
-// pricing page prints.
-export const BASIC_PRICE_INR = 899;
-export const PRO_PRICE_INR = 1899;
-export const AGENCY_PRICE_INR = 4999;
+const planSchema = z.object({
+  id: z.enum(["free", "basic", "pro", "agency"]),
+  name: z.string().min(1),
+  priceInr: z.number().int().nonnegative(),
+  summary: z.string(),
+  highlights: z.array(z.string()),
+});
+export type BillingPlan = z.infer<typeof planSchema>;
+
+// Prices and what each plan includes come from the Go plan catalog, the same
+// list the public pricing page and every plan check read. Never copy a price
+// into this app.
+export const billingPlansQueryOptions = {
+  queryKey: ["goBillingPlans"],
+  queryFn: async () =>
+    (
+      await apiRequest(
+        "/api/v1/billing/plans",
+        z.object({ plans: z.array(planSchema) }),
+      )
+    ).plans,
+  retry: shouldRetryApiError,
+  staleTime: Infinity,
+};
 
 // Razorpay subscription states (plus "none" for no subscription), in words
 // an owner understands. Anything else shows as sent. The Go API grants Pro

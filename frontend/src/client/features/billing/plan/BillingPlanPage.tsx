@@ -18,15 +18,15 @@ import {
 } from "@/client/components/ui/card";
 import { useCanManageBilling } from "@/client/features/team/organizationQueries";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { SUPPORT_EMAIL } from "@/client/lib/support";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
-  AGENCY_PRICE_INR,
-  BASIC_PRICE_INR,
-  PRO_PRICE_INR,
+  billingPlansQueryOptions,
   billingStatusQueryOptions,
   cancelSubscription,
   createCheckout,
   describeStatus,
+  type BillingPlan,
   type BillingStatus,
 } from "./planApi";
 import { openRazorpayCheckout } from "./razorpay";
@@ -37,49 +37,15 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-const PAID_PLANS = [
-  {
-    id: "basic" as const,
-    name: "Basic",
-    price: BASIC_PRICE_INR,
-    sites: "1 website",
-    features: [
-      "Analytics and AI referral traffic",
-      "Google Search Console and GA4 connections",
-      "Search queries, pages and performance trends",
-      "Saved keywords and project context",
-      "No paid SEO-data or AI/LLM provider calls",
-    ],
-  },
-  {
-    id: "pro" as const,
-    name: "Pro",
-    price: PRO_PRICE_INR,
-    sites: "Up to 5 websites",
-    features: [
-      "Everything in Basic",
-      "Keyword research, rank tracking, domain and backlink data",
-      "Technical site audits with rendered-page analysis",
-      "AI visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude",
-      "$3 monthly credits for AI writing and rendered-page audits",
-    ],
-  },
-  {
-    id: "agency" as const,
-    name: "Agency",
-    price: AGENCY_PRICE_INR,
-    sites: "Up to 25 websites",
-    features: [
-      "Everything in Pro",
-      "White-label reports with your agency branding",
-      "$10 monthly credits for AI writing and rendered-page audits",
-    ],
-  },
-];
+type PaidPlan = BillingPlan & { id: "basic" | "pro" | "agency" };
 
 export function BillingPlanPage() {
   const statusQuery = useQuery(billingStatusQueryOptions);
+  const plansQuery = useQuery(billingPlansQueryOptions);
   const canManageBilling = useCanManageBilling();
+  const paidPlans = (plansQuery.data ?? []).filter(
+    (plan): plan is PaidPlan => plan.id !== "free",
+  );
 
   return (
     <div className="h-full overflow-auto px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
@@ -88,7 +54,7 @@ export function BillingPlanPage() {
           title="Plan and billing"
           description="Compare what each plan includes and manage your workspace subscription."
         />
-        {statusQuery.isPending ? (
+        {statusQuery.isPending || plansQuery.isPending ? (
           <SkeletonCard />
         ) : statusQuery.isError ? (
           <StatusError
@@ -96,21 +62,27 @@ export function BillingPlanPage() {
             onRetry={() => void statusQuery.refetch()}
             isRetrying={statusQuery.isFetching}
           />
+        ) : plansQuery.isError ? (
+          <StatusError
+            error={plansQuery.error}
+            onRetry={() => void plansQuery.refetch()}
+            isRetrying={plansQuery.isFetching}
+          />
         ) : (
           <>
-            <CurrentPlanCard status={statusQuery.data} />
+            <CurrentPlanCard status={statusQuery.data} plans={paidPlans} />
             <section aria-labelledby="available-plans" className="space-y-4">
               <div>
                 <h2 id="available-plans" className="text-xl font-semibold">
                   Compare paid plans
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Prices are monthly per workspace. Usage credits apply only to
-                  credit-metered AI writing and rendered audits.
+                  Prices are per workspace, per month. Cancel in one click, any
+                  time.
                 </p>
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
-                {PAID_PLANS.map((plan) => (
+                {paidPlans.map((plan) => (
                   <PlanOption
                     key={plan.id}
                     plan={plan}
@@ -163,12 +135,17 @@ function StatusError({
   );
 }
 
-function CurrentPlanCard({ status }: { status: BillingStatus }) {
+function CurrentPlanCard({
+  status,
+  plans,
+}: {
+  status: BillingStatus;
+  plans: BillingPlan[];
+}) {
   const planName =
     status.plan === "free"
       ? "Free"
-      : (PAID_PLANS.find((plan) => plan.id === status.plan)?.name ??
-        status.plan);
+      : (plans.find((plan) => plan.id === status.plan)?.name ?? status.plan);
   const { label, detail, canUpgrade } = describeStatus(status.status);
   const renews = status.currentPeriodEnd
     ? new Date(status.currentPeriodEnd).toLocaleDateString("en-IN", {
@@ -177,27 +154,35 @@ function CurrentPlanCard({ status }: { status: BillingStatus }) {
         year: "numeric",
       })
     : null;
-  const isPaid = status.plan !== "free";
-  const description = status.cancelAtPeriodEnd
-    ? `Cancelled. ${planName} stays active until ${renews ?? "the end of your paid term"}; you will not be charged again.`
-    : isPaid
-      ? renews
-        ? `${planName} renews on ${renews}.`
-        : `Your ${planName} plan is active.`
-      : "You are using the free plan.";
+  const isPaid = status.plan !== "free" && !status.unlimited;
+  const description = status.unlimited
+    ? "This is an Uplumo team workspace. Every feature is on, with no limits, and nothing is charged."
+    : status.cancelAtPeriodEnd
+      ? `Cancelled. ${planName} stays active until ${renews ?? "the end of your paid term"}; you will not be charged again.`
+      : isPaid
+        ? renews
+          ? `${planName} renews on ${renews}.`
+          : `Your ${planName} plan is active.`
+        : "You are using the free plan.";
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          {planName} plan
-          <Badge variant={status.status === "active" ? "success" : "soft"}>
-            {label}
+          {status.unlimited ? "Team workspace" : `${planName} plan`}
+          <Badge
+            variant={
+              status.unlimited || status.status === "active"
+                ? "success"
+                : "soft"
+            }
+          >
+            {status.unlimited ? "Unlimited" : label}
           </Badge>
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      {detail ? (
+      {detail && !status.unlimited ? (
         <CardContent>
           <p className="text-sm">{detail}</p>
         </CardContent>
@@ -219,11 +204,11 @@ function PlanOption({
   status,
   canManageBilling,
 }: {
-  plan: (typeof PAID_PLANS)[number];
+  plan: PaidPlan;
   status: BillingStatus;
   canManageBilling: boolean;
 }) {
-  const isCurrent = status.plan === plan.id;
+  const isCurrent = status.plan === plan.id && !status.unlimited;
   const hasLivePaidSubscription =
     status.plan !== "free" && !describeStatus(status.status).canUpgrade;
   const available = status.availablePlans.includes(plan.id);
@@ -235,9 +220,9 @@ function PlanOption({
           {plan.name}
           {isCurrent ? <Badge variant="success">Current plan</Badge> : null}
         </CardTitle>
-        <CardDescription>{plan.sites}</CardDescription>
+        <CardDescription>{plan.summary}</CardDescription>
         <p className="text-2xl font-semibold">
-          {inr.format(plan.price)}
+          {inr.format(plan.priceInr)}
           <span className="text-sm font-normal text-muted-foreground">
             /month
           </span>
@@ -245,7 +230,7 @@ function PlanOption({
       </CardHeader>
       <CardContent>
         <ul className="space-y-2 text-sm">
-          {plan.features.map((feature) => (
+          {plan.highlights.map((feature) => (
             <li key={feature} className="flex gap-2">
               <Check className="mt-0.5 size-4 shrink-0 text-primary" />
               <span>{feature}</span>
@@ -254,20 +239,29 @@ function PlanOption({
         </ul>
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-2">
-        {isCurrent ? (
+        {status.unlimited ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Already included for this workspace.
+          </p>
+        ) : isCurrent ? (
           <p role="status" className="text-sm text-muted-foreground">
             This workspace is on this plan.
           </p>
         ) : hasLivePaidSubscription ? (
           <p className="text-sm text-muted-foreground">
-            To change an active subscription, contact support.
+            To move to this plan, write to {SUPPORT_EMAIL} from your account and
+            we switch you over.
           </p>
         ) : !canManageBilling ? (
           <p className="text-sm text-muted-foreground">
             Only a workspace owner or admin can change the plan.
           </p>
         ) : available ? (
-          <UpgradeButton plan={plan.id} price={plan.price} name={plan.name} />
+          <UpgradeButton
+            plan={plan.id}
+            price={plan.priceInr}
+            name={plan.name}
+          />
         ) : (
           <p role="status" className="text-sm text-muted-foreground">
             Checkout for this plan is not configured yet. Contact support for

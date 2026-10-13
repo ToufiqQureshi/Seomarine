@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
+  billingPlansQueryOptions,
   billingStatusQueryOptions,
   cancelSubscription,
   createCheckout,
@@ -18,6 +19,7 @@ describe("billing status", () => {
       status: "none",
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      unlimited: false,
       paymentsConfigured: false,
       availablePlans: [],
     },
@@ -27,6 +29,7 @@ describe("billing status", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30.123456+05:30",
       cancelAtPeriodEnd: true,
+      unlimited: false,
       paymentsConfigured: true,
       availablePlans: ["pro"],
     },
@@ -65,6 +68,7 @@ describe("cancelSubscription", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30Z",
       cancelAtPeriodEnd: true,
+      unlimited: false,
       paymentsConfigured: true,
       availablePlans: ["pro"],
     };
@@ -101,5 +105,33 @@ describe("describeStatus", () => {
       label: "on_hold",
       canUpgrade: true,
     });
+  });
+});
+
+describe("billing plans", () => {
+  const plan = {
+    id: "basic",
+    name: "Basic",
+    priceInr: 999,
+    summary: "For one site.",
+    highlights: ["1 website"],
+  };
+
+  it("returns the catalog the Go API sends", async () => {
+    const fetchMock = respondWith({ plans: [plan] });
+    await expect(billingPlansQueryOptions.queryFn()).resolves.toEqual([plan]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/billing/plans");
+  });
+
+  it.each([
+    { plans: [{ ...plan, id: "enterprise" }] },
+    { plans: [{ ...plan, priceInr: "999" }] },
+    { plans: [{ ...plan, priceInr: -1 }] },
+    {},
+  ])("rejects a catalog it cannot trust: %j", async (body) => {
+    respondWith(body);
+    await expect(billingPlansQueryOptions.queryFn()).rejects.toBeInstanceOf(
+      ApiError,
+    );
   });
 });
