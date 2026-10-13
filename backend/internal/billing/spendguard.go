@@ -45,6 +45,10 @@ type SpendGuard struct {
 	// workspaces are not charged and only the daily limit applies.
 	chargeCredits bool
 	logger        *slog.Logger
+	// WorkspaceDailyLimitUSD is the most one workspace may spend at the
+	// providers in a UTC day (0 is no limit), so one heavy workspace uses up
+	// only its own day and never pauses the others. Nil means no limit.
+	WorkspaceDailyLimitUSD func(ctx context.Context, orgID string) (float64, error)
 }
 
 // NewSpendGuard returns the guard. dailyLimitUSD must be positive.
@@ -68,6 +72,9 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 		return nil, fmt.Errorf("invalid spend estimate %v", req.EstimateUSD)
 	}
 	if err := g.checkDaily(ctx, req.EstimateUSD); err != nil {
+		return nil, err
+	}
+	if err := g.checkWorkspaceDaily(ctx, req.OrganizationID, req.EstimateUSD); err != nil {
 		return nil, err
 	}
 	h := &creditHold{guard: g, org: req.OrganizationID, feature: req.Feature}
@@ -97,6 +104,32 @@ func (g *SpendGuard) checkDaily(ctx context.Context, estimateUSD float64) error 
 		g.logger.ErrorContext(ctx, "daily provider spend limit reached; paid provider work is paused",
 			"spent_usd", spent, "limit_usd", g.dailyLimitUSD)
 		return spend.ErrPaused
+	}
+	return nil
+}
+
+// checkWorkspaceDaily refuses with spend.ErrWorkspaceDailyLimit when orgID's
+// spend today plus estimate would pass its own daily limit.
+func (g *SpendGuard) checkWorkspaceDaily(ctx context.Context, orgID string, estimateUSD float64) error {
+	if !g.chargeCredits || g.WorkspaceDailyLimitUSD == nil {
+		return nil
+	}
+	limit, err := g.WorkspaceDailyLimitUSD(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("read workspace daily limit: %w", err)
+	}
+	if limit <= 0 {
+		return nil
+	}
+	var spent float64
+	if err := g.db.QueryRow(ctx, `
+		SELECT COALESCE(sum(cost_usd), 0)::float8 FROM go_provider_spend
+		WHERE organization_id = $1 AND created_at >= date_trunc('day', now(), 'UTC')
+	`, orgID).Scan(&spent); err != nil {
+		return fmt.Errorf("read workspace spend today: %w", err)
+	}
+	if spent+estimateUSD > limit {
+		return spend.ErrWorkspaceDailyLimit
 	}
 	return nil
 }
@@ -228,6 +261,11 @@ func (m AIMeter) HasCredits(ctx context.Context, org string) (bool, error) {
 	}
 	if !m.guard.chargeCredits {
 		return true, nil
+	}
+	if err := m.guard.checkWorkspaceDaily(ctx, org, aiStepEstimateUSD); errors.Is(err, spend.ErrWorkspaceDailyLimit) {
+		return false, nil
+	} else if err != nil {
+		return false, err
 	}
 	if m.guard.ledger.Unlimited != nil {
 		unlimited, err := m.guard.ledger.Unlimited(ctx, org)

@@ -20,9 +20,10 @@ const errorBodySchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
 
-// Server errors whose message is written for the customer, not a leak of
-// internals: paid data paused by the daily safety limit.
-const CUSTOMER_FACING_SERVER_CODES = new Set(["usage_paused"]);
+// Errors whose server message is written for the customer and must not be
+// replaced by the generic wording for their status: paid data paused by the
+// daily safety limit, and a workspace that used its credits for the day.
+const CUSTOMER_FACING_CODES = new Set(["usage_paused", "daily_credit_limit"]);
 
 // Statuses whose server message is not meant for the user, or that need the
 // same wording whatever the endpoint.
@@ -31,13 +32,10 @@ function messageForStatus(
   code: string,
   serverMessage: string | undefined,
 ) {
+  if (CUSTOMER_FACING_CODES.has(code) && serverMessage) return serverMessage;
   if (status === 401) return "Your session has ended. Sign in again.";
   if (status === 429) return "Too many requests. Wait a minute and try again.";
-  if (
-    status >= 500 &&
-    !(CUSTOMER_FACING_SERVER_CODES.has(code) && serverMessage)
-  )
-    return "Something went wrong on our side. Try again.";
+  if (status >= 500) return "Something went wrong on our side. Try again.";
   return serverMessage || "The request failed. Try again.";
 }
 

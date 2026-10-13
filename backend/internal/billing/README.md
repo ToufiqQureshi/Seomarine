@@ -82,12 +82,17 @@ assistant. Rules that must never break:
   is already paid for, so it is never refused after the fact.
 - **It fails closed.** A ledger or database error stops the request. SAM
   refuses a turn whose credits cannot be checked.
-- **Daily safety limit.** Every settled cost, staff included, is logged in
-  `go_provider_spend`. Once today's (UTC) total plus a request's estimate
-  passes `PROVIDER_DAILY_LIMIT_USD`, every paid request for every workspace
-  is refused with `spend.ErrPaused` (`503 usage_paused`), logged at error
-  level so it reaches Sentry. This is the backstop against a bug or an
-  abuser; it does not depend on any one workspace's credits.
+- **Per-workspace daily limit.** One workspace may spend at most a third
+  of its plan's monthly credits (in provider dollars) in a UTC day
+  (`Service.WorkspaceDailyLimitUSD`); past it, only that workspace gets
+  `spend.ErrWorkspaceDailyLimit` (`429 daily_credit_limit`) until midnight
+  UTC. One heavy client never pauses anyone else. Staff workspaces have none.
+- **Global emergency limit.** Every settled cost, staff included, is logged
+  in `go_provider_spend`. Once today's total across all workspaces plus a
+  request's estimate passes `PROVIDER_DAILY_LIMIT_USD` (default $100), every
+  paid request is refused with `spend.ErrPaused` (`503 usage_paused`) and an
+  error reaches Sentry. With per-workspace limits it should only trip on a
+  bug; set it above the sum of your clients' daily limits.
 - **AI.** A model's cost is only known after it answers, so AI work starts
   only with at least a cent of credit left, is charged after each step, and
   SAM checks again before every step and stops a turn at one dollar. When

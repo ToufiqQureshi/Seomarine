@@ -108,6 +108,13 @@ describe("apiRequest", () => {
       message: "Live data is paused for a short while.",
     },
     {
+      name: "a 429 daily credit limit keeps its customer message",
+      status: 429,
+      body: errorBody("daily_credit_limit", "You have used today's share."),
+      code: "daily_credit_limit",
+      message: "You have used today's share.",
+    },
+    {
       name: "a 402 out-of-credits keeps its customer message",
       status: 402,
       body: errorBody(

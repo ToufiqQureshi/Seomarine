@@ -404,3 +404,48 @@ func TestAHoldWithoutAReservationCannotBeSettledTwice(t *testing.T) {
 		t.Fatalf("balance = %d, want %d: charged twice for one request", got, 100-13)
 	}
 }
+
+// One heavy workspace must use up only its own day: the others keep working.
+func TestOneWorkspacesDailyLimitNeverStopsTheOthers(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	heavy := spendOrg(ctx, t, pool, 100_000)
+	quiet := spendOrg(ctx, t, pool, 100_000)
+	guard := testGuard(t, pool, ledger, noDailyLimit, true)
+	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 0.1, nil }
+
+	// Yesterday's spend does not count towards today.
+	if _, err := pool.Exec(ctx, `INSERT INTO go_provider_spend (organization_id, feature, cost_usd, created_at) VALUES ($1, 'backlinks', 50, now() - interval '1 day 1 hour')`, heavy); err != nil {
+		t.Fatal(err)
+	}
+	hold, err := guard.Hold(ctx, spend.Request{OrganizationID: heavy, Feature: spend.Backlinks, EstimateUSD: 0.05})
+	if err != nil {
+		t.Fatalf("first hold of the day error = %v", err)
+	}
+	if err := hold.Settle(ctx, 0.09); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: heavy, Feature: spend.Backlinks, EstimateUSD: 0.05}); !errors.Is(err, spend.ErrWorkspaceDailyLimit) {
+		t.Fatalf("heavy workspace over its day error = %v, want ErrWorkspaceDailyLimit", err)
+	}
+	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, heavy); err != nil || ok {
+		t.Fatalf("heavy workspace AI = %v, %v; want stopped for the day", ok, err)
+	}
+	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: quiet, Feature: spend.Backlinks, EstimateUSD: 0.05}); err != nil {
+		t.Fatalf("quiet workspace was stopped by another's spend: %v", err)
+	}
+	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, quiet); err != nil || !ok {
+		t.Fatalf("quiet workspace AI = %v, %v; want allowed", ok, err)
+	}
+
+	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 0, nil }
+	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: heavy, Feature: spend.Backlinks, EstimateUSD: 0.05}); err != nil {
+		t.Fatalf("a zero limit (staff) must not stop the workspace: %v", err)
+	}
+	failure := errors.New("billing down")
+	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 0, failure }
+	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: quiet, Feature: spend.Backlinks, EstimateUSD: 0.05}); !errors.Is(err, failure) {
+		t.Fatalf("hold when the limit cannot be read error = %v, want it to fail closed", err)
+	}
+}

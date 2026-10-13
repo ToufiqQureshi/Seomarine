@@ -291,6 +291,18 @@ func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
 	return definition.TrackedKeywords, err
 }
 
+// WorkspaceDailyLimitUSD is the most orgID may spend at the providers in one
+// day: a third of its plan's monthly credits, so a busy day is fine but one
+// workspace cannot burn its month, or anyone else's share, in hours. 0 is no
+// limit (staff workspaces).
+func (s *Service) WorkspaceDailyLimitUSD(ctx context.Context, orgID string) (float64, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	if err != nil {
+		return 0, err
+	}
+	return float64(definition.MonthlyCredits) / 3 / (CreditMarkupMultiplier * CreditsPerUSD), nil
+}
+
 // SerpDepthLimit returns how deep orgID's rank tracking may look; 0 is no
 // limit.
 func (s *Service) SerpDepthLimit(ctx context.Context, orgID string) (int, error) {

@@ -18,6 +18,9 @@ var (
 	// ErrPaused means Uplumo stopped all paid provider work for the day: the
 	// day's total spend reached the safety limit.
 	ErrPaused = errors.New("paid data requests are paused for today")
+	// ErrWorkspaceDailyLimit means this workspace used its share of credits
+	// for today; other workspaces are not affected.
+	ErrWorkspaceDailyLimit = errors.New("this workspace reached its daily credit limit")
 )
 
 // Feature names what the money is spent on. It labels the spend in the
@@ -74,12 +77,13 @@ type Guard interface {
 // Refused reports whether err is the guard refusing the work: no credits,
 // or paid work paused for the day.
 func Refused(err error) bool {
-	return errors.Is(err, ErrNoCredits) || errors.Is(err, ErrPaused)
+	return errors.Is(err, ErrNoCredits) || errors.Is(err, ErrPaused) || errors.Is(err, ErrWorkspaceDailyLimit)
 }
 
 const (
 	noCreditsMessage = "You have used this month's credits. They refill on your next billing date, or upgrade your plan for more."
 	pausedMessage    = "Live data is paused for a short while. Please try again in a few hours."
+	dailyMessage     = "You have used today's share of your credits. It resets at 5:30 AM IST, and your monthly credits are safe."
 )
 
 // Message is what to tell the customer about a refusal, or "" when err is
@@ -90,18 +94,22 @@ func Message(err error) string {
 		return noCreditsMessage
 	case errors.Is(err, ErrPaused):
 		return pausedMessage
+	case errors.Is(err, ErrWorkspaceDailyLimit):
+		return dailyMessage
 	}
 	return ""
 }
 
 // WriteHTTPError answers a refused request and reports whether err was one:
-// 402 insufficient_credits, or 503 usage_paused.
+// 402 insufficient_credits, 429 daily_credit_limit, or 503 usage_paused.
 func WriteHTTPError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, ErrNoCredits):
 		httpx.WriteError(w, http.StatusPaymentRequired, "insufficient_credits", noCreditsMessage)
 	case errors.Is(err, ErrPaused):
 		httpx.WriteError(w, http.StatusServiceUnavailable, "usage_paused", pausedMessage)
+	case errors.Is(err, ErrWorkspaceDailyLimit):
+		httpx.WriteError(w, http.StatusTooManyRequests, "daily_credit_limit", dailyMessage)
 	default:
 		return false
 	}
