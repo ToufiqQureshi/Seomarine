@@ -24,14 +24,15 @@ var (
 	ErrNoSubscription = errors.New("organization has no live subscription")
 	// ErrPaymentProvider means Razorpay failed or refused the request.
 	ErrPaymentProvider = errors.New("payment provider failed")
-	// ErrPaymentUnavailable means checkout, cancellation and webhooks are disabled.
-	ErrPaymentUnavailable = errors.New("payment provider is not configured")
 	// ErrInvalidSignature means the webhook is not signed with the webhook
 	// secret.
 	ErrInvalidSignature = errors.New("invalid webhook signature")
 	// ErrInvalidEvent means a correctly signed webhook could not be read.
 	ErrInvalidEvent = errors.New("invalid webhook event")
 )
+
+// ErrPaymentUnavailable means checkout, cancellation and webhooks are disabled.
+var ErrPaymentUnavailable = errors.New("payment provider is not configured")
 
 // Plans.
 const (
