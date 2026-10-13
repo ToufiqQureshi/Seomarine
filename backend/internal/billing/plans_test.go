@@ -252,6 +252,13 @@ func TestStaffWorkspaceIsToppedUpInsteadOfRefused(t *testing.T) {
 	if got, _ := ledger.GetBalance(ctx, f.org); got != staffTopUpCredits-501 {
 		t.Errorf("balance after a covered reservation = %d, want %d", got, staffTopUpCredits-501)
 	}
+	// A reservation for exactly the balance is covered without a grant.
+	if _, err := ledger.Reserve(ctx, f.org, staffTopUpCredits-501, ""); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := ledger.GetBalance(ctx, f.org); got != 0 {
+		t.Errorf("balance after spending exactly what was left = %d, want 0", got)
+	}
 	// A reservation larger than the minimum top-up is covered exactly.
 	if _, err := ledger.Reserve(ctx, f.org, 3*staffTopUpCredits, ""); err != nil {
 		t.Errorf("large Reserve() for a staff workspace error = %v", err)
