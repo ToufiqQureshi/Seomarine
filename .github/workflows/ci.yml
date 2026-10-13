@@ -109,6 +109,10 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Print Prettier's proposed billing page format
+        run: |
+          pnpm exec prettier --write src/client/features/billing/plan/BillingPlanPage.tsx
+          git diff -- src/client/features/billing/plan/BillingPlanPage.tsx
       - name: Check frontend quality gates
         run: pnpm ci:check
       - name: Run frontend tests
