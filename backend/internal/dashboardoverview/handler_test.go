@@ -2,6 +2,7 @@ package dashboardoverview
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
+	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 func TestHandlerRejectsUnexpectedBodyAndScopesProject(t *testing.T) {
@@ -36,4 +39,33 @@ func TestHandlerRejectsUnexpectedBodyAndScopesProject(t *testing.T) {
 	}
 }
 
-var _ = context.Background
+type writableStore struct{ *storeStub }
+
+func (writableStore) InsertBacklinkSnapshot(context.Context, string, BacklinkSummary) error {
+	return nil
+}
+
+type refusingBacklinks struct{ calls int }
+
+func (b *refusingBacklinks) DashboardSummary(context.Context, string, string) (backlinks.Summary, error) {
+	b.calls++
+	return backlinks.Summary{}, fmt.Errorf("DataForSEO: %w", spend.ErrNoCredits)
+}
+
+func TestRefreshAnswersARefusalAsOutOfCredits(t *testing.T) {
+	domain := "example.com"
+	provider := &refusingBacklinks{}
+	withSession := func(next http.Handler) http.Handler { return next }
+	withProject := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1")))
+		})
+	}
+	mux := http.NewServeMux()
+	Mount(mux, Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Service: &Service{Store: writableStore{&storeStub{domain: &domain}}, Backlinks: provider}, WithSession: withSession, WithProjectAccess: withProject})
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/dashboard/backlinks/refresh", strings.NewReader(`{}`)))
+	if provider.calls != 1 || rec.Code != http.StatusPaymentRequired || !strings.Contains(rec.Body.String(), "insufficient_credits") {
+		t.Fatalf("refresh = %d %s after %d calls, want 402 insufficient_credits", rec.Code, rec.Body, provider.calls)
+	}
+}
