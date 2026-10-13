@@ -16,6 +16,7 @@ import {
 
 /** The plan and credit shape the billing screens read. */
 type BillingCustomer = {
+  paymentsConfigured: boolean;
   flags: Record<string, { planId: string | null } | undefined>;
   subscriptions: Array<{
     planId: string;
@@ -28,6 +29,7 @@ type BillingCustomer = {
 function toCustomer(credits: BillingCredits): BillingCustomer {
   const paid = credits.plan !== "free";
   return {
+    paymentsConfigured: credits.paymentsConfigured,
     flags: paid
       ? { [AUTUMN_PAID_PLAN_FEATURE_ID]: { planId: credits.plan } }
       : {},
@@ -75,6 +77,9 @@ export function useBillingCustomer({
   const data = query.data ? toCustomer(query.data) : undefined;
 
   async function attach({ planId, successUrl }: AttachOptions) {
+    if (query.data && !query.data.paymentsConfigured) {
+      throw new Error("Online payments are temporarily unavailable. Contact support.");
+    }
     if (planId === AUTUMN_SEO_DATA_TOP_UP_PLAN_ID) {
       throw new Error("Credit top-ups are not available yet.");
     }
