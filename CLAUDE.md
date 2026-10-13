@@ -92,6 +92,24 @@ Code and README change in the same PR.
 
 Then delete every line that does not earn its place.
 
+### Mistakes we already made (do not repeat them)
+
+- **One shared limit for every customer.** A global $25/day stop meant one
+  heavy workspace paused all the others, and they would leave. A limit that
+  protects Uplumo must be scoped to whoever causes the cost (per workspace,
+  per plan); a global stop is only an emergency brake, set far above normal
+  use. Before you ship any limit, work it with real numbers: "5 customers on
+  Pro, one uses 10x the others: who gets blocked, when, and what do they see?"
+- **Building before recommending.** Writing code first and explaining later
+  hides the decision from the owner. When there is an established tool or
+  pattern (TanStack Query for server state instead of `useEffect` fetches,
+  `errors.AsType`, a provider's own limit or webhook), say so **before**
+  coding, with the trade-off, and let the owner choose.
+- **Rules that look safe but punish paying users.** A check that fails
+  closed is right; a check that blocks a paying customer for something they
+  did not do is a bug. Ask "who does this stop, and is that the person who
+  caused the problem?"
+
 **Go is the backend.** There is no TypeScript backend: the React app is a
 static SPA that the Go server serves and that calls `/api/v1/`. No Next.js.
 
@@ -183,6 +201,13 @@ Do not commit with a failing check, and do not commit secrets.
 
 The owner (Toufiq) decides product scope, pricing, branding and architecture.
 Propose with a recommendation; do not decide silently.
+
+- Speak up first. If you see a better tool, a risk, or a cheaper way, say it
+  before you build, even when nobody asked. Silence about a known problem is
+  a defect.
+- Anything that touches money, limits, pricing or every customer at once:
+  post the plan and the real-number scenario to the owner and wait for a yes
+  before coding.
 
 - Keep answers short, in Hinglish, senior-dev tone. No long essays.
 - Before planning a new feature, search the web for current competitor
