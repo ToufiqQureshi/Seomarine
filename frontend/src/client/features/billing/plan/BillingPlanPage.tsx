@@ -135,7 +135,8 @@ function PlanCard({ status }: { status: BillingStatus }) {
                 : "Your Pro plan is set up."
             : status.paymentsConfigured
               ? `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`
-              : "Your current plan. Online payments are temporarily unavailable."}
+              : "Your current plan. Online payments are temporarily unavailable."
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
