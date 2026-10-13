@@ -40,8 +40,14 @@ const (
 	SupportEmail = "support@uplumo.com"
 	// policyUpdated is the date shown on the legal pages. Change it whenever
 	// their text changes.
-	policyUpdated = "12 October 2026"
-	contentType   = "text/html; charset=utf-8"
+	policyUpdated = "13 October 2026"
+	// operatorName and operatorAddress are the legal name and postal address
+	// of whoever runs Uplumo. The legal and contact pages print them once
+	// they are set; a payment gateway and Google's app review both look for
+	// them.
+	operatorName    = ""
+	operatorAddress = ""
+	contentType     = "text/html; charset=utf-8"
 	// The pages load nothing from other origins and run no script; the
 	// JSON-LD block is data, which script-src does not govern.
 	contentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; font-src 'self'; " +
@@ -83,6 +89,8 @@ type page struct {
 	SignUp      string
 	Support     string
 	Updated     string
+	Operator    string
+	Address     string
 	ProPriceINR int
 	Plans       []Plan
 	FAQ         []QA
@@ -142,6 +150,7 @@ func New(publicURL *url.URL) (*Site, error) {
 	plans := plans()
 	base := page{
 		OGImage: origin + ogImage, SignUp: signUpPath, Support: SupportEmail, Updated: policyUpdated,
+		Operator: operatorName, Address: operatorAddress,
 		ProPriceINR: ProPriceINR, Plans: plans,
 	}
 
@@ -344,7 +353,7 @@ var infoPages = []struct {
 	{"/terms", "terms.html", "Terms of Service | Uplumo",
 		"The rules for using Uplumo: your account, plans and billing, acceptable use and our responsibilities."},
 	{"/privacy", "privacy.html", "Privacy Policy | Uplumo",
-		"What data Uplumo collects, why, who processes it and how to export or delete it."},
+		"What data Uplumo collects, how it uses Google account data, who processes it and how to delete it."},
 	{"/refunds", "refunds.html", "Cancellation and Refund Policy | Uplumo",
 		"How to cancel Uplumo Pro, what happens after you cancel and when we refund a payment."},
 }

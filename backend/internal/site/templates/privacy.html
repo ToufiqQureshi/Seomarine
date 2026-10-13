@@ -6,22 +6,41 @@
 <h1>Privacy Policy</h1>
 <p class="note">Last updated {{.Updated}}</p>
 <div class="prose">
-<p>This page says what data Uplumo ("we", "us") collects, why we collect it, who else handles it and what you can do about it. We collect only what we need to run the service, and we do not sell personal data.</p>
+<p>This page says what data Uplumo ("we", "us") collects, why we collect it, who else handles it and what you can do about it. It covers the website and app at uplumo.com. We collect only what we need to run the service. We do not sell personal data and we do not show ads.</p>
+{{if .Operator}}<p>Uplumo is operated by {{.Operator}}{{if .Address}}, {{.Address}}{{end}}.</p>{{end}}
 
 <h2>1. Data we collect about you</h2>
 <ul>
-<li><strong>Account.</strong> Your name, email address and a hashed password, or your Google profile name and email if you sign in with Google.</li>
+<li><strong>Account.</strong> Your name, email address and a hashed password. If you sign in with Google, we receive your Google name, email address and profile picture instead of a password.</li>
 <li><strong>Workspace.</strong> The websites, keywords, competitors, reports, branding and team members you add.</li>
-<li><strong>Connected accounts.</strong> If you connect Google Search Console or Google Analytics, we store the access tokens, encrypted, and read the reports you ask us to show.</li>
+<li><strong>Connected Google accounts.</strong> Only if you choose to connect Google Search Console or Google Analytics. Section 2 explains this in full.</li>
 <li><strong>Billing.</strong> Your plan, payment status and payment references. Card, UPI and bank details are handled by Razorpay; we never see or store them.</li>
 <li><strong>Usage.</strong> Which features you use and errors you run into, so we can fix and improve the product. You can opt out of product analytics by writing to us.</li>
 <li><strong>Sign-in records.</strong> Your IP address and browser type for each session, to keep accounts secure.</li>
+<li><strong>Messages.</strong> What you write to us by email.</li>
 </ul>
 
-<h2>2. Data about visitors to your site</h2>
-<p>If you add the Uplumo Analytics tracker to your website, it counts visits for you. It sets no cookies and does not store IP addresses. Visitors are counted with a hash that changes every day, so nobody can be followed from one day to the next. We store the page visited, the referrer, the country, and the device and browser type.</p>
+<h2>2. Google account data</h2>
+<p>Uplumo uses Google in three separate ways. Each one asks for your permission on Google's own screen, and you can use Uplumo without the second and third.</p>
+<ul>
+<li><strong>Sign in with Google.</strong> We read your name, email address and profile picture to create your account and sign you in.</li>
+<li><strong>Google Search Console (read-only).</strong> We read the list of sites you have verified and, for the site you pick, its search performance: queries, pages, clicks, impressions, click-through rate, position and URL inspection results.</li>
+<li><strong>Google Analytics (read-only).</strong> We read the list of accounts and properties you can see and, for the property you pick, its reports: visitors, sessions, traffic sources, pages and conversions.</li>
+</ul>
+<p><strong>What we do with it.</strong> We use this data only to show you your own reports, opportunities and dashboards inside Uplumo, and to answer questions you ask the assistant about your own site. Access is read-only: we cannot change anything in your Search Console or Analytics account.</p>
+<p><strong>What we store.</strong> We store the access and refresh tokens Google gives us, encrypted, and which site and property you selected. Report data is fetched from Google when you open a report or run a check, and we may keep copies of results so that reports load quickly and show history.</p>
+<p><strong>Who it is shared with.</strong> Nobody, except as needed to give you the feature you asked for: our hosting and database providers store it for us, and when you ask the assistant a question about your Search Console or Analytics data, the relevant figures are sent to the AI model that writes the answer. If you connect your own AI tool to Uplumo, it receives the data you ask it to fetch.</p>
+<p><strong>What we never do.</strong> We do not sell Google user data. We do not use it for advertising. We do not use it to build, train or improve general-purpose AI or machine-learning models. Nobody at Uplumo reads it unless you ask us to look into a problem, we need to for security, or the law requires it.</p>
+<p>Uplumo's use and transfer of information received from Google APIs to any other app adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+<p><strong>Removing access.</strong> Disconnect Search Console or Analytics from the Integrations page in the app and we delete the stored tokens for that connection. You can also remove Uplumo at any time from <a href="https://myaccount.google.com/permissions" rel="noopener">your Google account's permissions page</a>, which stops all access at once. Deleting your Uplumo account deletes everything described in this section.</p>
 
-<h2>3. Why we use it</h2>
+<h2>3. Data about visitors to your site</h2>
+<p>If you add the Uplumo Analytics tracker to your website, it counts visits for you. It sets no cookies and does not store IP addresses. Visitors are counted with a hash that changes every day, so nobody can be followed from one day to the next. We store the page visited, the referrer, the country, and the device and browser type. You decide whether to add the tracker, and you are responsible for telling your own visitors about it.</p>
+
+<h2>4. Cookies</h2>
+<p>We use one kind of cookie: the ones that keep you signed in and protect the sign-in forms. The public pages of this website set no tracking or advertising cookies.</p>
+
+<h2>5. Why we use your data</h2>
 <ul>
 <li>To provide the service you signed up for.</li>
 <li>To take payment and send receipts.</li>
@@ -29,8 +48,9 @@
 <li>To keep the service secure and stop abuse.</li>
 <li>To understand how the product is used so we can improve it.</li>
 </ul>
+<p>We rely on your consent, given when you create an account or connect a service, and on what the law allows us to do to run the service you asked for, meet legal duties and keep it secure.</p>
 
-<h2>4. Who else handles your data</h2>
+<h2>6. Who else handles your data</h2>
 <p>We share data only with companies that help us run the service, and only what each one needs:</p>
 <ul>
 <li><strong>Razorpay</strong> for payments.</li>
@@ -39,33 +59,34 @@
 <li><strong>OpenRouter</strong> and the AI models behind it, for AI answers and explanations. We send the prompt and the page or data it is about.</li>
 <li><strong>Loops</strong> for sending account emails.</li>
 <li><strong>PostHog</strong> for product analytics.</li>
-<li><strong>Cloudflare</strong> for the check that stops bots on the sign-up form.</li>
-<li><strong>Our hosting and database providers</strong>, who store the data on our behalf.</li>
+<li><strong>Cloudflare</strong> for network security and the check that stops bots on the sign-up form.</li>
+<li><strong>Railway and Supabase</strong>, which host the app and the database on our behalf.</li>
 </ul>
-<p>Some of these companies process data outside India. We may also disclose data when the law requires it.</p>
+<p>Some of these companies process data outside India. We may also disclose data when the law requires it, or to a buyer if Uplumo is ever sold, under the same promises as this policy.</p>
 
-<h2>5. How long we keep it</h2>
-<p>We keep your data while your account is open. When you ask us to delete your account, we erase your personal data and your workspace's data. We may keep payment records for as long as tax and accounting law requires.</p>
+<h2>7. How long we keep it</h2>
+<p>We keep your data while your account is open. When you ask us to delete your account, we erase your personal data, your Google tokens and your workspace's data within 30 days. We may keep payment records for as long as tax and accounting law requires, and sign-in records for a short time for security.</p>
 
-<h2>6. Your choices</h2>
+<h2>8. Your choices</h2>
 <ul>
 <li><strong>See or correct your data.</strong> Most of it is in Settings. For anything else, write to us.</li>
 <li><strong>Delete your account.</strong> Email <a href="mailto:{{.Support}}">{{.Support}}</a> from your account's address.</li>
-<li><strong>Disconnect Google.</strong> Remove the connection in the app, or from your Google account's security settings.</li>
-<li><strong>Withdraw consent or complain.</strong> Write to us and we will respond. You may also have the right to complain to a data protection authority.</li>
+<li><strong>Disconnect Google.</strong> Remove the connection in the app, or from your Google account's permissions page.</li>
+<li><strong>Withdraw consent.</strong> Write to us. Withdrawing consent may mean we can no longer provide the part of the service that needed it.</li>
+<li><strong>Name someone to act for you.</strong> You may nominate another person to use these rights if you are unable to.</li>
 </ul>
 
-<h2>7. Security</h2>
-<p>Data is encrypted in transit, passwords are hashed and access tokens are encrypted at rest. No system is perfectly secure; if a breach affects your data, we will tell you.</p>
+<h2>9. Security</h2>
+<p>Data is encrypted in transit, passwords are hashed and Google tokens are encrypted at rest. Access to production systems is limited to the people who need it. No system is perfectly secure; if a breach affects your data, we will tell you and the authorities as the law requires.</p>
 
-<h2>8. Children</h2>
-<p>Uplumo is for businesses and is not meant for anyone under 18.</p>
+<h2>10. Children</h2>
+<p>Uplumo is for businesses and is not meant for anyone under 18. We do not knowingly collect data from children.</p>
 
-<h2>9. Changes</h2>
-<p>If we change this policy in a way that matters, we tell you by email or in the app before it takes effect.</p>
+<h2>11. Changes</h2>
+<p>If we change this policy in a way that matters, we tell you by email or in the app before it takes effect. The date at the top shows when it last changed.</p>
 
-<h2>10. Contact</h2>
-<p>Privacy questions and requests: <a href="mailto:{{.Support}}">{{.Support}}</a>.</p>
+<h2>12. Questions and complaints</h2>
+<p>Privacy questions, requests and complaints go to our grievance contact at <a href="mailto:{{.Support}}">{{.Support}}</a>.{{if .Operator}} You can also write to {{.Operator}}{{if .Address}}, {{.Address}}{{end}}.{{end}} We reply within a few working days and aim to resolve every complaint within 30 days. If you are not satisfied with our answer, you may complain to the Data Protection Board of India.</p>
 </div>
 </div>
 {{template "footer" .}}
