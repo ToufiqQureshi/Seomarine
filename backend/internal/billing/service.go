@@ -120,10 +120,6 @@ type Service struct {
 	planIDs       map[string]string
 	webhookSecret string
 	staffEmails   []string
-	// MonthlyGrantCreditsByPlan is added to the organization's credit
-	// balance on every successful charge of that plan. A plan that is not
-	// listed grants nothing.
-	MonthlyGrantCreditsByPlan map[string]int64
 }
 
 // NewService returns a Service that sells only Pro, as the Razorpay plan
@@ -172,9 +168,10 @@ func (s *Service) AvailablePlans() []string {
 	return available
 }
 
-// MonthlyGrantFor returns the monthly usage-credit grant for a plan.
+// MonthlyGrantFor returns the credits a paid month of plan grants.
 func (s *Service) MonthlyGrantFor(plan string) int64 {
-	return s.MonthlyGrantCreditsByPlan[plan]
+	definition, _ := plans.Get(plan)
+	return definition.MonthlyCredits
 }
 
 // SetStaffEmails names the people whose own workspaces are never limited by

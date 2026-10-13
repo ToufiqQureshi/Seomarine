@@ -15,6 +15,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const maxSavedBody = 1 << 20
@@ -97,6 +98,8 @@ func writeSaved(logger *slog.Logger, w http.ResponseWriter, r *http.Request, res
 		httpx.WriteError(w, http.StatusBadRequest, "unknown_location", err.Error())
 	case errors.Is(err, ErrLocationCache):
 		httpx.WriteError(w, http.StatusServiceUnavailable, "locations_unavailable", "Location data is temporarily unavailable. Please try again.")
+	case spend.Refused(err) && r.Context().Err() == nil:
+		spend.WriteHTTPError(w, err)
 	case errors.Is(err, dataforseo.ErrBillingIssue) && r.Context().Err() == nil:
 		logger.ErrorContext(r.Context(), "DataForSEO billing issue", "err", err)
 		httpx.WriteError(w, http.StatusServiceUnavailable, "provider_billing_issue", "Keyword data is temporarily unavailable. Please try again later.")

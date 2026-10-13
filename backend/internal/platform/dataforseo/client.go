@@ -16,6 +16,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -41,10 +43,12 @@ type CostRecorder interface {
 
 // Options configures a Client. Zero values select safe defaults.
 type Options struct {
-	BaseURL      string
-	APIKey       string
-	HTTPClient   *http.Client
-	Recorder     CostRecorder
+	BaseURL    string
+	APIKey     string
+	HTTPClient *http.Client
+	Recorder   CostRecorder
+	// Guard holds the customer's credits before every billed request.
+	Guard        spend.Guard
 	Timeout      time.Duration
 	MaxRetries   int
 	RetryBackoff time.Duration
@@ -56,6 +60,7 @@ type Client struct {
 	apiKey     string
 	http       *http.Client
 	recorder   CostRecorder
+	guard      spend.Guard
 	timeout    time.Duration
 	maxRetries int
 	backoff    time.Duration
@@ -96,6 +101,9 @@ func NewClient(opts Options) (*Client, error) {
 	if opts.Recorder == nil {
 		return nil, errors.New("DataForSEO cost recorder is required")
 	}
+	if opts.Guard == nil {
+		return nil, errors.New("DataForSEO spend guard is required")
+	}
 	if opts.BaseURL == "" {
 		opts.BaseURL = APIBaseURL
 	}
@@ -127,18 +135,40 @@ func NewClient(opts Options) (*Client, error) {
 	clientCopy := *opts.HTTPClient
 	clientCopy.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &Client{baseURL: strings.TrimRight(opts.BaseURL, "/"), apiKey: opts.APIKey, http: &clientCopy,
-		recorder: opts.Recorder, timeout: opts.Timeout, maxRetries: opts.MaxRetries, backoff: opts.RetryBackoff}, nil
+		recorder: opts.Recorder, guard: opts.Guard, timeout: opts.Timeout, maxRetries: opts.MaxRetries, backoff: opts.RetryBackoff}, nil
 }
 
-// Do sends one request. Set retrySafe only for operations that are safe to
-// replay: billed task-post calls must pass false to avoid duplicate charges.
-// Actual provider task costs are recorded against organizationID before the
-// response is returned, including task-level failures carried by HTTP 200.
-func (c *Client) Do(ctx context.Context, organizationID, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
+// Do sends one billed request for feature. Set retrySafe only for operations
+// that are safe to replay: billed task-post calls must pass false to avoid
+// duplicate charges.
+//
+// Before anything is sent, the guard holds the most the request can cost
+// against organizationID's credits; a refusal or a guard failure stops the
+// request and wraps spend.ErrNoCredits, spend.ErrPaused or the guard's error
+// together with ErrBillingIssue, so callers that stop on a provider billing
+// issue stop here too. Afterwards the real provider cost is recorded and
+// settled against the hold, including task-level failures carried by HTTP 200.
+func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Feature, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
 	if strings.TrimSpace(organizationID) == "" || len(organizationID) > 128 {
 		return nil, fmt.Errorf("%w: organization id is required", ErrInvalidRequest)
 	}
-	return c.do(ctx, organizationID, true, method, path, body, retrySafe)
+	if strings.TrimSpace(string(feature)) == "" {
+		return nil, fmt.Errorf("%w: a spend feature is required", ErrInvalidRequest)
+	}
+	if _, err := c.endpoint(path); err != nil {
+		return nil, err
+	}
+	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, EstimateUSD: EstimateUSD(path, body)})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrBillingIssue, err)
+	}
+	payload, charged, err := c.do(ctx, organizationID, true, method, path, body, retrySafe)
+	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if settleErr := hold.Settle(settleCtx, charged); settleErr != nil && err == nil {
+		return nil, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: []string{path}, USD: charged}, Cause: settleErr}
+	}
+	return payload, err
 }
 
 // DoUnmetered sends one request whose cost is not recorded. Use it only for
@@ -146,16 +176,20 @@ func (c *Client) Do(ctx context.Context, organizationID, method, path string, bo
 // queued task: that task was charged when it was posted, and recording the
 // settled amount again would charge the customer twice.
 func (c *Client) DoUnmetered(ctx context.Context, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
-	return c.do(ctx, "", false, method, path, body, retrySafe)
+	payload, _, err := c.do(ctx, "", false, method, path, body, retrySafe)
+	return payload, err
 }
 
-func (c *Client) do(ctx context.Context, organizationID string, record bool, method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
+// do sends the request and returns the payload and the provider cost it
+// reported. The cost is returned even with an error once it is known, so the
+// caller can charge for work the provider billed.
+func (c *Client) do(ctx context.Context, organizationID string, record bool, method, path string, body []byte, retrySafe bool) (json.RawMessage, float64, error) {
 	if method != http.MethodGet && method != http.MethodPost {
-		return nil, fmt.Errorf("%w: only GET and POST are supported", ErrInvalidRequest)
+		return nil, 0, fmt.Errorf("%w: only GET and POST are supported", ErrInvalidRequest)
 	}
 	endpoint, err := c.endpoint(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -166,7 +200,7 @@ func (c *Client) do(ctx context.Context, organizationID string, record bool, met
 		}
 		req, err := http.NewRequestWithContext(requestCtx, method, endpoint, requestBody)
 		if err != nil {
-			return nil, fmt.Errorf("build DataForSEO request: %w", err)
+			return nil, 0, fmt.Errorf("build DataForSEO request: %w", err)
 		}
 		req.Header.Set("Authorization", "Basic "+c.apiKey)
 		req.Header.Set("Accept", "application/json")
@@ -175,50 +209,54 @@ func (c *Client) do(ctx context.Context, organizationID string, record bool, met
 		}
 		response, err := c.http.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("send DataForSEO request: %w", err)
+			return nil, 0, fmt.Errorf("send DataForSEO request: %w", err)
 		}
 		payload, readErr := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 		closeErr := response.Body.Close()
 		if readErr != nil {
-			return nil, fmt.Errorf("read DataForSEO response: %w", readErr)
+			return nil, 0, fmt.Errorf("read DataForSEO response: %w", readErr)
 		}
 		if closeErr != nil {
-			return nil, fmt.Errorf("close DataForSEO response: %w", closeErr)
+			return nil, 0, fmt.Errorf("close DataForSEO response: %w", closeErr)
 		}
 		if len(payload) > maxResponseBytes {
-			return nil, fmt.Errorf("DataForSEO response exceeds %d bytes", maxResponseBytes)
+			return nil, 0, fmt.Errorf("DataForSEO response exceeds %d bytes", maxResponseBytes)
 		}
 		if response.StatusCode >= 500 && retrySafe && attempt < c.maxRetries {
 			if err := wait(requestCtx, c.backoff*time.Duration(attempt+1)); err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			continue
 		}
 		if response.StatusCode < 200 || response.StatusCode >= 300 {
-			return nil, &HTTPError{StatusCode: response.StatusCode, Body: truncate(string(payload), 1600)}
+			return nil, 0, &HTTPError{StatusCode: response.StatusCode, Body: truncate(string(payload), 1600)}
 		}
 		if len(payload) == 0 {
-			return nil, nil
+			return nil, 0, nil
 		}
 		if !json.Valid(payload) {
-			return nil, errors.New("DataForSEO returned invalid JSON")
+			return nil, 0, errors.New("DataForSEO returned invalid JSON")
 		}
 		if !record {
-			return json.RawMessage(payload), nil
+			return json.RawMessage(payload), 0, nil
 		}
 		costs, err := responseCosts(payload)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
+		}
+		charged := 0.0
+		for _, cost := range costs {
+			charged += cost.USD
 		}
 		for _, cost := range costs {
 			recordCtx, recordCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			err := c.recorder.RecordDataForSEO(recordCtx, organizationID, cost)
 			recordCancel()
 			if err != nil {
-				return nil, &CostRecordingError{OrganizationID: organizationID, Cost: cost, Cause: err}
+				return nil, charged, &CostRecordingError{OrganizationID: organizationID, Cost: cost, Cause: err}
 			}
 		}
-		return json.RawMessage(payload), nil
+		return json.RawMessage(payload), charged, nil
 	}
 }
 

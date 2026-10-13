@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -126,7 +127,7 @@ func (p *provider) post(ctx context.Context, organizationID, path string, body a
 	if err != nil {
 		return nil, fmt.Errorf("encode %s request: %w", path, err)
 	}
-	response, err := p.client.Do(ctx, organizationID, http.MethodPost, path, payload, false)
+	response, err := p.client.Do(ctx, organizationID, spend.DomainResearch, http.MethodPost, path, payload, false)
 	if err != nil {
 		return nil, fmt.Errorf("call %s: %w", path, err)
 	}

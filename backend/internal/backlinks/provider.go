@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -94,7 +95,7 @@ func (p provider) post(ctx context.Context, org, endpoint string, body any) ([]j
 	if err != nil {
 		return nil, fmt.Errorf("encode backlinks request: %w", err)
 	}
-	response, err := p.client.Do(ctx, org, http.MethodPost, endpoint, raw, false)
+	response, err := p.client.Do(ctx, org, spend.Backlinks, http.MethodPost, endpoint, raw, false)
 	if err != nil {
 		return nil, fmt.Errorf("DataForSEO %s: %w", endpoint, err)
 	}

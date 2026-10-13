@@ -23,7 +23,7 @@ PORT=8080 go run ./cmd/server
 | `TRUSTED_PROXY_CIDRS` | no | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | no | Set all three, with at least one plan id below, or none. Without them billing status and credits remain read-only, and checkout, cancellation and webhooks answer `503`. The webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
 | `RAZORPAY_PLAN_ID_BASIC`, `RAZORPAY_PLAN_ID_PRO`, `RAZORPAY_PLAN_ID_AGENCY` | no | The monthly Razorpay plan (`plan_...`) that bills each plan. Its amount must equal the price in `internal/plans/catalog.go`. A plan without an id cannot be bought. |
-| `BILLING_MONTHLY_CREDITS_USD`, `BILLING_AGENCY_MONTHLY_CREDITS_USD` | no | Credits, in US dollars of provider cost, granted on each paid month of Pro (default 3) and Agency (default 10). 0 to 10000. Customers never see them; they cap what a workspace can cost us. |
+| `PROVIDER_DAILY_LIMIT_USD` | no | Safety limit, default 25, 1 to 10000. Once today's (UTC) DataForSEO and AI spend across every workspace reaches it, all paid lookups and AI answer `usage_paused` until midnight UTC. Set it above a normal busy day; it is there for a bug or an abuser. Monthly credits per plan are in `internal/plans/catalog.go`. |
 | `STAFF_EMAILS` | no | Comma-separated addresses. A workspace owned by one of them, verified, gets every feature with no limits and pays nothing. For the owner and the team only. |
 | `DATAFORSEO_API_KEY` | no | Base64 `login:password`. Without it keywords, rank tracking, backlinks, domain and AI search answer `503`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | The model behind the assistant and AI writing. |
@@ -118,8 +118,13 @@ are in its own `internal/<feature>/README.md` and, where one exists,
   frames `/s/{token}/raw`. `GET /.well-known/openai-apps-challenge`: the
   `OPENAI_APPS_CHALLENGE` token.
 - Billing: `GET /api/v1/billing/credits` (plan + credit balance),
+  `GET /api/v1/billing/usage` (balance, this month's spend by feature,
+  typical cost per action; `api/billing.yaml`),
   `POST /api/v1/billing/usage-events` (settled spends). A paid subscription
-  charge grants `BILLING_MONTHLY_CREDITS_USD` once per webhook event.
+  charge grants the plan's `MonthlyCredits` once per webhook event. Every
+  paid DataForSEO request and AI call spends credits through the spend
+  guard (`internal/billing/README.md`); a refusal answers `402
+  credits_exhausted` or `503 usage_paused`.
 
 ## Analytics
 

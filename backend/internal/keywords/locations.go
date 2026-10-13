@@ -14,6 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/market"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const locationCacheTTL = 30 * 24 * time.Hour
@@ -131,7 +132,7 @@ func (s *LocationService) fill(ctx context.Context, organizationID, country, key
 }
 
 func (s *LocationService) fetch(ctx context.Context, organizationID, country string) ([]SerpLocation, error) {
-	response, err := s.client.Do(ctx, organizationID, http.MethodGet, "/v3/serp/google/locations/"+country, nil, true)
+	response, err := s.client.Do(ctx, organizationID, spend.Reference, http.MethodGet, "/v3/serp/google/locations/"+country, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("fetch SERP locations: %w", err)
 	}

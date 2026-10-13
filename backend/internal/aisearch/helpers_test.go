@@ -19,6 +19,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 // taskReply is what the fake provider answers with, as a task of an HTTP 200
@@ -214,6 +215,7 @@ func testRedis(t *testing.T) *redis.Client {
 func newTestService(t *testing.T, api *fakeAPI) *Service {
 	t.Helper()
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:    &spendtest.Guard{},
 		BaseURL:  api.server.URL,
 		APIKey:   base64.StdEncoding.EncodeToString([]byte("login:password")),
 		Recorder: api.recorder,

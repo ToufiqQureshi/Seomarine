@@ -132,7 +132,8 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 		},
 		MaxTokens: maxWriterOutput,
 	}, openrouter.Handler{})
-	a.chargeUsage(ctx, organizationID, result.Usage.CostUSD)
+	cost, _ := result.Usage.BillableUSD(len(result.Text))
+	a.chargeUsage(ctx, organizationID, cost)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return WriterOutput{}, ErrWriterTimeout

@@ -13,6 +13,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/jobs"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // QueueName is the jobs queue that carries rank check runs.
@@ -405,7 +406,7 @@ func snapshotOf(runID string, r pairResult) SnapshotInput {
 // recordPairError keeps the first reason on the run, so it shows the provider's own message.
 func (c *Checks) recordPairError(ctx context.Context, e *execution, r pairResult) error {
 	if e.firstError == "" {
-		e.firstError = r.err.Error()
+		e.firstError = runErrorText(r.err)
 		if err := c.Runs.SetRunErrorIfEmpty(ctx, e.run.ID, e.firstError); err != nil {
 			return err
 		}
@@ -432,6 +433,15 @@ func (c *Checks) lookupAll(ctx context.Context, e *execution, pairs []pair) []pa
 	}
 	wg.Wait()
 	return results
+}
+
+// runErrorText is the reason a run shows: the customer's credit message for a
+// refusal, else the provider's own message.
+func runErrorText(err error) string {
+	if message := spend.Message(err); message != "" {
+		return message
+	}
+	return err.Error()
 }
 
 func isInvalidField(err error) bool {

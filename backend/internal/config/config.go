@@ -45,10 +45,9 @@ type Config struct {
 	// StaffEmails are the people whose own workspaces are never limited by a
 	// plan, lower case.
 	StaffEmails []string
-	// BillingMonthlyCreditsUSD is granted on each Pro subscription charge.
-	BillingMonthlyCreditsUSD float64
-	// BillingAgencyMonthlyCreditsUSD is granted on each Agency charge.
-	BillingAgencyMonthlyCreditsUSD float64
+	// ProviderDailyLimitUSD stops every paid DataForSEO and AI request, for
+	// all workspaces, once today's (UTC) provider spend reaches it.
+	ProviderDailyLimitUSD float64
 	// OpenRouterModel overrides the SAM chat model (OPENROUTER_MODEL).
 	OpenRouterModel string
 	// Loops configures hosted teammate invitation email.
@@ -164,21 +163,13 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
-	monthlyCredits := 3.0
-	if raw := getenv("BILLING_MONTHLY_CREDITS_USD"); raw != "" {
+	dailyLimit := 25.0
+	if raw := getenv("PROVIDER_DAILY_LIMIT_USD"); raw != "" {
 		parsed, err := strconv.ParseFloat(raw, 64)
-		if err != nil || parsed < 0 || parsed > 10000 {
-			return Config{}, fmt.Errorf("BILLING_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
+		if err != nil || !(parsed >= 1 && parsed <= 10000) {
+			return Config{}, fmt.Errorf("PROVIDER_DAILY_LIMIT_USD must be a number from 1 to 10000, got %q", raw)
 		}
-		monthlyCredits = parsed
-	}
-	agencyMonthlyCredits := 10.0
-	if raw := getenv("BILLING_AGENCY_MONTHLY_CREDITS_USD"); raw != "" {
-		parsed, err := strconv.ParseFloat(raw, 64)
-		if err != nil || parsed < 0 || parsed > 10000 {
-			return Config{}, fmt.Errorf("BILLING_AGENCY_MONTHLY_CREDITS_USD must be a number from 0 to 10000, got %q", raw)
-		}
-		agencyMonthlyCredits = parsed
+		dailyLimit = parsed
 	}
 
 	dataForSEOKey := strings.TrimSpace(getenv("DATAFORSEO_API_KEY"))
@@ -198,34 +189,33 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		StaffEmails:                    staffEmails,
-		BillingMonthlyCreditsUSD:       monthlyCredits,
-		BillingAgencyMonthlyCreditsUSD: agencyMonthlyCredits,
-		Addr:                           fmt.Sprintf(":%d", port),
-		DatabaseURL:                    databaseURL,
-		RedisURL:                       redisURL,
-		BetterAuthSecret:               secret,
-		GoogleClientID:                 strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret:             strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleTokenEncryptionKey:       strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
-		StaticDir:                      staticDir,
-		PublicURL:                      public,
-		BetterAuthURL:                  betterAuthURL,
-		Razorpay:                       rzp,
-		DataForSEOAPIKey:               dataForSEOKey,
-		OpenRouterAPIKey:               openRouterKey,
-		OpenRouterModel:                strings.TrimSpace(getenv("OPENROUTER_MODEL")),
-		LoopsAPIKey:                    strings.TrimSpace(getenv("LOOPS_API_KEY")),
-		LoopsInvitationTemplateID:      strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
-		LoopsVerifyEmailTemplateID:     strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
-		LoopsResetPasswordTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
-		TurnstileSecretKey:             strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
-		OpenAIAppsChallenge:            strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
-		BypassEmailVerification:        bypassVerification,
-		SentryDSN:                      strings.TrimSpace(getenv("SENTRY_DSN")),
-		Environment:                    environment,
-		Release:                        strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
-		TrustedProxyCIDRs:              trusted,
+		StaffEmails:                  staffEmails,
+		ProviderDailyLimitUSD:        dailyLimit,
+		Addr:                         fmt.Sprintf(":%d", port),
+		DatabaseURL:                  databaseURL,
+		RedisURL:                     redisURL,
+		BetterAuthSecret:             secret,
+		GoogleClientID:               strings.TrimSpace(getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:           strings.TrimSpace(getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleTokenEncryptionKey:     strings.TrimSpace(getenv("GOOGLE_TOKEN_ENCRYPTION_KEY")),
+		StaticDir:                    staticDir,
+		PublicURL:                    public,
+		BetterAuthURL:                betterAuthURL,
+		Razorpay:                     rzp,
+		DataForSEOAPIKey:             dataForSEOKey,
+		OpenRouterAPIKey:             openRouterKey,
+		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
+		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
+		LoopsInvitationTemplateID:    strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_INVITATION_ID")),
+		LoopsVerifyEmailTemplateID:   strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID")),
+		LoopsResetPasswordTemplateID: strings.TrimSpace(getenv("LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID")),
+		TurnstileSecretKey:           strings.TrimSpace(getenv("TURNSTILE_SECRET_KEY")),
+		OpenAIAppsChallenge:          strings.TrimSpace(getenv("OPENAI_APPS_CHALLENGE")),
+		BypassEmailVerification:      bypassVerification,
+		SentryDSN:                    strings.TrimSpace(getenv("SENTRY_DSN")),
+		Environment:                  environment,
+		Release:                      strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
+		TrustedProxyCIDRs:            trusted,
 	}, nil
 }
 

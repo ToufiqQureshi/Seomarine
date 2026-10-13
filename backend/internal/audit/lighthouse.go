@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // lighthousePath is the DataForSEO on-page Lighthouse endpoint.
@@ -33,7 +35,7 @@ type dataforseoLighthouseProvider struct {
 // dataforseoLighthouseClient is the subset of the DataForSEO client the provider
 // needs, so tests can fake it.
 type dataforseoLighthouseClient interface {
-	Do(ctx context.Context, organizationID, method, path string, body []byte, retrySafe bool) (json.RawMessage, error)
+	Do(ctx context.Context, organizationID string, feature spend.Feature, method, path string, body []byte, retrySafe bool) (json.RawMessage, error)
 }
 
 // NewDataForseoLighthouseProvider builds a provider over the shared client.
@@ -55,7 +57,7 @@ func (p *dataforseoLighthouseProvider) FetchLighthouse(ctx context.Context, orga
 	if err != nil {
 		return StoredLighthousePayload{}, fmt.Errorf("encode lighthouse request: %w", err)
 	}
-	payload, err := p.client.Do(ctx, organizationID, http.MethodPost, lighthousePath, body, false)
+	payload, err := p.client.Do(ctx, organizationID, spend.SiteAudit, http.MethodPost, lighthousePath, body, false)
 	if err != nil {
 		return StoredLighthousePayload{}, err
 	}

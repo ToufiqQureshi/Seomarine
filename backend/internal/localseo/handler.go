@@ -15,6 +15,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // Data provides the local search data used by ranking grids.
@@ -156,6 +157,9 @@ func (s *Service) rankGrid(w http.ResponseWriter, r *http.Request) {
 		}
 		wg.Wait()
 		for i := start; i < end; i++ {
+			if spend.WriteHTTPError(w, cells[i].err) {
+				return
+			}
 			if isBillingError(cells[i].err) {
 				httpx.WriteError(w, http.StatusPaymentRequired, "insufficient_credits", "The data provider reported a billing or credit balance issue. Remaining grid searches were stopped.")
 				return

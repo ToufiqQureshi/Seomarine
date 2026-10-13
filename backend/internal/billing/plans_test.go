@@ -136,11 +136,11 @@ func TestWebhookForAnUnknownPlanFailsAndChangesNothing(t *testing.T) {
 
 func TestEachPlanGrantsItsOwnCredits(t *testing.T) {
 	ctx := context.Background()
-	for plan, want := range map[string]int64{PlanBasic: 0, PlanPro: 3000, PlanAgency: 10000} {
+	// Basic grants credits too: its keyword research and rank tracking spend them.
+	for plan, want := range map[string]int64{PlanBasic: 4000, PlanPro: 10000, PlanAgency: 25000} {
 		t.Run(plan, func(t *testing.T) {
 			f := newFixture(ctx, t)
 			f.sellTiers()
-			f.svc.MonthlyGrantCreditsByPlan = map[string]int64{PlanPro: 3000, PlanAgency: 10000}
 			f.deliver(ctx, t, f.eventOnPlan(plan, "subscription.charged", "sub_1", "active"))
 
 			got, err := NewCreditLedgerService(f.pool).GetBalance(ctx, f.org)

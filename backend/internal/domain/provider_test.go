@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 func TestProviderOverviewMapsDataForSEOResult(t *testing.T) {
@@ -29,6 +30,7 @@ func TestProviderOverviewMapsDataForSEOResult(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:   &spendtest.Guard{},
 		BaseURL: server.URL,
 		APIKey:  base64.StdEncoding.EncodeToString([]byte("user:pass")),
 		Recorder: costRecorderFunc(func(context.Context, string, dataforseo.Cost) error {
@@ -61,6 +63,7 @@ func TestProviderDoesNotRetryPaidCall(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:   &spendtest.Guard{},
 		BaseURL: server.URL,
 		APIKey:  base64.StdEncoding.EncodeToString([]byte("user:pass")),
 		Recorder: costRecorderFunc(func(context.Context, string, dataforseo.Cost) error {

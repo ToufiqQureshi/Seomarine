@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 func TestIsAdsKeyword(t *testing.T) {
@@ -65,7 +66,7 @@ func newProviderServer(t *testing.T, reply func(path string) map[string]any) (*p
 		_ = json.NewEncoder(w).Encode(map[string]any{"status_code": 20000, "tasks": []any{task}})
 	}))
 	t.Cleanup(server.Close)
-	client, err := dataforseo.NewClient(dataforseo.Options{BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-password")), Recorder: noopRecorder{}})
+	client, err := dataforseo.NewClient(dataforseo.Options{Guard: &spendtest.Guard{}, BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-password")), Recorder: noopRecorder{}})
 	if err != nil {
 		t.Fatal(err)
 	}

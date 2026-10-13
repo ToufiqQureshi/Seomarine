@@ -11,6 +11,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -375,6 +376,9 @@ func formatAverageRank(value *float64) string {
 func localRankGridFatalError(err error) (string, string) {
 	if err == nil {
 		return "", ""
+	}
+	if message := spend.Message(err); message != "" {
+		return "INSUFFICIENT_CREDITS", message + " The remaining rank grid points were not requested."
 	}
 	if errors.Is(err, dataforseo.ErrBillingIssue) {
 		return "INSUFFICIENT_CREDITS", "DataForSEO reports a billing or credit balance issue. The remaining rank grid points were not requested."

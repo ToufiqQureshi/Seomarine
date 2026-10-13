@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 var fixedNow = time.Date(2026, 10, 9, 11, 12, 13, 0, time.UTC)
@@ -106,6 +107,7 @@ func newTestService(t *testing.T, f *fakeProvider, c cache) *Service {
 	server := httptest.NewServer(f)
 	t.Cleanup(server.Close)
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:   &spendtest.Guard{},
 		BaseURL: server.URL,
 		APIKey:  base64.StdEncoding.EncodeToString([]byte("fake-user:fake-pass")),
 		Recorder: costRecorderFunc(func(context.Context, string, dataforseo.Cost) error {

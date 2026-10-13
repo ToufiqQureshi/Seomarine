@@ -172,6 +172,12 @@ func (s *CreditLedgerService) topUpStaff(ctx context.Context, orgID string, amou
 
 // Reserve atomically reserves credits for an operation using idempotency key.
 func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount int64, idempotencyKey string) (CreditReservation, error) {
+	return s.ReserveFor(ctx, orgID, amount, idempotencyKey, "")
+}
+
+// ReserveFor is Reserve for a named feature; the feature labels the settled
+// spend in the ledger.
+func (s *CreditLedgerService) ReserveFor(ctx context.Context, orgID string, amount int64, idempotencyKey, feature string) (CreditReservation, error) {
 	if amount <= 0 {
 		return CreditReservation{}, errors.New("amount must be positive")
 	}
@@ -228,9 +234,9 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 
 	var nowTime = time.Now().UTC()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO go_billing_credit_reservations (id, organization_id, amount_credits, status, idempotency_key, created_at, updated_at)
-		VALUES ($1, $2, $3, 'reserved', $4, $5, $5)
-	`, resID, orgID, amount, ik, nowTime)
+		INSERT INTO go_billing_credit_reservations (id, organization_id, amount_credits, status, idempotency_key, feature, created_at, updated_at)
+		VALUES ($1, $2, $3, 'reserved', $4, $6, $5, $5)
+	`, resID, orgID, amount, ik, nowTime, feature)
 	if err != nil {
 		return CreditReservation{}, fmt.Errorf("insert reservation: %w", err)
 	}
@@ -258,71 +264,102 @@ func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount 
 	}, nil
 }
 
-// Settle settles a reservation with actual used credits, returning any unused credits to balance.
+// Settle settles a reservation with actual used credits, returning any unused
+// credits to balance. When actual exceeds the reservation and the balance
+// cannot cover the difference, it fails with ErrInsufficientBalance.
 func (s *CreditLedgerService) Settle(ctx context.Context, reservationID string, actualAmount int64) error {
+	_, err := s.settle(ctx, reservationID, actualAmount, false)
+	return err
+}
+
+// SettleUpTo settles like Settle for work that has already been paid for at
+// the provider: when the balance cannot cover what actual exceeds the
+// reservation by, it charges what is left down to zero instead of failing.
+// It returns the credits charged.
+func (s *CreditLedgerService) SettleUpTo(ctx context.Context, reservationID string, actualAmount int64) (int64, error) {
+	return s.settle(ctx, reservationID, actualAmount, true)
+}
+
+func (s *CreditLedgerService) settle(ctx context.Context, reservationID string, actualAmount int64, capped bool) (int64, error) {
 	if actualAmount < 0 {
-		return errors.New("actual amount cannot be negative")
+		return 0, errors.New("actual amount cannot be negative")
 	}
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
+		return 0, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var orgID, status string
+	var orgID, status, feature string
 	var reservedAmount int64
 	err = tx.QueryRow(ctx, `
-		SELECT organization_id, amount_credits, status
+		SELECT organization_id, amount_credits, status, feature
 		FROM go_billing_credit_reservations
 		WHERE id = $1 FOR UPDATE
-	`, reservationID).Scan(&orgID, &reservedAmount, &status)
+	`, reservationID).Scan(&orgID, &reservedAmount, &status, &feature)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrReservationNotFound
+		return 0, ErrReservationNotFound
 	}
 	if err != nil {
-		return fmt.Errorf("query reservation: %w", err)
+		return 0, fmt.Errorf("query reservation: %w", err)
 	}
 
 	if status != "reserved" {
-		return ErrReservationAlreadyClosed
+		return 0, ErrReservationAlreadyClosed
 	}
 
 	refundAmount := reservedAmount - actualAmount
 	if refundAmount < 0 {
-		// If actual exceeded reserved, try to deduct extra
 		extraNeeded := -refundAmount
 		var currentBal int64
 		err = tx.QueryRow(ctx, `SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE`, orgID).Scan(&currentBal)
-		if err != nil || currentBal < extraNeeded {
-			return ErrInsufficientBalance
+		if errors.Is(err, pgx.ErrNoRows) {
+			currentBal = 0
+		} else if err != nil {
+			return 0, fmt.Errorf("lock balance: %w", err)
 		}
-		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now() WHERE organization_id = $2`, extraNeeded, orgID)
-		if err != nil {
-			return fmt.Errorf("deduct extra balance: %w", err)
+		if currentBal < extraNeeded {
+			if !capped {
+				return 0, ErrInsufficientBalance
+			}
+			extraNeeded = currentBal
+			actualAmount = reservedAmount + currentBal
+		}
+		if extraNeeded > 0 {
+			_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now() WHERE organization_id = $2`, extraNeeded, orgID)
+			if err != nil {
+				return 0, fmt.Errorf("deduct extra balance: %w", err)
+			}
 		}
 	} else if refundAmount > 0 {
 		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, refundAmount, orgID)
 		if err != nil {
-			return fmt.Errorf("refund unused balance: %w", err)
+			return 0, fmt.Errorf("refund unused balance: %w", err)
 		}
 	}
 
 	_, err = tx.Exec(ctx, `UPDATE go_billing_credit_reservations SET status = 'settled', updated_at = now() WHERE id = $1`, reservationID)
 	if err != nil {
-		return fmt.Errorf("update reservation status: %w", err)
+		return 0, fmt.Errorf("update reservation status: %w", err)
 	}
 
-	ledgerID := generateID("led")
+	reason := "settled reservation"
+	if feature != "" {
+		reason = feature
+	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
-		VALUES ($1, $2, $3, $4, 'settle', 'settled reservation', now())
-	`, ledgerID, orgID, reservationID, -actualAmount)
+		VALUES ($1, $2, $3, $4, 'settle', $5, now())
+	`, generateID("led"), orgID, reservationID, -actualAmount, reason)
 	if err != nil {
-		return fmt.Errorf("insert ledger settle: %w", err)
+		return 0, fmt.Errorf("insert ledger settle: %w", err)
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit settle: %w", err)
+	}
+	return actualAmount, nil
 }
 
 // Refund refunds a reservation in full.
@@ -371,4 +408,40 @@ func (s *CreditLedgerService) Refund(ctx context.Context, reservationID string, 
 	}
 
 	return tx.Commit(ctx)
+}
+
+// FeatureSpend is the credits a workspace spent on one feature.
+type FeatureSpend struct {
+	Feature string `json:"feature"`
+	Credits int64  `json:"credits"`
+}
+
+// SpendByFeature sums the credits orgID was charged since since, per
+// feature, largest first. Charges made before features were labelled are
+// grouped as "other".
+func (s *CreditLedgerService) SpendByFeature(ctx context.Context, orgID string, since time.Time) ([]FeatureSpend, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT CASE WHEN reason = ANY($3) THEN reason ELSE 'other' END AS feature, sum(-amount_credits)::bigint
+		FROM go_billing_credit_ledger
+		WHERE organization_id = $1 AND type = 'settle' AND created_at >= $2
+		GROUP BY 1
+		HAVING sum(-amount_credits) > 0
+		ORDER BY 2 DESC, 1
+	`, orgID, since, featureNames())
+	if err != nil {
+		return nil, fmt.Errorf("sum spend by feature: %w", err)
+	}
+	defer rows.Close()
+	out := make([]FeatureSpend, 0)
+	for rows.Next() {
+		var f FeatureSpend
+		if err := rows.Scan(&f.Feature, &f.Credits); err != nil {
+			return nil, fmt.Errorf("scan feature spend: %w", err)
+		}
+		out = append(out, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate feature spend: %w", err)
+	}
+	return out, nil
 }

@@ -30,6 +30,9 @@ const (
 	// charged once this much is unbilled, with the remainder flushed when the
 	// turn ends. The user pays the turn's actual provider cost either way.
 	billingChunkUSD = 0.05
+	// maxTurnUSD stops one turn once its provider cost reaches it, so a model
+	// stuck calling tools cannot spend a workspace's month in one message.
+	maxTurnUSD = 1.0
 
 	// compactAfterTokens is the estimated transcript size that triggers a
 	// summary of the oldest messages between turns.
@@ -119,9 +122,12 @@ func (a *Agent) skills() []skill {
 // Refusal texts. They stream as ordinary assistant messages, so a refusal is
 // free (no provider call) and renders and persists like any other reply.
 const (
-	failureText     = "SAM could not finish this reply. Please try again."
-	refuseNoCredits = "You're out of credits. Top up to keep using SAM."
-	refuseNoAccess  = "You no longer have access to this organization, so I can't continue this chat."
+	failureText          = "SAM could not finish this reply. Please try again."
+	refuseNoCredits      = "You're out of credits. Top up to keep using SAM."
+	refuseRanOutMidTurn  = "You ran out of credits, so I stopped here. Your credits refill on your next billing date, or upgrade your plan for more."
+	refuseTurnLimit      = "This request was getting expensive, so I stopped here to protect your credits. Ask me to continue if you need more."
+	refuseBillingUnknown = "I can't check your credits right now, so I didn't start. Please try again in a minute."
+	refuseNoAccess       = "You no longer have access to this organization, so I can't continue this chat."
 )
 
 // Run streams the reply to userMessage, which the caller has already stored,
@@ -159,10 +165,10 @@ func (a *Agent) gate(ctx context.Context, sc SessionContext) string {
 	}
 	ok, err := a.Meter.HasCredits(ctx, sc.OrganizationID)
 	if err != nil {
-		// Fail open: a billing outage must not lock a paying customer out of
-		// chat, and spend is still metered after the fact.
-		a.logger().WarnContext(ctx, "SAM credit check failed", "err", err)
-		return ""
+		// Fail closed: a turn that cannot be paid for must not run on
+		// Uplumo's money.
+		a.logger().ErrorContext(ctx, "SAM credit check failed", "err", err)
+		return refuseBillingUnknown
 	}
 	if !ok {
 		return refuseNoCredits
@@ -215,7 +221,12 @@ type turnState struct {
 	sink      Sink
 	assistant Message
 	unbilled  float64
-	charges   int
+	// spent is the turn's provider cost so far, billed or not.
+	spent   float64
+	charges int
+	// stepChars counts the characters the current step streamed, to price a
+	// call whose usage never arrived.
+	stepChars int
 	finished  bool
 	// open streaming parts of the current step, as indexes into assistant.Parts
 	// (-1 when none).
@@ -284,6 +295,23 @@ func (t *turnState) run(ctx context.Context) error {
 
 	conversation := append([]openrouter.Message{{Role: "system", Content: system}}, history...)
 	for step := 0; step < maxSteps; step++ {
+		if step > 0 {
+			// Every step costs money, so check again before each one: credits
+			// can run out, or the daily limit be reached, mid-turn.
+			if t.spent >= maxTurnUSD {
+				t.refuse(refuseTurnLimit)
+				return nil
+			}
+			switch refusal := a.gate(ctx, t.sc); refusal {
+			case "":
+			case refuseNoCredits:
+				t.refuse(refuseRanOutMidTurn)
+				return nil
+			default:
+				t.refuse(refusal)
+				return nil
+			}
+		}
 		result, ok := t.step(ctx, conversation, toolset)
 		if !ok {
 			return nil
@@ -321,6 +349,7 @@ func (t *turnState) auth() mcp.Auth {
 func (t *turnState) step(ctx context.Context, conversation []openrouter.Message, toolset *toolset) (openrouter.Result, bool) {
 	a := t.agent
 	t.textPart, t.reasoningPart = -1, -1
+	t.stepChars = 0
 	t.assistant.Parts = append(t.assistant.Parts, Part{Type: "step-start"})
 	_ = t.sink.Send(Chunk{"type": "start-step"})
 
@@ -336,6 +365,7 @@ func (t *turnState) step(ctx context.Context, conversation []openrouter.Message,
 				}
 			}
 			t.assistant.Parts[t.reasoningPart].Text += delta
+			t.stepChars += len(delta)
 			return t.sink.Send(Chunk{"type": "reasoning-delta", "id": reasoningID, "delta": delta})
 		},
 		OnText: func(delta string) error {
@@ -355,6 +385,7 @@ func (t *turnState) step(ctx context.Context, conversation []openrouter.Message,
 				}
 			}
 			t.assistant.Parts[t.textPart].Text += delta
+			t.stepChars += len(delta)
 			return t.sink.Send(Chunk{"type": "text-delta", "id": textID, "delta": delta})
 		},
 	}
@@ -376,7 +407,11 @@ func (t *turnState) step(ctx context.Context, conversation []openrouter.Message,
 		t.assistant.Parts[t.textPart].State = stateDone
 		_ = t.sink.Send(Chunk{"type": "text-end", "id": textID})
 	}
-	t.recordSpend(ctx, result.Usage.CostUSD)
+	cost, estimated := result.Usage.BillableUSD(t.stepChars)
+	if estimated {
+		a.logger().WarnContext(ctx, "SAM model call reported no cost; charging an estimate", "session", t.sc.SessionID, "cost_usd", cost)
+	}
+	t.recordSpend(ctx, cost)
 
 	if err != nil {
 		if ctx.Err() == nil && !errors.Is(err, errStreamClosed) {
@@ -453,6 +488,7 @@ func (t *turnState) fail(ctx context.Context, cause error) error {
 func (t *turnState) recordSpend(ctx context.Context, costUSD float64) {
 	if costUSD > 0 {
 		t.unbilled += costUSD
+		t.spent += costUSD
 	}
 	if t.unbilled >= billingChunkUSD {
 		t.flushSpend(ctx)

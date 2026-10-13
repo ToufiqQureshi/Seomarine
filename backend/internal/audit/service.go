@@ -189,6 +189,11 @@ func (s *Service) StartAudit(ctx context.Context, input StartAuditInput) (StartA
 	if strategy != LighthouseAuto && strategy != LighthouseNone {
 		return StartAuditResult{}, fmt.Errorf("%w: unknown lighthouse strategy", ErrStartURLInvalid)
 	}
+	// Lighthouse is a paid provider call and the free plan has no credits to
+	// pay for it, so a free audit skips it instead of failing each page.
+	if input.LimitTier == TierFree {
+		strategy = LighthouseNone
+	}
 	reservation := getEstimatedCapacity(maxPages, strategy)
 
 	requestedURL, err := s.guard.NormalizeAndValidateStartURL(ctx, input.StartURL)

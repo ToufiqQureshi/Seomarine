@@ -18,6 +18,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 type memoryLocationCache struct {
@@ -112,6 +113,7 @@ func newTestLocationService(t *testing.T, provider *locationProvider, cache *mem
 	server := httptest.NewServer(provider)
 	t.Cleanup(server.Close)
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:   &spendtest.Guard{},
 		BaseURL: server.URL, APIKey: base64.StdEncoding.EncodeToString([]byte("test:test")),
 		Recorder: noopRecorder{}, MaxRetries: 1, RetryBackoff: time.Millisecond,
 	})

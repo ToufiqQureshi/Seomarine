@@ -16,6 +16,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/database"
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 	"github.com/toufiqqureshi/uplumo/backend/internal/site"
 )
 
@@ -65,6 +66,7 @@ func TestAISearchEndToEnd(t *testing.T) {
 	}))
 	t.Cleanup(provider.Close)
 	client, err := dataforseo.NewClient(dataforseo.Options{
+		Guard:    &spendtest.Guard{},
 		BaseURL:  provider.URL,
 		APIKey:   base64.StdEncoding.EncodeToString([]byte("login:password")),
 		Recorder: dataforseo.NewUsageRecorder(pool),
