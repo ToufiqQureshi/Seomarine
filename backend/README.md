@@ -21,7 +21,7 @@ PORT=8080 go run ./cmd/server
 | `PORT`                    | no       | Listen port, default `8080`.                                                                                    |
 | `DATAFORSEO_API_KEY`      | no       | Base64 `login:password` for AI search, backlinks and domain. Without it those endpoints answer `503`. |
 | `TRUSTED_PROXY_CIDRS`     | no       | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
-| `RAZORPAY_KEY_ID`         | no       | Razorpay API key id. Set all four `RAZORPAY_*` variables or none; without them billing endpoints answer `503`.  |
+| `RAZORPAY_KEY_ID`         | no       | Razorpay API key id. Set all four `RAZORPAY_*` variables or none; without them billing status and credits remain read-only; checkout, cancellation and webhooks answer `503`.  |
 | `RAZORPAY_KEY_SECRET`     | no       | Razorpay API key secret.                                                                                        |
 | `RAZORPAY_WEBHOOK_SECRET` | no       | Secret of the Razorpay webhook pointed at `/webhooks/razorpay`.                                                 |
 | `RAZORPAY_PLAN_ID_PRO`    | no       | Razorpay plan id (`plan_...`) of the monthly Pro plan.                                                          |
