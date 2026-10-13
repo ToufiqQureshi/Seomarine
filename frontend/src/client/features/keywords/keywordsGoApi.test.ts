@@ -29,7 +29,7 @@ function reply(value: unknown, status = 200) {
 const projectPath = "/api/v1/projects/p1";
 
 describe("keyword research API", () => {
-  it("posts the seeds to the Go research route", async () => {
+  it("posts seeds without duplicating the path project in the body", async () => {
     reply({
       rows: [
         {
@@ -57,7 +57,6 @@ describe("keyword research API", () => {
     expect(fetchSpy.mock.calls[0][0]).toBe(`${projectPath}/keywords/research`);
     expect(fetchSpy.mock.calls[0][1]?.body).toBe(
       JSON.stringify({
-        projectId: "p1",
         keywords: ["seo"],
         mode: "auto",
         resultLimit: 150,
@@ -98,7 +97,6 @@ describe("SERP analysis API", () => {
     expect(fetchSpy.mock.calls[0][0]).toBe(`${projectPath}/keywords/serp`);
     expect(fetchSpy.mock.calls[0][1]?.body).toBe(
       JSON.stringify({
-        projectId: "p1",
         keyword: "seo",
         locationCode: 2840,
         depth: 20,
@@ -122,7 +120,7 @@ describe("saved keywords API", () => {
       `${projectPath}/keywords/saved/list`,
     );
     expect(fetchSpy.mock.calls[0][1]?.body).toBe(
-      JSON.stringify({ projectId: "p1", page: 2, pageSize: 50 }),
+      JSON.stringify({ page: 2, pageSize: 50 }),
     );
   });
 

@@ -61,11 +61,15 @@ function postKeyword<T>(
   schema: z.ZodType<T>,
   body: Record<string, unknown>,
 ): Promise<T> {
+  // The project is already part of the URL. The Go handlers strictly reject
+  // unknown JSON fields, so forwarding projectId in the body turns otherwise
+  // valid research and saved-keyword requests into 400 responses.
+  const { projectId: _projectId, ...requestBody } = body;
   return apiRequest(
     `/api/v1/projects/${encodeURIComponent(projectId)}/${route}`,
     schema,
     "POST",
-    body,
+    requestBody,
   );
 }
 
