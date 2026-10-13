@@ -78,7 +78,9 @@ export function useBillingCustomer({
 
   async function attach({ planId, successUrl }: AttachOptions) {
     if (query.data && !query.data.paymentsConfigured) {
-      throw new Error("Online payments are temporarily unavailable. Contact support.");
+      throw new Error(
+        "Online payments are temporarily unavailable. Contact support.",
+      );
     }
     if (planId === AUTUMN_SEO_DATA_TOP_UP_PLAN_ID) {
       throw new Error("Credit top-ups are not available yet.");
