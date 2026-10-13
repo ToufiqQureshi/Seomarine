@@ -40,8 +40,8 @@ Needed before real users sign up:
 | `LOOPS_API_KEY` and the three `LOOPS_TRANSACTIONAL_*_ID` | No verification or reset email: nobody can finish sign-up. The key, the verify ID and the reset ID must all be set, or none of the three works. |
 | `TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY`             | No bot check on sign-up.                                                                                                                         |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`               | No Google sign-in, Search Console or Analytics.                                                                                                  |
-| The four `RAZORPAY_*`                                    | No paid plan: the Billing page shows the plan but offers no checkout, and checkout, cancel and the webhook answer `503`.                                                                                              |
-| `BILLING_MONTHLY_CREDITS_USD`                            | A paying workspace is granted no credits, and the assistant and AI writing are charged against credits.                                          |
+| The `RAZORPAY_*` variables (three credentials and a plan id per plan) | No paid plan: the Billing page shows the plan but offers no checkout, and checkout, cancel and the webhook answer `503`. |
+| `STAFF_EMAILS` | The owner and the team are held to the Free plan like any customer. |
 | `DATAFORSEO_API_KEY`                                     | No keywords, rank tracking, backlinks or AI visibility (`503`).                                                                                  |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`                 | No AI assistant or AI writing.                                                                                                                   |
 
@@ -78,16 +78,18 @@ The server refuses to start on a live `https` site when:
 Billing uses Razorpay **Subscriptions**. Do this once in Test Mode, then again
 in Live Mode:
 
-1. Create a monthly plan whose amount equals `ProPriceINR` in
-   `backend/internal/site/site.go` (₹1,499 today). Its id (`plan_...`) is
-   `RAZORPAY_PLAN_ID_PRO`.
+1. Create one monthly plan for each plan Uplumo sells, with the amount in
+   `backend/internal/plans/catalog.go`: Basic ₹999, Pro ₹2,499, Agency
+   ₹5,999. Their ids (`plan_...`) are `RAZORPAY_PLAN_ID_BASIC`,
+   `RAZORPAY_PLAN_ID_PRO` and `RAZORPAY_PLAN_ID_AGENCY`. A plan left without
+   an id simply cannot be bought.
 2. Add a webhook to `https://uplumo.com/webhooks/razorpay` with a secret of
    your own; the same value is `RAZORPAY_WEBHOOK_SECRET`. Subscribe it to
    `subscription.activated`, `.charged`, `.cancelled`, `.halted` and
    `.completed`.
 3. Generate an API key: `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`.
-4. Set all four variables. A test key works only with a test plan and a test
-   webhook; never mix modes.
+4. Set the three credentials and the plan ids together. A test key works
+   only with test plans and a test webhook; never mix modes.
 
 ## 4. Check the live site
 

@@ -69,6 +69,22 @@ type Service struct {
 	Schedule  Scheduler
 	Metrics   KeywordMetricProvider
 	Plans     PaidPlans // nil allows metric refresh on self-hosted installs
+	// Limits and Usage cap the keywords a workspace tracks at what its plan
+	// allows. Either one nil means no cap beyond MaxKeywordsPerConfig.
+	Limits KeywordLimits
+	Usage  KeywordUsage
+}
+
+// KeywordLimits reports how many keywords an organization's plan lets it
+// track; 0 is no limit.
+type KeywordLimits interface {
+	KeywordLimit(ctx context.Context, organizationID string) (int, error)
+}
+
+// KeywordUsage reports the organization that owns a project and how many
+// keywords that organization tracks.
+type KeywordUsage interface {
+	OrganizationKeywords(ctx context.Context, projectID string) (organizationID string, tracked int, err error)
 }
 
 // NewService builds a Service that schedules with the real clock.
@@ -399,12 +415,42 @@ func (s *Service) AddKeywords(ctx context.Context, projectID, configID string, r
 	if len(rows) == 0 {
 		return result, nil
 	}
+	room, err := s.planRoom(ctx, projectID)
+	if err != nil {
+		return AddResult{}, err
+	}
+	// As with the per-domain cap, what fits is added and the rest is left.
+	rows = rows[:min(len(rows), room)]
 	added, err := s.Repo.AddKeywords(ctx, configID, rows, MaxKeywordsPerConfig)
 	if err != nil {
 		return AddResult{}, err
 	}
 	result.Added, result.AddedIDs = len(added), added
 	return result, nil
+}
+
+// planRoom returns how many more keywords the project's workspace may track
+// under its plan. It is read before the insert, not locked with it: two
+// requests at once can pass the plan's number by what one of them adds.
+func (s *Service) planRoom(ctx context.Context, projectID string) (int, error) {
+	if s.Limits == nil || s.Usage == nil {
+		return MaxKeywordsPerConfig, nil
+	}
+	organizationID, tracked, err := s.Usage.OrganizationKeywords(ctx, projectID)
+	if err != nil {
+		return 0, err
+	}
+	limit, err := s.Limits.KeywordLimit(ctx, organizationID)
+	if err != nil {
+		return 0, fmt.Errorf("check tracked keyword limit: %w", err)
+	}
+	if limit == 0 {
+		return MaxKeywordsPerConfig, nil
+	}
+	if tracked >= limit {
+		return 0, fmt.Errorf("%w: your plan tracks up to %d keywords and you track %d. Remove some, or upgrade the plan", ErrLimit, limit, tracked)
+	}
+	return limit - tracked, nil
 }
 
 // RemoveKeywords deletes keywords from a config and reports the ids removed.

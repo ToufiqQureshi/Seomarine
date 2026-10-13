@@ -197,6 +197,28 @@ func (s Store) UpdateKeywordMetrics(ctx context.Context, configID string, update
 	return int(tag.RowsAffected()), nil
 }
 
+// OrganizationKeywords returns the organization that owns projectID and how
+// many keywords it tracks: those of active configs in projects that are not
+// archived, which are the ones a check is run for.
+func (s Store) OrganizationKeywords(ctx context.Context, projectID string) (string, int, error) {
+	var organizationID string
+	var tracked int
+	err := s.DB.QueryRow(ctx, `
+		SELECT p.organization_id, (
+			SELECT count(*) FROM go_rank_tracking_keywords k
+			JOIN go_rank_tracking_configs c ON c.id = k.config_id
+			JOIN projects q ON q.id = c.project_id
+			WHERE q.organization_id = p.organization_id AND c.is_active AND q.archived_at IS NULL)
+		FROM projects p WHERE p.id = $1`, projectID).Scan(&organizationID, &tracked)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", 0, ErrNotFound
+		}
+		return "", 0, fmt.Errorf("count tracked keywords of the organization: %w", err)
+	}
+	return organizationID, tracked, nil
+}
+
 // AddKeywords inserts keywords that are not stored yet and returns the ids it
 // added. It locks the config row so two requests cannot together pass
 // maxKeywords, and keeps only as many keywords as still fit.

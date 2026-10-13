@@ -3,9 +3,9 @@
 <main id="main">
 <div class="dots">
 <div class="wrap hero" style="padding-bottom:5rem">
-<span class="sticker">AI visibility included in Pro</span>
-<h1>Simple pricing. <em>No surprises.</em></h1>
-<p class="lead">One price in rupees, AI visibility included and no credits to count. Start free, upgrade when you are ready and cancel in one click.</p>
+<span class="sticker">Choose the tools your site needs</span>
+<h1>Plans that fit <em>your work.</em></h1>
+<p class="lead">Start free. Pay only when you want to rank, research competitors or run an agency.</p>
 </div>
 </div>
 
@@ -16,7 +16,7 @@
 <h2 id="plans">Pick one. Change any time.</h2>
 </div>
 {{template "plans" .}}
-<p class="note">Prices are per workspace, per month, in Indian rupees.</p>
+<p class="note">Prices are per workspace, per month, in Indian rupees. Cancel in one click from Billing.</p>
 </div>
 </section>
 
@@ -24,21 +24,19 @@
 <div class="wrap narrow stack">
 <div class="section-head">
 <p class="eyebrow">Compare</p>
-<h2 id="compare">How Uplumo compares</h2>
-<p>What you pay for the things people complain about most.</p>
+<h2 id="compare">Compare plans</h2>
+<p>Each paid tier builds on the one before it.</p>
 </div>
 <div class="table-scroll">
 <table>
-<caption class="skip">Uplumo compared with Semrush and Ahrefs</caption>
-<thead><tr><th scope="col"></th><th scope="col">Uplumo Pro</th><th scope="col">Semrush</th><th scope="col">Ahrefs</th></tr></thead>
+<caption class="skip">Uplumo plan feature comparison</caption>
+<thead><tr><th scope="col">Feature</th>{{range .Plans}}<th scope="col">{{.Name}}</th>{{end}}</tr></thead>
 <tbody>
-<tr><th scope="row">AI visibility</th><td>Included</td><td>Add-on, about $99 a month per domain</td><td>Sold separately</td></tr>
-<tr><th scope="row">Rows per report</th><td>No cap on our own data</td><td>Capped by plan</td><td>2,500 on the Lite plan</td></tr>
-<tr><th scope="row">Price</th><td>{{inr .ProPriceINR}} a month, flat</td><td>About $140 a month per Pro seat</td><td>Plan plus usage credits</td></tr>
-</tbody>
+{{range .Compare}}<tr><th scope="row">{{.Label}}</th>{{range .Cells}}<td>{{.}}</td>{{end}}</tr>
+{{end}}</tbody>
 </table>
 </div>
-<p class="note">Semrush and Ahrefs details are from their public pricing pages in 2026. Check their sites for current prices.</p>
+<p class="note">Lookups that cost us money at our data providers have a fair-use limit per workspace, so one account cannot run up a bill for everyone else.</p>
 </div>
 </section>
 
@@ -55,7 +53,7 @@
 <section class="band dots" aria-labelledby="start">
 <div class="wrap final">
 <h2 id="start">Try Uplumo <em>free.</em></h2>
-<p>No card needed. Upgrade to Pro only when it pays for itself.</p>
+<p>No card needed. Upgrade only when you need more.</p>
 <a class="btn" href="{{.SignUp}}">Create your free account</a>
 </div>
 </section>

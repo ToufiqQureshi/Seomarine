@@ -3,6 +3,8 @@ package config
 import (
 	"maps"
 	"net/url"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -139,12 +141,12 @@ func TestLoadRazorpay(t *testing.T) {
 	}
 
 	cfg, err = load(full)
-	want := Razorpay{KeyID: "rzp_test_key", KeySecret: "key-secret", WebhookSecret: "webhook-secret", PlanIDPro: "plan_pro"}
-	if err != nil || cfg.Razorpay == nil || *cfg.Razorpay != want {
+	want := Razorpay{KeyID: "rzp_test_key", KeySecret: "key-secret", WebhookSecret: "webhook-secret", PlanIDs: map[string]string{"pro": "plan_pro"}}
+	if err != nil || cfg.Razorpay == nil || !reflect.DeepEqual(*cfg.Razorpay, want) {
 		t.Fatalf("with every RAZORPAY_* Load() = %+v, %v; want %+v", cfg.Razorpay, err, want)
 	}
 
-	for key := range full {
+	for _, key := range []string{"RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"} {
 		if _, ok := base[key]; ok {
 			continue
 		}
@@ -153,6 +155,17 @@ func TestLoadRazorpay(t *testing.T) {
 		if _, err := load(partial); err == nil || !strings.Contains(err.Error(), key) {
 			t.Errorf("without %s Load() error = %v, want one naming it", key, err)
 		}
+	}
+
+	plans := maps.Clone(full)
+	maps.Copy(plans, map[string]string{
+		"RAZORPAY_PLAN_ID_BASIC":  "plan_basic",
+		"RAZORPAY_PLAN_ID_PRO":    " plan_pro_tier ",
+		"RAZORPAY_PLAN_ID_AGENCY": "plan_agency",
+	})
+	cfg, err = load(plans)
+	if err != nil || cfg.Razorpay.PlanIDs["basic"] != "plan_basic" || cfg.Razorpay.PlanIDs["pro"] != "plan_pro_tier" || cfg.Razorpay.PlanIDs["agency"] != "plan_agency" {
+		t.Fatalf("tier Razorpay config = %+v, %v", cfg.Razorpay, err)
 	}
 }
 
@@ -214,5 +227,57 @@ func TestLoadErrorReporting(t *testing.T) {
 	}
 	if cfg.Environment != "production" {
 		t.Errorf("environment on a live https site = %q, want production", cfg.Environment)
+	}
+}
+
+func TestLoadRazorpayNeedsCredentialsAndAPlanTogether(t *testing.T) {
+	base := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	with := func(extra map[string]string) error {
+		env := maps.Clone(base)
+		maps.Copy(env, extra)
+		_, err := Load(func(key string) string { return env[key] })
+		return err
+	}
+	credentials := map[string]string{"RAZORPAY_KEY_ID": "id", "RAZORPAY_KEY_SECRET": "secret", "RAZORPAY_WEBHOOK_SECRET": "hook"}
+
+	if err := with(credentials); err == nil || !strings.Contains(err.Error(), "RAZORPAY_PLAN_ID_") {
+		t.Errorf("credentials without a plan id: error = %v, want one naming the plan variables", err)
+	}
+	if err := with(map[string]string{"RAZORPAY_PLAN_ID_AGENCY": "plan_agency"}); err == nil || !strings.Contains(err.Error(), "RAZORPAY_KEY_ID") {
+		t.Errorf("a plan id without credentials: error = %v, want one naming the missing credentials", err)
+	}
+	one := maps.Clone(credentials)
+	one["RAZORPAY_PLAN_ID_BASIC"] = "plan_basic"
+	if err := with(one); err != nil {
+		t.Errorf("credentials with one plan id: error = %v, want billing on", err)
+	}
+}
+
+func TestLoadStaffEmails(t *testing.T) {
+	env := map[string]string{
+		"DATABASE_URL":       "postgres://localhost/uplumo",
+		"REDIS_URL":          "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret,
+		"PUBLIC_URL":         "http://localhost:8080",
+	}
+	load := func() []string {
+		t.Helper()
+		cfg, err := Load(func(key string) string { return env[key] })
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		return cfg.StaffEmails
+	}
+	if got := load(); len(got) != 0 {
+		t.Errorf("without STAFF_EMAILS = %v, want nobody", got)
+	}
+	env["STAFF_EMAILS"] = " Owner@Uplumo.com ,, second@uplumo.com	"
+	if got := load(); !slices.Equal(got, []string{"owner@uplumo.com", "second@uplumo.com"}) {
+		t.Errorf("STAFF_EMAILS = %v, want both addresses trimmed and lower case", got)
 	}
 }

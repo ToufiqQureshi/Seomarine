@@ -451,8 +451,9 @@ type fixture struct {
 	pool *pgxpool.Pool
 	org  string
 	// calls counts subscription creations at the fake Razorpay.
-	calls     atomic.Int32
-	lastNotes atomic.Pointer[map[string]string]
+	calls      atomic.Int32
+	lastNotes  atomic.Pointer[map[string]string]
+	lastPlanID atomic.Value
 	// failWith makes the fake Razorpay answer with this status.
 	failWith int
 	// duringCreate runs while the fake Razorpay handles a creation.
@@ -513,12 +514,14 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 			return
 		}
 		var req struct {
-			Notes map[string]string `json:"notes"`
+			PlanID string            `json:"plan_id"`
+			Notes  map[string]string `json:"notes"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("decode request: %v", err)
 		}
 		f.lastNotes.Store(&req.Notes)
+		f.lastPlanID.Store(req.PlanID)
 		n := f.calls.Add(1)
 		if f.duringCreate != nil {
 			f.duringCreate()
@@ -537,6 +540,27 @@ func newFixture(ctx context.Context, t *testing.T) *fixture {
 		}
 	})
 	return f
+}
+
+func TestCheckoutPlanUsesSelectedRazorpayPlan(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.sellTiers()
+
+	for i, plan := range []string{PlanBasic, PlanPro, PlanAgency} {
+		if i > 0 {
+			// Razorpay's created state has not charged the customer, so retrying replaces it.
+			if _, err := f.pool.Exec(ctx, `DELETE FROM go_billing_subscriptions WHERE organization_id = $1`, f.org); err != nil {
+				t.Fatalf("clear prior created subscription: %v", err)
+			}
+		}
+		if _, err := f.svc.CheckoutPlan(ctx, f.org, plan); err != nil {
+			t.Fatalf("CheckoutPlan(%s) error = %v", plan, err)
+		}
+		if got := f.lastPlanID.Load(); got != tierPlanIDs[plan] {
+			t.Fatalf("Razorpay plan_id = %v, want %s", got, tierPlanIDs[plan])
+		}
+	}
 }
 
 func (f *fixture) event(name, subID, status string, at time.Time) []byte {
@@ -628,27 +652,4 @@ func testDatabaseURL(t *testing.T) string {
 	}
 	t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	return ""
-}
-
-func TestHasPaidPlan(t *testing.T) {
-	ctx := context.Background()
-	f := newFixture(ctx, t)
-	assertPaid := func(want bool, when string) {
-		t.Helper()
-		if got, err := f.svc.HasPaidPlan(ctx, f.org); err != nil || got != want {
-			t.Fatalf("HasPaidPlan() %s = %v, %v; want %v", when, got, err, want)
-		}
-	}
-
-	assertPaid(false, "without a subscription")
-	f.deliver(ctx, t, f.event("subscription.activated", "sub_paid", "active", t1))
-	assertPaid(true, "with an active subscription")
-	f.deliver(ctx, t, f.event("subscription.halted", "sub_paid", "halted", t2))
-	assertPaid(false, "after the subscription halted")
-
-	canceled, cancel := context.WithCancel(ctx)
-	cancel()
-	if _, err := f.svc.HasPaidPlan(canceled, f.org); err == nil {
-		t.Error("HasPaidPlan() on a failing database succeeded, want an error")
-	}
 }

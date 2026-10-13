@@ -1,6 +1,7 @@
 package branding
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,14 +25,47 @@ type Deps struct {
 	Logger      *slog.Logger
 	Service     *Service
 	WithSession func(http.Handler) http.Handler
+	// Plans reports whether a workspace's plan includes white-label
+	// branding. Nil leaves it open, as on a server without billing.
+	Plans PaidPlans
 }
 
 // Mount registers branding routes on the root mux. withSession attaches the
 // signed-in user, whose active organization is the row that is read or written.
 func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("GET /api/v1/branding", d.WithSession(GetHandler(d.Logger, d.Service)))
-	mux.Handle("POST /api/v1/branding", d.WithSession(SaveHandler(d.Logger, d.Service)))
-	mux.Handle("POST /api/v1/branding/reset", d.WithSession(ResetHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/branding", d.WithSession(agencyOnly(d.Plans, SaveHandler(d.Logger, d.Service))))
+	mux.Handle("POST /api/v1/branding/reset", d.WithSession(agencyOnly(d.Plans, ResetHandler(d.Logger, d.Service))))
+}
+
+// PaidPlans reports whether an organization's plan includes this feature.
+type PaidPlans interface {
+	HasPaidPlan(ctx context.Context, organizationID string) (bool, error)
+}
+
+// agencyOnly lets a change through only when the workspace's plan includes
+// white-label branding. Reading saved branding stays open, so reports keep
+// their look after a downgrade.
+func agencyOnly(plans PaidPlans, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := auth.UserFromContext(r.Context())
+		if !ok || user.OrganizationID == "" {
+			httpx.WriteError(w, http.StatusForbidden, "no_organization", "Open a workspace first, then try again.")
+			return
+		}
+		if plans != nil {
+			allowed, err := plans.HasPaidPlan(r.Context(), user.OrganizationID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Could not verify the current plan.")
+				return
+			}
+			if !allowed {
+				httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Custom branding is available on the Agency plan.")
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // brandingPayload is the request body. The nullable fields are raw JSON so a

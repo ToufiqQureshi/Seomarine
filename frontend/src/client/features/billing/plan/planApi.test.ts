@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
+  billingPlansQueryOptions,
   billingStatusQueryOptions,
   cancelSubscription,
   createCheckout,
@@ -18,7 +19,9 @@ describe("billing status", () => {
       status: "none",
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      unlimited: false,
       paymentsConfigured: false,
+      availablePlans: [],
     },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
@@ -26,7 +29,9 @@ describe("billing status", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30.123456+05:30",
       cancelAtPeriodEnd: true,
+      unlimited: false,
       paymentsConfigured: true,
+      availablePlans: ["pro"],
     },
   ])("accepts $plan / $status", async (body) => {
     respondWith(body);
@@ -35,7 +40,7 @@ describe("billing status", () => {
 
   it.each([
     { plan: "enterprise", status: "active", currentPeriodEnd: null },
-    { plan: "pro", status: "active", currentPeriodEnd: "next month" },
+    { plan: "basic", status: "active", currentPeriodEnd: "next month" },
     { plan: "pro", status: "active" },
   ])("rejects %o", async (body) => {
     respondWith(body);
@@ -48,10 +53,10 @@ describe("billing status", () => {
 describe("createCheckout", () => {
   it("POSTs and rejects a session without a Razorpay key", async () => {
     const fetchMock = respondWith({ subscriptionId: "sub_1", keyId: "" });
-    await expect(createCheckout()).rejects.toBeInstanceOf(ApiError);
+    await expect(createCheckout("pro")).rejects.toBeInstanceOf(ApiError);
     expect(fetchMock.mock.calls[0]).toMatchObject([
       "/api/v1/billing/checkout",
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ plan: "pro" }) },
     ]);
   });
 });
@@ -63,7 +68,9 @@ describe("cancelSubscription", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30Z",
       cancelAtPeriodEnd: true,
+      unlimited: false,
       paymentsConfigured: true,
+      availablePlans: ["pro"],
     };
     const fetchMock = respondWith(body);
     await expect(cancelSubscription()).resolves.toEqual(body);
@@ -98,5 +105,33 @@ describe("describeStatus", () => {
       label: "on_hold",
       canUpgrade: true,
     });
+  });
+});
+
+describe("billing plans", () => {
+  const plan = {
+    id: "basic",
+    name: "Basic",
+    priceInr: 999,
+    summary: "For one site.",
+    highlights: ["1 website"],
+  };
+
+  it("returns the catalog the Go API sends", async () => {
+    const fetchMock = respondWith({ plans: [plan] });
+    await expect(billingPlansQueryOptions.queryFn()).resolves.toEqual([plan]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/billing/plans");
+  });
+
+  it.each([
+    { plans: [{ ...plan, id: "enterprise" }] },
+    { plans: [{ ...plan, priceInr: "999" }] },
+    { plans: [{ ...plan, priceInr: -1 }] },
+    {},
+  ])("rejects a catalog it cannot trust: %j", async (body) => {
+    respondWith(body);
+    await expect(billingPlansQueryOptions.queryFn()).rejects.toBeInstanceOf(
+      ApiError,
+    );
   });
 });

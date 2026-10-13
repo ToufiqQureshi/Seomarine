@@ -47,6 +47,8 @@ func Mount(mux *http.ServeMux, service *Service, withSession func(http.Handler) 
 			httpx.WriteError(w, http.StatusConflict, "conflict", "This person is already a member.")
 		case errors.Is(err, ErrRateLimited):
 			httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", "Invitation limit reached for today. Try again tomorrow.")
+		case errors.Is(err, ErrSeatLimit):
+			httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Your plan has no room for another team member. Upgrade the plan, or remove a member or a pending invitation.")
 		case errors.Is(err, ErrTooManyPending):
 			httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", "This workspace already has the maximum number of pending invitations.")
 		case errors.Is(err, ErrUpstreamUnavailable):

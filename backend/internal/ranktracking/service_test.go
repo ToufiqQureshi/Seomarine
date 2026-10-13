@@ -455,3 +455,74 @@ func TestEstimateCost(t *testing.T) {
 		t.Errorf("scheduled estimate = %+v, want 4 checks a month", got.ScheduledEstimate)
 	}
 }
+
+type fakeKeywordLimits struct {
+	limit int
+	err   error
+}
+
+func (f fakeKeywordLimits) KeywordLimit(context.Context, string) (int, error) { return f.limit, f.err }
+
+func TestAddKeywordsStopsAtThePlanLimit(t *testing.T) {
+	ctx := context.Background()
+	pool := openPool(t)
+	s, project := newTestService(t, nil)
+	org := "org-" + project
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Limits', $1, now())`, org); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM organization WHERE id = $1`, org); err != nil {
+			t.Errorf("clean organization: %v", err)
+		}
+	})
+	other := project + "-archived"
+	if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name, location_code, language_code, archived_at)
+		VALUES ($1, $3, 'Live', 2840, 'en', NULL), ($2, $3, 'Archived', 2840, 'en', now())`, project, other, org); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM go_rank_tracking_configs WHERE project_id = $1`, other); err != nil {
+			t.Errorf("clean configs: %v", err)
+		}
+	})
+	s.Usage = Store{DB: pool}
+	first := create(t, s, project, nil)
+	second := create(t, s, project, func(in *CreateInput) { in.Domain = "second.example" })
+
+	// Keywords of an archived project are not checked, so they do not count.
+	archived := create(t, s, other, nil)
+	if _, err := s.AddKeywords(ctx, other, archived.ID, []string{"x1", "x2", "x3", "x4"}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	s.Limits = fakeKeywordLimits{limit: 5}
+	if got, err := s.AddKeywords(ctx, project, first.ID, []string{"a", "b", "c"}, false); err != nil || got.Added != 3 {
+		t.Fatalf("first add = %+v, %v; want 3 added", got, err)
+	}
+	// The limit is for the whole workspace: the second domain has room for two.
+	got, err := s.AddKeywords(ctx, project, second.ID, []string{"d", "e", "f", "g"}, false)
+	if err != nil || got.Added != 2 {
+		t.Fatalf("add past the plan limit = %+v, %v; want the 2 that fit", got, err)
+	}
+	if _, err := s.AddKeywords(ctx, project, first.ID, []string{"h"}, false); !errors.Is(err, ErrLimit) {
+		t.Fatalf("add at the plan limit error = %v, want ErrLimit", err)
+	}
+
+	// A plan with no limit, and a server with no plans, only have the per-domain cap.
+	for i, limits := range []KeywordLimits{fakeKeywordLimits{limit: 0}, nil} {
+		s.Limits = limits
+		if got, err := s.AddKeywords(ctx, project, first.ID, []string{"more-" + string(rune('a'+i))}, false); err != nil || got.Added != 1 {
+			t.Fatalf("add without a plan limit = %+v, %v; want 1 added", got, err)
+		}
+	}
+
+	failure := errors.New("billing down")
+	s.Limits = fakeKeywordLimits{err: failure}
+	if _, err := s.AddKeywords(ctx, project, first.ID, []string{"never"}, false); !errors.Is(err, failure) {
+		t.Fatalf("error when the limit cannot be read = %v, want it passed on", err)
+	}
+	if _, _, err := (Store{DB: pool}).OrganizationKeywords(ctx, "no-such-project"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("OrganizationKeywords() of an unknown project error = %v, want ErrNotFound", err)
+	}
+}

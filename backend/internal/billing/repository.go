@@ -46,6 +46,23 @@ func (r repository) subscription(ctx context.Context, orgID string) (subscriptio
 	return s, true, nil
 }
 
+// ownedByAny reports whether an owner of orgID has one of emails as their
+// verified address. emails must be lower case.
+func (r repository) ownedByAny(ctx context.Context, orgID string, emails []string) (bool, error) {
+	var owned bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM member m JOIN "user" u ON u.id = m.user_id
+			WHERE m.organization_id = $1 AND m.role = 'owner'
+				AND u.email_verified AND lower(u.email) = ANY($2))`,
+		orgID, emails,
+	).Scan(&owned)
+	if err != nil {
+		return false, fmt.Errorf("look up the owners of organization %s: %w", orgID, err)
+	}
+	return owned, nil
+}
+
 // startSubscription stores a just-created subscription as orgID's, unless
 // orgID's current subscription has one of liveStatuses. It reports whether
 // the subscription was stored. event_at never moves back, so a late webhook

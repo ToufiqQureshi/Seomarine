@@ -21,8 +21,10 @@ PORT=8080 go run ./cmd/server
 | `STATIC_DIR` | no | Directory of the built React app (Vite `dist`). Every path the Go server does not own gets its `index.html`. Default `dist`. |
 | `PORT` | no | Listen port, default `8080`. |
 | `TRUSTED_PROXY_CIDRS` | no | Comma-separated CIDRs of reverse proxies that overwrite `CF-Connecting-IP` and append `X-Forwarded-For`. If unset, forwarded IP headers are ignored. Never include untrusted client ranges. |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_PLAN_ID_PRO` | no | Set all four or none; without them billing status and credits remain read-only, and checkout, cancellation and webhooks answer `503`. The plan id (`plan_...`) is the monthly Pro plan, and the webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
-| `BILLING_MONTHLY_CREDITS_USD` | no | Credits, in US dollars of provider cost, granted to a workspace on each paid subscription charge. 0 to 10000, default 0. |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | no | Set all three, with at least one plan id below, or none. Without them billing status and credits remain read-only, and checkout, cancellation and webhooks answer `503`. The webhook secret belongs to the webhook pointed at `/webhooks/razorpay`. |
+| `RAZORPAY_PLAN_ID_BASIC`, `RAZORPAY_PLAN_ID_PRO`, `RAZORPAY_PLAN_ID_AGENCY` | no | The monthly Razorpay plan (`plan_...`) that bills each plan. Its amount must equal the price in `internal/plans/catalog.go`. A plan without an id cannot be bought. |
+| `BILLING_MONTHLY_CREDITS_USD`, `BILLING_AGENCY_MONTHLY_CREDITS_USD` | no | Credits, in US dollars of provider cost, granted on each paid month of Pro (default 3) and Agency (default 10). 0 to 10000. Customers never see them; they cap what a workspace can cost us. |
+| `STAFF_EMAILS` | no | Comma-separated addresses. A workspace owned by one of them, verified, gets every feature with no limits and pays nothing. For the owner and the team only. |
 | `DATAFORSEO_API_KEY` | no | Base64 `login:password`. Without it keywords, rank tracking, backlinks, domain and AI search answer `503`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | no | The model behind the assistant and AI writing. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no | Google sign-in, Search Console and Analytics. |
@@ -58,9 +60,8 @@ are in its own `internal/<feature>/README.md` and, where one exists,
   `internal/site` (`html/template`, no JavaScript) and send `ETag`, a strict
   CSP, `no-transform` (so Cloudflare does not rewrite the support address)
   and `Vary: Cookie` on `/`. The operator name, address, phone and the
-  "last updated" date of the legal pages are constants in the same file. Prices are the `FreePriceINR`/`ProPriceINR`
-  constants in `internal/site/site.go`; keep `ProPriceINR` equal to the
-  Razorpay plan's amount.
+  "last updated" date of the legal pages are constants in the same file. Prices and the plan
+  comparison come from `internal/plans/catalog.go`.
 - `GET /site/...`: the pages' embedded assets (logo, font, social card).
   The pages link them with a `?v=<content hash>`, which is cached for a
   year; other requests are revalidated by `ETag`.
@@ -165,7 +166,8 @@ Hosts compare case-insensitively without `www.`. The tables are in
 
 ## Billing
 
-One Pro plan, sold as a Razorpay subscription per workspace (organization).
+Basic, Pro and Agency, each sold as a Razorpay subscription per workspace
+(organization). What they cost and include is in `internal/plans/README.md`.
 More, including cancelling and the credit ledger, is in
 `internal/billing/README.md`.
 Checkout creates the subscription with the workspace id in its notes; the

@@ -137,6 +137,9 @@ func (d Deps) respond(w http.ResponseWriter, r *http.Request, value any, err err
 		if typed.Code == "CONFLICT" {
 			status = http.StatusConflict
 		}
+		if typed.Code == "LIMIT_REACHED" {
+			status = http.StatusConflict
+		}
 		httpx.WriteError(w, status, strings.ToLower(typed.Code), typed.Message)
 		return
 	}

@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/razorpay"
 )
 
@@ -34,10 +36,20 @@ var (
 // ErrPaymentUnavailable means checkout, cancellation and webhooks are disabled.
 var ErrPaymentUnavailable = errors.New("payment provider is not configured")
 
+// ErrPlanUnavailable means the selected plan has no configured Razorpay plan ID.
+var ErrPlanUnavailable = errors.New("selected plan is not configured for checkout")
+
+// ErrUnknownPlan means Razorpay reported a subscription to a plan id this
+// server was not given. It is our configuration that is wrong, not the
+// event: the customer has paid and their plan is not switched on.
+var ErrUnknownPlan = errors.New("razorpay plan id matches no configured plan")
+
 // Plans.
 const (
-	PlanFree = "free"
-	PlanPro  = "pro"
+	PlanFree   = plans.Free
+	PlanBasic  = plans.Basic
+	PlanPro    = plans.Pro
+	PlanAgency = plans.Agency
 )
 
 // totalCount is how many billing cycles a subscription runs before Razorpay
@@ -79,6 +91,9 @@ type Status struct {
 	// CancelAtPeriodEnd is true when the customer cancelled: the plan runs
 	// until CurrentPeriodEnd and is not charged again.
 	CancelAtPeriodEnd bool `json:"cancelAtPeriodEnd"`
+	// Unlimited is true for Uplumo's own workspaces: every feature, no
+	// limits, nothing to pay.
+	Unlimited bool `json:"unlimited"`
 }
 
 // Checkout is what Razorpay Checkout in the browser needs to start paying
@@ -102,17 +117,31 @@ const (
 type Service struct {
 	repo          repository
 	razorpay      *razorpay.Client
-	planID        string
+	planIDs       map[string]string
 	webhookSecret string
-	// MonthlyGrantCredits is added to the organization's credit balance on
-	// every successful subscription charge. Zero grants nothing.
-	MonthlyGrantCredits int64
+	staffEmails   []string
+	// MonthlyGrantCreditsByPlan is added to the organization's credit
+	// balance on every successful charge of that plan. A plan that is not
+	// listed grants nothing.
+	MonthlyGrantCreditsByPlan map[string]int64
 }
 
-// NewService returns a Service that sells the Razorpay plan planID through
-// rzp and verifies webhooks with webhookSecret.
+// NewService returns a Service that sells only Pro, as the Razorpay plan
+// planID, and verifies webhooks with webhookSecret.
 func NewService(db *pgxpool.Pool, rzp *razorpay.Client, planID, webhookSecret string) *Service {
-	return &Service{repo: repository{db: db}, razorpay: rzp, planID: planID, webhookSecret: webhookSecret}
+	return NewPlanService(db, rzp, map[string]string{PlanPro: planID}, webhookSecret)
+}
+
+// NewPlanService returns a Service that sells each plan in planIDs as the
+// Razorpay plan it maps to. A plan with no id cannot be bought.
+func NewPlanService(db *pgxpool.Pool, rzp *razorpay.Client, planIDs map[string]string, webhookSecret string) *Service {
+	configured := make(map[string]string, len(planIDs))
+	for plan, id := range planIDs {
+		if id != "" {
+			configured[plan] = id
+		}
+	}
+	return &Service{repo: repository{db: db}, razorpay: rzp, planIDs: configured, webhookSecret: webhookSecret}
 }
 
 // NewReadOnlyService exposes existing subscription state without enabling payments.
@@ -122,11 +151,63 @@ func NewReadOnlyService(db *pgxpool.Pool) *Service {
 
 // PaymentsConfigured reports whether this service can accept payment actions.
 func (s *Service) PaymentsConfigured() bool {
-	return s != nil && s.razorpay != nil && s.planID != "" && s.webhookSecret != ""
+	return s.providerConfigured()
+}
+
+func (s *Service) providerConfigured() bool {
+	return s != nil && s.razorpay != nil && s.webhookSecret != ""
+}
+
+// AvailablePlans reports plans configured for checkout.
+func (s *Service) AvailablePlans() []string {
+	if s == nil {
+		return nil
+	}
+	available := make([]string, 0, len(s.planIDs))
+	for _, plan := range plans.Paid() {
+		if s.planIDs[plan] != "" {
+			available = append(available, plan)
+		}
+	}
+	return available
+}
+
+// MonthlyGrantFor returns the monthly usage-credit grant for a plan.
+func (s *Service) MonthlyGrantFor(plan string) int64 {
+	return s.MonthlyGrantCreditsByPlan[plan]
+}
+
+// SetStaffEmails names the people whose own workspaces are never limited by
+// a plan: a workspace is unlimited when its owner has one of these verified
+// addresses. Call it before the service is used.
+func (s *Service) SetStaffEmails(emails []string) {
+	s.staffEmails = make([]string, 0, len(emails))
+	for _, email := range emails {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+			s.staffEmails = append(s.staffEmails, email)
+		}
+	}
 }
 
 // Status returns orgID's plan. Without a subscription it is the free plan.
+// A staff workspace reads as Agency and unlimited whatever it subscribed to.
 func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
+	status, err := s.subscribedStatus(ctx, orgID)
+	if err != nil || len(s.staffEmails) == 0 {
+		return status, err
+	}
+	staff, err := s.repo.ownedByAny(ctx, orgID, s.staffEmails)
+	if err != nil {
+		return Status{}, fmt.Errorf("billing status of organization %s: %w", orgID, err)
+	}
+	if staff {
+		status.Plan, status.Unlimited = plans.Unlimited.ID, true
+	}
+	return status, nil
+}
+
+// subscribedStatus is the plan orgID's subscription pays for.
+func (s *Service) subscribedStatus(ctx context.Context, orgID string) (Status, error) {
 	sub, found, err := s.repo.subscription(ctx, orgID)
 	if err != nil {
 		return Status{}, fmt.Errorf("billing status of organization %s: %w", orgID, err)
@@ -149,13 +230,75 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 	}, nil
 }
 
-// HasPaidPlan reports whether orgID is on a paid plan.
-func (s *Service) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
+// IsUnlimited reports whether orgID is a staff workspace.
+func (s *Service) IsUnlimited(ctx context.Context, orgID string) (bool, error) {
 	status, err := s.Status(ctx, orgID)
+	return status.Unlimited, err
+}
+
+// entitlement is what orgID may use: its plan's features and limits.
+func (s *Service) entitlement(ctx context.Context, orgID string) (plans.Definition, error) {
+	status, err := s.Status(ctx, orgID)
+	if err != nil {
+		return plans.Definition{}, err
+	}
+	if status.Unlimited {
+		return plans.Unlimited, nil
+	}
+	definition, ok := plans.Get(status.Plan)
+	if !ok {
+		// A plan that left the catalog must not unlock anything.
+		definition, _ = plans.Get(PlanFree)
+	}
+	return definition, nil
+}
+
+// Allows reports whether orgID's plan includes feature.
+func (s *Service) Allows(ctx context.Context, orgID string, feature plans.Feature) (bool, error) {
+	definition, err := s.entitlement(ctx, orgID)
 	if err != nil {
 		return false, err
 	}
-	return status.Plan != PlanFree, nil
+	return definition.Allows(feature), nil
+}
+
+// FeatureGate answers one question for one feature: does this organization's
+// plan include it.
+type FeatureGate struct {
+	service *Service
+	feature plans.Feature
+}
+
+// Gate returns the check for feature, in the shape the feature packages ask
+// for.
+func (s *Service) Gate(feature plans.Feature) FeatureGate {
+	return FeatureGate{service: s, feature: feature}
+}
+
+// HasPaidPlan reports whether orgID's plan includes the gate's feature. The
+// name is the one the feature packages declared when there was one paid plan.
+func (g FeatureGate) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
+	return g.service.Allows(ctx, orgID, g.feature)
+}
+
+// SiteLimit returns how many active sites orgID may have; 0 is no limit.
+func (s *Service) SiteLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.Sites, err
+}
+
+// KeywordLimit returns how many keywords orgID may track; 0 is no limit.
+// A plan without rank tracking is stopped by its feature gate, not here.
+func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.TrackedKeywords, err
+}
+
+// MemberLimit returns how many people orgID's workspace may hold; 0 is no
+// limit.
+func (s *Service) MemberLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.Members, err
 }
 
 // Checkout creates a Razorpay subscription to the pro plan for orgID. The
@@ -165,8 +308,17 @@ func (s *Service) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
 // A subscription that was created but never paid is not reused: Razorpay
 // expires those, so every checkout starts a fresh one.
 func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) {
-	if !s.PaymentsConfigured() {
+	return s.CheckoutPlan(ctx, orgID, PlanPro)
+}
+
+// CheckoutPlan starts a subscription for a selected configured plan.
+func (s *Service) CheckoutPlan(ctx context.Context, orgID, plan string) (Checkout, error) {
+	if !s.providerConfigured() {
 		return Checkout{}, ErrPaymentUnavailable
+	}
+	planID := s.planIDs[plan]
+	if planID == "" {
+		return Checkout{}, ErrPlanUnavailable
 	}
 	current, found, err := s.repo.subscription(ctx, orgID)
 	if err != nil {
@@ -176,13 +328,13 @@ func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) 
 		return Checkout{}, ErrAlreadySubscribed
 	}
 
-	sub, err := s.razorpay.CreateSubscription(ctx, s.planID, totalCount, map[string]string{orgNote: orgID})
+	sub, err := s.razorpay.CreateSubscription(ctx, planID, totalCount, map[string]string{orgNote: orgID})
 	if err != nil {
 		return Checkout{}, fmt.Errorf("checkout for organization %s: %w: %w", orgID, ErrPaymentProvider, err)
 	}
 	// A webhook may have made another subscription live since the check
 	// above; the new one then stays unpaid and expires.
-	replaced, err := s.repo.startSubscription(ctx, orgID, PlanPro, sub.ID, sub.Status, time.Unix(sub.CreatedAt, 0), liveStatuses)
+	replaced, err := s.repo.startSubscription(ctx, orgID, plan, sub.ID, sub.Status, time.Unix(sub.CreatedAt, 0), liveStatuses)
 	if err != nil {
 		return Checkout{}, fmt.Errorf("checkout for organization %s: %w", orgID, err)
 	}
@@ -202,7 +354,7 @@ func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) 
 // (the first charge has not happened, or a charge is failing) has no paid
 // time left and ends now. Cancelling twice is not an error.
 func (s *Service) Cancel(ctx context.Context, orgID string) (Status, error) {
-	if !s.PaymentsConfigured() {
+	if !s.providerConfigured() {
 		return Status{}, ErrPaymentUnavailable
 	}
 	current, found, err := s.repo.subscription(ctx, orgID)
@@ -241,7 +393,7 @@ func (s *Service) Cancel(ctx context.Context, orgID string) (Status, error) {
 // in any order. Events for organizations that no longer exist, or without
 // the organization note, are ignored.
 func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eventID string) (WebhookResult, error) {
-	if !s.PaymentsConfigured() {
+	if !s.providerConfigured() {
 		return "", ErrPaymentUnavailable
 	}
 	if !razorpay.ValidSignature(body, signature, s.webhookSecret) {
@@ -274,14 +426,20 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 		end := time.Unix(*sub.CurrentEnd, 0).UTC()
 		periodEnd = &end
 	}
+	// The plan comes from Razorpay, which knows what was paid for, never
+	// from what the browser asked for at checkout.
+	plan := s.planForRazorpayID(sub.PlanID)
+	if plan == "" {
+		return "", fmt.Errorf("%w: subscription %s of organization %s is on plan %q", ErrUnknownPlan, sub.ID, orgID, sub.PlanID)
+	}
 	firstDelivery, err := s.repo.applyEvent(ctx, eventID, subscription{
 		OrganizationID:   orgID,
 		ID:               sub.ID,
-		Plan:             PlanPro,
+		Plan:             plan,
 		Status:           sub.Status,
 		CurrentPeriodEnd: periodEnd,
 		EventAt:          time.Unix(event.CreatedAt, 0).UTC(),
-	}, liveStatuses, s.grantFor(event.Event, sub.Status))
+	}, liveStatuses, s.grantFor(event.Event, sub.Status, plan))
 	if err != nil {
 		return "", fmt.Errorf("apply %s event %s: %w", event.Event, eventID, err)
 	}
@@ -293,9 +451,18 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 
 // grantFor is the credits a webhook delivery earns: one monthly grant per
 // charge of a live subscription.
-func (s *Service) grantFor(event, status string) int64 {
+func (s *Service) grantFor(event, status, plan string) int64 {
 	if event != "subscription.charged" || !slices.Contains(liveStatuses, status) {
 		return 0
 	}
-	return s.MonthlyGrantCredits
+	return s.MonthlyGrantFor(plan)
+}
+
+func (s *Service) planForRazorpayID(id string) string {
+	for plan, configuredID := range s.planIDs {
+		if id != "" && id == configuredID {
+			return plan
+		}
+	}
+	return ""
 }

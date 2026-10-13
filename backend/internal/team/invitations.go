@@ -30,6 +30,8 @@ var (
 	ErrRateLimited = errors.New("invitation email limit reached")
 	// ErrUpstreamUnavailable indicates that the invitation email provider failed.
 	ErrUpstreamUnavailable = errors.New("invitation email provider unavailable")
+	// ErrSeatLimit indicates that the workspace's plan allows no more people.
+	ErrSeatLimit = errors.New("plan member limit reached")
 	// ErrTooManyPending indicates that the organization has reached its invitation limit.
 	ErrTooManyPending = errors.New("organization invitation limit reached")
 )
@@ -39,6 +41,8 @@ const invitationTTL = 7 * 24 * time.Hour
 // Service creates pending membership invitations, applies daily send limits,
 // and delivers invitation email through Loops.
 type Service struct {
+	// Limits says how many people a workspace's plan allows. Nil is no limit.
+	Limits               MemberLimits
 	DB                   *pgxpool.Pool
 	Redis                *redis.Client
 	LoopsAPIKey          string
@@ -57,11 +61,17 @@ func (s *Service) Invite(ctx context.Context, user auth.User, email string) (str
 	if err != nil {
 		return "", err
 	}
+	seats := 0
+	if s.Limits != nil {
+		if seats, err = s.Limits.MemberLimit(ctx, user.OrganizationID); err != nil {
+			return "", fmt.Errorf("check member limit: %w", err)
+		}
+	}
 	if err := s.consumeBudget(ctx, user.OrganizationID, address); err != nil {
 		return "", err
 	}
 	now := s.now().UTC()
-	id, organizationName, err := s.saveInvitation(ctx, user, address, now)
+	id, organizationName, err := s.saveInvitation(ctx, user, address, now, seats)
 	if err != nil {
 		return "", err
 	}
@@ -71,7 +81,17 @@ func (s *Service) Invite(ctx context.Context, user auth.User, email string) (str
 	return id, nil
 }
 
-func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time) (invitationID, organizationName string, retErr error) {
+// MemberLimits reports how many people an organization's plan allows; 0 is
+// no limit.
+type MemberLimits interface {
+	MemberLimit(ctx context.Context, organizationID string) (int, error)
+}
+
+// saveInvitation stores the invitation. seats is the most people the
+// workspace may hold, members and pending invitations together; 0 is no
+// limit. It is checked under the organization lock, so two invitations
+// cannot together pass it.
+func (s *Service) saveInvitation(ctx context.Context, user auth.User, email string, now time.Time, seats int) (invitationID, organizationName string, retErr error) {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return "", "", fmt.Errorf("begin team invitation: %w", err)
@@ -116,6 +136,15 @@ func (s *Service) saveInvitation(ctx context.Context, user auth.User, email stri
 		}
 		if pending >= 20 {
 			return "", "", ErrTooManyPending
+		}
+		if seats > 0 {
+			var members int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM member WHERE organization_id=$1`, user.OrganizationID).Scan(&members); err != nil {
+				return "", "", fmt.Errorf("count members: %w", err)
+			}
+			if members+pending >= seats {
+				return "", "", ErrSeatLimit
+			}
 		}
 		invitationID, err = ids.New()
 		if err != nil {

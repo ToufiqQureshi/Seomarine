@@ -16,24 +16,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/client/components/ui/card";
+import { useCanManageBilling } from "@/client/features/team/organizationQueries";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { SUPPORT_EMAIL } from "@/client/lib/support";
 import { ApiError } from "@/client/lib/uplumoApi";
 import {
+  billingPlansQueryOptions,
   billingStatusQueryOptions,
   cancelSubscription,
   createCheckout,
   describeStatus,
-  PRO_PRICE_INR,
+  type BillingPlan,
   type BillingStatus,
 } from "./planApi";
 import { openRazorpayCheckout } from "./razorpay";
-
-const PRO_FEATURES = [
-  "AI traffic analytics: visitors from ChatGPT, Perplexity, Gemini, Claude and Copilot",
-  "AI visibility included, no extra add-on",
-  "No row limits on your own data",
-  "Agency-branded client reports",
-];
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -41,17 +37,24 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+type PaidPlan = BillingPlan & { id: "basic" | "pro" | "agency" };
+
 export function BillingPlanPage() {
   const statusQuery = useQuery(billingStatusQueryOptions);
+  const plansQuery = useQuery(billingPlansQueryOptions);
+  const canManageBilling = useCanManageBilling();
+  const paidPlans = (plansQuery.data ?? []).filter(
+    (plan): plan is PaidPlan => plan.id !== "free",
+  );
 
   return (
     <div className="h-full overflow-auto px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <PageHeader
-          title="Billing"
-          description="Your plan, what it costs and when it renews."
+          title="Plan and billing"
+          description="Compare what each plan includes and manage your workspace subscription."
         />
-        {statusQuery.isPending ? (
+        {statusQuery.isPending || plansQuery.isPending ? (
           <SkeletonCard />
         ) : statusQuery.isError ? (
           <StatusError
@@ -59,8 +62,37 @@ export function BillingPlanPage() {
             onRetry={() => void statusQuery.refetch()}
             isRetrying={statusQuery.isFetching}
           />
+        ) : plansQuery.isError ? (
+          <StatusError
+            error={plansQuery.error}
+            onRetry={() => void plansQuery.refetch()}
+            isRetrying={plansQuery.isFetching}
+          />
         ) : (
-          <PlanCard status={statusQuery.data} />
+          <>
+            <CurrentPlanCard status={statusQuery.data} plans={paidPlans} />
+            <section aria-labelledby="available-plans" className="space-y-4">
+              <div>
+                <h2 id="available-plans" className="text-xl font-semibold">
+                  Compare paid plans
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Prices are per workspace, per month. Cancel in one click, any
+                  time.
+                </p>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {paidPlans.map((plan) => (
+                  <PlanOption
+                    key={plan.id}
+                    plan={plan}
+                    status={statusQuery.data}
+                    canManageBilling={canManageBilling}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
         )}
       </div>
     </div>
@@ -76,7 +108,6 @@ function StatusError({
   onRetry: () => void;
   isRetrying: boolean;
 }) {
-  // A retry can't fix an ended session: send the owner to sign in instead.
   if (error instanceof ApiError && error.status === 401) {
     return (
       <ErrorState
@@ -104,8 +135,17 @@ function StatusError({
   );
 }
 
-function PlanCard({ status }: { status: BillingStatus }) {
-  const isPro = status.plan === "pro";
+function CurrentPlanCard({
+  status,
+  plans,
+}: {
+  status: BillingStatus;
+  plans: BillingPlan[];
+}) {
+  const planName =
+    status.plan === "free"
+      ? "Free"
+      : (plans.find((plan) => plan.id === status.plan)?.name ?? status.plan);
   const { label, detail, canUpgrade } = describeStatus(status.status);
   const renews = status.currentPeriodEnd
     ? new Date(status.currentPeriodEnd).toLocaleDateString("en-IN", {
@@ -114,77 +154,139 @@ function PlanCard({ status }: { status: BillingStatus }) {
         year: "numeric",
       })
     : null;
-  let description: string;
-  if (!isPro && !status.paymentsConfigured) {
-    description =
-      "Your current plan. Online payments are temporarily unavailable.";
-  } else if (!isPro) {
-    description = `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`;
-  } else if (status.cancelAtPeriodEnd) {
-    description = renews
-      ? `Cancelled. Pro stays on until ${renews}, and you will not be charged again.`
-      : "Cancelled. You will not be charged again.";
-  } else {
-    description = renews ? `Renews on ${renews}.` : "Your Pro plan is set up.";
-  }
+  const isPaid = status.plan !== "free" && !status.unlimited;
+  const description = status.unlimited
+    ? "This is an Uplumo team workspace. Every feature is on, with no limits, and nothing is charged."
+    : status.cancelAtPeriodEnd
+      ? `Cancelled. ${planName} stays active until ${renews ?? "the end of your paid term"}; you will not be charged again.`
+      : isPaid
+        ? renews
+          ? `${planName} renews on ${renews}.`
+          : `Your ${planName} plan is active.`
+        : "You are using the free plan.";
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          {isPro ? "Uplumo Pro" : "Free plan"}
-          <Badge variant={status.status === "active" ? "success" : "soft"}>
-            {label}
+          {status.unlimited ? "Team workspace" : `${planName} plan`}
+          <Badge
+            variant={
+              status.unlimited || status.status === "active"
+                ? "success"
+                : "soft"
+            }
+          >
+            {status.unlimited ? "Unlimited" : label}
           </Badge>
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {detail ? <p className="text-sm">{detail}</p> : null}
-        <ul className="space-y-2 text-sm">
-          {PRO_FEATURES.map((feature) => (
-            <li key={feature} className="flex gap-2">
-              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-              {feature}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-      {!status.paymentsConfigured ? (
+      {detail && !status.unlimited ? (
+        <CardContent>
+          <p className="text-sm">{detail}</p>
+        </CardContent>
+      ) : null}
+      {isPaid && !status.cancelAtPeriodEnd && !canUpgrade ? (
         <CardFooter>
-          <p role="status" className="text-sm text-muted-foreground">
-            To change or cancel your plan, email{" "}
-            <a className="underline" href="mailto:support@uplumo.com">
-              support@uplumo.com
-            </a>
-            .
-          </p>
+          <CancelButton
+            planName={planName}
+            keepsPlan={status.status === "active"}
+          />
         </CardFooter>
-      ) : canUpgrade ? (
-        isPro ? null : (
-          <CardFooter>
-            <UpgradeButton />
-          </CardFooter>
-        )
-      ) : status.cancelAtPeriodEnd ? null : (
-        // Any subscription that can still charge can be cancelled, including
-        // one whose payments are failing.
-        <CardFooter>
-          <CancelButton keepsPro={status.status === "active"} />
-        </CardFooter>
-      )}
+      ) : null}
     </Card>
   );
 }
 
-function CancelButton({ keepsPro }: { keepsPro: boolean }) {
+function PlanOption({
+  plan,
+  status,
+  canManageBilling,
+}: {
+  plan: PaidPlan;
+  status: BillingStatus;
+  canManageBilling: boolean;
+}) {
+  const isCurrent = status.plan === plan.id && !status.unlimited;
+  const hasLivePaidSubscription =
+    status.plan !== "free" && !describeStatus(status.status).canUpgrade;
+  const available = status.availablePlans.includes(plan.id);
+
+  return (
+    <Card className={plan.id === "pro" ? "border-primary" : undefined}>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          {plan.name}
+          {isCurrent ? <Badge variant="success">Current plan</Badge> : null}
+        </CardTitle>
+        <CardDescription>{plan.summary}</CardDescription>
+        <p className="text-2xl font-semibold">
+          {inr.format(plan.priceInr)}
+          <span className="text-sm font-normal text-muted-foreground">
+            /month
+          </span>
+        </p>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2 text-sm">
+          {plan.highlights.map((feature) => (
+            <li key={feature} className="flex gap-2">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+      <CardFooter className="flex-col items-stretch gap-2">
+        {status.unlimited ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Already included for this workspace.
+          </p>
+        ) : isCurrent ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            This workspace is on this plan.
+          </p>
+        ) : hasLivePaidSubscription ? (
+          <p className="text-sm text-muted-foreground">
+            To move to this plan, write to {SUPPORT_EMAIL} from your account and
+            we switch you over.
+          </p>
+        ) : !canManageBilling ? (
+          <p className="text-sm text-muted-foreground">
+            Only a workspace owner or admin can change the plan.
+          </p>
+        ) : available ? (
+          <UpgradeButton
+            plan={plan.id}
+            price={plan.priceInr}
+            name={plan.name}
+          />
+        ) : (
+          <p role="status" className="text-sm text-muted-foreground">
+            Checkout for this plan is not configured yet. Contact support for
+            availability.
+          </p>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
+
+function CancelButton({
+  planName,
+  keepsPlan,
+}: {
+  planName: string;
+  keepsPlan: boolean;
+}) {
   const queryClient = useQueryClient();
   const cancel = useMutation({
     mutationFn: cancelSubscription,
     meta: { errorToast: false },
     onSuccess: (status) => {
       queryClient.setQueryData(billingStatusQueryOptions.queryKey, status);
-      toast.success("Pro is cancelled. You will not be charged again.");
+      toast.success(`${planName} is cancelled. You will not be charged again.`);
     },
   });
 
@@ -195,12 +297,12 @@ function CancelButton({ keepsPro }: { keepsPro: boolean }) {
         onClick={() => cancel.mutate()}
         disabled={cancel.isPending}
       >
-        {cancel.isPending ? "Cancelling…" : "Cancel Pro"}
+        {cancel.isPending ? "Cancelling…" : `Cancel ${planName}`}
       </Button>
       <p className="text-sm text-muted-foreground">
-        {keepsPro
-          ? "One click, no forms. You keep Pro until the end of the month you paid for."
-          : "One click, no forms. You will not be charged again."}
+        {keepsPlan
+          ? `You keep ${planName} until the end of the paid month.`
+          : "You will not be charged again."}
       </p>
       {cancel.isError ? (
         <ErrorState
@@ -212,15 +314,22 @@ function CancelButton({ keepsPro }: { keepsPro: boolean }) {
   );
 }
 
-function UpgradeButton() {
+function UpgradeButton({
+  plan,
+  name,
+  price,
+}: {
+  plan: "basic" | "pro" | "agency";
+  name: string;
+  price: number;
+}) {
   const queryClient = useQueryClient();
   const upgrade = useMutation({
-    mutationFn: async () => openRazorpayCheckout(await createCheckout()),
+    mutationFn: async () => openRazorpayCheckout(await createCheckout(plan)),
     meta: { errorToast: false },
     onSuccess: async (paid) => {
       if (!paid) return;
-      toast.success("Payment received. Welcome to Uplumo Pro!");
-      // Razorpay tells our server by webhook, so the plan can lag a moment.
+      toast.success(`Payment received. Welcome to Uplumo ${name}!`);
       await queryClient.invalidateQueries({
         queryKey: billingStatusQueryOptions.queryKey,
       });
@@ -232,7 +341,7 @@ function UpgradeButton() {
       <Button onClick={() => upgrade.mutate()} disabled={upgrade.isPending}>
         {upgrade.isPending
           ? "Opening checkout…"
-          : `Upgrade for ${inr.format(PRO_PRICE_INR)}/month`}
+          : `Choose ${name} · ${inr.format(price)}/month`}
       </Button>
       {upgrade.isError ? (
         <ErrorState

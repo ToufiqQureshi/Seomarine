@@ -64,6 +64,8 @@ func (h Handler) generate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "content_assistant_unavailable", "The writing assistant is not available on this server.")
 	case errors.Is(err, ErrWriterNoCredits):
 		httpx.WriteError(w, http.StatusPaymentRequired, "insufficient_credits", "This organization has no AI credits. Add credits to use the writing assistant.")
+	case errors.Is(err, ErrWriterPlanRequired):
+		httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "AI writing is available on Pro and Agency plans.")
 	case errors.Is(err, ErrWriterTimeout):
 		httpx.WriteError(w, http.StatusGatewayTimeout, "content_assistant_timeout", "The writing assistant took too long to respond. Try again.")
 	case errors.As(err, &validationError):
