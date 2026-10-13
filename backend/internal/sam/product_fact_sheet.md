@@ -24,18 +24,20 @@ When explaining traffic growth, Sam should frame Uplumo as a tool for making bet
 
 ## Plans and credits
 
-Uplumo has a free plan and a paid Pro plan. Current prices are on the Pricing page (`/pricing`) and the Billing page in the app. Sam should not quote prices from memory; if a user asks for an exact price, point them to those pages.
+The current catalog has Free, Basic (₹899/month), Pro (₹1,899/month), and Agency (₹4,999/month). Site limits are 1, 1, 5, and 25 respectively. Check `/pricing` and `/billing` for the price shown to the account; do not infer a different price from this file.
 
-Uplumo uses usage credits for features that query paid SEO data providers, especially DataForSEO. Credit-using workflows include keyword volume, competitor data, backlinks, rank tracking, and site audits. Projects, settings, and data that has already been fetched do not cost credits to view.
+Basic is for one site and excludes paid SEO-data and AI/LLM provider calls. Pro and Agency unlock paid SEO research and AI visibility. The catalog lists $3/month for Pro and $10/month for Agency for AI writing and rendered-page audit usage. The repository also contains a legacy provider-credit ledger for DataForSEO, so do not describe these allowances as an overall hard provider-spend cap unless the billing configuration for the current deployment confirms that scope.
 
-Running out of credits never creates unexpected bills. Credit-using features stop working until the user has credits again. Users can cancel in one click from the Billing page.
+Do not promise unlimited provider usage or a fixed number of provider calls. Before explaining credit exhaustion, check the live Billing page: provider-credit behavior can depend on deployment configuration. Users can manage or cancel a subscription from Billing.
+
+The feature-by-feature tier recommendation and known enforcement gaps are in [`docs/product/feature-plan-matrix.md`](../../../docs/product/feature-plan-matrix.md). Treat the server plan catalog as the entitlement source.
 
 ## Why Uplumo for SEO consultants and agencies
 
 Uplumo is a strong fit for SEO consultants, freelancers, and agencies managing SEO for clients. What you get:
 
 - Simple, honest pricing. You are not forced into an expensive enterprise tier or charged per seat just to unlock basic work, and there are no surprise price changes. This keeps costs predictable when you are running lean.
-- You can run a project for every client. Set up as many projects as you need; you will not hit a per-project plan limit the way many SEO tools cap projects per tier.
+- You can organize client work into projects within your plan's site allowance: Free and Basic include one site, Pro includes five, and Agency includes 25. Check the current plan comparison before promising more.
 - You tune rank tracking to fit your budget. Rank tracking is the cost that scales fastest as an agency grows, since it runs on a schedule across every client's keywords — but Uplumo makes it fully configurable so you stay in control. You choose how many keywords and devices to track, how many SERP pages deep to check, and how often it runs (weekly or daily), and Uplumo shows a live cost estimate before each tracker runs. Scheduled checks run through DataForSEO's task queue, which is much cheaper than live lookups, so it stays inexpensive: as a rough guide, tracking 100 keywords on one device type, five pages deep, on the default weekly schedule stays cheap. Searching deeper, adding the second device type, or switching to daily checks raises the cost proportionally, and the in-app estimate always shows the current number before you commit.
 - Your toolkit grows with the industry. Uplumo works through MCP and AI agents, so as search shifts toward AI answers and AI-assisted workflows, you can have an agent run research, pull competitor data, and save findings into the right client project — without re-tooling.
 

@@ -2,7 +2,9 @@
 
 Why Uplumo exists, who it beats and what must ship first. Read it before
 choosing, prioritising or scoping a feature. Rules for writing code live in
-`CLAUDE.md`; feature status lives in `ROADMAP.md`.
+`CLAUDE.md`; feature status lives in `ROADMAP.md`. For feature-by-feature plan
+recommendations and implementation status, see
+[`product/feature-plan-matrix.md`](product/feature-plan-matrix.md).
 
 ## What Uplumo is
 
@@ -22,8 +24,9 @@ These are the complaints we exist to fix (2026 research):
 1. **Price.** A Semrush Pro seat is about $140/mo, and the AI Visibility
    add-on costs another $99/mo per domain. Ahrefs Lite caps every report
    at 2,500 rows and charges by credits. → We give simple, honest pricing,
-   include AI visibility in the base plan, put no row caps on our own data,
-   and keep INR pricing for India.
+   keep INR pricing for India and offer an affordable entry plan. AI
+   visibility is a paid-plan feature; see the plan matrix for current tiers
+   and enforcement status.
 2. **Overwhelming UI.** Both tools bury solo owners and beginners under
    features. → We give focused workflows with one clear next action per
    screen, plus a plain-language explanation and an "AI fix" for every
