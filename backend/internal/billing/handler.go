@@ -12,6 +12,11 @@ import (
 
 const maxWebhookBody = 256 << 10
 
+type statusResponse struct {
+	Status
+	PaymentsConfigured bool `json:"paymentsConfigured"`
+}
+
 // Deps contains billing services and the root router's authentication middleware.
 type Deps struct {
 	Logger      *slog.Logger
@@ -43,7 +48,7 @@ func statusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, status)
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured()})
 	}
 }
 
@@ -65,7 +70,9 @@ func checkoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 		}
 		if err != nil {
 			logger.ErrorContext(r.Context(), "billing checkout", "err", err)
-			if errors.Is(err, ErrPaymentProvider) {
+			if errors.Is(err, ErrPaymentUnavailable) {
+				httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Payments are not available yet. Please contact support.")
+			} else if errors.Is(err, ErrPaymentProvider) {
 				httpx.WriteError(w, http.StatusBadGateway, "payment_provider_error", "Could not start the payment. Please try again.")
 			} else {
 				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
@@ -95,14 +102,16 @@ func cancelHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 		}
 		if err != nil {
 			logger.ErrorContext(r.Context(), "billing cancel", "err", err)
-			if errors.Is(err, ErrPaymentProvider) {
+			if errors.Is(err, ErrPaymentUnavailable) {
+				httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Payments are not available. Please contact support to cancel.")
+			} else if errors.Is(err, ErrPaymentProvider) {
 				httpx.WriteError(w, http.StatusBadGateway, "payment_provider_error", "Could not cancel the plan. Please try again, or write to us.")
 			} else {
 				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			}
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, status)
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured()})
 	}
 }
 
@@ -123,8 +132,8 @@ func billingUser(w http.ResponseWriter, r *http.Request, svc *Service) (auth.Use
 // webhookHandler applies Razorpay's subscription webhooks.
 func webhookHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if svc == nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Billing is not set up on this server.")
+		if !svc.PaymentsConfigured() {
+			httpx.WriteError(w, http.StatusServiceUnavailable, "billing_unavailable", "Payments are not configured on this server.")
 			return
 		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBody))

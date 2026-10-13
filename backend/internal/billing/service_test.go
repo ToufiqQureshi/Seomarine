@@ -37,6 +37,22 @@ var (
 	t2 = t0.Add(2 * time.Minute)
 )
 
+func TestReadOnlyServiceRejectsPaymentActions(t *testing.T) {
+	svc := NewReadOnlyService(nil)
+	if svc.PaymentsConfigured() {
+		t.Fatal("read-only billing unexpectedly enables payments")
+	}
+	if _, err := svc.Checkout(context.Background(), "org"); !errors.Is(err, ErrPaymentUnavailable) {
+		t.Fatalf("Checkout() error = %v, want ErrPaymentUnavailable", err)
+	}
+	if _, err := svc.Cancel(context.Background(), "org"); !errors.Is(err, ErrPaymentUnavailable) {
+		t.Fatalf("Cancel() error = %v, want ErrPaymentUnavailable", err)
+	}
+	if _, err := svc.HandleWebhook(context.Background(), nil, "", ""); !errors.Is(err, ErrPaymentUnavailable) {
+		t.Fatalf("HandleWebhook() error = %v, want ErrPaymentUnavailable", err)
+	}
+}
+
 func TestCheckoutCreatesASubscription(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(ctx, t)

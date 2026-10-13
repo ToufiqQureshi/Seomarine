@@ -7,6 +7,7 @@ const statusSchema = z.object({
   currentPeriodEnd: z.iso.datetime({ offset: true }).nullable(),
   // True once the owner cancelled: Pro runs until currentPeriodEnd, then stops.
   cancelAtPeriodEnd: z.boolean(),
+  paymentsConfigured: z.boolean(),
 });
 export type BillingStatus = z.infer<typeof statusSchema>;
 

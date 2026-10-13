@@ -122,11 +122,13 @@ func run(logger *slog.Logger) error {
 
 	credits := billing.NewCreditLedgerService(db)
 	var billingSvc *billing.Service
+	billingRoutes := billing.NewReadOnlyService(db)
 	if rzp := cfg.Razorpay; rzp != nil {
 		billingSvc = billing.NewService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDPro, rzp.WebhookSecret)
+		billingRoutes = billingSvc
 		billingSvc.MonthlyGrantCredits = int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD)
 	} else {
-		logger.Warn("RAZORPAY_* not set; billing endpoints answer 503")
+		logger.Warn("RAZORPAY_* not set; billing status is read-only and checkout is unavailable")
 	}
 
 	var aiSearchSvc *aisearch.Service
@@ -239,6 +241,7 @@ func run(logger *slog.Logger) error {
 			Analytics:            analytics.NewService(db, rdb, countryLookup),
 			TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
 			Billing:              billingSvc,
+			BillingRoutes:        billingRoutes,
 			Branding:             branding.NewService(db),
 			OpenAIAppsChallenge:  cfg.OpenAIAppsChallenge,
 			AISearch:             aiSearchSvc,

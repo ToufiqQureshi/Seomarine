@@ -42,7 +42,7 @@ Per-report images are not generated yet.
 - Without the `LOOPS_*` variables no email is sent. Set
   `BYPASS_EMAIL_VERIFICATION=true` (local only; the server refuses it on an
   `https` site) to sign up without the verification email.
-- Without `RAZORPAY_*` the billing endpoints answer `503`, and without
+- Without `RAZORPAY_*` the Billing page is read-only (no checkout), and without
   `DATAFORSEO_API_KEY` the keyword, rank, backlink and AI visibility
   endpoints do too. The rest of the app works.
 - The full list of checks CI runs is in `CLAUDE.md`.

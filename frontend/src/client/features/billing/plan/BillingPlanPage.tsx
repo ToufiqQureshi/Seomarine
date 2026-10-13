@@ -114,6 +114,19 @@ function PlanCard({ status }: { status: BillingStatus }) {
         year: "numeric",
       })
     : null;
+  let description: string;
+  if (!isPro && !status.paymentsConfigured) {
+    description =
+      "Your current plan. Online payments are temporarily unavailable.";
+  } else if (!isPro) {
+    description = `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`;
+  } else if (status.cancelAtPeriodEnd) {
+    description = renews
+      ? `Cancelled. Pro stays on until ${renews}, and you will not be charged again.`
+      : "Cancelled. You will not be charged again.";
+  } else {
+    description = renews ? `Renews on ${renews}.` : "Your Pro plan is set up.";
+  }
 
   return (
     <Card>
@@ -124,17 +137,7 @@ function PlanCard({ status }: { status: BillingStatus }) {
             {label}
           </Badge>
         </CardTitle>
-        <CardDescription>
-          {isPro
-            ? status.cancelAtPeriodEnd
-              ? renews
-                ? `Cancelled. Pro stays on until ${renews}, and you will not be charged again.`
-                : "Cancelled. You will not be charged again."
-              : renews
-                ? `Renews on ${renews}.`
-                : "Your Pro plan is set up."
-            : `Upgrade to Pro for ${inr.format(PRO_PRICE_INR)} a month.`}
-        </CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {detail ? <p className="text-sm">{detail}</p> : null}
@@ -147,7 +150,17 @@ function PlanCard({ status }: { status: BillingStatus }) {
           ))}
         </ul>
       </CardContent>
-      {canUpgrade ? (
+      {!status.paymentsConfigured ? (
+        <CardFooter>
+          <p role="status" className="text-sm text-muted-foreground">
+            To change or cancel your plan, email{" "}
+            <a className="underline" href="mailto:support@uplumo.com">
+              support@uplumo.com
+            </a>
+            .
+          </p>
+        </CardFooter>
+      ) : canUpgrade ? (
         isPro ? null : (
           <CardFooter>
             <UpgradeButton />

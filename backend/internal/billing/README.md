@@ -8,8 +8,8 @@ ledger.
 /api/v1/billing/status` reads it, `POST /api/v1/billing/checkout` starts one,
 `POST /webhooks/razorpay` keeps it in step with Razorpay. The webhook rules
 (which events, replay and ordering safety, which statuses count as Pro) are in
-`backend/README.md` under Billing. Without the four `RAZORPAY_*` variables
-every billing endpoint answers `503`.
+`backend/README.md` under Billing. What happens without the four `RAZORPAY_*`
+variables is described below.
 
 The price is not stored here. It is the amount on the Razorpay plan
 `RAZORPAY_PLAN_ID_PRO`, and it must equal `ProPriceINR` in `internal/site` and
@@ -27,6 +27,15 @@ Customers are not meant to see credits (see `ROADMAP.md`, Decided). The old
 `/billing` page in the app still shows them; that is an open owner decision.
 
 Never include a provider error body or a credential in a client response.
+
+## Without Razorpay credentials
+
+The server still serves subscription status and credit balance from Postgres.
+Responses include `paymentsConfigured: false` so the client can hide payment
+actions. Checkout, cancellation and webhooks return 503. Paid-feature gates
+retain their existing self-hosted behavior until payments are configured.
+If an existing subscriber needs to cancel while Razorpay is unavailable,
+support must arrange cancellation in Razorpay; restore credentials promptly.
 
 ## Cancelling
 

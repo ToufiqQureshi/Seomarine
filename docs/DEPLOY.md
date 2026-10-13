@@ -40,7 +40,7 @@ Needed before real users sign up:
 | `LOOPS_API_KEY` and the three `LOOPS_TRANSACTIONAL_*_ID` | No verification or reset email: nobody can finish sign-up. The key, the verify ID and the reset ID must all be set, or none of the three works. |
 | `TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY`             | No bot check on sign-up.                                                                                                                         |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`               | No Google sign-in, Search Console or Analytics.                                                                                                  |
-| The four `RAZORPAY_*`                                    | No paid plan: every billing endpoint answers `503`.                                                                                              |
+| The four `RAZORPAY_*`                                    | No paid plan: the Billing page shows the plan but offers no checkout, and checkout, cancel and the webhook answer `503`.                                                                                              |
 | `BILLING_MONTHLY_CREDITS_USD`                            | A paying workspace is granted no credits, and the assistant and AI writing are charged against credits.                                          |
 | `DATAFORSEO_API_KEY`                                     | No keywords, rank tracking, backlinks or AI visibility (`503`).                                                                                  |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`                 | No AI assistant or AI writing.                                                                                                                   |
