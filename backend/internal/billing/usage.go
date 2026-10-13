@@ -79,7 +79,7 @@ func creditsHandler(logger *slog.Logger, svc *Service, credits *CreditLedgerServ
 			"balanceCredits":      balance,
 			"balanceUsd":          float64(balance) / CreditsPerUSD,
 			"monthlyGrantCredits": svc.MonthlyGrantCredits,
-			"paymentsConfigured":    svc.PaymentsConfigured(),
+			"paymentsConfigured":  svc.PaymentsConfigured(),
 		})
 	}
 }
