@@ -94,7 +94,8 @@ function checksFor(mode: EditorMode, draft: ContentDraftInput): ScoreCheck[] {
       {
         id: "slug",
         label: "Readable page URL",
-        detail: "Use a short, readable URL that reflects the page when it fits.",
+        detail:
+          "Use a short, readable URL that reflects the page when it fits.",
         passed: Boolean(draft.slug.trim()) && !/[\sA-Z]/u.test(draft.slug),
         weight: 10,
       },
