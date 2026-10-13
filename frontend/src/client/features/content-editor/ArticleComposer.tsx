@@ -127,7 +127,13 @@ function ArticleBody({
     const start = editor?.selectionStart ?? content.length;
     const end = editor?.selectionEnd ?? start;
     try {
-      const result = insertImageContent(content, start, end, imageUrl, imageAlt);
+      const result = insertImageContent(
+        content,
+        start,
+        end,
+        imageUrl,
+        imageAlt,
+      );
       onChange(result.content);
       setImageError("");
       setImageUrl("");
