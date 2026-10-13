@@ -6,10 +6,7 @@ import { QueryError } from "@/client/components/QueryState";
 import { StatusScreen } from "@/client/components/StatusScreen";
 import { PlanPageAccountMenu } from "@/client/features/billing/PlanPageAccountMenu";
 import { PlanOfferCard } from "@/client/features/billing/PlanOfferCard";
-import {
-  BASE_PLAN_OFFER,
-  monthlyCreditsFeature,
-} from "@/client/features/billing/plan-offers";
+import { BASE_PLAN_OFFER } from "@/client/features/billing/plan-offers";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { useSession } from "@/lib/auth-client";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -21,11 +18,12 @@ import { AUTUMN_MANAGED_ACCESS_FEATURE_ID } from "@/shared/billing";
 import { SUPPORT_EMAIL } from "@/client/lib/support";
 import { Button } from "@/client/components/ui/button";
 
+// The same promises as the Pro column of the public pricing page.
 const PLAN_FEATURES = [
-  "Keyword research, backlinks, rank tracking, and site audits",
-  "MCP server and agent skills for Claude, Cursor, and ChatGPT",
-  "Google Search Console Integration",
-  monthlyCreditsFeature(BASE_PLAN_OFFER),
+  "AI Visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude",
+  "Rank tracking and keyword research",
+  "Site audit with every issue explained in plain language",
+  "No row caps on Uplumo data",
 ];
 
 // How long the post-checkout "finalizing" screen polls Autumn before giving
@@ -210,29 +208,11 @@ function SubscribePage() {
               : "Welcome to Uplumo!"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          SEO on your terms. All your SEO tools in one place at a fair price.
+          SEO and AI search in one place, at one price in rupees.
         </p>
       </div>
 
-      <PlanOfferCard
-        offer={BASE_PLAN_OFFER}
-        features={PLAN_FEATURES}
-        afterFeatures={
-          /* Sub-bullet of the Usage Credits line above. */
-          <li className="-mt-1 pl-6 text-xs">
-            <a
-              className="text-muted-foreground underline decoration-muted-foreground/40 decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
-              href="/pricing"
-              onClick={() =>
-                captureClientEvent("billing:pricing_estimator_click")
-              }
-            >
-              How far do usage credits go?{" "}
-              <span aria-hidden="true">&#8599;</span>
-            </a>
-          </li>
-        }
-      >
+      <PlanOfferCard offer={BASE_PLAN_OFFER} features={PLAN_FEATURES}>
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}

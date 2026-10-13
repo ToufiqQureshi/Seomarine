@@ -5,6 +5,8 @@ const statusSchema = z.object({
   plan: z.enum(["free", "pro"]),
   status: z.string(),
   currentPeriodEnd: z.iso.datetime({ offset: true }).nullable(),
+  // True once the owner cancelled: Pro runs until currentPeriodEnd, then stops.
+  cancelAtPeriodEnd: z.boolean(),
 });
 export type BillingStatus = z.infer<typeof statusSchema>;
 
@@ -23,6 +25,16 @@ export const billingStatusQueryOptions = {
 export function createCheckout(): Promise<CheckoutSession> {
   return apiRequest("/api/v1/billing/checkout", checkoutSchema, "POST");
 }
+
+/** Cancels the subscription and returns the plan that results. */
+export function cancelSubscription(): Promise<BillingStatus> {
+  return apiRequest("/api/v1/billing/cancel", statusSchema, "POST");
+}
+
+// What Pro costs a month, in rupees. It must match the Razorpay plan the Go
+// API sells and ProPriceINR in backend/internal/site, which the public
+// pricing page prints.
+export const PRO_PRICE_INR = 1499;
 
 // Razorpay subscription states (plus "none" for no subscription), in words
 // an owner understands. Anything else shows as sent. The Go API grants Pro

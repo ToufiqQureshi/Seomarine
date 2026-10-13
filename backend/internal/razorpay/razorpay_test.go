@@ -51,6 +51,60 @@ func TestCreateSubscription(t *testing.T) {
 	}
 }
 
+func TestCancelSubscription(t *testing.T) {
+	for _, atCycleEnd := range []bool{true, false} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, secret, ok := r.BasicAuth()
+			if r.Method != http.MethodPost || r.URL.EscapedPath() != "/v1/subscriptions/sub_1%2Fx/cancel" || !ok || id != "rzp_test_key" || secret != "key-secret" {
+				t.Errorf("request = %s %s, basic auth %q:%q", r.Method, r.URL.EscapedPath(), id, secret)
+			}
+			raw, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read request: %v", err)
+			}
+			// Razorpay rejects anything but a JSON boolean here.
+			if want := map[bool]string{true: `{"cancel_at_cycle_end":true}`, false: `{"cancel_at_cycle_end":false}`}[atCycleEnd]; string(raw) != want {
+				t.Errorf("request body = %s, want %s", raw, want)
+			}
+			_, _ = io.WriteString(w, `{"id":"sub_1/x","status":"active","current_end":1767225600,"created_at":1767225000}`)
+		}))
+		sub, err := NewClient(srv.URL+"/v1", "rzp_test_key", "key-secret").CancelSubscription(context.Background(), "sub_1/x", atCycleEnd)
+		srv.Close()
+		if err != nil {
+			t.Fatalf("CancelSubscription(%v) error = %v", atCycleEnd, err)
+		}
+		if sub.ID != "sub_1/x" || sub.Status != "active" || sub.CurrentEnd == nil || *sub.CurrentEnd != 1767225600 {
+			t.Fatalf("CancelSubscription(%v) = %+v", atCycleEnd, sub)
+		}
+	}
+}
+
+func TestCancelSubscriptionFailures(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		want   string
+	}{
+		{name: "already cancelled", status: http.StatusBadRequest, body: `{"error":{"code":"BAD_REQUEST_ERROR","description":"Subscription is not cancellable in cancelled status."}}`, want: "not cancellable"},
+		{name: "another subscription answered", status: http.StatusOK, body: `{"id":"sub_other","status":"cancelled"}`, want: `response is for "sub_other"`},
+		{name: "not JSON", status: http.StatusOK, body: `<html>`, want: "decode response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = io.WriteString(w, tt.body)
+			}))
+			defer srv.Close()
+			_, err := NewClient(srv.URL, "k", "s").CancelSubscription(context.Background(), "sub_1", true)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("CancelSubscription() error = %v, want it to mention %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestCreateSubscriptionFailures(t *testing.T) {
 	tests := []struct {
 		name       string

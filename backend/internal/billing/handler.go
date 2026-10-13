@@ -25,6 +25,7 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /webhooks/razorpay", webhookHandler(d.Logger, d.Service))
 	mux.Handle("GET /api/v1/billing/status", d.WithSession(statusHandler(d.Logger, d.Service)))
 	mux.Handle("POST /api/v1/billing/checkout", d.WithSession(checkoutHandler(d.Logger, d.Service)))
+	mux.Handle("POST /api/v1/billing/cancel", d.WithSession(cancelHandler(d.Logger, d.Service)))
 	mux.Handle("GET /api/v1/billing/credits", d.WithSession(creditsHandler(d.Logger, d.Service, d.Credits)))
 	mux.Handle("POST /api/v1/billing/usage-events", d.WithSession(usageEventsHandler(d.Logger, d.Credits)))
 }
@@ -72,6 +73,36 @@ func checkoutHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, checkout)
+	}
+}
+
+// cancelHandler cancels the subscription of the signed-in user's active
+// organization and answers with the plan that results.
+func cancelHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := billingUser(w, r, svc)
+		if !ok {
+			return
+		}
+		if user.Role != "owner" && user.Role != "admin" {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only workspace owners and admins can change the plan.")
+			return
+		}
+		status, err := svc.Cancel(r.Context(), user.OrganizationID)
+		if errors.Is(err, ErrNoSubscription) {
+			httpx.WriteError(w, http.StatusConflict, "no_subscription", "This workspace has no subscription to cancel.")
+			return
+		}
+		if err != nil {
+			logger.ErrorContext(r.Context(), "billing cancel", "err", err)
+			if errors.Is(err, ErrPaymentProvider) {
+				httpx.WriteError(w, http.StatusBadGateway, "payment_provider_error", "Could not cancel the plan. Please try again, or write to us.")
+			} else {
+				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			}
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, status)
 	}
 }
 

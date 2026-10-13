@@ -22,6 +22,9 @@ type subscription struct {
 	Plan             string
 	Status           string
 	CurrentPeriodEnd *time.Time
+	// CancelAtPeriodEnd is set when the customer cancelled and keeps the
+	// plan until CurrentPeriodEnd.
+	CancelAtPeriodEnd bool
 	// EventAt is the Razorpay time of this state.
 	EventAt time.Time
 }
@@ -30,10 +33,10 @@ type subscription struct {
 func (r repository) subscription(ctx context.Context, orgID string) (subscription, bool, error) {
 	var s subscription
 	err := r.db.QueryRow(ctx, `
-		SELECT razorpay_subscription_id, plan, status, current_period_end, event_at
+		SELECT razorpay_subscription_id, plan, status, current_period_end, cancel_at_period_end, event_at
 		FROM go_billing_subscriptions WHERE organization_id = $1`,
 		orgID,
-	).Scan(&s.ID, &s.Plan, &s.Status, &s.CurrentPeriodEnd, &s.EventAt)
+	).Scan(&s.ID, &s.Plan, &s.Status, &s.CurrentPeriodEnd, &s.CancelAtPeriodEnd, &s.EventAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return subscription{}, false, nil
 	}
@@ -58,6 +61,7 @@ func (r repository) startSubscription(ctx context.Context, orgID, plan, subID, s
 			plan = EXCLUDED.plan,
 			status = EXCLUDED.status,
 			current_period_end = NULL,
+			cancel_at_period_end = false,
 			event_at = greatest(go_billing_subscriptions.event_at, EXCLUDED.event_at),
 			updated_at = now()
 		WHERE go_billing_subscriptions.status <> ALL ($6)
@@ -71,6 +75,26 @@ func (r repository) startSubscription(ctx context.Context, orgID, plan, subID, s
 		return false, fmt.Errorf("store subscription %s: %w", subID, err)
 	}
 	return true, nil
+}
+
+// markCancelled records that the customer cancelled subscription subID of
+// orgID. status is the state Razorpay answered with: unchanged when the plan
+// runs to the end of the paid cycle (atPeriodEnd), "cancelled" when it ended
+// now. It reports false when orgID's subscription is no longer subID.
+//
+// event_at is left alone: the webhook that follows carries the full state
+// and must still be applied.
+func (r repository) markCancelled(ctx context.Context, orgID, subID, status string, atPeriodEnd bool) (bool, error) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE go_billing_subscriptions
+		SET status = $3, cancel_at_period_end = $4, updated_at = now()
+		WHERE organization_id = $1 AND razorpay_subscription_id = $2`,
+		orgID, subID, status, atPeriodEnd,
+	)
+	if err != nil {
+		return false, fmt.Errorf("mark subscription %s cancelled: %w", subID, err)
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // applyEvent records eventID and stores s as its organization's

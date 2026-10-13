@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -108,6 +109,32 @@ func (c *Client) CreateSubscription(ctx context.Context, planID string, totalCou
 	}
 	if sub.ID == "" {
 		return Subscription{}, errors.New("create subscription: response has no subscription id")
+	}
+	return sub, nil
+}
+
+// CancelSubscription cancels subscription id. With atCycleEnd the customer
+// keeps the plan until the paid cycle ends and is not charged again;
+// Razorpay accepts that only for a subscription with a running cycle.
+// Without it the subscription ends now.
+func (c *Client) CancelSubscription(ctx context.Context, id string, atCycleEnd bool) (Subscription, error) {
+	body, err := json.Marshal(map[string]bool{"cancel_at_cycle_end": atCycleEnd})
+	if err != nil {
+		return Subscription{}, fmt.Errorf("encode cancel request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/subscriptions/"+url.PathEscape(id)+"/cancel", bytes.NewReader(body))
+	if err != nil {
+		return Subscription{}, fmt.Errorf("build cancel request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(c.keyID, c.keySecret)
+
+	var sub Subscription
+	if err := c.do(req, &sub); err != nil {
+		return Subscription{}, fmt.Errorf("cancel subscription %s: %w", id, err)
+	}
+	if sub.ID != id {
+		return Subscription{}, fmt.Errorf("cancel subscription %s: response is for %q", id, sub.ID)
 	}
 	return sub, nil
 }
