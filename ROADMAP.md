@@ -3,14 +3,15 @@
 Status: ✅ done · 🔨 in progress · ⏳ not started.
 Product reasoning lives in `docs/PRODUCT.md`; rules for agents in `CLAUDE.md`.
 
-Last reviewed against the code and the live site on 13 October 2026.
+Last reviewed against the code, Railway and the live site on 13 October 2026.
 
 ## Where we are
 
 Uplumo is live at `https://uplumo.com` on Railway. The whole backend is Go and
 the React app is a static SPA the Go server serves. People can sign up, verify
-their email and use the free features. **Nobody can pay yet**: Razorpay is
-approved, but its keys are not in production.
+their email and use the free features. **Nobody pays real money yet**:
+Razorpay runs with test-mode keys in production, so checkout works only with
+test cards. DataForSEO and OpenRouter keys are not in production.
 
 ## Launch checklist
 
@@ -22,7 +23,8 @@ approved, but its keys are not in production.
 | Loops email: verify and reset working; invitation template made, not tested  | 🔨     |
 | Public pages: landing, pricing, about, contact, terms, privacy, refunds, shipping | ✅ |
 | Razorpay account approved (KYC)                                              | ✅     |
-| Razorpay test payment through the site, then live keys in Railway            | ⏳     |
+| Razorpay test-mode keys in Railway                                            | ✅     |
+| Razorpay test payment, renewal and cancel through the site, then live keys    | ⏳     |
 | One-click cancel (`POST /api/v1/billing/cancel`, "Cancel Pro" on Billing)    | ✅ built, not yet run against Razorpay |
 | DataForSEO key in production (keywords, rank tracking, backlinks, AI visibility answer 503 without it) | ⏳ |
 | Google OAuth app verification (Search Console and Analytics scopes)          | ⏳     |
@@ -38,7 +40,7 @@ mean each one has been tried on production with real provider keys.
 | Area                 | What exists                                                                                   |
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | Accounts             | Email and password, verification, reset, Google sign-in, workspaces, invitations, roles, API keys |
-| Uplumo Analytics     | Tracking script, ingest, dashboard (visitors, pages, sources, devices, countries)             |
+| Uplumo Analytics     | Tracking script, ingest, dashboard (visitors, pages, sources, devices, countries), button clicks via `data-uplumo-event` |
 | AI traffic detection | ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus AI traffic hiding as "Direct"    |
 | AI Visibility        | Brand Lookup (mentions, citations, share of voice) and Prompt Explorer                        |
 | Keywords             | Research, SERP analysis, saved keywords with tags                                             |
@@ -51,7 +53,7 @@ mean each one has been tried on production with real provider keys.
 | Local SEO            | Business search, profile, Google Maps rank grid                                               |
 | Assistant (SAM)      | Chat with tools over the project's data                                                       |
 | MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                              |
-| Billing              | Free, Basic, Pro and Agency on Razorpay Subscriptions, with site, tracked-keyword and member limits; webhooks, cancel, internal credit ledger |
+| Billing              | Free, Basic, Pro and Agency on Razorpay Subscriptions, with site, tracked-keyword and member limits; webhooks, cancel, monthly credits with a spend guard on every paid lookup and AI call |
 | Privacy              | `cmd/erase-user` erases one account                                                           |
 
 ## Not built yet
