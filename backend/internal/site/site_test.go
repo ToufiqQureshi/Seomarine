@@ -339,7 +339,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 func TestPricingPageShowsWhatThePlanCatalogEnforces(t *testing.T) {
 	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	rec := httptest.NewRecorder()
-	s.ServePricing(rec, httptest.NewRequest(http.MethodGet, "/pricing", nil))
+	s.ServePricing(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/pricing", nil))
 	body := rec.Body.String()
 	for _, want := range []string{
 		"<th scope=\"row\">Websites</th><td>1</td><td>1</td><td>2</td><td>10</td>",
