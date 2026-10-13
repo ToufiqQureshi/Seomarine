@@ -55,6 +55,7 @@ const summary = {
   aiSources: [{ source: "chatgpt", visitors: 3 }],
   referrers: [{ host: "chatgpt.com", visitors: 3 }],
   devices: [{ device: "mobile", visitors: 3 }],
+  events: [{ name: "Signup", count: 4, visitors: 2 }],
 };
 
 describe("analytics summary query", () => {
@@ -77,6 +78,7 @@ describe("analytics summary query", () => {
       patch: { channels: [{ channel: "email", visitors: 1 }] },
     },
     { name: "a null list", patch: { referrers: null } },
+    { name: "a summary without events", patch: { events: undefined } },
     { name: "a negative count", patch: { visitors: -1 } },
     {
       name: "a malformed date",

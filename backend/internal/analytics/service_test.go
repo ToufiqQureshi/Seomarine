@@ -256,6 +256,7 @@ func TestSummarize(t *testing.T) {
 		AISources: []AISourceCount{{aiChatGPT, 1}, {aiPerplexity, 1}},
 		Referrers: []ReferrerCount{{"blog.example.org", 1}, {"google.co.in", 1}, {"perplexity.ai", 1}},
 		Devices:   []DeviceCount{{deviceDesktop, 2}, {deviceMobile, 2}},
+		Events:    []EventCount{},
 	}
 	assertSummary(t, got, want)
 }
@@ -276,7 +277,68 @@ func TestSummarizeWithoutTraffic(t *testing.T) {
 		AISources: []AISourceCount{},
 		Referrers: []ReferrerCount{},
 		Devices:   []DeviceCount{},
+		Events:    []EventCount{},
 	})
+}
+
+// Custom events, such as button clicks, are counted on their own and never
+// inflate pageviews; another site's events and events outside the range
+// are left out.
+func TestCustomEventsAreCountedApartFromPageviews(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	s := f.addSite(ctx, t, "acme.com")
+	other := f.addSite(ctx, t, "")
+	send := func(ts time.Time, site testSite, name, ip string) {
+		t.Helper()
+		f.svc.now = func() time.Time { return ts }
+		h := hit(t, site.key, "https://acme.com/pricing", "", ip, desktopUA)
+		h.EventName = name
+		if err := f.svc.Collect(ctx, h); err != nil {
+			t.Fatalf("Collect(%q) error = %v", name, err)
+		}
+	}
+	send(day, s, "", "10.0.0.1") // a pageview
+	send(day, s, "Signup", "10.0.0.1")
+	send(day.Add(time.Minute), s, "Signup", "10.0.0.1")
+	send(day.Add(2*time.Minute), s, "Signup", "10.0.0.2")
+	send(day.Add(3*time.Minute), s, "Book a demo", "10.0.0.2")
+	send(day.AddDate(0, 0, -1), s, "Signup", "10.0.0.3") // before the range
+	send(day, other, "Signup", "10.0.0.4")               // another site
+
+	got, err := f.svc.Summarize(ctx, s.project, day, day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Pageviews != 1 || got.Visitors != 1 {
+		t.Errorf("pageviews = %d, visitors = %d; want 1 and 1: events must not count as pageviews", got.Pageviews, got.Visitors)
+	}
+	want := []EventCount{{Name: "Signup", Count: 3, Visitors: 2}, {Name: "Book a demo", Count: 1, Visitors: 1}}
+	if !slices.Equal(got.Events, want) {
+		t.Errorf("events = %+v, want %+v", got.Events, want)
+	}
+}
+
+func TestCustomEventsFromBotsOrForeignHostsAreDropped(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	s := f.addSite(ctx, t, "acme.com")
+	f.svc.now = func() time.Time { return day }
+
+	bot := hit(t, s.key, "https://acme.com/", "", "10.0.0.1", "Googlebot/2.1 (+http://www.google.com/bot.html)")
+	bot.EventName = "Signup"
+	if err := f.svc.Collect(ctx, bot); err != nil {
+		t.Fatal(err)
+	}
+	foreign := hit(t, s.key, "https://evil.example/", "", "10.0.0.2", desktopUA)
+	foreign.EventName = "Signup"
+	if err := f.svc.Collect(ctx, foreign); !errors.Is(err, ErrForeignHost) {
+		t.Fatalf("foreign event error = %v, want ErrForeignHost", err)
+	}
+	got, err := f.svc.Summarize(ctx, s.project, day, day)
+	if err != nil || len(got.Events) != 0 {
+		t.Fatalf("events = %+v, %v; want none", got.Events, err)
+	}
 }
 
 func TestSummarizeValidatesTheRange(t *testing.T) {
@@ -378,6 +440,7 @@ func assertSummary(t *testing.T, got, want Summary) {
 	check("aiSources", slices.Equal(got.AISources, want.AISources) && got.AISources != nil, got.AISources, want.AISources)
 	check("referrers", slices.Equal(got.Referrers, want.Referrers) && got.Referrers != nil, got.Referrers, want.Referrers)
 	check("devices", slices.Equal(got.Devices, want.Devices) && got.Devices != nil, got.Devices, want.Devices)
+	check("events", slices.Equal(got.Events, want.Events) && got.Events != nil, got.Events, want.Events)
 }
 
 func hit(t *testing.T, siteKey, page, referrer, ip, ua string) Hit {

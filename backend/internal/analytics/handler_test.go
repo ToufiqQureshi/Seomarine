@@ -30,6 +30,9 @@ func TestCollectRejectsInvalidEvents(t *testing.T) {
 		{name: "referrer too long", body: fmt.Sprintf(`{"k":"abc","u":"https://acme.com/","r":%q}`, long[:maxURL+1]), wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
 		{name: "negative width", body: `{"k":"abc","u":"https://acme.com/","w":-1}`, wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
 		{name: "absurd width", body: `{"k":"abc","u":"https://acme.com/","w":100001}`, wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
+		{name: "event name too long", body: fmt.Sprintf(`{"k":"abc","u":"https://acme.com/","n":%q}`, strings.Repeat("é", maxEventName+1)), wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
+		{name: "event name only spaces", body: `{"k":"abc","u":"https://acme.com/","n":"   "}`, wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
+		{name: "event name with a control character", body: `{"k":"abc","u":"https://acme.com/","n":"Sign\nup"}`, wantStatus: http.StatusBadRequest, wantCode: "invalid_event"},
 		{name: "body over the limit", body: fmt.Sprintf(`{"k":"abc","u":"https://acme.com/","x":%q}`, strings.Repeat("x", maxCollectBody)), wantStatus: http.StatusRequestEntityTooLarge, wantCode: "payload_too_large"},
 	}
 	for _, tt := range tests {

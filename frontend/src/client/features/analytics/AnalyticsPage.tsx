@@ -200,6 +200,16 @@ function Dashboard({
           emptyTitle="No device data in this period"
           rows={deviceRows(summary.devices)}
         />
+        <CountListCard
+          title="Button clicks"
+          unit="Clicks"
+          emptyTitle='No clicks tracked yet. Add data-uplumo-event="Signup" to any button or link to count its clicks.'
+          rows={summary.events.map((row) => ({
+            key: row.name,
+            label: `${row.name} · ${row.visitors} ${row.visitors === 1 ? "visitor" : "visitors"}`,
+            count: row.count,
+          }))}
+        />
       </div>
     </div>
   );

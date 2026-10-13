@@ -42,6 +42,7 @@ const summarySchema = z.object({
       visitors: count,
     }),
   ),
+  events: z.array(z.object({ name: z.string(), count, visitors: count })),
 });
 export type AnalyticsSummary = z.infer<typeof summarySchema>;
 
