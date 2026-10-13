@@ -28,7 +28,6 @@ export function formatArticleContent(
   };
 }
 
-
 export function insertImageContent(
   content: string,
   start: number,
@@ -38,7 +37,9 @@ export function insertImageContent(
 ) {
   const url = new URL(source.trim());
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new TypeError("Use an image URL that starts with https:// or http://.");
+    throw new TypeError(
+      "Use an image URL that starts with https:// or http://.",
+    );
   }
   const alt = altText.trim();
   if (!alt) throw new TypeError("Add a short description for accessibility.");
