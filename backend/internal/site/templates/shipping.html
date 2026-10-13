@@ -1,0 +1,26 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<div class="wrap narrow doc">
+<p class="eyebrow">Legal</p>
+<h1>Shipping and Delivery Policy</h1>
+<p class="note">Last updated {{.Updated}}</p>
+<div class="prose">
+<h2>Nothing is shipped</h2>
+<p>Uplumo is online software. We do not sell or send physical goods, so there are no shipping charges, couriers or delivery addresses.</p>
+
+<h2>How you get the service</h2>
+<ul>
+<li><strong>Free plan.</strong> Your account works as soon as you sign up and confirm your email address.</li>
+<li><strong>Pro plan.</strong> Pro is switched on for your workspace as soon as your payment succeeds, usually within a few minutes.</li>
+<li>You use Uplumo in your browser at uplumo.com. There is nothing to download or install.</li>
+</ul>
+
+<h2>If Pro is not switched on</h2>
+<p>If you have paid and your workspace still shows the Free plan after 30 minutes, email <a href="mailto:{{.Support}}">{{.Support}}</a> from your account's address with the date and amount. We switch it on or refund the payment, as set out in the <a href="/refunds">cancellation and refund policy</a>.</p>
+
+<h2>Questions</h2>
+<p>See the <a href="/terms">terms of service</a>, or <a href="/contact">contact us</a>.</p>
+</div>
+</div>
+{{template "footer" .}}

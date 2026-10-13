@@ -59,7 +59,7 @@ The server refuses to start on a live `https` site when:
 ## 4. Check the live site
 
 1. `https://uplumo.com/api/health` returns `{"status":"ok"}`.
-2. The landing, pricing, about, contact, terms, privacy and refunds pages open.
+2. The landing, pricing, about, contact, terms, privacy, refunds and shipping pages open, and each shows `support@uplumo.com` as text.
 3. Sign up with a real address, receive the verification email, reach the
    dashboard.
 4. Buy Pro with a Razorpay test card, then cancel it from Billing.
