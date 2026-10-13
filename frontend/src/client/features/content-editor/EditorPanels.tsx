@@ -205,7 +205,7 @@ export function DraftsPanel({
         </Button>
       </div>
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading drafts?</p>
+        <p className="text-sm text-muted-foreground">Loading drafts…</p>
       ) : null}
       {hasError ? (
         <p className="text-sm text-destructive">Could not load saved drafts.</p>
