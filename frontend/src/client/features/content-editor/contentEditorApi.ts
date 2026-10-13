@@ -22,6 +22,12 @@ const draftSummarySchema = draftSchema.pick({
 });
 
 export type ContentDraft = z.infer<typeof draftSchema>;
+
+export const contentEditorQueryKeys = {
+  drafts: (projectId: string) => ["contentDrafts", projectId] as const,
+  draft: (projectId: string, draftId: string) =>
+    ["contentDraft", projectId, draftId] as const,
+};
 export type ContentDraftSummary = z.infer<typeof draftSummarySchema>;
 
 type WriterAction = "outline" | "draft" | "improve" | "rewrite" | "faq";
