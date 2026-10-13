@@ -1,8 +1,49 @@
 import { Check, CircleHelp, Plus, Trash2, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/client/components/ui/button";
 import type { ContentDraftSummary } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
+
+const reminderStorageKey = (projectId: string) =>
+  `uplumo:content-editor:writer-reminder:${projectId}`;
+
+export function WriterReminder({ projectId }: { projectId: string }) {
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem(reminderStorageKey(projectId)) === "dismissed";
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  return (
+    <aside className="flex items-start justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+      <p className="text-sm leading-5 text-muted-foreground">
+        <span className="font-medium text-foreground">Use your own expertise.</span>{" "}
+        Let AI help with the draft, add your real examples, and verify every claim.
+      </p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Dismiss writing reminder"
+        onClick={() => {
+          setDismissed(true);
+          try {
+            window.sessionStorage.setItem(reminderStorageKey(projectId), "dismissed");
+          } catch {
+            // Dismissal still works for this render if storage is unavailable.
+          }
+        }}
+      >
+        <X aria-hidden />
+      </Button>
+    </aside>
+  );
+}
 
 export function WritingModeToggle({
   mode,
