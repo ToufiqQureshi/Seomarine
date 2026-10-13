@@ -11,7 +11,10 @@ export function WriterReminder({ projectId }: { projectId: string }) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
-      return window.sessionStorage.getItem(reminderStorageKey(projectId)) === "dismissed";
+      return (
+        window.sessionStorage.getItem(reminderStorageKey(projectId)) ===
+        "dismissed"
+      );
     } catch {
       return false;
     }
@@ -22,8 +25,11 @@ export function WriterReminder({ projectId }: { projectId: string }) {
   return (
     <aside className="flex items-start justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
       <p className="text-sm leading-5 text-muted-foreground">
-        <span className="font-medium text-foreground">Use your own expertise.</span>{" "}
-        Let AI help with the draft, add your real examples, and verify every claim.
+        <span className="font-medium text-foreground">
+          Use your own expertise.
+        </span>{" "}
+        Let AI help with the draft, add your real examples, and verify every
+        claim.
       </p>
       <Button
         type="button"
@@ -33,7 +39,10 @@ export function WriterReminder({ projectId }: { projectId: string }) {
         onClick={() => {
           setDismissed(true);
           try {
-            window.sessionStorage.setItem(reminderStorageKey(projectId), "dismissed");
+            window.sessionStorage.setItem(
+              reminderStorageKey(projectId),
+              "dismissed",
+            );
           } catch {
             // Dismissal still works for this render if storage is unavailable.
           }
