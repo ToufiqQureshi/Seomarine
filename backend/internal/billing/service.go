@@ -24,6 +24,8 @@ var (
 	ErrNoSubscription = errors.New("organization has no live subscription")
 	// ErrPaymentProvider means Razorpay failed or refused the request.
 	ErrPaymentProvider = errors.New("payment provider failed")
+	// ErrPaymentUnavailable means checkout, cancellation and webhooks are disabled.
+	ErrPaymentUnavailable = errors.New("payment provider is not configured")
 	// ErrInvalidSignature means the webhook is not signed with the webhook
 	// secret.
 	ErrInvalidSignature = errors.New("invalid webhook signature")
@@ -112,6 +114,16 @@ func NewService(db *pgxpool.Pool, rzp *razorpay.Client, planID, webhookSecret st
 	return &Service{repo: repository{db: db}, razorpay: rzp, planID: planID, webhookSecret: webhookSecret}
 }
 
+// NewReadOnlyService exposes existing subscription state without enabling payments.
+func NewReadOnlyService(db *pgxpool.Pool) *Service {
+	return &Service{repo: repository{db: db}}
+}
+
+// PaymentsConfigured reports whether this service can accept payment actions.
+func (s *Service) PaymentsConfigured() bool {
+	return s != nil && s.razorpay != nil && s.planID != "" && s.webhookSecret != ""
+}
+
 // Status returns orgID's plan. Without a subscription it is the free plan.
 func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 	sub, found, err := s.repo.subscription(ctx, orgID)
@@ -152,6 +164,9 @@ func (s *Service) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
 // A subscription that was created but never paid is not reused: Razorpay
 // expires those, so every checkout starts a fresh one.
 func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) {
+	if !s.PaymentsConfigured() {
+		return Checkout{}, ErrPaymentUnavailable
+	}
 	current, found, err := s.repo.subscription(ctx, orgID)
 	if err != nil {
 		return Checkout{}, fmt.Errorf("checkout for organization %s: %w", orgID, err)
@@ -186,6 +201,9 @@ func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) 
 // (the first charge has not happened, or a charge is failing) has no paid
 // time left and ends now. Cancelling twice is not an error.
 func (s *Service) Cancel(ctx context.Context, orgID string) (Status, error) {
+	if !s.PaymentsConfigured() {
+		return Status{}, ErrPaymentUnavailable
+	}
 	current, found, err := s.repo.subscription(ctx, orgID)
 	if err != nil {
 		return Status{}, fmt.Errorf("cancel for organization %s: %w", orgID, err)
@@ -222,6 +240,9 @@ func (s *Service) Cancel(ctx context.Context, orgID string) (Status, error) {
 // in any order. Events for organizations that no longer exist, or without
 // the organization note, are ignored.
 func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eventID string) (WebhookResult, error) {
+	if !s.PaymentsConfigured() {
+		return "", ErrPaymentUnavailable
+	}
 	if !razorpay.ValidSignature(body, signature, s.webhookSecret) {
 		return "", ErrInvalidSignature
 	}
