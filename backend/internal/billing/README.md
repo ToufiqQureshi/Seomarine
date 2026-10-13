@@ -11,6 +11,15 @@ and `topup_credits`. Keep API secrets in runtime configuration only; never
 include provider error bodies or credentials in client responses. Webhook
 status synchronization and the remaining billing surface are still migrating.
 
+## Without Razorpay credentials
+
+The server still serves subscription status and credit balance from Postgres.
+Responses include `paymentsConfigured: false` so the client can hide payment
+actions. Checkout, cancellation and webhooks return 503. Paid-feature gates
+retain their existing self-hosted behavior until payments are configured.
+If an existing subscriber needs to cancel while Razorpay is unavailable,
+support must arrange cancellation in Razorpay; restore credentials promptly.
+
 ## Cancelling
 
 `POST /api/v1/billing/cancel` (owner or admin) stops the subscription from
