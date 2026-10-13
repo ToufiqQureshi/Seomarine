@@ -34,7 +34,7 @@ describe("content editor scoring", () => {
 
     expect(seo.score).toBeGreaterThan(60);
     expect(aeo.score).toBeGreaterThan(60);
-    expect(seo.checks.map(({ id }) => id)).toContain("keyword-coverage");
+    expect(seo.checks.map(({ id }) => id)).toContain("topic-body");
     expect(aeo.checks.map(({ id }) => id)).toContain("direct-answer");
     expect(seo.checks.map(({ id }) => id)).not.toContain("direct-answer");
     expect(aeo.checks.map(({ id }) => id)).not.toContain("keyword-coverage");
