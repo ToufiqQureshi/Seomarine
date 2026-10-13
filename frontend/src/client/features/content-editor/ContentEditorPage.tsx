@@ -22,7 +22,6 @@ import {
   ReadinessPanel,
   WriterReminder,
   SearchPreview,
-  Field,
   WritingModeToggle,
 } from "./EditorPanels";
 import { ArticleComposer } from "./ArticleComposer";
@@ -101,12 +100,16 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
         };
         queryClient.setQueryData(
           draftListKey,
-          [summary, ...currentDrafts.filter((item) => item.id !== saved.id)].sort(
-            (a, b) => b.updatedAt.localeCompare(a.updatedAt),
-          ),
+          [
+            summary,
+            ...currentDrafts.filter((item) => item.id !== saved.id),
+          ].toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
         );
       } else {
-        void queryClient.invalidateQueries({ queryKey: draftListKey, exact: true });
+        void queryClient.invalidateQueries({
+          queryKey: draftListKey,
+          exact: true,
+        });
       }
       toast.success("Draft saved");
     },
@@ -144,7 +147,10 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           currentDrafts.filter((item) => item.id !== id),
         );
       } else {
-        void queryClient.invalidateQueries({ queryKey: draftListKey, exact: true });
+        void queryClient.invalidateQueries({
+          queryKey: draftListKey,
+          exact: true,
+        });
       }
       toast.success("Draft deleted");
     },
