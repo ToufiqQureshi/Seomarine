@@ -29,6 +29,7 @@ const creditsSchema = z.object({
   balanceCredits: z.number(),
   balanceUsd: z.number(),
   monthlyGrantCredits: z.number(),
+  paymentsConfigured: z.boolean(),
 });
 
 export type BillingCredits = z.infer<typeof creditsSchema>;
