@@ -5,7 +5,7 @@
 <div class="wrap hero" style="padding-bottom:5rem">
 <span class="sticker">Choose the tools your site needs</span>
 <h1>Plans that fit <em>your work.</em></h1>
-<p class="lead">Start free, keep website basics in Basic, or add metered SEO and AI research with Pro and Agency.</p>
+<p class="lead">Start free. Pay only when you want to rank, research competitors or run an agency.</p>
 </div>
 </div>
 
@@ -16,7 +16,7 @@
 <h2 id="plans">Pick one. Change any time.</h2>
 </div>
 {{template "plans" .}}
-<p class="note">Paid prices are per workspace, per month, in Indian rupees. Provider usage is capped by each plan's monthly allowance; unused allowance does not roll over.</p>
+<p class="note">Prices are per workspace, per month, in Indian rupees. Cancel in one click from Billing.</p>
 </div>
 </section>
 
@@ -30,20 +30,13 @@
 <div class="table-scroll">
 <table>
 <caption class="skip">Uplumo plan feature comparison</caption>
-<thead><tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Basic</th><th scope="col">Pro</th><th scope="col">Agency</th></tr></thead>
+<thead><tr><th scope="col">Feature</th>{{range .Plans}}<th scope="col">{{.Name}}</th>{{end}}</tr></thead>
 <tbody>
-<tr><th scope="row">Websites</th><td>1</td><td>1</td><td>5</td><td>25</td></tr>
-<tr><th scope="row">Analytics, Search Console and GA4</th><td>Included</td><td>Included</td><td>Included</td><td>Included</td></tr>
-<tr><th scope="row">Technical site audits</th><td>—</td><td>—</td><td>Included, metered</td><td>Included, metered</td></tr>
-<tr><th scope="row">Paid SEO data and rank tracking</th><td>—</td><td>—</td><td>Included, metered</td><td>Included, metered</td></tr>
-<tr><th scope="row">AI visibility and AI writing</th><td>—</td><td>—</td><td>Included, metered</td><td>Included, metered</td></tr>
-<tr><th scope="row">Monthly AI and rendered-audit credits</th><td>None</td><td>None</td><td>$3</td><td>$10</td></tr>
-<tr><th scope="row">White-label client reports</th><td>—</td><td>—</td><td>—</td><td>Included</td></tr>
-<tr><th scope="row">Monthly price</th><td>Free</td><td>{{inr 899}}</td><td>{{inr .ProPriceINR}}</td><td>{{inr 4999}}</td></tr>
-</tbody>
+{{range .Compare}}<tr><th scope="row">{{.Label}}</th>{{range .Cells}}<td>{{.}}</td>{{end}}</tr>
+{{end}}</tbody>
 </table>
 </div>
-<p class="note">Basic does not run paid SEO-data or LLM calls. Pro and Agency include usage credits for AI writing and rendered-page audits.</p>
+<p class="note">Lookups that cost us money at our data providers have a fair-use limit per workspace, so one account cannot run up a bill for everyone else.</p>
 </div>
 </section>
 
@@ -60,7 +53,7 @@
 <section class="band dots" aria-labelledby="start">
 <div class="wrap final">
 <h2 id="start">Try Uplumo <em>free.</em></h2>
-<p>No card needed. Upgrade only when you need more sites or paid SEO and AI research.</p>
+<p>No card needed. Upgrade only when you need more.</p>
 <a class="btn" href="{{.SignUp}}">Create your free account</a>
 </div>
 </section>

@@ -45,6 +45,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/localseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
+	planCatalog "github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/errreport"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
@@ -140,17 +141,19 @@ func run(logger *slog.Logger) (err error) {
 	var billingSvc *billing.Service
 	billingRoutes := billing.NewReadOnlyService(db)
 	if rzp := cfg.Razorpay; rzp != nil {
-		billingSvc = billing.NewPlanService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDs, rzp.PlanIDPro, rzp.WebhookSecret)
+		billingSvc = billing.NewPlanService(db, razorpay.NewClient(razorpay.BaseURL, rzp.KeyID, rzp.KeySecret), rzp.PlanIDs, rzp.WebhookSecret)
 		billingRoutes = billingSvc
-		billingSvc.MonthlyGrantCredits = int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD)
 		billingSvc.MonthlyGrantCreditsByPlan = map[string]int64{
-			billing.PlanBasic:  0,
-			billing.PlanPro:    billingSvc.MonthlyGrantCredits,
+			billing.PlanPro:    int64(cfg.BillingMonthlyCreditsUSD * billing.CreditsPerUSD),
 			billing.PlanAgency: int64(cfg.BillingAgencyMonthlyCreditsUSD * billing.CreditsPerUSD),
 		}
 	} else {
 		logger.Warn("RAZORPAY_* not set; billing status is read-only and checkout is unavailable")
 	}
+	// The owner's and staff's own workspaces are never limited by a plan,
+	// with or without payments configured.
+	billingRoutes.SetStaffEmails(cfg.StaffEmails)
+	credits.Unlimited = billingRoutes.IsUnlimited
 
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service
@@ -227,7 +230,10 @@ func run(logger *slog.Logger) (err error) {
 	}
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
-	rankTrackingService.Plans = billingSvc
+	rankTrackingService.Limits, rankTrackingService.Usage = billingRoutes, ranktracking.Store{DB: db}
+	if billingSvc != nil {
+		rankTrackingService.Plans = billingSvc.Gate(planCatalog.Keywords)
+	}
 	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}}
 
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
@@ -251,7 +257,7 @@ func run(logger *slog.Logger) (err error) {
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
 	emailAuthSvc := buildEmailAuth(cfg, logger, db, rdb, authService)
-	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps)
+	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps, credits)
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -283,13 +289,13 @@ func run(logger *slog.Logger) (err error) {
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}, Plans: billingRoutes},
 			ContentEditor:        &contenteditor.Repository{DB: db},
-			ContentWriter:        buildContentWriter(cfg, logger, credits, billingRoutes),
+			ContentWriter:        buildContentWriter(cfg, logger, credits, billingRoutes.Gate(planCatalog.AIWriting)),
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},
 			SAMChat:              samChat,
 			Onboarding:           &onboarding.Service{Store: onboarding.Repository{DB: db}},
-			Team:                 &team.Service{DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
+			Team:                 &team.Service{Limits: billingRoutes, DB: db, Redis: rdb, LoopsAPIKey: cfg.LoopsAPIKey, InvitationTemplateID: cfg.LoopsInvitationTemplateID, BaseURL: cfg.BetterAuthURL},
 			CrawlerAccess:        crawlerAccessSvc,
 			Activation:           &activation.Service{Store: activation.Repository{DB: db}},
 			Reports:              reportsSvc,
@@ -388,7 +394,7 @@ func buildEmailAuth(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, rd
 // customer's: it returns nil without OPENROUTER_API_KEY and the chat routes
 // then answer 503. Every turn is gated on and charged to the organization's
 // credits.
-func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps) *sam.Chat {
+func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memory *projectcontext.Service, mcpDeps *mcp.Deps, credits *billing.CreditLedgerService) *sam.Chat {
 	if cfg.OpenRouterAPIKey == "" {
 		return nil
 	}
@@ -407,7 +413,7 @@ func buildSAMChat(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool, memo
 		BaseURL: cfg.PublicURL.String(),
 		Logger:  logger,
 	}
-	agent.Meter = sam.LedgerMeter{Ledger: billing.NewCreditLedgerService(db)}
+	agent.Meter = sam.LedgerMeter{Ledger: credits}
 	return sam.NewChat(agent, sam.ContextLoader{DB: db}, sam.MessageRepository{DB: db})
 }
 
@@ -453,7 +459,7 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 	store := ranktracking.Store{DB: db}
 	var plans ranktracking.PaidPlans
 	if billingSvc != nil {
-		plans = billingSvc
+		plans = billingSvc.Gate(planCatalog.RankTracking)
 	}
 	checks := &ranktracking.Checks{
 		Repo: store, Results: store, Runs: store, Serp: ranktracking.DataForSEOSerp{Client: dfClient},
@@ -515,7 +521,7 @@ func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Poo
 	// self-hosted deployment without billing runs audits ungated.
 	var plans audit.PaidPlans
 	if billingSvc != nil {
-		plans = billingSvc
+		plans = billingSvc.Gate(planCatalog.FullAudit)
 	}
 
 	service := audit.NewService(audit.ServiceConfig{

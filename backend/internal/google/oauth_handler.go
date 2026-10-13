@@ -1,6 +1,7 @@
 package google
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -19,6 +20,14 @@ type OAuthDeps struct {
 	Auth        *auth.Service
 	Logger      *slog.Logger
 	WithSession func(http.Handler) http.Handler
+	// Plans reports whether a workspace's plan includes Google data. Nil
+	// leaves it open, as on a server without billing.
+	Plans PaidPlans
+}
+
+// PaidPlans reports whether an organization's plan includes this feature.
+type PaidPlans interface {
+	HasPaidPlan(ctx context.Context, organizationID string) (bool, error)
 }
 
 type startRequest struct {
@@ -48,6 +57,20 @@ func MountOAuth(mux *http.ServeMux, deps OAuthDeps) {
 			return
 		}
 		user, _ := auth.UserFromContext(r.Context())
+		// Only a new connection is stopped: a workspace that downgrades
+		// keeps reading the properties it already connected.
+		if deps.Plans != nil {
+			allowed, err := deps.Plans.HasPaidPlan(r.Context(), user.OrganizationID)
+			if err != nil {
+				deps.Logger.ErrorContext(r.Context(), "check plan for google connection", "err", err)
+				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+				return
+			}
+			if !allowed {
+				httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Connecting Google Search Console and Google Analytics is part of the Basic plan and above.")
+				return
+			}
+		}
 		authorizationURL, err := deps.Service.Start(r.Context(), user.ID, r.PathValue("provider"), input.CallbackURL)
 		if err != nil {
 			deps.Logger.ErrorContext(r.Context(), "start google oauth", "provider", r.PathValue("provider"), "err", err)

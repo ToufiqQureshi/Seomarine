@@ -23,6 +23,10 @@ var (
 	ErrReservationAlreadyClosed = errors.New("credit reservation already settled or refunded")
 )
 
+// staffTopUpCredits is the least a staff workspace is granted when it runs
+// low: ten dollars of provider cost.
+const staffTopUpCredits = 10 * CreditsPerUSD
+
 const (
 	// CreditMarkupMultiplier is legacy 1.28 markup on provider cost.
 	CreditMarkupMultiplier = 1.28
@@ -43,6 +47,9 @@ type CreditReservation struct {
 // CreditLedgerService reserves and settles organization AI credits.
 type CreditLedgerService struct {
 	db *pgxpool.Pool
+	// Unlimited reports whether an organization is a staff workspace, which
+	// is topped up instead of refused. Nil means no workspace is.
+	Unlimited func(ctx context.Context, orgID string) (bool, error)
 }
 
 // NewCreditLedgerService creates a credit ledger service for db.
@@ -139,10 +146,37 @@ func (s *CreditLedgerService) UsageEvents(ctx context.Context, orgID string, sta
 	return events, nil
 }
 
+// topUpStaff keeps a staff workspace from running out: when its balance
+// cannot cover amount, it is granted enough. The grant and the spend are
+// both in the ledger, so what staff use is still counted.
+func (s *CreditLedgerService) topUpStaff(ctx context.Context, orgID string, amount int64) error {
+	if s.Unlimited == nil {
+		return nil
+	}
+	unlimited, err := s.Unlimited(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("check staff workspace: %w", err)
+	}
+	if !unlimited {
+		return nil
+	}
+	balance, err := s.GetBalance(ctx, orgID)
+	if err != nil {
+		return err
+	}
+	if balance >= amount {
+		return nil
+	}
+	return s.AddCredits(ctx, orgID, max(amount-balance, staffTopUpCredits), "staff workspace")
+}
+
 // Reserve atomically reserves credits for an operation using idempotency key.
 func (s *CreditLedgerService) Reserve(ctx context.Context, orgID string, amount int64, idempotencyKey string) (CreditReservation, error) {
 	if amount <= 0 {
 		return CreditReservation{}, errors.New("amount must be positive")
+	}
+	if err := s.topUpStaff(ctx, orgID, amount); err != nil {
+		return CreditReservation{}, err
 	}
 
 	tx, err := s.db.Begin(ctx)

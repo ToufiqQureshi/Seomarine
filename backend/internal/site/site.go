@@ -24,15 +24,8 @@ import (
 	planCatalog "github.com/toufiqqureshi/uplumo/backend/internal/plans"
 )
 
-// Prices in rupees per month. They are the only place the public pages take
-// prices from; ProPriceINR must match the Razorpay plan RAZORPAY_PLAN_ID_PRO
-// bills.
-const (
-	FreePriceINR   = 0
-	BasicPriceINR  = 899
-	ProPriceINR    = 1899
-	AgencyPriceINR = 4999
-)
+// Prices, limits and features come from the plan catalog, the same list the
+// billing API and every plan check read.
 
 // AssetsPrefix is the URL path the embedded static files are served under.
 const AssetsPrefix = "/site/"
@@ -72,7 +65,6 @@ type Plan struct {
 	ID       string
 	Name     string
 	PriceINR int
-	Sites    int
 	// Period follows the price, e.g. "/month".
 	Period   string
 	Summary  string
@@ -100,7 +92,7 @@ type page struct {
 	Operator    string
 	Address     string
 	Phone       string
-	ProPriceINR int
+	Compare     []CompareRow
 	Plans       []Plan
 	FAQ         []QA
 	JSONLD      any
@@ -160,7 +152,7 @@ func New(publicURL *url.URL) (*Site, error) {
 	base := page{
 		OGImage: origin + ogImage, SignUp: signUpPath, Support: SupportEmail, Updated: policyUpdated,
 		Operator: operatorName, Address: operatorAddress, Phone: supportPhone,
-		ProPriceINR: ProPriceINR, Plans: plans,
+		Plans: plans, Compare: comparison(),
 	}
 
 	landing := base
@@ -174,7 +166,8 @@ func New(publicURL *url.URL) (*Site, error) {
 	pricing := base
 	pricing.Path = "/pricing"
 	pricing.Title = "Uplumo pricing: Free, Basic, Pro and Agency plans"
-	pricing.Description = fmt.Sprintf("Start free. Basic is %s, Pro is %s and Agency is %s per month, with site limits and SEO and AI features shown clearly.", formatINR(BasicPriceINR), formatINR(ProPriceINR), formatINR(AgencyPriceINR))
+	pricing.Description = fmt.Sprintf("Start free. Basic is %s, Pro is %s and Agency is %s a month in rupees. See what each plan includes, cancel in one click.",
+		formatINR(price(planCatalog.Basic)), formatINR(price(planCatalog.Pro)), formatINR(price(planCatalog.Agency)))
 	pricing.Canonical = origin + "/pricing"
 	pricing.FAQ = pricingFAQ()
 	pricing.JSONLD = jsonLD(origin, pricing.Description, plans)
@@ -380,24 +373,74 @@ func plans() []Plan {
 			period, cta = "forever", "Start free"
 		}
 		result = append(result, Plan{
-			ID: item.ID, Name: item.Name, PriceINR: item.PriceINR, Sites: item.Sites,
-			Period: period, Summary: planSummary(item.ID), Features: item.Features,
+			ID: item.ID, Name: item.Name, PriceINR: item.PriceINR,
+			Period: period, Summary: item.Summary, Features: item.Highlights,
 			CTA: cta, Featured: item.ID == planCatalog.Pro,
 		})
 	}
 	return result
 }
 
-func planSummary(id string) string {
-	switch id {
-	case planCatalog.Free:
-		return "A no-cost way to connect your site and see traffic basics."
-	case planCatalog.Basic:
-		return "Core website and search performance work for one site."
-	case planCatalog.Pro:
-		return "SEO research and AI visibility for a growing business."
-	default:
-		return "A larger client portfolio with agency reporting."
+// price returns the monthly price of the plan with id.
+func price(id string) int {
+	plan, _ := planCatalog.Get(id)
+	return plan.PriceINR
+}
+
+// CompareRow is one line of the plan comparison: a label and one cell per
+// plan, in catalog order.
+type CompareRow struct {
+	Label string
+	Cells []string
+}
+
+// comparison builds the comparison table from the catalog, so the page can
+// only show what a plan check enforces.
+func comparison() []CompareRow {
+	catalog := planCatalog.Catalog()
+	row := func(label string, cell func(planCatalog.Definition) string) CompareRow {
+		cells := make([]string, len(catalog))
+		for i, plan := range catalog {
+			cells[i] = cell(plan)
+		}
+		return CompareRow{Label: label, Cells: cells}
+	}
+	included := func(feature planCatalog.Feature) func(planCatalog.Definition) string {
+		return func(plan planCatalog.Definition) string {
+			if plan.Allows(feature) {
+				return "Included"
+			}
+			return "—"
+		}
+	}
+	return []CompareRow{
+		row("Websites", func(plan planCatalog.Definition) string { return strconv.Itoa(plan.Sites) }),
+		row("Team members", func(plan planCatalog.Definition) string { return strconv.Itoa(plan.Members) }),
+		row("Uplumo Analytics with AI traffic detection", func(planCatalog.Definition) string { return "Included" }),
+		row("Site audit", func(plan planCatalog.Definition) string {
+			if plan.Allows(planCatalog.FullAudit) {
+				return "Full"
+			}
+			return "Starter"
+		}),
+		row("Google Search Console and Google Analytics", included(planCatalog.GoogleData)),
+		row("Keyword research", included(planCatalog.Keywords)),
+		row("Rank tracking", func(plan planCatalog.Definition) string {
+			if !plan.Allows(planCatalog.RankTracking) {
+				return "—"
+			}
+			return strings.TrimPrefix(formatINR(plan.TrackedKeywords), "₹") + " keywords"
+		}),
+		row("Backlink and competitor research", included(planCatalog.Backlinks)),
+		row("AI Visibility", included(planCatalog.AIVisibility)),
+		row("AI writing assistant", included(planCatalog.AIWriting)),
+		row("White-label reports", included(planCatalog.WhiteLabel)),
+		row("Monthly price", func(plan planCatalog.Definition) string {
+			if plan.PriceINR == 0 {
+				return "Free"
+			}
+			return formatINR(plan.PriceINR)
+		}),
 	}
 }
 
@@ -417,14 +460,20 @@ func landingFAQ() []QA {
 }
 
 func pricingFAQ() []QA {
+	basic, _ := planCatalog.Get(planCatalog.Basic)
+	pro, _ := planCatalog.Get(planCatalog.Pro)
+	agency, _ := planCatalog.Get(planCatalog.Agency)
 	return []QA{
-		{"Is the Free plan really free?", "Yes. It costs " + formatINR(FreePriceINR) +
-			" and needs no card. Basic starts at " + formatINR(BasicPriceINR) + " per month."},
-		{"How do site limits work?", "Free and Basic include one active website, Pro includes five and Agency includes twenty-five. Archiving a site frees a slot; your data stays in the workspace."},
-		{"What does Basic exclude?", "Basic does not run paid SEO-data lookups, AI visibility checks or AI writing, so those provider costs are not triggered by Basic usage."},
-		{"How do I cancel a paid plan?", "Cancel from Billing when self-service is available, or contact support. You keep the plan until the end of the month you paid for, " +
+		{"Is the Free plan really free?", "Yes. It costs " + formatINR(0) +
+			" and needs no card. Paid plans start at " + formatINR(basic.PriceINR) + " a month."},
+		{"What is the difference between Basic and Pro?", "Basic is for ranking one site: keyword research, rank tracking and your Google data. " +
+			"Pro adds what you need to beat competitors: backlink and competitor research, AI Visibility and the AI writing assistant, for " +
+			strconv.Itoa(pro.Sites) + " sites."},
+		{"How do site limits work?", fmt.Sprintf("Free and Basic include one active website, Pro includes %d and Agency includes %d. "+
+			"Archiving a site frees a slot; your data stays in the workspace.", pro.Sites, agency.Sites)},
+		{"How do I cancel a paid plan?", "In one click from Billing. You keep the plan until the end of the month you paid for, " +
 			"and you are never charged again."},
-		{"Which plans include AI visibility?", "AI visibility is available on Pro and Agency, with the included AI and rendered-audit credits shown in the plan comparison."},
+		{"How do I change plan?", "Write to us from your account's email address and we move you. Changing plan from Billing is not built yet."},
 		{"Will the price change without notice?", "No. If prices ever change, we tell you before your next bill " +
 			"and you can cancel in one click."},
 		{"How do I pay?", "Through Razorpay with UPI, cards or netbanking. Prices are in Indian rupees."},

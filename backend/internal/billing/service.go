@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,6 +38,11 @@ var ErrPaymentUnavailable = errors.New("payment provider is not configured")
 
 // ErrPlanUnavailable means the selected plan has no configured Razorpay plan ID.
 var ErrPlanUnavailable = errors.New("selected plan is not configured for checkout")
+
+// ErrUnknownPlan means Razorpay reported a subscription to a plan id this
+// server was not given. It is our configuration that is wrong, not the
+// event: the customer has paid and their plan is not switched on.
+var ErrUnknownPlan = errors.New("razorpay plan id matches no configured plan")
 
 // Plans.
 const (
@@ -85,6 +91,9 @@ type Status struct {
 	// CancelAtPeriodEnd is true when the customer cancelled: the plan runs
 	// until CurrentPeriodEnd and is not charged again.
 	CancelAtPeriodEnd bool `json:"cancelAtPeriodEnd"`
+	// Unlimited is true for Uplumo's own workspaces: every feature, no
+	// limits, nothing to pay.
+	Unlimited bool `json:"unlimited"`
 }
 
 // Checkout is what Razorpay Checkout in the browser needs to start paying
@@ -106,33 +115,33 @@ const (
 
 // Service is the billing use cases.
 type Service struct {
-	repo            repository
-	razorpay        *razorpay.Client
-	planID          string
-	planIDs         map[string]string
-	legacyPlanIDPro string
-	webhookSecret   string
-	// MonthlyGrantCredits is added to the organization's credit balance on
-	// every successful subscription charge. Zero grants nothing.
-	MonthlyGrantCredits       int64
+	repo          repository
+	razorpay      *razorpay.Client
+	planIDs       map[string]string
+	webhookSecret string
+	staffEmails   []string
+	// MonthlyGrantCreditsByPlan is added to the organization's credit
+	// balance on every successful charge of that plan. A plan that is not
+	// listed grants nothing.
 	MonthlyGrantCreditsByPlan map[string]int64
 }
 
-// NewService returns a Service that sells the Razorpay plan planID through
-// rzp and verifies webhooks with webhookSecret.
+// NewService returns a Service that sells only Pro, as the Razorpay plan
+// planID, and verifies webhooks with webhookSecret.
 func NewService(db *pgxpool.Pool, rzp *razorpay.Client, planID, webhookSecret string) *Service {
-	return &Service{repo: repository{db: db}, razorpay: rzp, planID: planID, planIDs: map[string]string{PlanPro: planID}, webhookSecret: webhookSecret}
+	return NewPlanService(db, rzp, map[string]string{PlanPro: planID}, webhookSecret)
 }
 
-// NewPlanService returns a service that can sell the configured plan IDs.
-func NewPlanService(db *pgxpool.Pool, rzp *razorpay.Client, planIDs map[string]string, legacyPlanIDPro, webhookSecret string) *Service {
-	copyIDs := make(map[string]string, len(planIDs))
+// NewPlanService returns a Service that sells each plan in planIDs as the
+// Razorpay plan it maps to. A plan with no id cannot be bought.
+func NewPlanService(db *pgxpool.Pool, rzp *razorpay.Client, planIDs map[string]string, webhookSecret string) *Service {
+	configured := make(map[string]string, len(planIDs))
 	for plan, id := range planIDs {
 		if id != "" {
-			copyIDs[plan] = id
+			configured[plan] = id
 		}
 	}
-	return &Service{repo: repository{db: db}, razorpay: rzp, planIDs: copyIDs, legacyPlanIDPro: legacyPlanIDPro, webhookSecret: webhookSecret}
+	return &Service{repo: repository{db: db}, razorpay: rzp, planIDs: configured, webhookSecret: webhookSecret}
 }
 
 // NewReadOnlyService exposes existing subscription state without enabling payments.
@@ -155,7 +164,7 @@ func (s *Service) AvailablePlans() []string {
 		return nil
 	}
 	available := make([]string, 0, len(s.planIDs))
-	for _, plan := range []string{PlanBasic, PlanPro, PlanAgency} {
+	for _, plan := range plans.Paid() {
 		if s.planIDs[plan] != "" {
 			available = append(available, plan)
 		}
@@ -165,17 +174,40 @@ func (s *Service) AvailablePlans() []string {
 
 // MonthlyGrantFor returns the monthly usage-credit grant for a plan.
 func (s *Service) MonthlyGrantFor(plan string) int64 {
-	if amount, ok := s.MonthlyGrantCreditsByPlan[plan]; ok {
-		return amount
+	return s.MonthlyGrantCreditsByPlan[plan]
+}
+
+// SetStaffEmails names the people whose own workspaces are never limited by
+// a plan: a workspace is unlimited when its owner has one of these verified
+// addresses. Call it before the service is used.
+func (s *Service) SetStaffEmails(emails []string) {
+	s.staffEmails = make([]string, 0, len(emails))
+	for _, email := range emails {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+			s.staffEmails = append(s.staffEmails, email)
+		}
 	}
-	if plan == PlanPro {
-		return s.MonthlyGrantCredits
-	}
-	return 0
 }
 
 // Status returns orgID's plan. Without a subscription it is the free plan.
+// A staff workspace reads as Agency and unlimited whatever it subscribed to.
 func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
+	status, err := s.subscribedStatus(ctx, orgID)
+	if err != nil || len(s.staffEmails) == 0 {
+		return status, err
+	}
+	staff, err := s.repo.ownedByAny(ctx, orgID, s.staffEmails)
+	if err != nil {
+		return Status{}, fmt.Errorf("billing status of organization %s: %w", orgID, err)
+	}
+	if staff {
+		status.Plan, status.Unlimited = plans.Unlimited.ID, true
+	}
+	return status, nil
+}
+
+// subscribedStatus is the plan orgID's subscription pays for.
+func (s *Service) subscribedStatus(ctx context.Context, orgID string) (Status, error) {
 	sub, found, err := s.repo.subscription(ctx, orgID)
 	if err != nil {
 		return Status{}, fmt.Errorf("billing status of organization %s: %w", orgID, err)
@@ -188,9 +220,8 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 		plan = sub.Plan
 	}
 	periodEnd := sub.CurrentPeriodEnd
-	if periodEnd != nil {
-		utc := periodEnd.UTC()
-		periodEnd = &utc
+	if plan == PlanFree {
+		periodEnd = nil
 	}
 	return Status{
 		Plan: plan, Status: sub.Status, CurrentPeriodEnd: periodEnd,
@@ -198,35 +229,75 @@ func (s *Service) Status(ctx context.Context, orgID string) (Status, error) {
 	}, nil
 }
 
-// HasPaidPlan reports whether orgID is on a paid plan.
-func (s *Service) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
+// IsUnlimited reports whether orgID is a staff workspace.
+func (s *Service) IsUnlimited(ctx context.Context, orgID string) (bool, error) {
 	status, err := s.Status(ctx, orgID)
-	if err != nil {
-		return false, err
-	}
-	return status.Plan == PlanPro || status.Plan == PlanAgency, nil
+	return status.Unlimited, err
 }
 
-// SiteLimit returns the active-site limit for the organization's current plan.
-func (s *Service) SiteLimit(ctx context.Context, orgID string) (int, error) {
+// entitlement is what orgID may use: its plan's features and limits.
+func (s *Service) entitlement(ctx context.Context, orgID string) (plans.Definition, error) {
 	status, err := s.Status(ctx, orgID)
 	if err != nil {
-		return 0, err
+		return plans.Definition{}, err
+	}
+	if status.Unlimited {
+		return plans.Unlimited, nil
 	}
 	definition, ok := plans.Get(status.Plan)
 	if !ok {
-		return 1, nil
+		// A plan that left the catalog must not unlock anything.
+		definition, _ = plans.Get(PlanFree)
 	}
-	return definition.Sites, nil
+	return definition, nil
 }
 
-// HasAgencyPlan reports whether the organization has active Agency entitlements.
-func (s *Service) HasAgencyPlan(ctx context.Context, orgID string) (bool, error) {
-	status, err := s.Status(ctx, orgID)
+// Allows reports whether orgID's plan includes feature.
+func (s *Service) Allows(ctx context.Context, orgID string, feature plans.Feature) (bool, error) {
+	definition, err := s.entitlement(ctx, orgID)
 	if err != nil {
 		return false, err
 	}
-	return status.Plan == PlanAgency, nil
+	return definition.Allows(feature), nil
+}
+
+// FeatureGate answers one question for one feature: does this organization's
+// plan include it.
+type FeatureGate struct {
+	service *Service
+	feature plans.Feature
+}
+
+// Gate returns the check for feature, in the shape the feature packages ask
+// for.
+func (s *Service) Gate(feature plans.Feature) FeatureGate {
+	return FeatureGate{service: s, feature: feature}
+}
+
+// HasPaidPlan reports whether orgID's plan includes the gate's feature. The
+// name is the one the feature packages declared when there was one paid plan.
+func (g FeatureGate) HasPaidPlan(ctx context.Context, orgID string) (bool, error) {
+	return g.service.Allows(ctx, orgID, g.feature)
+}
+
+// SiteLimit returns how many active sites orgID may have; 0 is no limit.
+func (s *Service) SiteLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.Sites, err
+}
+
+// KeywordLimit returns how many keywords orgID may track; 0 is no limit.
+// A plan without rank tracking is stopped by its feature gate, not here.
+func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.TrackedKeywords, err
+}
+
+// MemberLimit returns how many people orgID's workspace may hold; 0 is no
+// limit.
+func (s *Service) MemberLimit(ctx context.Context, orgID string) (int, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.Members, err
 }
 
 // Checkout creates a Razorpay subscription to the pro plan for orgID. The
@@ -245,7 +316,7 @@ func (s *Service) CheckoutPlan(ctx context.Context, orgID, plan string) (Checkou
 		return Checkout{}, ErrPaymentUnavailable
 	}
 	planID := s.planIDs[plan]
-	if planID == "" || (plan != PlanBasic && plan != PlanPro && plan != PlanAgency) {
+	if planID == "" {
 		return Checkout{}, ErrPlanUnavailable
 	}
 	current, found, err := s.repo.subscription(ctx, orgID)
@@ -354,14 +425,11 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 		end := time.Unix(*sub.CurrentEnd, 0).UTC()
 		periodEnd = &end
 	}
+	// The plan comes from Razorpay, which knows what was paid for, never
+	// from what the browser asked for at checkout.
 	plan := s.planForRazorpayID(sub.PlanID)
 	if plan == "" {
-		// Old single-plan Razorpay events may omit plan_id in fixtures and older payloads.
-		if sub.PlanID == "" && s.planIDs[PlanPro] != "" {
-			plan = PlanPro
-		} else {
-			return "", fmt.Errorf("%w: unknown Razorpay plan %q", ErrInvalidEvent, sub.PlanID)
-		}
+		return "", fmt.Errorf("%w: subscription %s of organization %s is on plan %q", ErrUnknownPlan, sub.ID, orgID, sub.PlanID)
 	}
 	firstDelivery, err := s.repo.applyEvent(ctx, eventID, subscription{
 		OrganizationID:   orgID,
@@ -390,9 +458,6 @@ func (s *Service) grantFor(event, status, plan string) int64 {
 }
 
 func (s *Service) planForRazorpayID(id string) string {
-	if id != "" && id == s.legacyPlanIDPro {
-		return PlanPro
-	}
 	for plan, configuredID := range s.planIDs {
 		if id != "" && id == configuredID {
 			return plan

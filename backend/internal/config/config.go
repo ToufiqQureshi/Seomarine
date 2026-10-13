@@ -42,6 +42,9 @@ type Config struct {
 	DataForSEOAPIKey string
 	// OpenRouterAPIKey is Uplumo's own model key for SAM.
 	OpenRouterAPIKey string
+	// StaffEmails are the people whose own workspaces are never limited by a
+	// plan, lower case.
+	StaffEmails []string
 	// BillingMonthlyCreditsUSD is granted on each Pro subscription charge.
 	BillingMonthlyCreditsUSD float64
 	// BillingAgencyMonthlyCreditsUSD is granted on each Agency charge.
@@ -77,10 +80,9 @@ type Razorpay struct {
 	KeyID         string
 	KeySecret     string
 	WebhookSecret string
-	// PlanIDs contains current checkout plan IDs. Pro is deliberately separate
-	// from PlanIDPro, which is retained for existing ₹1,499 subscriptions.
-	PlanIDs   map[string]string
-	PlanIDPro string // legacy Pro plan ID, used only to recognize its webhooks
+	// PlanIDs maps a plan ("basic", "pro", "agency") to the Razorpay plan
+	// that bills it. A plan without an id cannot be bought.
+	PlanIDs map[string]string
 }
 
 const (
@@ -155,6 +157,13 @@ func Load(getenv func(string) string) (Config, error) {
 		port = parsed
 	}
 
+	var staffEmails []string
+	for email := range strings.SplitSeq(getenv("STAFF_EMAILS"), ",") {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+			staffEmails = append(staffEmails, email)
+		}
+	}
+
 	monthlyCredits := 3.0
 	if raw := getenv("BILLING_MONTHLY_CREDITS_USD"); raw != "" {
 		parsed, err := strconv.ParseFloat(raw, 64)
@@ -189,6 +198,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
+		StaffEmails:                    staffEmails,
 		BillingMonthlyCreditsUSD:       monthlyCredits,
 		BillingAgencyMonthlyCreditsUSD: agencyMonthlyCredits,
 		Addr:                           fmt.Sprintf(":%d", port),
@@ -240,23 +250,21 @@ func loadRazorpay(getenv func(string) string) (*Razorpay, error) {
 			missing = append(missing, name)
 		}
 	}
-	switch len(missing) {
-	case len(names):
-		if getenv("RAZORPAY_PLAN_ID_BASIC") != "" || getenv("RAZORPAY_PLAN_ID_PRO_1899") != "" || getenv("RAZORPAY_PLAN_ID_AGENCY") != "" {
-			return nil, fmt.Errorf("set Razorpay credentials before plan IDs")
+	planIDs := map[string]string{}
+	for plan, name := range map[string]string{
+		"basic": "RAZORPAY_PLAN_ID_BASIC", "pro": "RAZORPAY_PLAN_ID_PRO", "agency": "RAZORPAY_PLAN_ID_AGENCY",
+	} {
+		if id := strings.TrimSpace(getenv(name)); id != "" {
+			planIDs[plan] = id
 		}
-		return nil, nil
-	case 0:
-		return &Razorpay{
-			KeyID: values[0], KeySecret: values[1], WebhookSecret: values[2],
-			PlanIDPro: strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_PRO")),
-			PlanIDs: map[string]string{
-				"basic":  strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_BASIC")),
-				"pro":    strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_PRO_1899")),
-				"agency": strings.TrimSpace(getenv("RAZORPAY_PLAN_ID_AGENCY")),
-			},
-		}, nil
-	default:
-		return nil, fmt.Errorf("set all RAZORPAY_* variables or none; missing %s", strings.Join(missing, ", "))
 	}
+	switch {
+	case len(missing) == len(names) && len(planIDs) == 0:
+		return nil, nil
+	case len(missing) > 0:
+		return nil, fmt.Errorf("set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET and a plan id, or none; missing %s", strings.Join(missing, ", "))
+	case len(planIDs) == 0:
+		return nil, errors.New("set at least one of RAZORPAY_PLAN_ID_BASIC, RAZORPAY_PLAN_ID_PRO, RAZORPAY_PLAN_ID_AGENCY: without a plan nothing can be bought")
+	}
+	return &Razorpay{KeyID: values[0], KeySecret: values[1], WebhookSecret: values[2], PlanIDs: planIDs}, nil
 }

@@ -177,7 +177,6 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 <div class="plan-top"><h3 id="plan-{{.Name}}">{{.Name}}</h3>{{if .Featured}}<span class="sticker sm">Most picked</span>{{end}}</div>
 <p class="price">{{inr .PriceINR}} <span>{{.Period}}</span></p>
 <p>{{.Summary}}</p>
-  {{if ne .ID "free"}}<p class="note">{{.Sites}} website{{if ne .Sites 1}}s{{end}}</p>{{end}}
 <ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
 <a class="btn btn-md{{if not .Featured}} btn-ghost{{end}}" href="{{$.SignUp}}">{{.CTA}}</a>
 </article>

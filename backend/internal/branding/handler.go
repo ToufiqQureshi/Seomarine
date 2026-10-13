@@ -25,9 +25,9 @@ type Deps struct {
 	Logger      *slog.Logger
 	Service     *Service
 	WithSession func(http.Handler) http.Handler
-	Plans       interface {
-		HasAgencyPlan(context.Context, string) (bool, error)
-	}
+	// Plans reports whether a workspace's plan includes white-label
+	// branding. Nil leaves it open, as on a server without billing.
+	Plans PaidPlans
 }
 
 // Mount registers branding routes on the root mux. withSession attaches the
@@ -38,9 +38,15 @@ func Mount(mux *http.ServeMux, d Deps) {
 	mux.Handle("POST /api/v1/branding/reset", d.WithSession(agencyOnly(d.Plans, ResetHandler(d.Logger, d.Service))))
 }
 
-func agencyOnly(plans interface {
-	HasAgencyPlan(context.Context, string) (bool, error)
-}, next http.Handler) http.Handler {
+// PaidPlans reports whether an organization's plan includes this feature.
+type PaidPlans interface {
+	HasPaidPlan(ctx context.Context, organizationID string) (bool, error)
+}
+
+// agencyOnly lets a change through only when the workspace's plan includes
+// white-label branding. Reading saved branding stays open, so reports keep
+// their look after a downgrade.
+func agencyOnly(plans PaidPlans, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.UserFromContext(r.Context())
 		if !ok || user.OrganizationID == "" {
@@ -48,7 +54,7 @@ func agencyOnly(plans interface {
 			return
 		}
 		if plans != nil {
-			allowed, err := plans.HasAgencyPlan(r.Context(), user.OrganizationID)
+			allowed, err := plans.HasPaidPlan(r.Context(), user.OrganizationID)
 			if err != nil {
 				httpx.WriteError(w, http.StatusInternalServerError, "internal", "Could not verify the current plan.")
 				return

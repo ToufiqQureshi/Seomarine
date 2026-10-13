@@ -34,6 +34,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/localseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
+	planCatalog "github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projects"
@@ -260,11 +261,16 @@ func NewHandler(d Deps) http.Handler {
 		billingRoutes = d.Billing
 	}
 	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: billingRoutes, WithSession: withSession, Credits: d.Credits})
-	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession, Plans: d.Billing})
-	// Without billing the server has no plans to gate on, so AI search is open.
+	// Without billing the server has no plans to gate on, so every feature
+	// below is open.
+	var brandingPlans branding.PaidPlans
+	if d.Billing != nil {
+		brandingPlans = d.Billing.Gate(planCatalog.WhiteLabel)
+	}
+	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession, Plans: brandingPlans})
 	var plans aisearch.PaidPlans
 	if d.Billing != nil {
-		plans = d.Billing
+		plans = d.Billing.Gate(planCatalog.AIVisibility)
 	}
 	aisearch.Mount(mux, aisearch.Deps{
 		Logger:      d.Logger,
@@ -277,7 +283,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	var backlinkPlans backlinks.PaidPlans
 	if d.Billing != nil {
-		backlinkPlans = d.Billing
+		backlinkPlans = d.Billing.Gate(planCatalog.Backlinks)
 	}
 	backlinks.Mount(mux, backlinks.Deps{
 		Logger: d.Logger, Service: d.Backlinks, Plans: backlinkPlans, WithSession: withSession,
@@ -288,7 +294,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	var domainPlans domain.PaidPlans
 	if d.Billing != nil {
-		domainPlans = d.Billing
+		domainPlans = d.Billing.Gate(planCatalog.DomainResearch)
 	}
 	domain.Mount(mux, domain.Deps{
 		Logger: d.Logger, Service: d.Domain, Plans: domainPlans, ProjectMarkets: d.ProjectMarkets, WithSession: withSession,
@@ -301,7 +307,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	var researchPlans keywords.PaidPlans
 	if d.Billing != nil {
-		researchPlans = d.Billing
+		researchPlans = d.Billing.Gate(planCatalog.Keywords)
 	}
 	keywords.MountResearch(mux, keywords.ResearchDeps{
 		Logger: d.Logger, Service: d.KeywordResearch, Saved: d.SavedKeywords, ProjectMarkets: d.ProjectMarkets, Plans: researchPlans,
@@ -337,7 +343,11 @@ func NewHandler(d Deps) http.Handler {
 		Logger:      d.Logger,
 		WithSession: withSession,
 	})
-	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession})
+	var googlePlans google.PaidPlans
+	if d.Billing != nil {
+		googlePlans = d.Billing.Gate(planCatalog.GoogleData)
+	}
+	google.MountOAuth(mux, google.OAuthDeps{Service: d.GoogleOAuth, Auth: d.Auth, Logger: d.Logger, WithSession: withSession, Plans: googlePlans})
 	ga4.Mount(mux, ga4.Deps{Logger: d.Logger, Service: d.GA4, Setup: d.GA4Setup, WithSession: withSession,
 		SearchConsole:     d.GSC,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
