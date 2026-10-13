@@ -163,7 +163,7 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
-	dailyLimit := 25.0
+	dailyLimit := 100.0
 	if raw := getenv("PROVIDER_DAILY_LIMIT_USD"); raw != "" {
 		parsed, err := strconv.ParseFloat(raw, 64)
 		if err != nil || !(parsed >= 1 && parsed <= 10000) {

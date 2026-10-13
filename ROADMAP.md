@@ -99,9 +99,10 @@ Secrets go into Railway variables only, never into the repo or chat.
   spends credits; customers see them in the app (Billing, and "about N
   credits" next to each paid action) but not on the public pricing page.
   Monthly credits: Basic 4,000, Pro 10,000, Agency 25,000 (a credit is 1/1280
-  of a dollar of provider cost). No credits means no request is sent. A
-  daily limit on all provider spend (`PROVIDER_DAILY_LIMIT_USD`, default $25)
-  pauses paid work for everyone as the last safety net. Rules:
+  of a dollar of provider cost). No credits means no request is sent. Each
+  workspace may spend at most a third of its monthly credits in a day, so one
+  heavy client never stops the others; `PROVIDER_DAILY_LIMIT_USD` (default
+  $100) is only an emergency stop for a bug. Rules:
   `backend/internal/billing/README.md`. Unused credits roll over up to two
   months. Rank tracking depth is capped per plan (Basic top 30, Pro and
   Agency top 40) so weekly checks of every tracked keyword fit the credits.

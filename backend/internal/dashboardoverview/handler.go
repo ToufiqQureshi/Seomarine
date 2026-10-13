@@ -10,6 +10,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // Deps provides dependencies for dashboard overview handlers.
@@ -89,6 +90,9 @@ func (d Deps) refresh(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Context().Err() != nil {
+			return
+		}
+		if spend.WriteHTTPError(w, err) {
 			return
 		}
 		if d.Logger != nil {

@@ -291,8 +291,8 @@ func TestLoadProviderDailyLimit(t *testing.T) {
 	}
 	load := func() (Config, error) { return Load(func(key string) string { return env[key] }) }
 	cfg, err := load()
-	if err != nil || cfg.ProviderDailyLimitUSD != 25 {
-		t.Fatalf("default limit = %v, %v; want 25", cfg.ProviderDailyLimitUSD, err)
+	if err != nil || cfg.ProviderDailyLimitUSD != 100 {
+		t.Fatalf("default limit = %v, %v; want 100", cfg.ProviderDailyLimitUSD, err)
 	}
 	env["PROVIDER_DAILY_LIMIT_USD"] = "60.5"
 	if cfg, err := load(); err != nil || cfg.ProviderDailyLimitUSD != 60.5 {
