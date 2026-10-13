@@ -18,6 +18,7 @@ describe("billing status", () => {
       status: "none",
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      paymentsConfigured: false,
     },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
@@ -25,6 +26,7 @@ describe("billing status", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30.123456+05:30",
       cancelAtPeriodEnd: true,
+      paymentsConfigured: true,
     },
   ])("accepts $plan / $status", async (body) => {
     respondWith(body);
@@ -61,6 +63,7 @@ describe("cancelSubscription", () => {
       status: "active",
       currentPeriodEnd: "2026-11-07T10:15:30Z",
       cancelAtPeriodEnd: true,
+      paymentsConfigured: true,
     };
     const fetchMock = respondWith(body);
     await expect(cancelSubscription()).resolves.toEqual(body);
