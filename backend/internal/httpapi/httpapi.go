@@ -64,9 +64,11 @@ type Deps struct {
 	// Activation records dashboard setup progress.
 	Activation *activation.Service
 	Analytics  *analytics.Service
-	// Billing is nil when Razorpay is not configured; billing routes then
-	// answer 503.
+	// Billing is nil when Razorpay is not configured; paid feature gates then
+	// retain their existing self-hosted behavior.
 	Billing *billing.Service
+	// BillingRoutes serves read-only plan and credit status even without payments.
+	BillingRoutes *billing.Service
 	// Branding is the active organization's white-label report branding.
 	Branding *branding.Service
 	// OpenAIAppsChallenge is served at /.well-known/openai-apps-challenge.
@@ -253,7 +255,11 @@ func NewHandler(d Deps) http.Handler {
 			return requireProjectAccess(d.Logger, d.Auth, next)
 		},
 	})
-	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: d.Billing, WithSession: withSession, Credits: d.Credits})
+	billingRoutes := d.BillingRoutes
+	if billingRoutes == nil {
+		billingRoutes = d.Billing
+	}
+	billing.Mount(mux, billing.Deps{Logger: d.Logger, Service: billingRoutes, WithSession: withSession, Credits: d.Credits})
 	branding.Mount(mux, branding.Deps{Logger: d.Logger, Service: d.Branding, WithSession: withSession})
 	// Without billing the server has no plans to gate on, so AI search is open.
 	var plans aisearch.PaidPlans
