@@ -265,10 +265,14 @@ func TestInfoPages(t *testing.T) {
 }
 
 // Every link a public page carries must lead somewhere: another public page,
-// an app route the SPA owns, an asset or a mail address.
+// an app route the SPA owns, an asset, a mail address or a named outside page.
 func TestPagesHaveNoDeadLinks(t *testing.T) {
 	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	known := map[string]bool{"/": true, "/pricing": true, "/sign-in": true, "/sign-up": true}
+	// The privacy policy must point at Google's own policy and at the page
+	// where a user removes our access. Any other outside link is a mistake.
+	known["https://developers.google.com/terms/api-services-user-data-policy"] = true
+	known["https://myaccount.google.com/permissions"] = true
 	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing}
 	for _, path := range InfoPaths() {
 		known[path] = true

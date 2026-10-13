@@ -8,7 +8,11 @@
 <div class="prose">
 <h2>Email</h2>
 <p><a href="mailto:{{.Support}}">{{.Support}}</a></p>
-<h2>To get a faster answer</h2>
+{{if .Phone}}<h2>Phone</h2>
+<p>{{.Phone}}</p>
+{{end}}{{if .Operator}}<h2>Post</h2>
+<p>{{.Operator}}{{if .Address}}<br>{{.Address}}{{end}}</p>
+{{end}}<h2>To get a faster answer</h2>
 <ul>
 <li>Write from the email address you signed up with.</li>
 <li>For a billing question, include the date and amount of the payment.</li>
