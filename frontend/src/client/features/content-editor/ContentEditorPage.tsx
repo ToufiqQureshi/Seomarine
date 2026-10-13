@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { Eye, ImagePlus, Pencil, Save } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import {
+  contentEditorQueryKeys,
   deleteContentDraft,
   getContentDraft,
   listContentDrafts,
@@ -21,11 +24,16 @@ import {
 import {
   DraftsPanel,
   ReadinessPanel,
+  WriterReminder,
   SearchPreview,
   Field,
   WritingModeToggle,
 } from "./EditorPanels";
-import { formatArticleContent, type ArticleFormat } from "./formatting";
+import {
+  formatArticleContent,
+  insertImageContent,
+  type ArticleFormat,
+} from "./formatting";
 import { WriterAssistant } from "./WriterAssistant";
 
 const blankDraft: ContentDraftInput = {
@@ -36,7 +44,6 @@ const blankDraft: ContentDraftInput = {
   content: "",
 };
 
-const queryKey = (projectId: string) => ["contentDrafts", projectId] as const;
 const asInput = (draft: ContentDraft): ContentDraftInput => ({
   title: draft.title,
   targetKeyword: draft.targetKeyword,
@@ -53,7 +60,7 @@ const confirmSuggestionReplacement = (content: string) =>
 export function ContentEditorPage({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const draftsQuery = useQuery({
-    queryKey: queryKey(projectId),
+    queryKey: contentEditorQueryKeys.drafts(projectId),
     queryFn: () => listContentDrafts({ data: { projectId } }),
   });
   const [mode, setMode] = useState<EditorMode>("seo");
@@ -61,6 +68,11 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const [draftId, setDraftId] = useState<string>();
   const [savedSnapshot, setSavedSnapshot] = useState(blankDraft);
   const [initialized, setInitialized] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [imageFieldsOpen, setImageFieldsOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
+  const [imageError, setImageError] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedSnapshot);
   const seo = useMemo(() => scoreContent("seo", draft), [draft]);
@@ -82,7 +94,25 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
       setDraftId(saved.id);
       setDraft(snapshot);
       setSavedSnapshot(snapshot);
-      void queryClient.invalidateQueries({ queryKey: queryKey(projectId) });
+      queryClient.setQueryData(
+        contentEditorQueryKeys.draft(projectId, saved.id),
+        saved,
+      );
+      queryClient.setQueryData<ContentDraftSummary[]>(
+        contentEditorQueryKeys.drafts(projectId),
+        (current) => {
+          if (!current) return current;
+          const summary: ContentDraftSummary = {
+            id: saved.id,
+            projectId: saved.projectId,
+            title: saved.title,
+            targetKeyword: saved.targetKeyword,
+            updatedAt: saved.updatedAt,
+          };
+          return [summary, ...current.filter((item) => item.id !== saved.id)]
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        },
+      );
       toast.success("Draft saved");
     },
     onError: (error) =>
@@ -96,13 +126,20 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
       deleteContentDraft({ data: { projectId, draftId: id } }),
-    onSuccess: async (_, id) => {
+    onSuccess: (_, id) => {
       if (id === draftId) {
         setDraftId(undefined);
         setDraft(blankDraft);
         setSavedSnapshot(blankDraft);
       }
-      await queryClient.invalidateQueries({ queryKey: queryKey(projectId) });
+      queryClient.removeQueries({
+        queryKey: contentEditorQueryKeys.draft(projectId, id),
+        exact: true,
+      });
+      queryClient.setQueryData<ContentDraftSummary[]>(
+        contentEditorQueryKeys.drafts(projectId),
+        (current) => current?.filter((item) => item.id !== id),
+      );
       toast.success("Draft deleted");
     },
     onError: (error) =>
@@ -113,7 +150,10 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
 
   const openMutation = useMutation({
     mutationFn: (id: string) =>
-      getContentDraft({ data: { projectId, draftId: id } }),
+      queryClient.fetchQuery({
+        queryKey: contentEditorQueryKeys.draft(projectId, id),
+        queryFn: () => getContentDraft({ data: { projectId, draftId: id } }),
+      }),
     onSuccess: (saved) => {
       const snapshot = asInput(saved);
       setDraftId(saved.id);
@@ -155,6 +195,28 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const update = (field: keyof ContentDraftInput, value: string) =>
     setDraft((current) => ({ ...current, [field]: value }));
 
+  const insertImage = () => {
+    const editor = editorRef.current;
+    const start = editor?.selectionStart ?? draft.content.length;
+    const end = editor?.selectionEnd ?? start;
+    try {
+      const result = insertImageContent(draft.content, start, end, imageUrl, imageAlt);
+      update("content", result.content);
+      setImageError("");
+      setImageUrl("");
+      setImageAlt("");
+      setImageFieldsOpen(false);
+      requestAnimationFrame(() => {
+        editor?.focus();
+        editor?.setSelectionRange(result.selectionStart, result.selectionEnd);
+      });
+    } catch (cause) {
+      setImageError(
+        cause instanceof Error ? cause.message : "Could not add this image.",
+      );
+    }
+  };
+
   const formatArticle = (format: ArticleFormat) => {
     const editor = editorRef.current;
     const start = editor?.selectionStart ?? draft.content.length;
@@ -170,6 +232,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
       <section className="min-w-0 space-y-5">
+        <WriterReminder projectId={projectId} />
         <WritingModeToggle mode={mode} onChange={setMode} />
 
         <div className="space-y-5 rounded-xl border bg-card p-4 md:p-6">
@@ -242,15 +305,15 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
             hint="Markdown headings, lists, and links are supported"
           >
             <div
-              className="flex flex-wrap gap-1"
+              className="flex flex-wrap items-center gap-1"
               role="toolbar"
-              aria-label="Article formatting"
+              aria-label="Article tools"
             >
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={editorBusy}
+                disabled={editorBusy || previewMode}
                 onClick={() => formatArticle("heading")}
               >
                 Heading
@@ -259,7 +322,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={editorBusy}
+                disabled={editorBusy || previewMode}
                 onClick={() => formatArticle("bold")}
               >
                 <strong>B</strong>
@@ -269,7 +332,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={editorBusy}
+                disabled={editorBusy || previewMode}
                 onClick={() => formatArticle("list")}
               >
                 Bullet list
@@ -278,22 +341,116 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={editorBusy}
+                disabled={editorBusy || previewMode}
                 onClick={() => formatArticle("link")}
               >
                 Link
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={editorBusy || previewMode}
+                aria-expanded={imageFieldsOpen}
+                onClick={() => {
+                  setImageFieldsOpen((open) => !open);
+                  setImageError("");
+                }}
+              >
+                <ImagePlus aria-hidden />
+                Image
+              </Button>
+              <span className="flex-1" />
+              <Button
+                type="button"
+                variant={previewMode ? "default" : "outline"}
+                size="sm"
+                aria-pressed={previewMode}
+                onClick={() => setPreviewMode((preview) => !preview)}
+              >
+                {previewMode ? <Pencil aria-hidden /> : <Eye aria-hidden />}
+                {previewMode ? "Write" : "Preview"}
+              </Button>
             </div>
-            <Textarea
-              ref={editorRef}
-              id="content-draft-body"
-              disabled={editorBusy}
-              maxLength={150_000}
-              className="min-h-[440px] resize-y font-mono leading-7"
-              value={draft.content}
-              onChange={(event) => update("content", event.target.value)}
-              placeholder={`Start with the answer your reader needs.\n\n## Add a clear section\n\nExplain the idea in your own words...`}
-            />
+            {imageFieldsOpen ? (
+              <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                <Field
+                  id="content-image-url"
+                  label="Image URL"
+                  hint="Public http(s) URL"
+                >
+                  <Input
+                    id="content-image-url"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    maxLength={2_000}
+                    value={imageUrl}
+                    onChange={(event) => setImageUrl(event.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    disabled={editorBusy}
+                  />
+                </Field>
+                <Field
+                  id="content-image-alt"
+                  label="Image description"
+                  hint="Describe what it shows"
+                >
+                  <Input
+                    id="content-image-alt"
+                    maxLength={300}
+                    value={imageAlt}
+                    onChange={(event) => setImageAlt(event.target.value)}
+                    placeholder="Alt text for accessibility"
+                    disabled={editorBusy}
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={insertImage}
+                  disabled={editorBusy || !imageUrl.trim() || !imageAlt.trim()}
+                >
+                  Insert image
+                </Button>
+                <p className="text-xs text-muted-foreground sm:col-span-3">
+                  Add a publicly hosted image URL. Image uploads need connected
+                  media storage.
+                </p>
+                {imageError ? (
+                  <p role="alert" className="text-sm text-destructive sm:col-span-3">
+                    {imageError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {previewMode ? (
+              <article
+                aria-label="Article preview"
+                className="min-h-[440px] overflow-auto rounded-md border bg-background p-4 leading-7"
+              >
+                {draft.content.trim() ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {draft.content}
+                  </ReactMarkdown>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Your article preview will appear here.
+                  </p>
+                )}
+              </article>
+            ) : (
+              <Textarea
+                ref={editorRef}
+                id="content-draft-body"
+                disabled={editorBusy}
+                maxLength={150_000}
+                className="min-h-[440px] resize-y font-mono leading-7"
+                value={draft.content}
+                onChange={(event) => update("content", event.target.value)}
+                placeholder={`Start with the answer your reader needs.\n\n## Add a clear section\n\nExplain the idea in your own words...`}
+              />
+            )}
           </Field>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             <p className="text-sm text-muted-foreground">
@@ -313,7 +470,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      <aside className="space-y-4">
+      <aside className="space-y-3">
         <ReadinessPanel
           mode={mode}
           seo={seo}
@@ -321,39 +478,66 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           activeScore={activeScore.score}
           checks={activeScore.checks}
         />
-        <WriterAssistant
-          projectId={projectId}
-          draft={draft}
-          mode={mode}
-          disabled={editorBusy}
-          onUse={(content) =>
-            confirmSuggestionReplacement(draft.content) &&
-            update("content", content)
-          }
-        />
-        <SearchPreview draft={draft} />
-        <DraftsPanel
-          drafts={draftsQuery.data ?? []}
-          isLoading={draftsQuery.isPending}
-          hasError={draftsQuery.isError}
-          currentDraftId={draftId}
-          isBusy={editorBusy}
-          onNew={startNewDraft}
-          onSelect={selectDraft}
-          onDelete={(saved) => {
-            const unsaved =
-              saved.id === draftId && dirty
-                ? " Your unsaved edits will also be discarded."
-                : "";
-            if (
-              window.confirm(
-                `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
-              )
-            ) {
-              deleteMutation.mutate(saved.id);
-            }
-          }}
-        />
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            AI writing assistant
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              Optional · uses credits
+            </span>
+          </summary>
+          <div className="pt-3">
+            <WriterAssistant
+              projectId={projectId}
+              draft={draft}
+              mode={mode}
+              disabled={editorBusy}
+              onUse={(content) =>
+                confirmSuggestionReplacement(draft.content) &&
+                update("content", content)
+              }
+            />
+          </div>
+        </details>
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            Search preview
+          </summary>
+          <div className="pt-3">
+            <SearchPreview draft={draft} />
+          </div>
+        </details>
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            Your drafts
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {draftsQuery.data?.length ?? 0}
+            </span>
+          </summary>
+          <div className="pt-3">
+            <DraftsPanel
+              drafts={draftsQuery.data ?? []}
+              isLoading={draftsQuery.isPending}
+              hasError={draftsQuery.isError}
+              currentDraftId={draftId}
+              isBusy={editorBusy}
+              onNew={startNewDraft}
+              onSelect={selectDraft}
+              onDelete={(saved) => {
+                const unsaved =
+                  saved.id === draftId && dirty
+                    ? " Your unsaved edits will also be discarded."
+                    : "";
+                if (
+                  window.confirm(
+                    `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
+                  )
+                ) {
+                  deleteMutation.mutate(saved.id);
+                }
+              }}
+            />
+          </div>
+        </details>
       </aside>
     </div>
   );
