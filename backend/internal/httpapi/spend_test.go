@@ -96,7 +96,7 @@ func TestPaidLookupsSpendTheWorkspacesCreditsEndToEnd(t *testing.T) {
 		return call(http.MethodPost, "/api/v1/projects/"+project+"/domain/overview", `{"domain":"example.com","scope":"domain"}`)
 	}
 
-	assertError(t, lookup(), http.StatusPaymentRequired, "credits_exhausted")
+	assertError(t, lookup(), http.StatusPaymentRequired, "insufficient_credits")
 	if providerCalls.Load() != 0 {
 		t.Fatalf("a workspace without credits reached the provider %d times", providerCalls.Load())
 	}

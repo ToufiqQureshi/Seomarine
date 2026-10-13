@@ -26,6 +26,6 @@ describe("BillingUsageChart", () => {
   it("counts every fetched event in the total, as the breakdown does", () => {
     const markup = renderToStaticMarkup(createElement(BillingUsageChart));
 
-    expect(markup).toContain("$0.05");
+    expect(markup).toContain("50 credits");
   });
 });

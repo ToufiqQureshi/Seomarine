@@ -1,6 +1,6 @@
 import { Bar, BarChart } from "recharts";
 import { sort } from "remeda";
-import { autumnSeoDataCreditsToUsd } from "@/shared/billing";
+import { formatCredits } from "@/client/features/billing/credits/format";
 import type { BillingUsageEvent } from "@/client/features/billing/billingApi";
 import { QueryState } from "@/client/components/QueryState";
 import {
@@ -48,7 +48,7 @@ function UsageChart({ events }: { events: BillingUsageEvent[] }) {
   return (
     <div className="space-y-3">
       <div className="text-2xl font-semibold tabular-nums">
-        ${totalSpend.toFixed(2)}
+        {formatCredits(totalSpend)} credits
       </div>
 
       <div className="h-32 w-full min-w-0">
@@ -70,14 +70,16 @@ function UsageChart({ events }: { events: BillingUsageEvent[] }) {
                 tickFormatter={formatShortDate}
                 minTickGap={40}
               />
-              <ChartYAxis tickFormatter={formatUsdAxis} />
+              <ChartYAxis tickFormatter={formatCredits} />
               <ChartTooltip
                 content={
                   <ChartTooltipContent
                     labelFormatter={(label: unknown) =>
                       typeof label === "number" ? formatShortDate(label) : ""
                     }
-                    valueFormatter={(value) => `$${Number(value).toFixed(2)}`}
+                    valueFormatter={(value) =>
+                      `${formatCredits(Number(value))} credits`
+                    }
                   />
                 }
               />
@@ -118,7 +120,7 @@ function binEventsByDay(events: BillingUsageEvent[]) {
   return sort([...creditsByDay], ([a], [b]) => a - b).map(
     ([date, credits]) => ({
       date,
-      credits: autumnSeoDataCreditsToUsd(credits),
+      credits,
     }),
   );
 }
@@ -128,8 +130,4 @@ function formatShortDate(timestamp: number) {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatUsdAxis(value: number) {
-  return `$${value % 1 === 0 ? value : value.toFixed(2)}`;
 }

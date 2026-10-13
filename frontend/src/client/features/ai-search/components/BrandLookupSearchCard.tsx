@@ -6,6 +6,7 @@ import { Field, FieldDescription } from "@/client/components/ui/field";
 import { Input } from "@/client/components/ui/input";
 import type { ResearchScope } from "@/shared/researchScope";
 import { BRAND_LOOKUP_MAX_INPUT_LENGTH } from "@/types/schemas/ai-search";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type Props = {
   query: string;
@@ -60,66 +61,69 @@ export function BrandLookupSearchCard({
   const competitorsError = validationError?.field === "competitors";
 
   return (
-    <SearchCard
-      onSubmit={onSubmit}
-      pending={isLoading}
-      error={validationError?.message}
-      errorId="brand-lookup-input-error"
-      secondRow={
-        <>
-          <Field>
-            <Input
-              placeholder="Add competitors (comma-separated)"
-              value={competitors}
-              onChange={(event) => onCompetitorsChange(event.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              aria-label="Competitors"
-              aria-invalid={competitorsError || undefined}
-              aria-describedby={
-                competitorsError ? "brand-lookup-input-error" : undefined
-              }
-            />
-            <FieldDescription>
-              Add up to 5 competitor brands or domains to see your Share of
-              Voice.
-            </FieldDescription>
-          </Field>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            Est.{" "}
-            <span className="font-medium text-foreground">
-              ${BRAND_LOOKUP_DISPLAYED_COST_USD.toFixed(2)}
-            </span>
-            {hasCompetitors ? (
-              <span>
-                {" "}
-                plus ~$
-                {BRAND_LOOKUP_COMPETITOR_DISPLAYED_COST_USD.toFixed(2)} to
-                compare competitors
+    <div className="space-y-2">
+      <SearchCard
+        onSubmit={onSubmit}
+        pending={isLoading}
+        error={validationError?.message}
+        errorId="brand-lookup-input-error"
+        secondRow={
+          <>
+            <Field>
+              <Input
+                placeholder="Add competitors (comma-separated)"
+                value={competitors}
+                onChange={(event) => onCompetitorsChange(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Competitors"
+                aria-invalid={competitorsError || undefined}
+                aria-describedby={
+                  competitorsError ? "brand-lookup-input-error" : undefined
+                }
+              />
+              <FieldDescription>
+                Add up to 5 competitor brands or domains to see your Share of
+                Voice.
+              </FieldDescription>
+            </Field>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Est.{" "}
+              <span className="font-medium text-foreground">
+                ${BRAND_LOOKUP_DISPLAYED_COST_USD.toFixed(2)}
               </span>
-            ) : null}
-          </p>
-        </>
-      }
-    >
-      <SearchInput
-        placeholder="Enter a brand name or domain"
-        aria-label="Brand name or domain"
-        value={query}
-        maxLength={BRAND_LOOKUP_MAX_INPUT_LENGTH}
-        onChange={(event) => onQueryChange(event.target.value)}
-        aria-invalid={queryError || undefined}
-        aria-describedby={queryError ? "brand-lookup-input-error" : undefined}
-        autoComplete="off"
-        spellCheck={false}
-      />
+              {hasCompetitors ? (
+                <span>
+                  {" "}
+                  plus ~$
+                  {BRAND_LOOKUP_COMPETITOR_DISPLAYED_COST_USD.toFixed(2)} to
+                  compare competitors
+                </span>
+              ) : null}
+            </p>
+          </>
+        }
+      >
+        <SearchInput
+          placeholder="Enter a brand name or domain"
+          aria-label="Brand name or domain"
+          value={query}
+          maxLength={BRAND_LOOKUP_MAX_INPUT_LENGTH}
+          onChange={(event) => onQueryChange(event.target.value)}
+          aria-invalid={queryError || undefined}
+          aria-describedby={queryError ? "brand-lookup-input-error" : undefined}
+          autoComplete="off"
+          spellCheck={false}
+        />
 
-      <ResearchScopeSelect
-        value={scope}
-        className="w-full lg:w-40"
-        onChange={onScopeChange}
-        disabledReason={scopeDisabledReason}
-      />
-    </SearchCard>
+        <ResearchScopeSelect
+          value={scope}
+          className="w-full lg:w-40"
+          onChange={onScopeChange}
+          disabledReason={scopeDisabledReason}
+        />
+      </SearchCard>
+      <CreditCostHint feature="ai_visibility" />
+    </div>
   );
 }

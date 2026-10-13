@@ -101,6 +101,23 @@ describe("apiRequest", () => {
       message: "Something went wrong on our side. Try again.",
     },
     {
+      name: "a 503 usage pause keeps its customer message",
+      status: 503,
+      body: errorBody("usage_paused", "Live data is paused for a short while."),
+      code: "usage_paused",
+      message: "Live data is paused for a short while.",
+    },
+    {
+      name: "a 402 out-of-credits keeps its customer message",
+      status: 402,
+      body: errorBody(
+        "insufficient_credits",
+        "You have used this month's credits.",
+      ),
+      code: "insufficient_credits",
+      message: "You have used this month's credits.",
+    },
+    {
       name: "a 502 HTML page from a proxy still becomes an ApiError",
       status: 502,
       body: "<html>Bad gateway</html>",

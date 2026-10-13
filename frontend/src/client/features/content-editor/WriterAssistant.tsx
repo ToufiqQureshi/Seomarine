@@ -5,6 +5,7 @@ import { Button } from "@/client/components/ui/button";
 import { Textarea } from "@/client/components/ui/textarea";
 import { generateWritingSuggestion } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode } from "./scoring";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 const actions = [
   ["outline", "Create outline"],
@@ -120,6 +121,7 @@ export function WriterAssistant({
           </Button>
         ))}
       </div>
+      <CreditCostHint feature="ai_writing" />
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

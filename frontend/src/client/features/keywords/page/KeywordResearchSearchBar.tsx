@@ -14,6 +14,7 @@ import {
 import { KeywordAreaField, LocalVolumeCostNote } from "./KeywordAreaField";
 import { KeywordSearchOptions } from "./KeywordSearchOptions";
 import type { KeywordResearchControllerState } from "./types";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type Props = {
   controller: KeywordResearchControllerState;
@@ -112,6 +113,7 @@ export function KeywordResearchSearchBar({ controller }: Props) {
             </Button>
           </div>
         </form>
+        <CreditCostHint feature="keyword_research" />
         <controlsForm.Field name="keyword">
           {(field) => {
             const keywordError = getFieldError(field.state.meta.errors);

@@ -126,7 +126,7 @@ func TestOverviewAnswersARefusalWithItsOwnStatus(t *testing.T) {
 		status  int
 		code    string
 	}{
-		{spend.ErrNoCredits, http.StatusPaymentRequired, "credits_exhausted"},
+		{spend.ErrNoCredits, http.StatusPaymentRequired, "insufficient_credits"},
 		{spend.ErrPaused, http.StatusServiceUnavailable, "usage_paused"},
 	} {
 		calls := 0

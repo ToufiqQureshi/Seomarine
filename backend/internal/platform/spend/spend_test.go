@@ -17,7 +17,7 @@ func TestWriteHTTPErrorAnswersOnlyRefusals(t *testing.T) {
 		code     string
 		answered bool
 	}{
-		{"no credits", fmt.Errorf("hold: %w", ErrNoCredits), http.StatusPaymentRequired, "credits_exhausted", true},
+		{"no credits", fmt.Errorf("hold: %w", ErrNoCredits), http.StatusPaymentRequired, "insufficient_credits", true},
 		{"paused", fmt.Errorf("hold: %w", ErrPaused), http.StatusServiceUnavailable, "usage_paused", true},
 		{"anything else", errors.New("provider down"), 0, "", false},
 		{"nil", nil, 0, "", false},

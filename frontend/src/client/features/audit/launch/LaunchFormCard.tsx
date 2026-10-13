@@ -25,6 +25,7 @@ import { getFieldError, getFormError } from "@/client/lib/forms";
 import { RENDERED_MAX_AUDIT_PAGES } from "@/shared/audit-limits";
 import { renderingEstimateText } from "@/shared/audit-rendering";
 import { SUBSCRIBE_ROUTE } from "@/shared/billing";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type Props = {
   launchForm: ReturnType<typeof useLaunchController>["launchForm"];
@@ -90,6 +91,7 @@ export function LaunchFormCard({
               </Button>
             )}
           </launchForm.Subscribe>
+          <CreditCostHint feature="site_audit" className="lg:col-span-3" />
 
           <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-12 lg:items-start">
             <LaunchOptions

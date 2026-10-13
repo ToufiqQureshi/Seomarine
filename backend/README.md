@@ -124,7 +124,7 @@ are in its own `internal/<feature>/README.md` and, where one exists,
   charge grants the plan's `MonthlyCredits` once per webhook event. Every
   paid DataForSEO request and AI call spends credits through the spend
   guard (`internal/billing/README.md`); a refusal answers `402
-  credits_exhausted` or `503 usage_paused`.
+  insufficient_credits` or `503 usage_paused`.
 
 ## Analytics
 

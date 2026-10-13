@@ -11,7 +11,7 @@ limit, AI).
 - `Feature` labels the spend so the Billing screen can show where credits
   went. `Reference` is free lookup data (location lists, model lists).
 - A refusal is `ErrNoCredits` or `ErrPaused`. Handlers call
-  `WriteHTTPError` (402 `credits_exhausted`, 503 `usage_paused`) before their
+  `WriteHTTPError` (402 `insufficient_credits`, 503 `usage_paused`) before their
   own mapping; MCP and rank tracking use `Message`. The DataForSEO client also
   wraps refusals in its `ErrBillingIssue`, so a handler that forgets the
   mapping still stops and answers 503 instead of 500.

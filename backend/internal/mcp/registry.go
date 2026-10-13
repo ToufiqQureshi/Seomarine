@@ -76,7 +76,7 @@ func (h *handler) callTool(ctx context.Context, t *tool, params json.RawMessage,
 	result, err := t.Handler(ctx, params, &env)
 	if err != nil {
 		if message := spend.Message(err); message != "" {
-			outcome.errorCode = "CREDITS_EXHAUSTED"
+			outcome.errorCode = "INSUFFICIENT_CREDITS"
 			if errors.Is(err, spend.ErrPaused) {
 				outcome.errorCode = "USAGE_PAUSED"
 			}

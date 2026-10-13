@@ -67,7 +67,7 @@ assistant. Rules that must never break:
   most it can cost (`dataforseo.EstimateUSD`, from published prices; an
   unknown endpoint is held at one dollar per task) is reserved from the
   workspace's credits. Not enough credits is `spend.ErrNoCredits`, answered
-  `402 credits_exhausted`, and the provider is never called. Reservations
+  `402 insufficient_credits`, and the provider is never called. Reservations
   lock the balance row, so parallel requests cannot overspend it.
 - **The real cost is charged afterwards**, also for failed tasks the
   provider billed. If it is more than was held and the balance cannot cover

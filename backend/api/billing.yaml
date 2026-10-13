@@ -119,8 +119,8 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-    CreditsExhausted:
-      description: "`credits_exhausted`: the workspace has not got the credits the lookup needs."
+    InsufficientCredits:
+      description: "`insufficient_credits`: the workspace has not got the credits the lookup needs."
       content:
         application/json:
           schema:

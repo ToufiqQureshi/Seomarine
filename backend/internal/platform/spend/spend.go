@@ -95,11 +95,11 @@ func Message(err error) string {
 }
 
 // WriteHTTPError answers a refused request and reports whether err was one:
-// 402 credits_exhausted, or 503 usage_paused.
+// 402 insufficient_credits, or 503 usage_paused.
 func WriteHTTPError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, ErrNoCredits):
-		httpx.WriteError(w, http.StatusPaymentRequired, "credits_exhausted", noCreditsMessage)
+		httpx.WriteError(w, http.StatusPaymentRequired, "insufficient_credits", noCreditsMessage)
 	case errors.Is(err, ErrPaused):
 		httpx.WriteError(w, http.StatusServiceUnavailable, "usage_paused", pausedMessage)
 	default:

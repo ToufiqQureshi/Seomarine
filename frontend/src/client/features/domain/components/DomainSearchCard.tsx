@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/client/components/ui/select";
 import type { ResearchScope } from "@/shared/researchScope";
+import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 const SORT_ITEMS: { value: DomainSortMode; label: string }[] = [
   { value: "rank", label: "By Rank" },
@@ -49,82 +50,85 @@ export function DomainSearchCard({
   );
 
   return (
-    <SearchCard
-      onSubmit={onSubmit}
-      pending={isLoading}
-      error={domainError}
-      errorId="domain-input-error"
-    >
-      <controlsForm.Field name="domain">
-        {(field) => (
-          <SearchInput
-            placeholder="Enter a domain or URL"
-            aria-label="Domain or URL"
-            value={field.state.value}
-            onChange={(event) => {
-              field.handleChange(event.target.value);
-              onDomainChange(event.target.value);
-            }}
-            aria-invalid={domainError ? true : undefined}
-            aria-describedby={domainError ? "domain-input-error" : undefined}
-          />
-        )}
-      </controlsForm.Field>
+    <div className="space-y-2">
+      <SearchCard
+        onSubmit={onSubmit}
+        pending={isLoading}
+        error={domainError}
+        errorId="domain-input-error"
+      >
+        <controlsForm.Field name="domain">
+          {(field) => (
+            <SearchInput
+              placeholder="Enter a domain or URL"
+              aria-label="Domain or URL"
+              value={field.state.value}
+              onChange={(event) => {
+                field.handleChange(event.target.value);
+                onDomainChange(event.target.value);
+              }}
+              aria-invalid={domainError ? true : undefined}
+              aria-describedby={domainError ? "domain-input-error" : undefined}
+            />
+          )}
+        </controlsForm.Field>
 
-      <controlsForm.Field name="scope">
-        {(field) => (
-          <ResearchScopeSelect
-            value={field.state.value}
-            className="w-full lg:w-40"
-            onChange={(scope) => {
-              field.handleChange(scope);
-              onScopeChange(scope);
-            }}
-          />
-        )}
-      </controlsForm.Field>
+        <controlsForm.Field name="scope">
+          {(field) => (
+            <ResearchScopeSelect
+              value={field.state.value}
+              className="w-full lg:w-40"
+              onChange={(scope) => {
+                field.handleChange(scope);
+                onScopeChange(scope);
+              }}
+            />
+          )}
+        </controlsForm.Field>
 
-      <controlsForm.Field name="locationCode">
-        {(field) => (
-          <LocationSelect
-            value={field.state.value}
-            options={LABS_LOCATION_OPTIONS}
-            className="w-full lg:w-44 lg:shrink-0"
-            onChange={(code) => {
-              field.handleChange(code);
-              onLocationChange(code);
-            }}
-          />
-        )}
-      </controlsForm.Field>
+        <controlsForm.Field name="locationCode">
+          {(field) => (
+            <LocationSelect
+              value={field.state.value}
+              options={LABS_LOCATION_OPTIONS}
+              className="w-full lg:w-44 lg:shrink-0"
+              onChange={(code) => {
+                field.handleChange(code);
+                onLocationChange(code);
+              }}
+            />
+          )}
+        </controlsForm.Field>
 
-      <controlsForm.Field name="sort">
-        {(field) => (
-          <Select
-            items={SORT_ITEMS}
-            value={field.state.value}
-            onValueChange={(value) => {
-              const next = toSortMode(value ?? "") ?? "traffic";
-              field.handleChange(next);
-              onSortChange(next);
-            }}
-          >
-            <SelectTrigger
-              aria-label="Sort keywords"
-              className="w-full shrink-0 lg:w-36"
+        <controlsForm.Field name="sort">
+          {(field) => (
+            <Select
+              items={SORT_ITEMS}
+              value={field.state.value}
+              onValueChange={(value) => {
+                const next = toSortMode(value ?? "") ?? "traffic";
+                field.handleChange(next);
+                onSortChange(next);
+              }}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_ITEMS.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </controlsForm.Field>
-    </SearchCard>
+              <SelectTrigger
+                aria-label="Sort keywords"
+                className="w-full shrink-0 lg:w-36"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </controlsForm.Field>
+      </SearchCard>
+      <CreditCostHint feature="domain_research" />
+    </div>
   );
 }
