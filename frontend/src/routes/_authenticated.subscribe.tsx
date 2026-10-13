@@ -163,10 +163,23 @@ function SubscribePage() {
     );
   }
 
-  if (subscribeRouteState === "showPaywall" && customerQuery.data?.paymentsConfigured === false) {
+  if (
+    subscribeRouteState === "showPaywall" &&
+    customerQuery.data?.paymentsConfigured === false
+  ) {
     return (
-      <StatusScreen logo title="Payments unavailable" size="sm" description="Online subscriptions are temporarily unavailable. Your current plan remains visible in Billing.">
-        <a className="underline" href={`mailto:${SUPPORT_EMAIL}?subject=Subscription`}>Contact {SUPPORT_EMAIL}</a>
+      <StatusScreen
+        logo
+        title="Payments unavailable"
+        size="sm"
+        description="Online subscriptions are temporarily unavailable. Your current plan remains visible in Billing."
+      >
+        <a
+          className="underline"
+          href={`mailto:${SUPPORT_EMAIL}?subject=Subscription`}
+        >
+          Contact {SUPPORT_EMAIL}
+        </a>
       </StatusScreen>
     );
   }
