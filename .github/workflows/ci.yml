@@ -58,7 +58,9 @@ jobs:
           git diff --exit-code -- backend/go.mod backend/go.sum
       - name: Check formatting
         working-directory: backend
-        run: test -z "$(gofmt -l .)"
+        run: |
+          unformatted="$(gofmt -l .)"
+          test -z "$unformatted" || { printf '%s\n' "$unformatted"; exit 1; }
       - name: Vet
         working-directory: backend
         run: go vet ./...
