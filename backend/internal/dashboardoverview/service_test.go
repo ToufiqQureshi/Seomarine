@@ -47,3 +47,10 @@ func TestSortIssuesMatchesSeverityThenPageCount(t *testing.T) {
 		t.Fatalf("sorted issues=%+v", rows)
 	}
 }
+func TestRefreshWithoutBacklinkProviderIsNotAFailure(t *testing.T) {
+	domain := "example.com"
+	svc := &Service{Store: writableStore{&storeStub{domain: &domain}}}
+	if err := svc.RefreshBacklinkSnapshot(context.Background(), "org-1", "project-1"); err != nil {
+		t.Fatalf("refresh without provider: %v", err)
+	}
+}

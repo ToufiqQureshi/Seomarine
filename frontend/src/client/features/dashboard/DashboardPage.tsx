@@ -40,6 +40,9 @@ export function DashboardPage({ projectId }: { projectId: string }) {
   // The server re-checks freshness, so a stray double-fire costs nothing.
   const refreshMutation = useMutation({
     mutationFn: () => refreshDashboardBacklinkSnapshot({ data: { projectId } }),
+    // Runs in the background on page view; the user did not ask for it, so a
+    // failure must not raise a toast. The card simply stays empty or stale.
+    meta: { errorToast: false },
     onSuccess: () =>
       void queryClient.invalidateQueries({
         queryKey: ["dashboardOverview", projectId],

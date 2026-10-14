@@ -295,7 +295,7 @@ func run(logger *slog.Logger) (err error) {
 			Ahrefs:               ahrefs.New(rdb),
 			Backlinks:            backlinksSvc,
 			Domain:               domainSvc,
-			DashboardOverview:    &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}, Backlinks: backlinksSvc},
+			DashboardOverview:    newDashboardOverview(db, backlinksSvc),
 			GoogleAccounts:       google.AccountRepository{Pool: db},
 			GoogleOAuth:          googleOAuthSvc,
 			GA4:                  ga4Svc,
@@ -592,4 +592,15 @@ func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queu
 			logger.Error("audit worker stopped", "err", err)
 		}
 	}()
+}
+
+// newDashboardOverview leaves Backlinks as a nil interface when DataForSEO is
+// not configured. Assigning the nil *backlinks.Service directly would make the
+// interface non-nil and panic on the first refresh.
+func newDashboardOverview(db *pgxpool.Pool, backlinksSvc *backlinks.Service) *dashboardoverview.Service {
+	svc := &dashboardoverview.Service{Store: dashboardoverview.Repository{DB: db}}
+	if backlinksSvc != nil {
+		svc.Backlinks = backlinksSvc
+	}
+	return svc
 }

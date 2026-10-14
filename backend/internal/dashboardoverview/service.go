@@ -76,10 +76,9 @@ func (s *Service) RefreshBacklinkSnapshot(ctx context.Context, organizationID, p
 		return fmt.Errorf("dashboard backlink snapshot writer unavailable")
 	}
 	if s.Backlinks == nil {
-		if matches {
-			return nil
-		}
-		return fmt.Errorf("dashboard backlink provider unavailable")
+		// No provider configured: there is nothing to refresh, and the
+		// dashboard simply shows no backlink card. Not a failure.
+		return nil
 	}
 	summary, err := s.Backlinks.DashboardSummary(ctx, organizationID, *domain)
 	if err != nil {
