@@ -40,10 +40,10 @@ function loadCheckoutScript(): Promise<void> {
  * Opens Razorpay Checkout for a subscription. Resolves `true` once the
  * payment succeeds and `false` when the customer closes the window.
  */
-export async function openRazorpayCheckout(session: {
-  keyId: string;
-  subscriptionId: string;
-}): Promise<boolean> {
+export async function openRazorpayCheckout(
+  session: { keyId: string; subscriptionId: string },
+  planName = "Pro",
+): Promise<boolean> {
   await loadCheckoutScript();
   const Razorpay = window.Razorpay;
   if (!Razorpay)
@@ -53,7 +53,7 @@ export async function openRazorpayCheckout(session: {
       key: session.keyId,
       subscription_id: session.subscriptionId,
       name: "Uplumo",
-      description: "Uplumo Pro, billed monthly",
+      description: `Uplumo ${planName}, billed monthly`,
       theme: { color: "#0f766e" },
       handler: () => resolve(true),
       modal: { ondismiss: () => resolve(false) },
