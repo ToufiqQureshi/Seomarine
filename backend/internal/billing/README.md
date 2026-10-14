@@ -30,6 +30,10 @@ Rules that must never break:
   so instead of offering a button.
 - **Changing plan is not built.** A workspace with a live subscription gets
   `409` on checkout; the screen tells the customer to write to support.
+- **One payable subscription per workspace.** Two tabs or a double click get
+  the same unpaid subscription; choosing another plan first cancels the unpaid
+  one. A second live subscription is cancelled on its first webhook and never
+  credited (rules in `backend/README.md` under Billing).
 
 **Checking a plan.** A feature package asks one question through
 `Service.Gate(plans.<Feature>)`, and limits come from `SiteLimit`,

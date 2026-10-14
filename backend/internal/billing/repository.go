@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,11 @@ import (
 
 type repository struct {
 	db *pgxpool.Pool
+}
+
+// querier is a pool, a connection or a transaction.
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 // subscription is an organization's stored subscription state.
@@ -29,10 +35,42 @@ type subscription struct {
 	EventAt time.Time
 }
 
+// lockCheckout serializes checkouts of orgID across server instances, with a
+// session advisory lock on a connection of its own, so no transaction stays
+// open across the Razorpay calls. unlock must be called; a lost connection
+// releases the lock by itself.
+//
+// The checkout's own reads and writes go through the returned connection, so
+// the lock holder never waits for a second pool connection while other
+// checkouts of the workspace hold theirs waiting for the lock.
+func (r repository) lockCheckout(ctx context.Context, orgID string) (q querier, unlock func(), err error) {
+	conn, err := r.db.Acquire(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("acquire checkout lock connection: %w", err)
+	}
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended('checkout:' || $1, 0))`, orgID); err != nil {
+		conn.Release()
+		return nil, nil, fmt.Errorf("lock checkout: %w", err)
+	}
+	return conn, func() {
+		unlockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if _, err := conn.Exec(unlockCtx, `SELECT pg_advisory_unlock(hashtextextended('checkout:' || $1, 0))`, orgID); err != nil {
+			// Closing the connection releases the lock.
+			_ = conn.Conn().Close(unlockCtx)
+		}
+		conn.Release()
+	}, nil
+}
+
 // subscription returns orgID's subscription, and false when it has none.
 func (r repository) subscription(ctx context.Context, orgID string) (subscription, bool, error) {
+	return loadSubscription(ctx, r.db, orgID)
+}
+
+func loadSubscription(ctx context.Context, q querier, orgID string) (subscription, bool, error) {
 	var s subscription
-	err := r.db.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT razorpay_subscription_id, plan, status, current_period_end, cancel_at_period_end, event_at
 		FROM go_billing_subscriptions WHERE organization_id = $1`,
 		orgID,
@@ -67,9 +105,9 @@ func (r repository) ownedByAny(ctx context.Context, orgID string, emails []strin
 // orgID's current subscription has one of liveStatuses. It reports whether
 // the subscription was stored. event_at never moves back, so a late webhook
 // about the replaced subscription stays stale.
-func (r repository) startSubscription(ctx context.Context, orgID, plan, subID, status string, createdAt time.Time, liveStatuses []string) (bool, error) {
+func startSubscription(ctx context.Context, q querier, orgID, plan, subID, status string, createdAt time.Time, liveStatuses []string) (bool, error) {
 	var stored bool
-	err := r.db.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		INSERT INTO go_billing_subscriptions
 			(organization_id, razorpay_subscription_id, plan, status, current_period_end, event_at)
 		VALUES ($1, $2, $3, $4, NULL, $5)
@@ -114,6 +152,20 @@ func (r repository) markCancelled(ctx context.Context, orgID, subID, status stri
 	return tag.RowsAffected() == 1, nil
 }
 
+// eventOutcome is what applyEvent did with a delivery.
+type eventOutcome int
+
+const (
+	// eventApplied: the delivery was recorded and applied.
+	eventApplied eventOutcome = iota
+	// eventDuplicateDelivery: the event id was seen before.
+	eventDuplicateDelivery
+	// eventSecondLiveSubscription: the workspace already has another live
+	// subscription. Nothing was recorded or granted, so a redelivery is
+	// handled the same way until the caller has stopped this one.
+	eventSecondLiveSubscription
+)
+
 // applyEvent records eventID and stores s as its organization's
 // subscription state, in one transaction. It returns false, changing
 // nothing, when eventID was recorded before.
@@ -121,9 +173,30 @@ func (r repository) markCancelled(ctx context.Context, orgID, subID, status stri
 // The state is stored when it is at least as new as the stored state, and
 // is either the same subscription or replaces one that is not in
 // liveStatuses. An organization that no longer exists gets no row.
-func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string, grantCredits int64) (bool, error) {
-	var firstDelivery bool
+func (r repository) applyEvent(ctx context.Context, eventID string, s subscription, liveStatuses []string, grantCredits int64) (eventOutcome, error) {
+	outcome := eventApplied
 	err := pgdb.InTx(ctx, r.db, func(tx pgx.Tx) error {
+		var seen bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM go_billing_webhook_events WHERE event_id = $1)`, eventID).Scan(&seen); err != nil {
+			return fmt.Errorf("look up event: %w", err)
+		}
+		if seen {
+			outcome = eventDuplicateDelivery
+			return nil
+		}
+		var storedID, storedStatus string
+		err := tx.QueryRow(ctx, `
+		SELECT razorpay_subscription_id, status FROM go_billing_subscriptions
+		WHERE organization_id = $1 FOR UPDATE`, s.OrganizationID,
+		).Scan(&storedID, &storedStatus)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("load subscription: %w", err)
+		}
+		if storedID != "" && storedID != s.ID && slices.Contains(liveStatuses, storedStatus) && slices.Contains(liveStatuses, s.Status) {
+			outcome = eventSecondLiveSubscription
+			return nil
+		}
+
 		tag, err := tx.Exec(ctx, `
 		INSERT INTO go_billing_webhook_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING`,
 			eventID,
@@ -132,6 +205,7 @@ func (r repository) applyEvent(ctx context.Context, eventID string, s subscripti
 			return fmt.Errorf("record event: %w", err)
 		}
 		if tag.RowsAffected() == 0 {
+			outcome = eventDuplicateDelivery
 			return nil
 		}
 
@@ -162,11 +236,18 @@ func (r repository) applyEvent(ctx context.Context, eventID string, s subscripti
 				return err
 			}
 		}
-		firstDelivery = true
 		return nil
 	})
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return firstDelivery, nil
+	return outcome, nil
+}
+
+// recordEvent marks eventID handled without applying it.
+func (r repository) recordEvent(ctx context.Context, eventID string) error {
+	if _, err := r.db.Exec(ctx, `INSERT INTO go_billing_webhook_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING`, eventID); err != nil {
+		return fmt.Errorf("record event: %w", err)
+	}
+	return nil
 }

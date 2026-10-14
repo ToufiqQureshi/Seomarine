@@ -15,6 +15,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -69,14 +70,47 @@ func TestCheckoutCreatesASubscription(t *testing.T) {
 	}
 	f.assertStatus(ctx, t, Status{Plan: PlanFree, Status: "created"})
 
-	// An unpaid subscription is replaced by a fresh one, never reused.
+	// The same plan again hands out the same unpaid subscription, so two
+	// tabs pay one subscription and can never be charged twice.
 	checkout, err = f.svc.Checkout(ctx, f.org)
-	if err != nil || checkout.SubscriptionID != "sub_2" {
-		t.Fatalf("second Checkout() = %+v, %v; want the new sub_2", checkout, err)
+	if err != nil || checkout.SubscriptionID != "sub_1" || f.calls.Load() != 1 {
+		t.Fatalf("second Checkout() = %+v, %v after %d creations; want sub_1 again", checkout, err, f.calls.Load())
 	}
 	f.assertStatus(ctx, t, Status{Plan: PlanFree, Status: "created"})
+}
+
+func TestCheckoutOfAnotherPlanCancelsTheUnpaidOneFirst(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.sellTiers()
+	if _, err := f.svc.CheckoutPlan(ctx, f.org, PlanBasic); err != nil {
+		t.Fatal(err)
+	}
+	checkout, err := f.svc.CheckoutPlan(ctx, f.org, PlanPro)
+	if err != nil || checkout.SubscriptionID != "sub_2" {
+		t.Fatalf("CheckoutPlan(pro) = %+v, %v; want the new sub_2", checkout, err)
+	}
+	if len(f.cancels) != 1 || !strings.Contains(f.cancels[0].Path, "sub_1") || f.cancels[0].AtCycleEnd {
+		t.Fatalf("cancels = %+v, want the unpaid sub_1 cancelled now", f.cancels)
+	}
 	if got := f.storedSubscriptionID(ctx, t); got != "sub_2" {
 		t.Fatalf("stored subscription = %q, want sub_2", got)
+	}
+}
+
+func TestCheckoutOfAnotherPlanFailsWhenTheUnpaidOneCannotBeCancelled(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.sellTiers()
+	if _, err := f.svc.CheckoutPlan(ctx, f.org, PlanBasic); err != nil {
+		t.Fatal(err)
+	}
+	f.failWith = http.StatusBadGateway
+	if _, err := f.svc.CheckoutPlan(ctx, f.org, PlanPro); !errors.Is(err, ErrPaymentProvider) {
+		t.Fatalf("CheckoutPlan(pro) error = %v, want ErrPaymentProvider", err)
+	}
+	if f.calls.Load() != 1 {
+		t.Fatalf("%d subscriptions created; none may be created while the unpaid one is still payable", f.calls.Load())
 	}
 }
 
@@ -652,4 +686,85 @@ func testDatabaseURL(t *testing.T) string {
 	}
 	t.Skip("TEST_DATABASE_URL not set; skipping Postgres integration test")
 	return ""
+}
+
+// Reproduction: a second checkout (another tab, a double click) made a second
+// payable subscription while the first was still unpaid.
+func TestRegressionRepeatedCheckoutReusesTheUnpaidSubscription(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	first, err := f.svc.Checkout(ctx, f.org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := f.svc.Checkout(ctx, f.org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.SubscriptionID != first.SubscriptionID || f.calls.Load() != 1 {
+		t.Fatalf("checkouts returned %s and %s after %d creations; want one payable subscription", first.SubscriptionID, second.SubscriptionID, f.calls.Load())
+	}
+}
+
+func TestRegressionConcurrentCheckoutsCreateOneSubscription(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	var wg sync.WaitGroup
+	ids := make([]string, 5)
+	for i := range ids {
+		wg.Go(func() {
+			checkout, err := f.svc.Checkout(ctx, f.org)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			ids[i] = checkout.SubscriptionID
+		})
+	}
+	wg.Wait()
+	if f.calls.Load() != 1 {
+		t.Fatalf("%d subscriptions created by 5 concurrent checkouts (%v), want 1", f.calls.Load(), ids)
+	}
+}
+
+// Reproduction: a second subscription that got paid anyway (before this fix,
+// or by any other path) was granted credits and left charging every month.
+func TestRegressionAChargedDuplicateSubscriptionIsCancelledNotCredited(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.deliver(ctx, t, f.event("subscription.charged", "sub_kept", "active", t1))
+	before := balanceOf(ctx, t, NewCreditLedgerService(f.pool), f.org)
+
+	f.deliver(ctx, t, f.event("subscription.charged", "sub_duplicate", "active", t1.Add(time.Minute)))
+
+	if after := balanceOf(ctx, t, NewCreditLedgerService(f.pool), f.org); after != before {
+		t.Fatalf("balance %d -> %d: a duplicate subscription's charge must not grant credits", before, after)
+	}
+	if len(f.cancels) != 1 || !strings.Contains(f.cancels[0].Path, "sub_duplicate") || f.cancels[0].AtCycleEnd {
+		t.Fatalf("cancels = %+v, want sub_duplicate cancelled now so it never charges again", f.cancels)
+	}
+	f.assertStatus(ctx, t, Status{Plan: PlanPro, Status: "active"})
+}
+
+func TestASecondLiveSubscriptionIsRetriedUntilItIsCancelled(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.deliver(ctx, t, f.event("subscription.charged", "sub_kept", "active", t1))
+	body := f.event("subscription.activated", "sub_duplicate", "active", t1.Add(time.Minute))
+	eventID := "evt_" + rand.Text()
+
+	f.failWith = http.StatusBadGateway
+	if _, err := f.svc.HandleWebhook(ctx, body, sign(body), eventID); !errors.Is(err, ErrPaymentProvider) {
+		t.Fatalf("HandleWebhook() error = %v, want ErrPaymentProvider so Razorpay redelivers", err)
+	}
+	f.failWith = 0
+	if got := f.deliverAs(ctx, t, eventID, body); got != WebhookProcessed {
+		t.Fatalf("redelivery = %q, want processed once the cancel went through", got)
+	}
+	if got := f.deliverAs(ctx, t, eventID, body); got != WebhookDuplicate {
+		t.Fatalf("third delivery = %q, want duplicate", got)
+	}
+	if got := f.storedSubscriptionID(ctx, t); got != "sub_kept" {
+		t.Fatalf("stored subscription = %q, want sub_kept", got)
+	}
 }

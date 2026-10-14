@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -320,14 +321,18 @@ func (s *Service) MemberLimit(ctx context.Context, orgID string) (int, error) {
 // Checkout creates a Razorpay subscription to the pro plan for orgID. The
 // caller must have checked that the user may manage the organization's
 // billing. It returns ErrAlreadySubscribed when orgID's subscription is live.
-//
-// A subscription that was created but never paid is not reused: Razorpay
-// expires those, so every checkout starts a fresh one.
 func (s *Service) Checkout(ctx context.Context, orgID string) (Checkout, error) {
 	return s.CheckoutPlan(ctx, orgID, PlanPro)
 }
 
 // CheckoutPlan starts a subscription for a selected configured plan.
+//
+// A workspace has at most one payable subscription at a time, so a second
+// tab or a double click can never be charged twice. Checkouts of one
+// workspace are serialized; an unpaid subscription to the same plan is
+// handed out again (Razorpay keeps it payable, since no start_at is set), and
+// one to another plan is cancelled before the new one is created. If that
+// cancel fails, checkout fails rather than leave two payable subscriptions.
 func (s *Service) CheckoutPlan(ctx context.Context, orgID, plan string) (Checkout, error) {
 	if !s.providerConfigured() {
 		return Checkout{}, ErrPaymentUnavailable
@@ -336,12 +341,25 @@ func (s *Service) CheckoutPlan(ctx context.Context, orgID, plan string) (Checkou
 	if planID == "" {
 		return Checkout{}, ErrPlanUnavailable
 	}
-	current, found, err := s.repo.subscription(ctx, orgID)
+	q, unlock, err := s.repo.lockCheckout(ctx, orgID)
+	if err != nil {
+		return Checkout{}, fmt.Errorf("checkout for organization %s: %w", orgID, err)
+	}
+	defer unlock()
+	current, found, err := loadSubscription(ctx, q, orgID)
 	if err != nil {
 		return Checkout{}, fmt.Errorf("checkout for organization %s: %w", orgID, err)
 	}
 	if found && slices.Contains(liveStatuses, current.Status) {
 		return Checkout{}, ErrAlreadySubscribed
+	}
+	if found && current.Status == "created" {
+		if current.Plan == plan {
+			return Checkout{SubscriptionID: current.ID, KeyID: s.razorpay.KeyID()}, nil
+		}
+		if _, err := s.razorpay.CancelSubscription(ctx, current.ID, false); err != nil {
+			return Checkout{}, fmt.Errorf("checkout for organization %s: cancel unpaid subscription %s: %w: %w", orgID, current.ID, ErrPaymentProvider, err)
+		}
 	}
 
 	sub, err := s.razorpay.CreateSubscription(ctx, planID, totalCount, map[string]string{orgNote: orgID})
@@ -350,7 +368,7 @@ func (s *Service) CheckoutPlan(ctx context.Context, orgID, plan string) (Checkou
 	}
 	// A webhook may have made another subscription live since the check
 	// above; the new one then stays unpaid and expires.
-	replaced, err := s.repo.startSubscription(ctx, orgID, plan, sub.ID, sub.Status, time.Unix(sub.CreatedAt, 0), liveStatuses)
+	replaced, err := startSubscription(ctx, q, orgID, plan, sub.ID, sub.Status, time.Unix(sub.CreatedAt, 0), liveStatuses)
 	if err != nil {
 		return Checkout{}, fmt.Errorf("checkout for organization %s: %w", orgID, err)
 	}
@@ -448,7 +466,7 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 	if plan == "" {
 		return "", fmt.Errorf("%w: subscription %s of organization %s is on plan %q", ErrUnknownPlan, sub.ID, orgID, sub.PlanID)
 	}
-	firstDelivery, err := s.repo.applyEvent(ctx, eventID, subscription{
+	outcome, err := s.repo.applyEvent(ctx, eventID, subscription{
 		OrganizationID:   orgID,
 		ID:               sub.ID,
 		Plan:             plan,
@@ -459,8 +477,29 @@ func (s *Service) HandleWebhook(ctx context.Context, body []byte, signature, eve
 	if err != nil {
 		return "", fmt.Errorf("apply %s event %s: %w", event.Event, eventID, err)
 	}
-	if !firstDelivery {
+	switch outcome {
+	case eventDuplicateDelivery:
 		return WebhookDuplicate, nil
+	case eventSecondLiveSubscription:
+		return s.stopSecondSubscription(ctx, orgID, sub.ID, event.Event, eventID)
+	}
+	return WebhookProcessed, nil
+}
+
+// stopSecondSubscription handles a workspace that went live on a second
+// subscription while another is live: it earns no credits and is cancelled
+// now, so it cannot charge again. If it was charged, that payment needs a
+// manual refund, so the error log (which reaches Sentry) says so. The event
+// is recorded only once the cancel succeeded; until then Razorpay's
+// redelivery retries it.
+func (s *Service) stopSecondSubscription(ctx context.Context, orgID, subID, eventName, eventID string) (WebhookResult, error) {
+	if _, err := s.razorpay.CancelSubscription(ctx, subID, false); err != nil {
+		return "", fmt.Errorf("cancel second live subscription %s of organization %s: %w: %w", subID, orgID, ErrPaymentProvider, err)
+	}
+	slog.ErrorContext(ctx, "cancelled a second live subscription; refund any charge on it by hand",
+		"organization", orgID, "subscription", subID, "event", eventName)
+	if err := s.repo.recordEvent(ctx, eventID); err != nil {
+		return "", err
 	}
 	return WebhookProcessed, nil
 }
