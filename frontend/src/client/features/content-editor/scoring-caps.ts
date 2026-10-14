@@ -54,6 +54,8 @@ export function seoScoreCap(
     (item) => normalize(item.term) === normalize(topic),
   );
   const normalMaximum = Math.max(term?.max ?? 0, Math.ceil(wordCount * 0.02));
+  // The server refuses "Publish now" with the no-brief form of this rule
+  // (backend/internal/sitepublish/stuffing.go). Change both together.
   const stuffing = Boolean(
     topic &&
     uses >= 8 &&

@@ -29,6 +29,7 @@ var (
 	ErrBadCredentials    = errors.New("WordPress refused the username or application password")
 	ErrMissingPermission = errors.New("this WordPress user cannot publish posts and upload images")
 	ErrRemoteMissing     = errors.New("the published post no longer exists on the site")
+	ErrKeywordStuffing   = errors.New("the draft repeats its target topic too often to publish")
 )
 
 // ValidationError is input the customer must correct.
@@ -178,6 +179,10 @@ func (s *Service) Publish(ctx context.Context, projectID, draftID, status string
 	}
 	if strings.TrimSpace(draft.Title) == "" || strings.TrimSpace(draft.Content) == "" {
 		return Publication{}, &ValidationError{Message: "Add a title and some content before publishing."}
+	}
+	// A WordPress draft is private, so only going live is refused.
+	if status == StatusPublish && keywordStuffed(draft.TargetKeyword, draft.Content) {
+		return Publication{}, ErrKeywordStuffing
 	}
 	password, err := s.Cipher.Decrypt(connection.SecretCiphertext)
 	if err != nil {

@@ -1,7 +1,8 @@
 # Deploying Uplumo
 
 Uplumo runs on Railway as one service built from the root `Dockerfile`, plus a
-Postgres and a Redis database. The server applies database migrations itself
+Redis database on Railway. Postgres is a Supabase project, not a Railway
+database. The server applies database migrations itself
 every time it starts.
 
 Secrets go into Railway variables only. Never put them in the repo or in chat.
@@ -12,11 +13,20 @@ Merging to `main` does **not** deploy. In Railway, open the `uplumo` service
 and deploy the latest commit of `main` (or reconnect the source to branch
 `main`, which starts a deploy). Changing a variable also redeploys.
 
+If Railway shows "Could not load branches", its GitHub link is broken and
+neither of those works. Deploy from a checkout of `main` with the Railway CLI
+instead (`railway login` once):
+
+```sh
+git fetch origin && git checkout --detach origin/main
+railway up --service uplumo -e production
+```
+
 After a deploy, open `https://uplumo.com/api/health` and the page you changed.
 
 ## 1. Create the project
 
-1. In Railway, create a project and add **PostgreSQL** and **Redis**.
+1. Create the Postgres database in Supabase. In Railway, create a project and add **Redis**.
 2. Add a service from the GitHub repo `ToufiqQureshi/uplumo`, branch `main`.
    Railway reads `railway.json`: it builds the Dockerfile and checks
    `/api/health`.
@@ -27,7 +37,7 @@ Required, or the server does not start:
 
 | Variable             | Value                                                                                              |
 | -------------------- | -------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`       | `${{Postgres.DATABASE_URL}}`                                                                       |
+| `DATABASE_URL`       | The Supabase Postgres connection string                                                            |
 | `REDIS_URL`          | `${{Redis.REDIS_URL}}`                                                                             |
 | `BETTER_AUTH_SECRET` | 32 or more random characters. Never change it later: it signs sessions and encrypts Google tokens. |
 | `PUBLIC_URL`         | `https://uplumo.com`                                                                               |

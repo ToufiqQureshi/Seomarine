@@ -190,3 +190,13 @@ func TestHandlerTellsTheCustomerTheirFirewallBlockedUs(t *testing.T) {
 		t.Fatalf("connect behind a firewall = %d %v", status, body)
 	}
 }
+
+func TestHandlerRefusesToPublishAStuffedDraft(t *testing.T) {
+	wp := newFakeWordPress(t)
+	service, _ := newTestService(t, wp, memoryDrafts{"d": {ID: "d", ProjectID: "p", Title: "SEO tools", TargetKeyword: "seo tools", Content: strings.Repeat("seo tools ", 20)}})
+	connect(t, service, wp, "p")
+	mux := testMux(service, planStub{allowed: true}, owner)
+	if status, body := post(t, mux, "/api/v1/projects/p/content/drafts/d/publish", `{"status":"publish"}`); status != http.StatusUnprocessableEntity || errorCode(body) != "keyword_stuffing" {
+		t.Fatalf("publish a stuffed draft = %d %v", status, body)
+	}
+}

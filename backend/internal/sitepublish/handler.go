@@ -186,6 +186,8 @@ func (h handler) writeSiteError(w http.ResponseWriter, r *http.Request, operatio
 		httpx.WriteError(w, http.StatusConflict, "site_not_connected", "Connect your website in Settings first.")
 	case errors.Is(err, contenteditor.ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This draft is no longer available.")
+	case errors.Is(err, ErrKeywordStuffing):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "keyword_stuffing", "This article repeats its target topic too often. Rewrite it so it reads naturally, or send it as a draft.")
 	case errors.Is(err, ErrNotHTTPS):
 		httpx.WriteError(w, http.StatusBadRequest, "site_not_https", "Your website must use https:// before Uplumo can sign in to it.")
 	case errors.Is(err, ErrSiteBlocked):
