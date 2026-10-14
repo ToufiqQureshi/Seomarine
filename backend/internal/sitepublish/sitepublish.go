@@ -24,6 +24,7 @@ var (
 	ErrNotHTTPS          = errors.New("the website address must start with https://")
 	ErrSiteUnreachable   = errors.New("the website did not answer")
 	ErrNotWordPress      = errors.New("no WordPress REST API found at this address")
+	ErrSiteBlocked       = errors.New("the website's firewall blocked the request")
 	ErrAppPasswordsOff   = errors.New("application passwords are turned off on this site")
 	ErrBadCredentials    = errors.New("WordPress refused the username or application password")
 	ErrMissingPermission = errors.New("this WordPress user cannot publish posts and upload images")
