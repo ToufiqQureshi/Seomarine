@@ -285,13 +285,25 @@ func TestPagesHaveNoDeadLinks(t *testing.T) {
 		known[path] = true
 		pages[path] = s.ServeInfo
 	}
-	href := regexp.MustCompile(`href="([^"]*)"`)
+	for slug := range s.posts {
+		known["/blog/"+slug] = true
+		pages["/blog/"+slug] = func(w http.ResponseWriter, r *http.Request) {
+			r.SetPathValue("slug", slug)
+			s.ServeBlogPost(w, r)
+		}
+	}
+	href := regexp.MustCompile(`(?:href|src)="([^"]*)"`)
 	for path, serve := range pages {
 		for _, m := range href.FindAllStringSubmatch(get(serve, path, nil).Body.String(), -1) {
 			link := m[1]
 			switch {
+			case strings.HasPrefix(link, AssetsPrefix):
+				file, _, _ := strings.Cut(strings.TrimPrefix(link, AssetsPrefix), "?")
+				if _, ok := s.versions[file]; !ok {
+					t.Errorf("%s uses %q, which is not an embedded asset", path, link)
+				}
 			case strings.HasPrefix(link, "mailto:"+SupportEmail), strings.HasPrefix(link, "#"),
-				strings.HasPrefix(link, AssetsPrefix), strings.HasPrefix(link, "https://uplumo.com/"):
+				strings.HasPrefix(link, "https://uplumo.com/"):
 			case !known[link]:
 				t.Errorf("%s links to %q, which no page serves", path, link)
 			}
@@ -326,6 +338,9 @@ func TestRobotsAndSitemap(t *testing.T) {
 		got[u.Loc] = true
 	}
 	want := append([]string{"/", "/pricing", "/blog"}, InfoPaths()...)
+	for slug := range s.posts {
+		want = append(want, "/blog/"+slug)
+	}
 	if len(got) != len(want) {
 		t.Errorf("sitemap has %d URLs, want %d", len(got), len(want))
 	}

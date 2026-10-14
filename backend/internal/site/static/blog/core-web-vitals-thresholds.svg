@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="t d">
+<title id="t">Core Web Vitals thresholds</title>
+<desc id="d">Google's thresholds at the 75th percentile of visits. LCP: good up to 2.5 seconds, poor over 4 seconds. INP: good up to 200 milliseconds, poor over 500. CLS: good up to 0.1, poor over 0.25.</desc>
+<rect width="1200" height="630" fill="#07090a"/>
+<g font-family="Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<text x="60" y="80" fill="#f2f5f3" font-size="40" font-weight="600">Core Web Vitals: the three numbers that count</text>
+<text x="60" y="122" fill="#a3b0aa" font-size="24">Judged at the 75th percentile of real visits, separately for mobile and desktop</text>
+<g font-size="22">
+<text x="60" y="210" fill="#f2f5f3" font-weight="600">LCP · main content shows</text>
+<rect x="60" y="228" width="520" height="40" rx="8" fill="#c6ff3d"/><rect x="586" y="228" width="300" height="40" rx="8" fill="#e0a43a"/><rect x="892" y="228" width="248" height="40" rx="8" fill="#ff7aa6"/>
+<text x="580" y="298" fill="#a3b0aa" text-anchor="middle">2.5 s</text><text x="889" y="298" fill="#a3b0aa" text-anchor="middle">4 s</text>
+<text x="60" y="360" fill="#f2f5f3" font-weight="600">INP · page reacts to a tap or click</text>
+<rect x="60" y="378" width="520" height="40" rx="8" fill="#c6ff3d"/><rect x="586" y="378" width="300" height="40" rx="8" fill="#e0a43a"/><rect x="892" y="378" width="248" height="40" rx="8" fill="#ff7aa6"/>
+<text x="580" y="448" fill="#a3b0aa" text-anchor="middle">200 ms</text><text x="889" y="448" fill="#a3b0aa" text-anchor="middle">500 ms</text>
+<text x="60" y="510" fill="#f2f5f3" font-weight="600">CLS · page stays still while loading</text>
+<rect x="60" y="528" width="520" height="40" rx="8" fill="#c6ff3d"/><rect x="586" y="528" width="300" height="40" rx="8" fill="#e0a43a"/><rect x="892" y="528" width="248" height="40" rx="8" fill="#ff7aa6"/>
+<text x="580" y="598" fill="#a3b0aa" text-anchor="middle">0.1</text><text x="889" y="598" fill="#a3b0aa" text-anchor="middle">0.25</text>
+</g>
+<g font-size="20" fill="#07090a" font-weight="600"><text x="80" y="255">Good</text><text x="606" y="255">Needs work</text><text x="912" y="255">Poor</text></g>
+</g>
+</svg>
