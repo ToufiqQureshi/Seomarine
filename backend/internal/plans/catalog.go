@@ -27,6 +27,9 @@ const (
 	RankTracking Feature = "rank_tracking"
 	// FullAudit is the site audit without the free plan's page limits.
 	FullAudit Feature = "full_audit"
+	// Publishing is connecting the customer's website and publishing
+	// content-editor articles to it.
+	Publishing Feature = "publishing"
 	// Backlinks is backlink and referring-domain research.
 	Backlinks Feature = "backlinks"
 	// DomainResearch is a domain's organic footprint, including competitors.
@@ -75,7 +78,7 @@ func (d Definition) Allows(feature Feature) bool {
 }
 
 var (
-	basicFeatures  = []Feature{GoogleData, Keywords, RankTracking, FullAudit}
+	basicFeatures  = []Feature{GoogleData, Keywords, RankTracking, FullAudit, Publishing}
 	proFeatures    = append(slices.Clone(basicFeatures), Backlinks, DomainResearch, AIVisibility, AIWriting)
 	agencyFeatures = append(slices.Clone(proFeatures), WhiteLabel)
 )
@@ -100,6 +103,7 @@ var catalog = []Definition{
 			"Rank tracking for 100 keywords",
 			"Google Search Console and Google Analytics",
 			"Full site audit",
+			"Publish articles straight to your WordPress site",
 		},
 		features: basicFeatures,
 	},

@@ -14,6 +14,7 @@ import {
 } from "@/client/features/onboarding/onboardingModel";
 import { AgentSetup } from "@/client/features/ai-mcp/AgentSetup";
 import { SearchConsoleOnboardingStep } from "@/client/features/onboarding/SearchConsoleOnboardingStep";
+import { WebsiteOnboardingStep } from "@/client/features/onboarding/WebsiteOnboardingStep";
 import { WizardFooter } from "@/client/features/onboarding/WizardFooter";
 import { Input } from "@/client/components/ui/input";
 import { Toggle } from "@/client/components/ui/toggle";
@@ -106,6 +107,12 @@ export function PostSignupOnboarding({
             />
           ) : step === 3 ? (
             <SearchConsoleOnboardingStep
+              onNext={onNext}
+              onBack={onBack}
+              onSkip={onSkip}
+            />
+          ) : step === 4 ? (
+            <WebsiteOnboardingStep
               onNext={onNext}
               onBack={onBack}
               onSkip={onSkip}
