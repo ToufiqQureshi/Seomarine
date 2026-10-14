@@ -280,6 +280,56 @@ func TestPageSpeedProviderRefusals(t *testing.T) {
 	}
 }
 
+func TestPageSpeedProviderRetriesOnceOnRateLimit(t *testing.T) {
+	cases := []struct {
+		name         string
+		statuses     []int
+		wantErr      bool
+		wantRequests int
+	}{
+		{"429 then success", []int{http.StatusTooManyRequests, http.StatusOK}, false, 2},
+		{"503 then success", []int{http.StatusServiceUnavailable, http.StatusOK}, false, 2},
+		{"429 twice gives up", []int{http.StatusTooManyRequests, http.StatusTooManyRequests}, true, 2},
+		{"500 page load error is not retried", []int{http.StatusInternalServerError, http.StatusOK}, true, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				status := tc.statuses[requests]
+				requests++
+				w.WriteHeader(status)
+				if status == http.StatusOK {
+					_, _ = w.Write([]byte(pageSpeedPayload))
+				}
+			}))
+			defer server.Close()
+			quota := &fakeQuota{allow: true}
+			provider := &pageSpeedProvider{apiKey: "test-key", endpoint: server.URL, client: server.Client(), quota: quota, now: time.Now}
+			_, err := provider.FetchLighthouse(t.Context(), "org-1", testInput)
+			if (err != nil) != tc.wantErr || requests != tc.wantRequests {
+				t.Fatalf("err = %v after %d requests; want error %v after %d", err, requests, tc.wantErr, tc.wantRequests)
+			}
+			if quota.calls != 1 {
+				t.Fatalf("quota counted %d times; a retry is the same check", quota.calls)
+			}
+		})
+	}
+}
+
+func TestPageSpeedProviderRetryStopsWhenCancelled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	provider := &pageSpeedProvider{apiKey: "test-key", endpoint: server.URL, client: server.Client(), quota: &fakeQuota{allow: true}, now: time.Now, retryDelay: time.Hour}
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := provider.FetchLighthouse(ctx, "org-1", testInput); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want the caller's deadline instead of waiting out the retry", err)
+	}
+}
+
 func TestPageSpeedProviderErrors(t *testing.T) {
 	cases := []struct {
 		name   string

@@ -63,6 +63,9 @@ same Lighthouse for a fee.
   measured.
 - The key goes in the `X-Goog-Api-Key` header, never the URL: a transport error
   repeats the URL, and that message is stored on the audit for the customer.
+- A 429 (per-minute quota, when many audits run at once) or 503 is retried
+  once after 5 seconds; it counts as one check against the workspace's share.
+  A 500 is not retried.
 - A page Google could not load (`NO_FCP`, `ERRORED_DOCUMENT_REQUEST`) is the
   customer's site, so it is logged as a warning, not an error.
 

@@ -80,11 +80,13 @@ type pageSpeedProvider struct {
 	client   *http.Client
 	quota    PageSpeedQuota
 	now      func() time.Time
+	// retryDelay is the wait before the one retry of a 429 or 503.
+	retryDelay time.Duration
 }
 
 // NewPageSpeedProvider builds a provider that sends apiKey with every check.
 func NewPageSpeedProvider(apiKey string, quota PageSpeedQuota) LighthouseProvider {
-	return &pageSpeedProvider{apiKey: apiKey, endpoint: pageSpeedEndpoint, client: &http.Client{}, quota: quota, now: time.Now}
+	return &pageSpeedProvider{apiKey: apiKey, endpoint: pageSpeedEndpoint, client: &http.Client{}, quota: quota, now: time.Now, retryDelay: 5 * time.Second}
 }
 
 // FetchLighthouse runs one check. The key travels in a header, never in the
@@ -103,27 +105,48 @@ func (p *pageSpeedProvider) FetchLighthouse(ctx context.Context, organizationID 
 	}
 
 	query := url.Values{"url": {input.URL}, "strategy": {strings.ToUpper(input.Strategy)}, "category": lighthouseRequestCategories}
+	status, body, err := p.call(ctx, query)
+	// A 429 (per-minute quota, when several audits run at once) or a 503 is
+	// usually gone a few seconds later, so it is tried once more. Nothing
+	// else is retried: a 500 is the customer's page failing to load, and
+	// trying it again only spends quota.
+	if err == nil && (status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable) {
+		select {
+		case <-ctx.Done():
+			return StoredLighthousePayload{}, fmt.Errorf("call PageSpeed Insights: %w", ctx.Err())
+		case <-time.After(p.retryDelay):
+		}
+		status, body, err = p.call(ctx, query)
+	}
+	if err != nil {
+		return StoredLighthousePayload{}, err
+	}
+	if status != http.StatusOK {
+		return StoredLighthousePayload{}, pageSpeedError(status, body)
+	}
+	return ParsePageSpeedPayload(body, input, p.now())
+}
+
+// call sends one request and returns the status and the (bounded) body.
+func (p *pageSpeedProvider) call(ctx context.Context, query url.Values) (int, []byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, pageSpeedTimeout)
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, p.endpoint+"?"+query.Encode(), nil)
 	if err != nil {
-		return StoredLighthousePayload{}, fmt.Errorf("build PageSpeed Insights request: %w", err)
+		return 0, nil, fmt.Errorf("build PageSpeed Insights request: %w", err)
 	}
 	request.Header.Set("X-Goog-Api-Key", p.apiKey)
 	request.Header.Set("Accept", "application/json")
 	response, err := p.client.Do(request)
 	if err != nil {
-		return StoredLighthousePayload{}, fmt.Errorf("call PageSpeed Insights: %w", err)
+		return 0, nil, fmt.Errorf("call PageSpeed Insights: %w", err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, pageSpeedMaxResponseBytes))
 	if err != nil {
-		return StoredLighthousePayload{}, fmt.Errorf("read PageSpeed Insights response: %w", err)
+		return 0, nil, fmt.Errorf("read PageSpeed Insights response: %w", err)
 	}
-	if response.StatusCode != http.StatusOK {
-		return StoredLighthousePayload{}, pageSpeedError(response.StatusCode, body)
-	}
-	return ParsePageSpeedPayload(body, input, p.now())
+	return response.StatusCode, body, nil
 }
 
 // pageSpeedError turns an API error into a message for the audit. Google
