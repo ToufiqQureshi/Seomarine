@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // scriptStep is one scripted model response.
@@ -239,28 +240,45 @@ type fakeMeter struct {
 	hasCred  bool
 	credErr  error
 	charges  []float64
-	keys     []string
+	ceilings []float64
 	chargeFn func() error
-	// credFn, when set, answers the nth credit check (from 1) instead of hasCred.
+	// credFn, when set, answers the nth hold (from 1) instead of hasCred.
 	credFn func(n int) bool
 	checks int
 }
 
-func (m *fakeMeter) HasCredits(context.Context, string) (bool, error) {
+func (m *fakeMeter) Hold(_ context.Context, _ string, ceiling float64) (spend.Hold, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.checks++
-	if m.credFn != nil {
-		return m.credFn(m.checks), m.credErr
+	if m.credErr != nil {
+		return nil, m.credErr
 	}
-	return m.hasCred, m.credErr
+	ok := m.hasCred
+	if m.credFn != nil {
+		ok = m.credFn(m.checks)
+	}
+	if !ok {
+		return nil, spend.ErrNoCredits
+	}
+	m.ceilings = append(m.ceilings, ceiling)
+	return &fakeHold{meter: m}, nil
 }
 
-func (m *fakeMeter) Charge(_ context.Context, _ string, cost float64, key string) error {
+type fakeHold struct {
+	meter   *fakeMeter
+	settled bool
+}
+
+func (h *fakeHold) Settle(_ context.Context, cost float64) error {
+	m := h.meter
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if h.settled {
+		return errors.New("settled twice")
+	}
+	h.settled = true
 	m.charges = append(m.charges, cost)
-	m.keys = append(m.keys, key)
 	if m.chargeFn != nil {
 		return m.chargeFn()
 	}

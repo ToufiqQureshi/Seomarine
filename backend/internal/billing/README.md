@@ -95,17 +95,29 @@ assistant. Rules that must never break:
   paid request is refused with `spend.ErrPaused` (`503 usage_paused`) and an
   error reaches Sentry. With per-workspace limits it should only trip on a
   bug; set it above the sum of your clients' daily limits.
-- **AI.** A model's cost is only known after it answers, so AI work starts
-  only with at least a cent of credit left, is charged after each step, and
-  SAM checks again before every step and stops a turn at one dollar. When
-  OpenRouter reports no cost, a conservative estimate from tokens (or from
-  the streamed text) is charged instead of nothing.
+- **AI.** A model's cost is only known after it answers, so every AI call
+  holds its ceiling first (`AIMeter.Hold` with `openrouter.MaxCostUSD`: the
+  input counted at three bytes a token plus the whole output budget, at the
+  expensive-end fallback prices of $5 / $25 per million tokens) and settles
+  the real cost after. A SAM step with 16,000 output tokens holds about $0.40
+  plus its input (about 640 credits for a typical chat); a writing action
+  about $0.07 (90 credits). The held credits come back at settle, so they
+  only decide whether the call may start: a workspace with fewer credits than
+  the ceiling is refused instead of being let in and charged down to zero,
+  which was Uplumo's money. SAM stops a turn at one dollar. When OpenRouter
+  reports no cost, a conservative estimate from tokens (or from the streamed
+  text) is charged instead of nothing.
 - Without payments (self-hosted) nobody is charged credits, but the daily
   limit still applies.
 
 Edge cases: two requests racing the last credits are decided by the row
-lock, so one is refused. Concurrent requests can pass the daily limit by at
-most their own estimates, because the daily check is not locked.
+lock, so one is refused. Both daily limits count today's open holds at their
+ceilings as well as settled spend. A workspace's daily check and its
+reservation run in one transaction under a per-workspace advisory lock, so
+its parallel requests cannot together pass its limit, and no workspace waits
+on another's. The global emergency limit is not locked across workspaces, so
+requests in different workspaces can pass it by at most their own estimates.
+A hold left open by a crash counts until midnight UTC.
 Never include a provider error body or a credential in a client response.
 
 ## Without Razorpay credentials

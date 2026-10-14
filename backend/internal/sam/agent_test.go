@@ -10,6 +10,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 func partTypes(m Message) []string {
@@ -299,27 +300,40 @@ func TestAnAnswerWithoutAReportedCostIsStillCharged(t *testing.T) {
 	}
 }
 
-func TestSpendIsMeteredInChunksAndFlushedAtTheEnd(t *testing.T) {
+func TestEveryStepHoldsItsCeilingAndSettlesItsRealCost(t *testing.T) {
 	h := newHarness(t,
 		scriptStep{toolCalls: []openrouter.ToolCall{toolCall("1", "whoami", `{}`)}, cost: 0.03},
-		scriptStep{toolCalls: []openrouter.ToolCall{toolCall("2", "whoami", `{}`)}, cost: 0.04},
 		scriptStep{text: []string{"done"}, cost: 0.01},
 	)
 	h.agent.Meter = h.meter
+	h.meter.hasCred = true
 	h.run(context.Background(), t, "go", &recordingSink{})
 
-	// 0.03 stays unbilled; 0.03+0.04 crosses the chunk size; 0.01 flushes at the end.
-	if len(h.meter.charges) != 2 {
-		t.Fatalf("charges = %v", h.meter.charges)
+	if len(h.meter.ceilings) != 2 || len(h.meter.charges) != 2 {
+		t.Fatalf("holds %v charges %v, want one of each per step", h.meter.ceilings, h.meter.charges)
 	}
-	if got := h.meter.charges[0]; got < 0.0699 || got > 0.0701 {
-		t.Errorf("first charge = %v, want 0.07", got)
+	if got := h.meter.charges[0]; got < 0.0299 || got > 0.0301 {
+		t.Errorf("first step settled %v, want 0.03", got)
 	}
-	if got := h.meter.charges[1]; got < 0.0099 || got > 0.0101 {
-		t.Errorf("second charge = %v, want 0.01", got)
+	// The ceiling covers the full output budget at the expensive fallback
+	// price, so no single step can cost more than was held for it.
+	if floor := float64(maxOutputTokens) * 25.0 / 1_000_000; h.meter.ceilings[0] < floor {
+		t.Errorf("ceiling %v is below the output budget's %v", h.meter.ceilings[0], floor)
 	}
-	if h.meter.keys[0] == h.meter.keys[1] {
-		t.Errorf("charge keys must differ so neither is deduplicated: %v", h.meter.keys)
+	if h.meter.ceilings[1] <= h.meter.ceilings[0] {
+		t.Errorf("the second step carries more conversation, so its ceiling %v must exceed %v", h.meter.ceilings[1], h.meter.ceilings[0])
+	}
+}
+
+func TestDailyLimitAndPauseHaveTheirOwnReplies(t *testing.T) {
+	for err, want := range map[error]string{spend.ErrWorkspaceDailyLimit: refuseDailyLimit, spend.ErrPaused: refusePaused} {
+		h := newHarness(t, scriptStep{text: []string{"should not run"}})
+		h.agent.Meter = h.meter
+		h.meter.credErr = err
+		h.run(context.Background(), t, "hi", &recordingSink{})
+		if h.llm.callCount() != 0 || h.lastAssistant(t).Parts[1].Text != want {
+			t.Fatalf("%v: calls = %d reply = %q", err, h.llm.callCount(), h.lastAssistant(t).Parts[1].Text)
+		}
 	}
 }
 

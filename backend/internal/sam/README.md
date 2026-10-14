@@ -69,9 +69,13 @@ membership, and take a strict JSON body. Spec: `backend/api/sam.yaml`.
 - Tool results are capped (`capToolOutput`) before the model sees them; every
   result is re-sent on each later step of its turn.
 - Reasoning is never sent back to the provider.
-- Spend is charged in chunks and flushed on every exit path (done, error,
-  client left), on a context that outlives the request. A stopped turn still
-  consumed what it consumed. The refusal replies are free.
+- Every model call (each step, and the history summary) first holds its
+  ceiling from the workspace's credits (`openrouter.MaxCostUSD`: the full
+  output budget plus the input, at the expensive fallback prices) and settles
+  the real cost when it ends, on a context that outlives the request. Parallel
+  turns cannot together spend past the balance. A stopped turn still consumed
+  what it consumed. The refusal replies are free; running out, the workspace's
+  daily limit and a global pause each have their own reply.
 - Site reading goes through the audit `Guard` (private, loopback and link-local
   addresses blocked at dial time); a redirect is followed one hop, after the
   destination passes the same validation.

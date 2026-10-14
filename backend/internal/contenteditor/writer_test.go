@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 type fakeWriterLLM struct {
@@ -31,20 +32,28 @@ func (f *fakeWriterLLM) Stream(_ context.Context, request openrouter.Request, _ 
 type fakeWriterMeter struct {
 	allowed bool
 	orgID   string
+	ceiling float64
 	cost    float64
-	key     string
+	settled int
 }
 
 type writerPlanResult bool
 
 func (p writerPlanResult) HasPaidPlan(context.Context, string) (bool, error) { return bool(p), nil }
 
-func (f *fakeWriterMeter) HasCredits(_ context.Context, orgID string) (bool, error) {
-	f.orgID = orgID
-	return f.allowed, nil
+func (f *fakeWriterMeter) Hold(_ context.Context, orgID string, ceiling float64) (spend.Hold, error) {
+	f.orgID, f.ceiling = orgID, ceiling
+	if !f.allowed {
+		return nil, spend.ErrNoCredits
+	}
+	return fakeWriterHold{f}, nil
 }
-func (f *fakeWriterMeter) Charge(_ context.Context, orgID string, cost float64, key string) error {
-	f.orgID, f.cost, f.key = orgID, cost, key
+
+type fakeWriterHold struct{ meter *fakeWriterMeter }
+
+func (h fakeWriterHold) Settle(_ context.Context, cost float64) error {
+	h.meter.cost = cost
+	h.meter.settled++
 	return nil
 }
 
@@ -65,8 +74,12 @@ func TestWriterAgentUsesTaskSpecificPromptAndChargesOrganization(t *testing.T) {
 	if !strings.Contains(llm.request.Messages[0].Content, "direct answer opening") || !strings.Contains(llm.request.Messages[0].Content, "answer engines can extract") || !strings.Contains(llm.request.Messages[1].Content, "technical SEO") {
 		t.Fatalf("task prompt/context missing: %+v", llm.request.Messages)
 	}
-	if meter.orgID != "org-1" || meter.cost != 0.002 || !strings.HasPrefix(meter.key, "content-writer:") {
+	if meter.orgID != "org-1" || meter.cost != 0.002 || meter.settled != 1 {
 		t.Fatalf("usage not metered to organization: %+v", meter)
+	}
+	// The hold covers the full output budget at the expensive fallback price.
+	if floor := float64(maxWriterOutput) * 25.0 / 1_000_000; meter.ceiling < floor {
+		t.Fatalf("ceiling %v is below the output budget's %v", meter.ceiling, floor)
 	}
 }
 

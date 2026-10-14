@@ -9,8 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -70,10 +70,10 @@ type WriterService interface {
 	Generate(context.Context, string, WriterInput) (WriterOutput, error)
 }
 
-// WriterMeter accounts for AI usage.
+// WriterMeter reserves credits before the model call and charges its real
+// cost after.
 type WriterMeter interface {
-	HasCredits(context.Context, string) (bool, error)
-	Charge(context.Context, string, float64, string) error
+	Hold(ctx context.Context, organizationID string, ceilingUSD float64) (spend.Hold, error)
 }
 
 // WriterPlanAccess checks whether the organization may use paid writing features.
@@ -109,31 +109,37 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 			return WriterOutput{}, ErrWriterPlanRequired
 		}
 	}
-	if a.Meter != nil {
-		allowed, err := a.Meter.HasCredits(ctx, organizationID)
-		if err != nil {
-			return WriterOutput{}, fmt.Errorf("check writing assistant credits: %w", err)
-		}
-		if !allowed {
-			return WriterOutput{}, ErrWriterNoCredits
-		}
-	}
 	model := strings.TrimSpace(a.Model)
 	if model == "" {
 		model = openrouter.DefaultModel
 	}
-	callCtx, cancel := context.WithTimeout(ctx, writerTimeout)
-	defer cancel()
-	result, err := a.LLM.Stream(callCtx, openrouter.Request{
+	req := openrouter.Request{
 		Model: model,
 		Messages: []openrouter.Message{
 			{Role: "system", Content: writerSystemPrompt(input.Action, input.Mode)},
 			{Role: "user", Content: writerUserPrompt(input)},
 		},
 		MaxTokens: maxWriterOutput,
-	}, openrouter.Handler{})
+	}
+	var hold spend.Hold
+	if a.Meter != nil {
+		ceiling, err := openrouter.MaxCostUSD(req)
+		if err != nil {
+			return WriterOutput{}, fmt.Errorf("price writing request: %w", err)
+		}
+		hold, err = a.Meter.Hold(ctx, organizationID, ceiling)
+		switch {
+		case errors.Is(err, spend.ErrNoCredits), errors.Is(err, spend.ErrWorkspaceDailyLimit), errors.Is(err, spend.ErrPaused):
+			return WriterOutput{}, ErrWriterNoCredits
+		case err != nil:
+			return WriterOutput{}, fmt.Errorf("hold writing assistant credits: %w", err)
+		}
+	}
+	callCtx, cancel := context.WithTimeout(ctx, writerTimeout)
+	defer cancel()
+	result, err := a.LLM.Stream(callCtx, req, openrouter.Handler{})
 	cost, _ := result.Usage.BillableUSD(len(result.Text))
-	a.chargeUsage(ctx, organizationID, cost)
+	a.settle(ctx, hold, cost)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return WriterOutput{}, ErrWriterTimeout
@@ -147,22 +153,19 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 	return WriterOutput{Content: content}, nil
 }
 
-func (a *WriterAgent) chargeUsage(ctx context.Context, organizationID string, costUSD float64) {
-	if a.Meter == nil || costUSD <= 0 {
+// settle charges the call's real cost against its hold, on a context that
+// survives the client leaving: the provider has already been paid.
+func (a *WriterAgent) settle(ctx context.Context, hold spend.Hold, costUSD float64) {
+	if hold == nil {
 		return
 	}
-	logger := a.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-	key, err := ids.New()
-	if err != nil {
-		logger.ErrorContext(ctx, "create content writing usage id", "err", err)
-		return
-	}
-	chargeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writerChargeWait)
+	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writerChargeWait)
 	defer cancel()
-	if err := a.Meter.Charge(chargeCtx, organizationID, costUSD, "content-writer:"+key); err != nil {
+	if err := hold.Settle(settleCtx, costUSD); err != nil {
+		logger := a.Logger
+		if logger == nil {
+			logger = slog.Default()
+		}
 		logger.ErrorContext(ctx, "content writing assistant usage charge failed", "err", err)
 	}
 }

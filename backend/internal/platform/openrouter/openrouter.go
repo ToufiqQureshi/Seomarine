@@ -107,6 +107,29 @@ func (u Usage) BillableUSD(generatedChars int) (usd float64, estimated bool) {
 	return float64(inputTokens)*fallbackInputUSDPerToken + float64(max(outputTokens, 0))*fallbackOutputUSDPerToken, true
 }
 
+// MaxCostUSD is the most req can cost, for holding credits before it is
+// sent: every byte of the messages and tool definitions counted as a third
+// of a token (fewer bytes per token than real text, so more tokens) and the full MaxTokens of output, at the fallback prices, which
+// are the expensive end of the models Uplumo uses. A request without
+// MaxTokens has no ceiling, so it is refused with an error.
+func MaxCostUSD(req Request) (float64, error) {
+	if req.MaxTokens <= 0 {
+		return 0, errors.New("a request without MaxTokens has no cost ceiling")
+	}
+	chars := 0
+	for _, message := range req.Messages {
+		chars += len(message.Content) + len(message.ToolCallID)
+		for _, call := range message.ToolCalls {
+			chars += len(call.ID) + len(call.Function.Name) + len(call.Function.Arguments)
+		}
+	}
+	for _, tool := range req.Tools {
+		chars += len(tool.Name) + len(tool.Description) + len(tool.Parameters)
+	}
+	inputTokens := (chars + charsPerToken - 1) / charsPerToken
+	return float64(inputTokens)*fallbackInputUSDPerToken + float64(req.MaxTokens)*fallbackOutputUSDPerToken, nil
+}
+
 // Result is the assembled response once the stream ends.
 type Result struct {
 	Text         string
