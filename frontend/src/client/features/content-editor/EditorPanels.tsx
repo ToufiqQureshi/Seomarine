@@ -267,8 +267,8 @@ export function DraftsPanel({
 }) {
   return (
     <section className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-medium">Your drafts</h2>
+      {/* The surrounding <summary> already names this list. */}
+      <div className="mb-3 flex justify-end">
         <Button variant="outline" size="sm" disabled={isBusy} onClick={onNew}>
           <Plus aria-hidden />
           New
