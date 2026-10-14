@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { Save } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -320,6 +321,11 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           aeo={aeo}
           activeScore={activeScore.score}
           checks={activeScore.checks}
+        />
+        <PublishToSite
+          projectId={projectId}
+          draftId={draftId}
+          hasUnsavedChanges={dirty}
         />
         <WriterAssistant
           projectId={projectId}

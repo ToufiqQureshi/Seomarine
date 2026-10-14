@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { getOnboardingAnswers } from "@/client/features/onboarding/onboardingApi";
 
 // 0 interests · 1 who for · 2 source · 3 Search Console · 4 agent setup
-export const ONBOARDING_LAST_STEP = 4;
+export const ONBOARDING_LAST_STEP = 5;
 
 // Option values below are persisted and used by analytics. Change display copy
 // here instead of renaming those values, so historical answers stay comparable.

@@ -27,7 +27,7 @@ When explaining traffic growth, Sam should frame Uplumo as a tool for making bet
 Uplumo has a Free plan and three paid plans, priced per workspace per month in Indian rupees. The live prices and the full comparison are on `/pricing` and on the Billing page; if a number here ever disagrees with those pages, the pages are right.
 
 - Free (₹0): 1 website, Uplumo Analytics with AI traffic detection, and a starter site audit.
-- Basic (₹999): 1 website, keyword research, rank tracking for 100 keywords, Google Search Console and Google Analytics, and the full site audit.
+- Basic (₹999): 1 website, keyword research, rank tracking for 100 keywords, Google Search Console and Google Analytics, the full site audit, and publishing articles from the content editor straight to a connected WordPress site.
 - Pro (₹2,499): 2 websites, rank tracking for 500 keywords, AI Visibility, backlink and competitor research, the AI writing assistant, and 3 team members.
 - Agency (₹5,999): 10 websites, rank tracking for 2,000 keywords, white-label reports, and 10 team members.
 

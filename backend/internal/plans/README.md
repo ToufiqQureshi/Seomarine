@@ -37,6 +37,7 @@ The one list of what each Uplumo plan costs, limits and includes
 | `Keywords`       | `internal/keywords` research, `internal/ranktracking` metric refresh |
 | `RankTracking`   | `internal/ranktracking` manual and scheduled checks               |
 | `FullAudit`      | `internal/audit`: the paid audit tier                             |
+| `Publishing`     | `internal/sitepublish`: connecting a website and publishing to it |
 | `Backlinks`      | `internal/backlinks`                                              |
 | `DomainResearch` | `internal/domain`                                                 |
 | `AIVisibility`   | `internal/aisearch`                                               |

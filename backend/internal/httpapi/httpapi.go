@@ -42,6 +42,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
 	"github.com/toufiqqureshi/uplumo/backend/internal/sam"
 	"github.com/toufiqqureshi/uplumo/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/sitepublish"
 	"github.com/toufiqqureshi/uplumo/backend/internal/team"
 )
 
@@ -119,6 +120,8 @@ type Deps struct {
 	Projects      *projects.Service
 	ContentEditor *contenteditor.Repository
 	ContentWriter contenteditor.WriterService
+	// SitePublish connects a project's website and publishes drafts to it.
+	SitePublish *sitepublish.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
 	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
@@ -329,6 +332,14 @@ func NewHandler(d Deps) http.Handler {
 	if d.ContentEditor != nil {
 		contenteditor.Mount(mux, d.ContentEditor, d.ContentWriter, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	}
+	var publishPlans sitepublish.PaidPlans
+	if d.Billing != nil {
+		publishPlans = d.Billing.Gate(planCatalog.Publishing)
+	}
+	sitepublish.Mount(mux, sitepublish.Deps{
+		Logger: d.Logger, Service: d.SitePublish, Plans: publishPlans, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	sam.Mount(mux, sam.Deps{
 		Logger: d.Logger, Service: d.SAMSessions, WithSession: withSession, Chat: d.SAMChat,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

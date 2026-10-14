@@ -433,6 +433,7 @@ func comparison() []CompareRow {
 		}),
 		row("Backlink and competitor research", included(planCatalog.Backlinks)),
 		row("AI Visibility", included(planCatalog.AIVisibility)),
+		row("Publish articles to your WordPress site", included(planCatalog.Publishing)),
 		row("AI writing assistant", included(planCatalog.AIWriting)),
 		row("White-label reports", included(planCatalog.WhiteLabel)),
 		row("Monthly price", func(plan planCatalog.Definition) string {

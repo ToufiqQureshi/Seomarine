@@ -60,6 +60,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
 	"github.com/toufiqqureshi/uplumo/backend/internal/sam"
 	"github.com/toufiqqureshi/uplumo/backend/internal/site"
+	"github.com/toufiqqureshi/uplumo/backend/internal/sitepublish"
 	"github.com/toufiqqureshi/uplumo/backend/internal/team"
 )
 
@@ -224,6 +225,11 @@ func run(logger *slog.Logger) (err error) {
 		}
 	}
 
+	sitePublish, err := buildSitePublish(cfg, db)
+	if err != nil {
+		return err
+	}
+
 	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
 	if err != nil {
 		return err
@@ -294,6 +300,7 @@ func run(logger *slog.Logger) (err error) {
 			RankChecks:           rankChecks,
 			Projects:             &projects.Service{Store: projects.Repository{DB: db}, Plans: billingRoutes},
 			ContentEditor:        &contenteditor.Repository{DB: db},
+			SitePublish:          sitePublish,
 			ContentWriter:        buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
@@ -344,6 +351,23 @@ func run(logger *slog.Logger) (err error) {
 		return fmt.Errorf("serve: %w", err)
 	}
 	return nil
+}
+
+// buildSitePublish wires publishing to customers' websites. Their passwords
+// are encrypted with a key derived from BETTER_AUTH_SECRET: rotating that
+// secret means every customer reconnects their website.
+func buildSitePublish(cfg config.Config, db *pgxpool.Pool) (*sitepublish.Service, error) {
+	derived := sha256.Sum256([]byte("uplumo-site-credentials-v1:" + cfg.BetterAuthSecret))
+	cipher, err := google.NewTokenCipher("site-v1", base64.StdEncoding.EncodeToString(derived[:]))
+	if err != nil {
+		return nil, fmt.Errorf("configure site credential encryption: %w", err)
+	}
+	return &sitepublish.Service{
+		Store:     sitepublish.Repository{DB: db},
+		Drafts:    contenteditor.Repository{DB: db},
+		Cipher:    cipher,
+		WordPress: sitepublish.WordPress{HTTP: audit.NewGuard().NewClient(30 * time.Second)},
+	}, nil
 }
 
 func buildContentWriter(cfg config.Config, logger *slog.Logger, meter contenteditor.WriterMeter, plans contenteditor.WriterPlanAccess) contenteditor.WriterService {

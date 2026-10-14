@@ -50,6 +50,7 @@ mean each one has been tried on production with real provider keys.
 | Google               | Search Console performance and URL inspection, GA4 reports and measurement health             |
 | Reports              | White-label reports (logo, name, colour, website), public share links                         |
 | Content editor       | Project drafts, live SEO/AEO checks, AI writing actions                                       |
+| Website publishing   | Connect a WordPress site (onboarding or Settings → Integrations), publish or update drafts with their images (Basic and above) |
 | Local SEO            | Business search, profile, Google Maps rank grid                                               |
 | Assistant (SAM)      | Chat with tools over the project's data                                                       |
 | MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                              |
@@ -65,6 +66,7 @@ mean each one has been tried on production with real provider keys.
 | Live usage on the Billing page                                          | ⏳     |
 | AI Visibility: sentiment, tracking over time, drop alerts               | ⏳     |
 | "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics) | ⏳ |
+| Publishing to Shopify, Wix, Webflow, plain HTML (SFTP) and an Uplumo-hosted blog | ⏳ |
 | Content editor on an external site; delivering fixes (JS snippet, GitHub PR, copy-paste) | ⏳ |
 | Site audit: AI "how to fix" for every issue (English + Hinglish)        | ⏳     |
 | Scheduled reports, emailed to clients                                   | ⏳     |
