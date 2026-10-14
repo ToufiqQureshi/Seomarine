@@ -138,3 +138,40 @@ func TestSignedInCallsNeverFollowARedirect(t *testing.T) {
 		t.Errorf("Verify through a redirect: err = %v, password sent elsewhere = %v", err, leaked)
 	}
 }
+
+// A firewall in front of the site (Hostinger hCDN, Cloudflare) answers
+// servers with an HTML 403/429/503. That is something the customer can fix,
+// so it must not be reported as "not WordPress" or as a wrong password.
+func TestFirewallBlocksAreToldApartFromNotWordPress(t *testing.T) {
+	for _, status := range []int{http.StatusForbidden, http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+		firewall := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte("<html>Checking your browser</html>"))
+		}))
+		wp := WordPress{HTTP: firewall.Client()}
+		_, err := wp.Discover(t.Context(), firewall.URL)
+		if !errors.Is(err, ErrSiteBlocked) || errors.Is(err, ErrNotWordPress) {
+			t.Errorf("discover behind %d: err = %v, want ErrSiteBlocked", status, err)
+		}
+		_, err = wp.Verify(t.Context(), Credentials{APIBase: firewall.URL + "/wp-json", Username: testUser, Password: testPassword})
+		if !errors.Is(err, ErrSiteBlocked) || errors.Is(err, ErrBadCredentials) {
+			t.Errorf("verify behind %d: err = %v, want ErrSiteBlocked", status, err)
+		}
+		firewall.Close()
+	}
+
+	missing := httptest.NewTLSServer(http.NotFoundHandler())
+	defer missing.Close()
+	if _, err := (WordPress{HTTP: missing.Client()}).Discover(t.Context(), missing.URL); !errors.Is(err, ErrNotWordPress) || errors.Is(err, ErrSiteBlocked) {
+		t.Errorf("404 everywhere: err = %v, want ErrNotWordPress", err)
+	}
+
+	// WordPress's own 403 carries a JSON code: that is a permission answer.
+	forbidden := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"code": "rest_forbidden", "message": "Sorry, you are not allowed to do that."})
+	}))
+	defer forbidden.Close()
+	if _, err := (WordPress{HTTP: forbidden.Client()}).Verify(t.Context(), Credentials{APIBase: forbidden.URL + "/wp-json", Username: testUser, Password: testPassword}); !errors.Is(err, ErrBadCredentials) {
+		t.Errorf("WordPress 403: err = %v, want ErrBadCredentials", err)
+	}
+}

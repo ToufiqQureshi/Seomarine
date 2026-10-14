@@ -188,7 +188,11 @@ func (h handler) writeSiteError(w http.ResponseWriter, r *http.Request, operatio
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This draft is no longer available.")
 	case errors.Is(err, ErrNotHTTPS):
 		httpx.WriteError(w, http.StatusBadRequest, "site_not_https", "Your website must use https:// before Uplumo can sign in to it.")
+	case errors.Is(err, ErrSiteBlocked):
+		h.Logger.WarnContext(r.Context(), operation, "err", err)
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "site_blocked", "Your website's security blocked Uplumo. On Hostinger, open hPanel, go to Security and turn off bot protection (or ask Hostinger support to allow Uplumo). With Cloudflare or a security plugin, allow the user agent \"Uplumo/1.0\". Then try again.")
 	case errors.Is(err, ErrNotWordPress):
+		h.Logger.WarnContext(r.Context(), operation, "err", err)
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "site_not_wordpress", "We could not find WordPress at this address. Check the address, or ask your developer whether the WordPress REST API is turned off.")
 	case errors.Is(err, ErrAppPasswordsOff):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "app_passwords_off", "Application passwords are turned off on this site, often by a security plugin. Turn them on, then try again.")

@@ -177,3 +177,16 @@ func TestHandlerRejectsMalformedRequests(t *testing.T) {
 		t.Errorf("unconfigured = %d, want 503", status)
 	}
 }
+
+func TestHandlerTellsTheCustomerTheirFirewallBlockedUs(t *testing.T) {
+	firewall := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer firewall.Close()
+	service := &Service{Store: newMemoryStore(), Drafts: memoryDrafts{}, Cipher: testCipher(t), WordPress: WordPress{HTTP: firewall.Client()}}
+	mux := testMux(service, planStub{allowed: true}, owner)
+	status, body := post(t, mux, "/api/v1/projects/p/site-connection/save", connectBody(firewall.URL, testPassword))
+	if status != http.StatusUnprocessableEntity || errorCode(body) != "site_blocked" {
+		t.Fatalf("connect behind a firewall = %d %v", status, body)
+	}
+}

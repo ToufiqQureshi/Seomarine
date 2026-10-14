@@ -62,6 +62,11 @@ func (e *RemoteError) Error() string {
 	return fmt.Sprintf("site answered %d", e.Status)
 }
 
+// blockedStatus reports whether status is what firewalls and bot checks answer.
+func blockedStatus(status int) bool {
+	return status == http.StatusForbidden || status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable
+}
+
 // Discover finds the REST API of the WordPress site at siteURL.
 func (w WordPress) Discover(ctx context.Context, siteURL string) (SiteInfo, error) {
 	base := strings.TrimRight(siteURL, "/")
@@ -93,10 +98,15 @@ func (w WordPress) Discover(ctx context.Context, siteURL string) (SiteInfo, erro
 		}
 		return SiteInfo{SiteURL: parsed.Scheme + "://" + parsed.Host, APIBase: apiBase, Name: strings.TrimSpace(index.Name)}, nil
 	}
+	// A firewall or bot check in front of the site (Hostinger hCDN,
+	// Cloudflare, Wordfence) answers 403/429/503 to servers. The customer can
+	// fix that, so it must not read as "not WordPress".
+	if remote, ok := errors.AsType[*RemoteError](lastErr); ok && blockedStatus(remote.Status) {
+		return SiteInfo{}, fmt.Errorf("%w: %w", ErrSiteBlocked, lastErr)
+	}
 	// The site answered, just not as WordPress (a 404, an HTML page...).
-	var remote *RemoteError
-	if errors.Is(lastErr, ErrNotWordPress) || errors.As(lastErr, &remote) {
-		return SiteInfo{}, ErrNotWordPress
+	if _, ok := errors.AsType[*RemoteError](lastErr); ok || errors.Is(lastErr, ErrNotWordPress) {
+		return SiteInfo{}, fmt.Errorf("%w: %w", ErrNotWordPress, lastErr)
 	}
 	return SiteInfo{}, fmt.Errorf("%w: %w", ErrSiteUnreachable, lastErr)
 }
@@ -109,9 +119,14 @@ func (w WordPress) Verify(ctx context.Context, creds Credentials) (string, error
 		Capabilities map[string]bool `json:"capabilities"`
 	}
 	err := w.call(ctx, creds, http.MethodGet, "/wp/v2/users/me", url.Values{"context": {"edit"}}, nil, "", nil, &me)
-	var remote *RemoteError
-	if errors.As(err, &remote) && (remote.Status == http.StatusUnauthorized || remote.Status == http.StatusForbidden) {
-		return "", ErrBadCredentials
+	if remote, ok := errors.AsType[*RemoteError](err); ok {
+		switch {
+		// WordPress itself answers in JSON with a code; a firewall does not.
+		case remote.Code == "" && blockedStatus(remote.Status):
+			return "", fmt.Errorf("%w: %w", ErrSiteBlocked, err)
+		case remote.Status == http.StatusUnauthorized || remote.Status == http.StatusForbidden:
+			return "", ErrBadCredentials
+		}
 	}
 	if err != nil {
 		return "", err

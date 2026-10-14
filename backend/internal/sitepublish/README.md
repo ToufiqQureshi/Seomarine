@@ -67,6 +67,12 @@ contract.
 
 - **Hosting strips the `Authorization` header** (some Apache/CGI setups):
   WordPress answers 401 and the customer is told to ask the host to allow it.
+- **A firewall or bot check blocks our server** (Hostinger hCDN, Cloudflare,
+  Wordfence): the site answers our server with 403/429/503 while a browser
+  sees it fine. Without a WordPress JSON error code that is `site_blocked`, not
+  "not WordPress" or "wrong password", and the customer is told to allow
+  Uplumo. Both `site_blocked` and `site_not_wordpress` are logged with the
+  site's status so support can see which one happened.
 - **A publish that times out after images were uploaded** leaves those images
   in the media library; the next publish uploads them again because the
   mapping is saved with the post. Rare with 10 images and a 100 second budget.
