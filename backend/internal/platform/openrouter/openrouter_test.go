@@ -211,3 +211,25 @@ func TestBillableUSDNeverMakesAnAnswerFree(t *testing.T) {
 		})
 	}
 }
+
+func TestMaxCostUSD(t *testing.T) {
+	if _, err := MaxCostUSD(Request{Messages: []Message{{Content: "hi"}}}); err == nil {
+		t.Fatal("a request without MaxTokens must have no ceiling")
+	}
+	got, err := MaxCostUSD(Request{
+		Messages:  []Message{{Role: "user", Content: strings.Repeat("a", 3000)}},
+		Tools:     []Tool{{Name: "t", Description: strings.Repeat("d", 2999)}},
+		MaxTokens: 1000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 6,000 bytes are 2,000 input tokens at $5/M plus 1,000 output at $25/M.
+	if want := 2000*5.0/1_000_000 + 1000*25.0/1_000_000; math.Abs(got-want) > 1e-12 {
+		t.Fatalf("MaxCostUSD = %v, want %v", got, want)
+	}
+	withCall, _ := MaxCostUSD(Request{Messages: []Message{{ToolCalls: []ToolCall{{Function: FunctionCall{Arguments: strings.Repeat("x", 300)}}}}}, MaxTokens: 1})
+	if withCall < 100*5.0/1_000_000 {
+		t.Fatalf("tool-call arguments must count as input: %v", withCall)
+	}
+}

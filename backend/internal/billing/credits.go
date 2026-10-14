@@ -204,7 +204,20 @@ func (s *CreditLedgerService) ReserveFor(ctx context.Context, orgID string, amou
 		return CreditReservation{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	reservation, err := reserveTx(ctx, tx, orgID, amount, idempotencyKey, feature)
+	if err != nil {
+		return CreditReservation{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return CreditReservation{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return reservation, nil
+}
 
+// reserveTx deducts amount from the balance inside tx and records the
+// reservation. The balance row is locked, so concurrent reservations cannot
+// both take the last credits. A known idempotency key returns its reservation.
+func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idempotencyKey, feature string) (CreditReservation, error) {
 	if idempotencyKey != "" {
 		var res CreditReservation
 		var ik *string
@@ -222,7 +235,7 @@ func (s *CreditLedgerService) ReserveFor(ctx context.Context, orgID string, amou
 	}
 
 	var balance int64
-	err = tx.QueryRow(ctx, `
+	err := tx.QueryRow(ctx, `
 		SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE
 	`, orgID).Scan(&balance)
 	if errors.Is(err, pgx.ErrNoRows) || balance < amount {
@@ -262,10 +275,6 @@ func (s *CreditLedgerService) ReserveFor(ctx context.Context, orgID string, amou
 	`, ledgerID, orgID, resID, -amount, nowTime)
 	if err != nil {
 		return CreditReservation{}, fmt.Errorf("insert ledger reserve: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return CreditReservation{}, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return CreditReservation{

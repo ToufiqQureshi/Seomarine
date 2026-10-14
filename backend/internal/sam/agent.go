@@ -14,6 +14,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/ids"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -26,10 +27,6 @@ const (
 	// lets reasoning eat the reply.
 	maxOutputTokens = 16_000
 
-	// billingChunkUSD batches metering: spend accumulates step by step and is
-	// charged once this much is unbilled, with the remainder flushed when the
-	// turn ends. The user pays the turn's actual provider cost either way.
-	billingChunkUSD = 0.05
 	// maxTurnUSD stops one turn once its provider cost reaches it, so a model
 	// stuck calling tools cannot spend a workspace's month in one message.
 	maxTurnUSD = 1.0
@@ -53,14 +50,14 @@ type LLM interface {
 	Stream(ctx context.Context, req openrouter.Request, h openrouter.Handler) (openrouter.Result, error)
 }
 
-// Meter gates turns on credits and charges provider spend. Uplumo is a SaaS
-// product and the model key is the platform's, so production always sets one;
-// nil only exists for tests and local development.
+// Meter reserves credits before every model call and charges its real cost
+// after. Uplumo is a SaaS product and the model key is the platform's, so
+// production always sets one; nil only exists for tests and local development.
 type Meter interface {
-	// HasCredits reports whether the organization may start a turn.
-	HasCredits(ctx context.Context, organizationID string) (bool, error)
-	// Charge bills costUSD of provider spend. key makes a retry idempotent.
-	Charge(ctx context.Context, organizationID string, costUSD float64, key string) error
+	// Hold reserves the most a call can cost (spend.ErrNoCredits,
+	// ErrWorkspaceDailyLimit or ErrPaused when it cannot). The caller
+	// settles the hold exactly once with the real cost.
+	Hold(ctx context.Context, organizationID string, ceilingUSD float64) (spend.Hold, error)
 }
 
 // SessionContext is everything a turn needs to know about who is chatting.
@@ -123,7 +120,9 @@ func (a *Agent) skills() []skill {
 // free (no provider call) and renders and persists like any other reply.
 const (
 	failureText          = "SAM could not finish this reply. Please try again."
-	refuseNoCredits      = "You're out of credits. Top up to keep using SAM."
+	refuseNoCredits      = "You don't have enough credits left for an answer. Your credits refill on your next billing date, or upgrade your plan for more."
+	refuseDailyLimit     = "You've used today's share of your credits, so I stopped here. It resets at midnight UTC."
+	refusePaused         = "AI answers are paused on our side for a moment. Please try again later."
 	refuseRanOutMidTurn  = "You ran out of credits, so I stopped here. Your credits refill on your next billing date, or upgrade your plan for more."
 	refuseTurnLimit      = "This request was getting expensive, so I stopped here to protect your credits. Ask me to continue if you need more."
 	refuseBillingUnknown = "I can't check your credits right now, so I didn't start. Please try again in a minute."
@@ -147,33 +146,52 @@ func (a *Agent) Run(ctx context.Context, sc SessionContext, userMessage Message,
 		a.afterTurn(ctx, sc, userMessage)
 	}()
 
-	if refusal := a.gate(ctx, sc); refusal != "" {
+	if refusal := a.gate(sc); refusal != "" {
 		turn.refuse(refusal)
 		return nil
 	}
 	return turn.run(ctx)
 }
 
-// gate refuses a turn the organization cannot pay for. Depleted credits are
-// checked here, per turn, because a long-lived chat outlives plan changes.
-func (a *Agent) gate(ctx context.Context, sc SessionContext) string {
-	if a.Meter == nil {
-		return ""
-	}
-	if sc.Role == "" {
+// gate refuses a turn its user no longer has access to. Credits are checked
+// by the hold before every model call.
+func (a *Agent) gate(sc SessionContext) string {
+	if a.Meter != nil && sc.Role == "" {
 		return refuseNoAccess
 	}
-	ok, err := a.Meter.HasCredits(ctx, sc.OrganizationID)
-	if err != nil {
-		// Fail closed: a turn that cannot be paid for must not run on
-		// Uplumo's money.
-		a.logger().ErrorContext(ctx, "SAM credit check failed", "err", err)
-		return refuseBillingUnknown
-	}
-	if !ok {
-		return refuseNoCredits
-	}
 	return ""
+}
+
+// holdStep reserves credits for one model call. midTurn picks the wording
+// when credits run out after the turn has started.
+func (t *turnState) holdStep(ctx context.Context, req openrouter.Request, midTurn bool) (spend.Hold, string) {
+	a := t.agent
+	if a.Meter == nil {
+		return nil, ""
+	}
+	ceiling, err := openrouter.MaxCostUSD(req)
+	if err != nil {
+		a.logger().ErrorContext(ctx, "SAM step has no cost ceiling", "err", err)
+		return nil, refuseBillingUnknown
+	}
+	hold, err := a.Meter.Hold(ctx, t.sc.OrganizationID, ceiling)
+	switch {
+	case err == nil:
+		return hold, ""
+	case errors.Is(err, spend.ErrNoCredits) && midTurn:
+		return nil, refuseRanOutMidTurn
+	case errors.Is(err, spend.ErrNoCredits):
+		return nil, refuseNoCredits
+	case errors.Is(err, spend.ErrWorkspaceDailyLimit):
+		return nil, refuseDailyLimit
+	case errors.Is(err, spend.ErrPaused):
+		return nil, refusePaused
+	default:
+		// Fail closed: a call that cannot be paid for must not run on
+		// Uplumo's money.
+		a.logger().ErrorContext(ctx, "SAM credit hold failed", "err", err)
+		return nil, refuseBillingUnknown
+	}
 }
 
 func (a *Agent) logger() *slog.Logger {
@@ -220,10 +238,8 @@ type turnState struct {
 	sc        SessionContext
 	sink      Sink
 	assistant Message
-	unbilled  float64
-	// spent is the turn's provider cost so far, billed or not.
-	spent   float64
-	charges int
+	// spent is the turn's provider cost so far.
+	spent float64
 	// stepChars counts the characters the current step streamed, to price a
 	// call whose usage never arrived.
 	stepChars int
@@ -250,10 +266,9 @@ func (t *turnState) refuse(text string) {
 	_ = t.sink.Send(Chunk{"type": "finish-step"})
 }
 
-// finish stores the assistant message and flushes unbilled spend. It runs on
-// every exit path, on a context that survives the client leaving, so a turn
-// that was stopped or failed still bills what it spent and keeps its partial
-// reply.
+// finish stores the assistant message. It runs on every exit path, on a
+// context that survives the client leaving, so a turn that was stopped or
+// failed keeps its partial reply. Each step settled its own spend.
 func (t *turnState) finish(ctx context.Context) {
 	if t.finished {
 		return
@@ -261,7 +276,6 @@ func (t *turnState) finish(ctx context.Context) {
 	t.finished = true
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
 	defer cancel()
-	t.flushSpend(ctx)
 	// A tool that never returned must not stay "running" in the transcript.
 	for i := range t.assistant.Parts {
 		part := &t.assistant.Parts[i]
@@ -295,24 +309,25 @@ func (t *turnState) run(ctx context.Context) error {
 
 	conversation := append([]openrouter.Message{{Role: "system", Content: system}}, history...)
 	for step := 0; step < maxSteps; step++ {
-		if step > 0 {
-			// Every step costs money, so check again before each one: credits
-			// can run out, or the daily limit be reached, mid-turn.
-			if t.spent >= maxTurnUSD {
-				t.refuse(refuseTurnLimit)
-				return nil
-			}
-			switch refusal := a.gate(ctx, t.sc); refusal {
-			case "":
-			case refuseNoCredits:
-				t.refuse(refuseRanOutMidTurn)
-				return nil
-			default:
-				t.refuse(refusal)
-				return nil
-			}
+		if step > 0 && t.spent >= maxTurnUSD {
+			t.refuse(refuseTurnLimit)
+			return nil
 		}
-		result, ok := t.step(ctx, conversation, toolset)
+		req := openrouter.Request{
+			Model:           a.Model,
+			Messages:        conversation,
+			Tools:           toolset.Definitions(),
+			MaxTokens:       maxOutputTokens,
+			ReasoningEffort: "max",
+		}
+		// Every step costs money, so each holds its ceiling first: credits
+		// can run out, or the daily limit be reached, mid-turn.
+		hold, refusal := t.holdStep(ctx, req, step > 0)
+		if refusal != "" {
+			t.refuse(refusal)
+			return nil
+		}
+		result, ok := t.step(ctx, req, hold)
 		if !ok {
 			return nil
 		}
@@ -345,8 +360,9 @@ func (t *turnState) auth() mcp.Auth {
 	}
 }
 
-// step runs one model call and streams it. ok is false when the turn must end.
-func (t *turnState) step(ctx context.Context, conversation []openrouter.Message, toolset *toolset) (openrouter.Result, bool) {
+// step runs one model call, streams it and settles its hold with the real
+// cost. ok is false when the turn must end.
+func (t *turnState) step(ctx context.Context, req openrouter.Request, hold spend.Hold) (openrouter.Result, bool) {
 	a := t.agent
 	t.textPart, t.reasoningPart = -1, -1
 	t.stepChars = 0
@@ -389,13 +405,7 @@ func (t *turnState) step(ctx context.Context, conversation []openrouter.Message,
 			return t.sink.Send(Chunk{"type": "text-delta", "id": textID, "delta": delta})
 		},
 	}
-	result, err := a.LLM.Stream(ctx, openrouter.Request{
-		Model:           a.Model,
-		Messages:        conversation,
-		Tools:           toolset.Definitions(),
-		MaxTokens:       maxOutputTokens,
-		ReasoningEffort: "max",
-	}, handler)
+	result, err := a.LLM.Stream(ctx, req, handler)
 
 	// Close whatever was streaming, even when the call failed, so the stored
 	// message and the client agree on what exists.
@@ -411,7 +421,7 @@ func (t *turnState) step(ctx context.Context, conversation []openrouter.Message,
 	if estimated {
 		a.logger().WarnContext(ctx, "SAM model call reported no cost; charging an estimate", "session", t.sc.SessionID, "cost_usd", cost)
 	}
-	t.recordSpend(ctx, cost)
+	t.settle(ctx, hold, cost)
 
 	if err != nil {
 		if ctx.Err() == nil && !errors.Is(err, errStreamClosed) {
@@ -483,31 +493,17 @@ func (t *turnState) fail(ctx context.Context, cause error) error {
 	return cause
 }
 
-// recordSpend adds provider cost to the turn and charges once a chunk of it has
-// accumulated.
-func (t *turnState) recordSpend(ctx context.Context, costUSD float64) {
-	if costUSD > 0 {
-		t.unbilled += costUSD
-		t.spent += costUSD
-	}
-	if t.unbilled >= billingChunkUSD {
-		t.flushSpend(ctx)
-	}
-}
-
-func (t *turnState) flushSpend(ctx context.Context) {
-	a := t.agent
-	if a.Meter == nil || t.unbilled <= 0 {
+// settle charges a step's real cost against its hold, on a context that
+// survives the client leaving: the provider has already been paid.
+func (t *turnState) settle(ctx context.Context, hold spend.Hold, costUSD float64) {
+	t.spent += costUSD
+	if hold == nil {
 		return
 	}
-	cost := t.unbilled
-	t.unbilled = 0
-	t.charges++
-	key := fmt.Sprintf("sam:%s:%d", t.assistant.ID, t.charges)
-	chargeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
+	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
 	defer cancel()
-	if err := a.Meter.Charge(chargeCtx, t.sc.OrganizationID, cost, key); err != nil {
-		a.logger().ErrorContext(ctx, "SAM credit metering failed", "session", t.sc.SessionID, "cost_usd", cost, "err", err)
+	if err := hold.Settle(settleCtx, costUSD); err != nil {
+		t.agent.logger().ErrorContext(ctx, "SAM credit settle failed", "session", t.sc.SessionID, "cost_usd", costUSD, "err", err)
 	}
 }
 

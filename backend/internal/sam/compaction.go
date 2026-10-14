@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/openrouter"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -45,7 +46,7 @@ func (a *Agent) compact(ctx context.Context, sc SessionContext) error {
 	prompt.WriteString("Conversation to fold in:\n\n")
 	prompt.WriteString(renderTranscript(older))
 
-	result, err := a.LLM.Stream(ctx, openrouter.Request{
+	req := openrouter.Request{
 		Model: a.Model,
 		Messages: []openrouter.Message{
 			{Role: "system", Content: summarizeInstruction},
@@ -53,12 +54,25 @@ func (a *Agent) compact(ctx context.Context, sc SessionContext) error {
 		},
 		MaxTokens:       summaryMaxTokens,
 		ReasoningEffort: "low",
-	}, openrouter.Handler{})
+	}
+	var hold spend.Hold
+	if a.Meter != nil {
+		ceiling, err := openrouter.MaxCostUSD(req)
+		if err != nil {
+			return fmt.Errorf("summarize: %w", err)
+		}
+		// A workspace that cannot cover the summary keeps its full history
+		// until it can.
+		if hold, err = a.Meter.Hold(ctx, sc.OrganizationID, ceiling); err != nil {
+			return fmt.Errorf("hold credits for a summary: %w", err)
+		}
+	}
+	result, err := a.LLM.Stream(ctx, req, openrouter.Handler{})
 	// The call is billed even when its text turns out unusable.
-	if cost, _ := result.Usage.BillableUSD(len(result.Text)); a.Meter != nil && cost > 0 {
-		key := fmt.Sprintf("sam:compact:%s:%d", sc.SessionID, older[len(older)-1].Seq)
-		if chargeErr := a.Meter.Charge(ctx, sc.OrganizationID, cost, key); chargeErr != nil {
-			a.logger().ErrorContext(ctx, "SAM compaction metering failed", "err", chargeErr)
+	if hold != nil {
+		cost, _ := result.Usage.BillableUSD(len(result.Text))
+		if settleErr := hold.Settle(ctx, cost); settleErr != nil {
+			a.logger().ErrorContext(ctx, "SAM compaction metering failed", "err", settleErr)
 		}
 	}
 	if err != nil {

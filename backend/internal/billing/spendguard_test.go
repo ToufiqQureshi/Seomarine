@@ -180,8 +180,7 @@ func TestHoldIsRefusedOnceTodaysSpendReachesTheDailyLimit(t *testing.T) {
 	ctx := t.Context()
 	ledger := NewCreditLedgerService(pool)
 	org := spendOrg(ctx, t, pool, 100_000)
-	probe := testGuard(t, pool, ledger, noDailyLimit, true)
-	spent, err := probe.SpentTodayUSD(ctx)
+	spent, err := spendTodayUSD(ctx, pool, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,8 +201,8 @@ func TestHoldIsRefusedOnceTodaysSpendReachesTheDailyLimit(t *testing.T) {
 	if !errors.Is(err, spend.ErrPaused) {
 		t.Fatalf("Hold() over the limit error = %v, want ErrPaused", err)
 	}
-	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, org); err != nil || ok {
-		t.Fatalf("AI HasCredits while paused = %v, %v; want false", ok, err)
+	if _, err := guard.AIMeter(spend.AIAssistant).Hold(ctx, org, 0.05); !errors.Is(err, spend.ErrPaused) {
+		t.Fatalf("AI Hold while paused error = %v, want ErrPaused", err)
 	}
 }
 
@@ -300,8 +299,12 @@ func TestStaffWorkspacesAreToppedUpInsteadOfRefused(t *testing.T) {
 	if err := hold.Settle(ctx, 0.1); err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, org); err != nil || !ok {
-		t.Fatalf("staff AI HasCredits = %v, %v", ok, err)
+	aiHold, err := guard.AIMeter(spend.AIAssistant).Hold(ctx, org, 0.5)
+	if err != nil {
+		t.Fatalf("staff AI Hold error = %v", err)
+	}
+	if err := aiHold.Settle(ctx, 0); err != nil {
+		t.Fatal(err)
 	}
 	if total, _ := providerSpend(t, pool, org); total != 0.1 {
 		t.Fatalf("staff spend = %v, want it still logged", total)
@@ -315,26 +318,30 @@ func TestAIMeter(t *testing.T) {
 	guard := testGuard(t, pool, ledger, noDailyLimit, true)
 	meter := guard.AIMeter(spend.AIWriting)
 
-	t.Run("needs a cent of credit to start", func(t *testing.T) {
-		low := spendOrg(ctx, t, pool, minAICredits-1)
-		if ok, err := meter.HasCredits(ctx, low); err != nil || ok {
-			t.Fatalf("HasCredits(%d credits) = %v, %v; want false", minAICredits-1, ok, err)
-		}
-		enough := spendOrg(ctx, t, pool, minAICredits)
-		if ok, err := meter.HasCredits(ctx, enough); err != nil || !ok {
-			t.Fatalf("HasCredits(%d credits) = %v, %v; want true", minAICredits, ok, err)
+	t.Run("needs the whole ceiling to start", func(t *testing.T) {
+		org := spendOrg(ctx, t, pool, CreditsForUSD(0.05)-1)
+		if _, err := meter.Hold(ctx, org, 0.05); !errors.Is(err, spend.ErrNoCredits) {
+			t.Fatalf("Hold with one credit short error = %v, want ErrNoCredits", err)
 		}
 	})
 
-	t.Run("charges once per key and labels the feature", func(t *testing.T) {
+	t.Run("charges the real cost, returns the rest, labels the feature", func(t *testing.T) {
 		org := spendOrg(ctx, t, pool, 1000)
-		for range 2 {
-			if err := meter.Charge(ctx, org, 0.05, "writer:msg-1"); err != nil {
-				t.Fatal(err)
-			}
+		hold, err := meter.Hold(ctx, org, 0.5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := balanceOf(ctx, t, ledger, org); got != 1000-640 {
+			t.Fatalf("balance while held = %d, want %d", got, 1000-640)
+		}
+		if err := hold.Settle(ctx, 0.05); err != nil {
+			t.Fatal(err)
 		}
 		if got := balanceOf(ctx, t, ledger, org); got != 1000-64 {
-			t.Fatalf("balance = %d, want %d: a replayed key must not charge twice", got, 1000-64)
+			t.Fatalf("balance after settle = %d, want %d", got, 1000-64)
+		}
+		if err := hold.Settle(ctx, 0.05); err == nil {
+			t.Fatal("a hold settled twice must fail")
 		}
 		var reason string
 		if err := pool.QueryRow(ctx, `SELECT reason FROM go_billing_credit_ledger WHERE organization_id = $1 AND type = 'settle'`, org).Scan(&reason); err != nil {
@@ -345,9 +352,13 @@ func TestAIMeter(t *testing.T) {
 		}
 	})
 
-	t.Run("charges down to zero on a shortfall", func(t *testing.T) {
-		org := spendOrg(ctx, t, pool, 20)
-		if err := meter.Charge(ctx, org, 1, "writer:big"); err != nil {
+	t.Run("a model that cost more than its ceiling is charged down to zero", func(t *testing.T) {
+		org := spendOrg(ctx, t, pool, 100)
+		hold, err := meter.Hold(ctx, org, 0.05)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := hold.Settle(ctx, 1); err != nil {
 			t.Fatal(err)
 		}
 		if got := balanceOf(ctx, t, ledger, org); got != 0 {
@@ -355,15 +366,17 @@ func TestAIMeter(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects an invalid cost", func(t *testing.T) {
+	t.Run("an invalid cost keeps the whole hold", func(t *testing.T) {
 		org := spendOrg(ctx, t, pool, 1000)
-		for _, cost := range []float64{-0.01, math.NaN()} {
-			if err := meter.Charge(ctx, org, cost, ""); err == nil {
-				t.Errorf("Charge(%v) succeeded", cost)
-			}
+		hold, err := meter.Hold(ctx, org, 0.05)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if got := balanceOf(ctx, t, ledger, org); got != 1000 {
-			t.Fatalf("balance = %d", got)
+		if err := hold.Settle(ctx, math.NaN()); err == nil {
+			t.Fatal("Settle(NaN) succeeded")
+		}
+		if got := balanceOf(ctx, t, ledger, org); got != 1000-64 {
+			t.Fatalf("balance = %d, want the ceiling kept", got)
 		}
 	})
 }
@@ -429,14 +442,14 @@ func TestOneWorkspacesDailyLimitNeverStopsTheOthers(t *testing.T) {
 	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: heavy, Feature: spend.Backlinks, EstimateUSD: 0.05}); !errors.Is(err, spend.ErrWorkspaceDailyLimit) {
 		t.Fatalf("heavy workspace over its day error = %v, want ErrWorkspaceDailyLimit", err)
 	}
-	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, heavy); err != nil || ok {
-		t.Fatalf("heavy workspace AI = %v, %v; want stopped for the day", ok, err)
+	if _, err := guard.AIMeter(spend.AIAssistant).Hold(ctx, heavy, 0.05); !errors.Is(err, spend.ErrWorkspaceDailyLimit) {
+		t.Fatalf("heavy workspace AI error = %v; want stopped for the day", err)
 	}
 	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: quiet, Feature: spend.Backlinks, EstimateUSD: 0.05}); err != nil {
 		t.Fatalf("quiet workspace was stopped by another's spend: %v", err)
 	}
-	if ok, err := guard.AIMeter(spend.AIAssistant).HasCredits(ctx, quiet); err != nil || !ok {
-		t.Fatalf("quiet workspace AI = %v, %v; want allowed", ok, err)
+	if _, err := guard.AIMeter(spend.AIAssistant).Hold(ctx, quiet, 0.01); err != nil {
+		t.Fatalf("quiet workspace AI error = %v; want allowed", err)
 	}
 
 	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 0, nil }
@@ -447,5 +460,92 @@ func TestOneWorkspacesDailyLimitNeverStopsTheOthers(t *testing.T) {
 	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 0, failure }
 	if _, err := guard.Hold(ctx, spend.Request{OrganizationID: quiet, Feature: spend.Backlinks, EstimateUSD: 0.05}); !errors.Is(err, failure) {
 		t.Fatalf("hold when the limit cannot be read error = %v, want it to fail closed", err)
+	}
+}
+
+// Reproduction: parallel AI work each passes HasCredits against the same
+// balance, then charges after the fact, so the workspace runs past its credits
+// and Uplumo pays the rest.
+func TestRegressionParallelAIWorkCannotSpendPastTheBalance(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	org := spendOrg(ctx, t, pool, 100) // 100 credits is about $0.078 of provider cost
+	meter := testGuard(t, pool, ledger, noDailyLimit, true).AIMeter(spend.AIAssistant)
+
+	const workers, stepUSD = 5, 0.05 // each step really costs 64 credits
+	var wg sync.WaitGroup
+	var started atomic.Int32
+	for range workers {
+		wg.Go(func() {
+			hold, err := meter.Hold(ctx, org, stepUSD)
+			if err != nil {
+				return
+			}
+			started.Add(1)
+			if err := hold.Settle(ctx, stepUSD); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	spent, _ := providerSpend(t, pool, org)
+	if paidFor := float64(100) / CreditMarkupMultiplier / CreditsPerUSD; spent > paidFor+1e-9 {
+		t.Fatalf("%d of %d AI steps ran and cost $%.4f; the workspace's 100 credits cover $%.4f", started.Load(), workers, spent, paidFor)
+	}
+}
+
+// Reproduction: the daily limits count only settled spend, so holds still in
+// flight let a workspace start more work than its daily limit allows.
+func TestRegressionInFlightHoldsCountTowardTheDailyLimits(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	org := spendOrg(ctx, t, pool, 100_000)
+	guard := testGuard(t, pool, ledger, noDailyLimit, true)
+	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 1, nil }
+
+	first, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.Backlinks, EstimateUSD: 0.8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = first.Settle(context.WithoutCancel(ctx), 0) }()
+	if second, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.Backlinks, EstimateUSD: 0.8}); !errors.Is(err, spend.ErrWorkspaceDailyLimit) {
+		if second != nil {
+			_ = second.Settle(context.WithoutCancel(ctx), 0)
+		}
+		t.Fatalf("second $0.80 hold with $0.80 in flight against a $1 limit: err = %v, want ErrWorkspaceDailyLimit", err)
+	}
+}
+
+func TestConcurrentHoldsCannotTogetherPassTheWorkspaceDailyLimit(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	org := spendOrg(ctx, t, pool, 100_000)
+	guard := testGuard(t, pool, ledger, noDailyLimit, true)
+	guard.WorkspaceDailyLimitUSD = func(context.Context, string) (float64, error) { return 1, nil }
+
+	var wg sync.WaitGroup
+	var granted atomic.Int32
+	holds := make(chan spend.Hold, 10)
+	for range 10 {
+		wg.Go(func() {
+			hold, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.Backlinks, EstimateUSD: 0.3})
+			if err == nil {
+				granted.Add(1)
+				holds <- hold
+			} else if !errors.Is(err, spend.ErrWorkspaceDailyLimit) {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	close(holds)
+	for hold := range holds {
+		_ = hold.Settle(context.WithoutCancel(ctx), 0)
+	}
+	if got := granted.Load(); got != 3 {
+		t.Fatalf("%d holds of $0.30 granted against a $1 limit, want 3", got)
 	}
 }

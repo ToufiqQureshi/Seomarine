@@ -8,19 +8,11 @@ import (
 	"math"
 	"sync"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
-
-// minAICredits is the least a workspace needs to start AI work: one cent of
-// provider cost. AI cost is only known after the model answers, so a turn is
-// let in while there is something left and charged down to zero.
-var minAICredits = CreditsForUSD(0.01)
-
-// aiStepEstimateUSD is what one AI model call is assumed to cost when
-// checking the daily limit before it starts.
-const aiStepEstimateUSD = 0.05
 
 // CreditsForUSD converts provider cost to credits: the markup, rounded up to
 // a whole credit, so a real charge is never zero.
@@ -62,8 +54,14 @@ func NewSpendGuard(db *pgxpool.Pool, ledger *CreditLedgerService, dailyLimitUSD 
 	return &SpendGuard{ledger: ledger, db: db, dailyLimitUSD: dailyLimitUSD, chargeCredits: chargeCredits, logger: logger}, nil
 }
 
-// Hold implements spend.Guard: it checks the daily limit and reserves the
+// Hold implements spend.Guard: it checks the daily limits and reserves the
 // request's ceiling from the workspace's credits.
+//
+// The workspace's daily check and its reservation happen in one transaction
+// under a per-workspace advisory lock, and both daily limits count holds still
+// in flight, so parallel requests cannot together start more than a
+// workspace's limit allows. The lock is per workspace: one workspace's
+// requests never wait on another's.
 func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, error) {
 	if req.OrganizationID == "" || req.Feature == "" {
 		return nil, errors.New("a spend hold needs an organization and a feature")
@@ -71,32 +69,60 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	if req.EstimateUSD < 0 || math.IsNaN(req.EstimateUSD) || math.IsInf(req.EstimateUSD, 0) {
 		return nil, fmt.Errorf("invalid spend estimate %v", req.EstimateUSD)
 	}
-	if err := g.checkDaily(ctx, req.EstimateUSD); err != nil {
-		return nil, err
-	}
-	if err := g.checkWorkspaceDaily(ctx, req.OrganizationID, req.EstimateUSD); err != nil {
-		return nil, err
-	}
 	h := &creditHold{guard: g, org: req.OrganizationID, feature: req.Feature}
 	credits := CreditsForUSD(req.EstimateUSD)
 	if !g.chargeCredits || credits == 0 {
+		// Nothing is reserved, so there is nothing to make atomic.
+		if err := g.checkDaily(ctx, g.db, req.EstimateUSD); err != nil {
+			return nil, err
+		}
+		if err := g.checkWorkspaceDaily(ctx, g.db, req.OrganizationID, req.EstimateUSD); err != nil {
+			return nil, err
+		}
 		return h, nil
 	}
-	reservation, err := g.ledger.ReserveFor(ctx, req.OrganizationID, credits, "", string(req.Feature))
+	if err := g.ledger.topUpStaff(ctx, req.OrganizationID, credits); err != nil {
+		return nil, err
+	}
+	tx, err := g.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin spend hold: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('spend:' || $1, 0))`, req.OrganizationID); err != nil {
+		return nil, fmt.Errorf("lock workspace spend: %w", err)
+	}
+	if err := g.checkDaily(ctx, tx, req.EstimateUSD); err != nil {
+		return nil, err
+	}
+	if err := g.checkWorkspaceDaily(ctx, tx, req.OrganizationID, req.EstimateUSD); err != nil {
+		return nil, err
+	}
+	reservation, err := reserveTx(ctx, tx, req.OrganizationID, credits, "", string(req.Feature))
 	if errors.Is(err, ErrInsufficientBalance) {
 		return nil, spend.ErrNoCredits
 	}
 	if err != nil {
 		return nil, fmt.Errorf("hold %d credits for %s: %w", credits, req.Feature, err)
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit spend hold: %w", err)
+	}
 	h.reservationID, h.reserved = reservation.ID, reservation.AmountCredits
 	return h, nil
 }
 
+// querier is a pool or a transaction.
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // checkDaily refuses with spend.ErrPaused when today's spend plus estimate
-// would pass the daily limit.
-func (g *SpendGuard) checkDaily(ctx context.Context, estimateUSD float64) error {
-	spent, err := g.SpentTodayUSD(ctx)
+// would pass the global emergency limit. It is not locked across workspaces
+// (that would make every workspace wait on every other), so concurrent holds
+// in different workspaces can pass it by at most their own estimates.
+func (g *SpendGuard) checkDaily(ctx context.Context, q querier, estimateUSD float64) error {
+	spent, err := spendTodayUSD(ctx, q, "")
 	if err != nil {
 		return err
 	}
@@ -110,7 +136,7 @@ func (g *SpendGuard) checkDaily(ctx context.Context, estimateUSD float64) error 
 
 // checkWorkspaceDaily refuses with spend.ErrWorkspaceDailyLimit when orgID's
 // spend today plus estimate would pass its own daily limit.
-func (g *SpendGuard) checkWorkspaceDaily(ctx context.Context, orgID string, estimateUSD float64) error {
+func (g *SpendGuard) checkWorkspaceDaily(ctx context.Context, q querier, orgID string, estimateUSD float64) error {
 	if !g.chargeCredits || g.WorkspaceDailyLimitUSD == nil {
 		return nil
 	}
@@ -121,12 +147,9 @@ func (g *SpendGuard) checkWorkspaceDaily(ctx context.Context, orgID string, esti
 	if limit <= 0 {
 		return nil
 	}
-	var spent float64
-	if err := g.db.QueryRow(ctx, `
-		SELECT COALESCE(sum(cost_usd), 0)::float8 FROM go_provider_spend
-		WHERE organization_id = $1 AND created_at >= date_trunc('day', now(), 'UTC')
-	`, orgID).Scan(&spent); err != nil {
-		return fmt.Errorf("read workspace spend today: %w", err)
+	spent, err := spendTodayUSD(ctx, q, orgID)
+	if err != nil {
+		return err
 	}
 	if spent+estimateUSD > limit {
 		return spend.ErrWorkspaceDailyLimit
@@ -134,13 +157,20 @@ func (g *SpendGuard) checkWorkspaceDaily(ctx context.Context, orgID string, esti
 	return nil
 }
 
-// SpentTodayUSD is the provider spend recorded since midnight UTC.
-func (g *SpendGuard) SpentTodayUSD(ctx context.Context) (float64, error) {
+// spendTodayUSD is the provider spend settled since midnight UTC plus the
+// holds still in flight from today, for one workspace or ("" ) all of them.
+// A hold is counted at its ceiling until it settles; a hold left open by a
+// crash counts until midnight, which errs on the side of spending less.
+func spendTodayUSD(ctx context.Context, q querier, orgID string) (float64, error) {
 	var spent float64
-	err := g.db.QueryRow(ctx, `
-		SELECT COALESCE(sum(cost_usd), 0)::float8 FROM go_provider_spend
-		WHERE created_at >= date_trunc('day', now(), 'UTC')
-	`).Scan(&spent)
+	err := q.QueryRow(ctx, `
+		SELECT
+			(SELECT COALESCE(sum(cost_usd), 0)::float8 FROM go_provider_spend
+			 WHERE created_at >= date_trunc('day', now(), 'UTC') AND ($1 = '' OR organization_id = $1))
+			+ (SELECT COALESCE(sum(amount_credits), 0)::float8 FROM go_billing_credit_reservations
+			 WHERE status = 'reserved' AND created_at >= date_trunc('day', now(), 'UTC') AND ($1 = '' OR organization_id = $1))
+			  / $2
+	`, orgID, CreditMarkupMultiplier*CreditsPerUSD).Scan(&spent)
 	if err != nil {
 		return 0, fmt.Errorf("read today's provider spend: %w", err)
 	}
@@ -176,13 +206,12 @@ func (h *creditHold) Settle(ctx context.Context, costUSD float64) error {
 		}
 		return fmt.Errorf("invalid provider cost %v for %s", costUSD, h.feature)
 	}
-	return h.guard.settle(ctx, h.org, h.feature, h.reservationID, costUSD, "")
+	return h.guard.settle(ctx, h.org, h.feature, h.reservationID, costUSD)
 }
 
 // settle charges costUSD against reservationID, or against the balance when
-// there is no reservation, and logs it. key makes a charge without a
-// reservation idempotent.
-func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Feature, reservationID string, costUSD float64, key string) error {
+// there is no reservation, and logs it.
+func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Feature, reservationID string, costUSD float64) error {
 	if costUSD > 0 {
 		if _, err := g.db.Exec(ctx, `INSERT INTO go_provider_spend (organization_id, feature, cost_usd) VALUES ($1, $2, $3)`,
 			org, string(feature), costUSD); err != nil {
@@ -201,13 +230,13 @@ func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Featu
 	if !g.chargeCredits || credits == 0 {
 		return nil
 	}
-	return g.chargeDown(ctx, org, feature, credits, key)
+	return g.chargeDown(ctx, org, feature, credits)
 }
 
 // chargeDown charges credits for work already paid for, down to a zero
-// balance. A replayed key is not charged twice.
-func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.Feature, credits int64, key string) error {
-	reservation, err := g.ledger.ReserveFor(ctx, org, credits, key, string(feature))
+// balance.
+func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.Feature, credits int64) error {
+	reservation, err := g.ledger.ReserveFor(ctx, org, credits, "", string(feature))
 	if errors.Is(err, ErrInsufficientBalance) {
 		balance, balanceErr := g.ledger.GetBalance(ctx, org)
 		if balanceErr != nil {
@@ -217,13 +246,12 @@ func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.F
 		if balance <= 0 {
 			return nil
 		}
-		reservation, err = g.ledger.ReserveFor(ctx, org, balance, key, string(feature))
+		reservation, err = g.ledger.ReserveFor(ctx, org, balance, "", string(feature))
 	}
 	if err != nil {
 		return fmt.Errorf("charge %d credits for %s: %w", credits, feature, err)
 	}
-	// A replayed key returns its earlier reservation, already settled.
-	if _, err := g.ledger.SettleUpTo(ctx, reservation.ID, reservation.AmountCredits); err != nil && !errors.Is(err, ErrReservationAlreadyClosed) {
+	if _, err := g.ledger.SettleUpTo(ctx, reservation.ID, reservation.AmountCredits); err != nil {
 		return fmt.Errorf("settle %s charge: %w", feature, err)
 	}
 	return nil
@@ -250,47 +278,10 @@ func (g *SpendGuard) AIMeter(feature spend.Feature) AIMeter {
 	return AIMeter{guard: g, feature: feature}
 }
 
-// HasCredits reports whether the workspace may start AI work: paid work is
-// not paused and, where workspaces are charged, it has at least a cent of
-// credit left (staff workspaces are topped up). It fails closed.
-func (m AIMeter) HasCredits(ctx context.Context, org string) (bool, error) {
-	if err := m.guard.checkDaily(ctx, aiStepEstimateUSD); errors.Is(err, spend.ErrPaused) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	if !m.guard.chargeCredits {
-		return true, nil
-	}
-	if err := m.guard.checkWorkspaceDaily(ctx, org, aiStepEstimateUSD); errors.Is(err, spend.ErrWorkspaceDailyLimit) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	if m.guard.ledger.Unlimited != nil {
-		unlimited, err := m.guard.ledger.Unlimited(ctx, org)
-		if err != nil {
-			return false, fmt.Errorf("check staff workspace: %w", err)
-		}
-		if unlimited {
-			return true, nil
-		}
-	}
-	balance, err := m.guard.ledger.GetBalance(ctx, org)
-	if err != nil {
-		return false, err
-	}
-	return balance >= minAICredits, nil
-}
-
-// Charge charges an AI model's cost after the fact, down to a zero balance.
-// key makes a retried charge idempotent.
-func (m AIMeter) Charge(ctx context.Context, org string, costUSD float64, key string) error {
-	if costUSD < 0 || math.IsNaN(costUSD) || math.IsInf(costUSD, 0) {
-		return fmt.Errorf("invalid AI cost %v", costUSD)
-	}
-	if costUSD == 0 {
-		return nil
-	}
-	return m.guard.settle(ctx, org, m.feature, "", costUSD, key)
+// Hold reserves the most one AI model call can cost before it is sent; the
+// caller settles it with the real cost afterwards. A model's cost is only
+// known once it answers, so holding the ceiling is what keeps parallel AI
+// work from spending past the workspace's credits.
+func (m AIMeter) Hold(ctx context.Context, org string, ceilingUSD float64) (spend.Hold, error) {
+	return m.guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: m.feature, EstimateUSD: ceilingUSD})
 }
