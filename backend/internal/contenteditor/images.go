@@ -121,7 +121,7 @@ func (s *SupabaseImageStore) Upload(ctx context.Context, data []byte) (string, e
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
-		return "", fmt.Errorf("Supabase image upload returned status %d", response.StatusCode)
+		return "", fmt.Errorf("supabase image upload returned status %d", response.StatusCode)
 	}
 	publicURL := *s.url
 	publicURL.Path = strings.TrimRight(publicURL.Path, "/") + "/storage/v1/object/public/" + url.PathEscape(s.bucket) + "/" + key
