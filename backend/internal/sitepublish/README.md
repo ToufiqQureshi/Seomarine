@@ -50,6 +50,12 @@ contract.
 - **Raw HTML in a draft is dropped and `javascript:` links are not rendered**,
   so an article cannot carry a script onto the customer's site.
 - **Nothing is stored unless WordPress accepted the password.**
+- **A keyword-stuffed draft cannot go live** (`keyword_stuffing`, 422), even
+  through the API. Sending it as a private WordPress draft still works.
+  `stuffing.go` mirrors the editor's no-brief rule in
+  `frontend/src/client/features/content-editor/scoring-caps.ts`; change both
+  together. When briefs are stored on the server, use the brief's range here
+  too, or the server will refuse drafts the editor allows.
 - **Publishing again updates the same post**; images already copied are not
   uploaded twice. A post deleted on the site is created again; after
   connecting a different site, publishing starts fresh there.
