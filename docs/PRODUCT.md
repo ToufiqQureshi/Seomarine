@@ -53,7 +53,8 @@ Full list and status: `ROADMAP.md`.
 3. **Content SEO Editor ("RankMath for every site")**: works on any site
    (HTML, React, Webflow, Shopify, WordPress). It gives a live SEO score
    and AI rewrites, and ships fixes through a JS snippet, a GitHub PR, or
-   copy-paste.
+   copy-paste. Articles publish straight to a connected WordPress site
+   (built, Basic and above); other platforms come next.
 4. **White-label client reports**: done. Every client-facing surface is
    agency-branded.
 5. Rank tracking with city-level India locations, a site audit with AI

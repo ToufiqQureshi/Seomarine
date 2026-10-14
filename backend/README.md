@@ -108,6 +108,10 @@ are in its own `internal/<feature>/README.md` and, where one exists,
 - `POST /api/v1/projects/{projectId}/domain/overview`, `/keyword-suggestions`,
   `/keywords` and `/pages`: Domain Overview lookups, same gating as backlinks.
   See `internal/domain/README.md`.
+- `POST /api/v1/projects/{projectId}/site-connection/get`, `/save`,
+  `/delete` and `.../content/drafts/{draftId}/publish`: connect the
+  project's WordPress site and publish drafts to it; `402` below Basic when
+  billing is configured. See `internal/sitepublish/README.md`.
 - `/api/v1/...`: needs a valid session cookie, otherwise 401.
   `/api/v1/projects/{projectId}/...` also needs membership of the project's
   organization; any other project answers 404. Errors are JSON:

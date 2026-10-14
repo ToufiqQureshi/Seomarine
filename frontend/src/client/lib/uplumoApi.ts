@@ -22,8 +22,14 @@ const errorBodySchema = z.object({
 
 // Errors whose server message is written for the customer and must not be
 // replaced by the generic wording for their status: paid data paused by the
-// daily safety limit, and a workspace that used its credits for the day.
-const CUSTOMER_FACING_CODES = new Set(["usage_paused", "daily_credit_limit"]);
+// daily safety limit, a workspace that used its credits for the day, and the
+// customer's own website failing (502) when Uplumo publishes to it.
+const CUSTOMER_FACING_CODES = new Set([
+  "usage_paused",
+  "daily_credit_limit",
+  "site_unreachable",
+  "site_error",
+]);
 
 // Statuses whose server message is not meant for the user, or that need the
 // same wording whatever the endpoint.

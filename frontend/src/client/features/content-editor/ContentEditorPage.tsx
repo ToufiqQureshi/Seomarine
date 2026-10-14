@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { Save } from "lucide-react";
 import { sortBy } from "remeda";
 import { useEffect, useMemo, useState } from "react";
@@ -246,6 +247,11 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           aeo={aeo}
           activeScore={activeScore.score}
           checks={activeScore.checks}
+        />
+        <PublishToSite
+          projectId={projectId}
+          draftId={draftId}
+          hasUnsavedChanges={dirty}
         />
         <details className="group">
           <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">

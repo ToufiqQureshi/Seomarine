@@ -3,6 +3,8 @@ import { googleConnectionOptions } from "@/client/features/integrations/googlePr
 import { createFileRoute } from "@tanstack/react-router";
 import { GoogleConnectionCard } from "@/client/features/integrations/GoogleConnectionCard";
 import { CrawlerAccessSettings } from "@/client/features/settings/CrawlerAccessSettings";
+import { SectionHeader } from "@/client/components/PageHeader";
+import { WebsiteConnectionCard } from "@/client/features/site-publishing/WebsiteConnectionCard";
 
 export const Route = createFileRoute(
   "/_app/p/$projectId/settings/integrations",
@@ -33,6 +35,14 @@ function ProjectIntegrationsRoute() {
 
       <section id="google-analytics" className="scroll-mt-6">
         <GoogleConnectionCard provider="ga4" projectId={projectId} />
+      </section>
+
+      <section id="website" className="scroll-mt-6 space-y-3">
+        <SectionHeader
+          title="Website"
+          hint="Publish content-editor articles straight to your WordPress site."
+        />
+        <WebsiteConnectionCard projectId={projectId} />
       </section>
 
       <CrawlerAccessSettings projectId={projectId} />

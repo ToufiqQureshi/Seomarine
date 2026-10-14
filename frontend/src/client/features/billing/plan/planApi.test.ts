@@ -6,6 +6,7 @@ import {
   cancelSubscription,
   createCheckout,
   describeStatus,
+  waitForPaidPlan,
 } from "./planApi";
 
 function respondWith(body: unknown) {
@@ -133,5 +134,44 @@ describe("billing plans", () => {
     await expect(billingPlansQueryOptions.queryFn()).rejects.toBeInstanceOf(
       ApiError,
     );
+  });
+});
+
+function statusResponse(plan: string, state: string) {
+  return Response.json({
+    plan,
+    status: state,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    unlimited: false,
+    paymentsConfigured: true,
+    availablePlans: ["basic", "pro", "agency"],
+  });
+}
+
+describe("waitForPaidPlan", () => {
+  it("keeps reading until the webhook has switched the plan", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(statusResponse("free", "created"))
+      .mockResolvedValueOnce(statusResponse("free", "created"))
+      .mockResolvedValueOnce(statusResponse("pro", "active"));
+    await expect(waitForPaidPlan(0)).resolves.toMatchObject({
+      plan: "pro",
+      status: "active",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after the last attempt and returns what it read", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() =>
+        Promise.resolve(statusResponse("free", "created")),
+      );
+    await expect(waitForPaidPlan(0, 4)).resolves.toMatchObject({
+      plan: "free",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 });
