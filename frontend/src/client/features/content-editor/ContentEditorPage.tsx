@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { Save } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { sortBy } from "remeda";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
-import { Input } from "@/client/components/ui/input";
-import { Textarea } from "@/client/components/ui/textarea";
 import {
+  contentEditorQueryKeys,
   deleteContentDraft,
   getContentDraft,
   listContentDrafts,
@@ -22,11 +22,11 @@ import {
 import {
   DraftsPanel,
   ReadinessPanel,
+  WriterReminder,
   SearchPreview,
-  Field,
   WritingModeToggle,
 } from "./EditorPanels";
-import { formatArticleContent, type ArticleFormat } from "./formatting";
+import { ArticleComposer } from "./ArticleComposer";
 import { WriterAssistant } from "./WriterAssistant";
 
 const blankDraft: ContentDraftInput = {
@@ -37,7 +37,6 @@ const blankDraft: ContentDraftInput = {
   content: "",
 };
 
-const queryKey = (projectId: string) => ["contentDrafts", projectId] as const;
 const asInput = (draft: ContentDraft): ContentDraftInput => ({
   title: draft.title,
   targetKeyword: draft.targetKeyword,
@@ -54,7 +53,7 @@ const confirmSuggestionReplacement = (content: string) =>
 export function ContentEditorPage({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const draftsQuery = useQuery({
-    queryKey: queryKey(projectId),
+    queryKey: contentEditorQueryKeys.drafts(projectId),
     queryFn: () => listContentDrafts({ data: { projectId } }),
   });
   const [mode, setMode] = useState<EditorMode>("seo");
@@ -62,7 +61,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const [draftId, setDraftId] = useState<string>();
   const [savedSnapshot, setSavedSnapshot] = useState(blankDraft);
   const [initialized, setInitialized] = useState(false);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [imageUploadBusy, setImageUploadBusy] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedSnapshot);
   const seo = useMemo(() => scoreContent("seo", draft), [draft]);
   const aeo = useMemo(() => scoreContent("aeo", draft), [draft]);
@@ -78,12 +77,43 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
       saveContentDraft({
         data: { ...draft, projectId, ...(draftId ? { id: draftId } : {}) },
       }),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       const snapshot = asInput(saved);
       setDraftId(saved.id);
       setDraft(snapshot);
       setSavedSnapshot(snapshot);
-      void queryClient.invalidateQueries({ queryKey: queryKey(projectId) });
+      await queryClient.cancelQueries({
+        queryKey: contentEditorQueryKeys.drafts(projectId),
+        exact: true,
+      });
+      queryClient.setQueryData(
+        contentEditorQueryKeys.draft(projectId, saved.id),
+        saved,
+      );
+      const draftListKey = contentEditorQueryKeys.drafts(projectId);
+      const currentDrafts =
+        queryClient.getQueryData<ContentDraftSummary[]>(draftListKey);
+      if (currentDrafts) {
+        const summary: ContentDraftSummary = {
+          id: saved.id,
+          projectId: saved.projectId,
+          title: saved.title,
+          targetKeyword: saved.targetKeyword,
+          updatedAt: saved.updatedAt,
+        };
+        queryClient.setQueryData(
+          draftListKey,
+          sortBy(
+            [summary, ...currentDrafts.filter((item) => item.id !== saved.id)],
+            [(item) => item.updatedAt, "desc"],
+          ),
+        );
+      } else {
+        void queryClient.invalidateQueries({
+          queryKey: draftListKey,
+          exact: true,
+        });
+      }
       toast.success("Draft saved");
     },
     onError: (error) =>
@@ -98,12 +128,33 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     mutationFn: (id: string) =>
       deleteContentDraft({ data: { projectId, draftId: id } }),
     onSuccess: async (_, id) => {
+      await queryClient.cancelQueries({
+        queryKey: contentEditorQueryKeys.drafts(projectId),
+        exact: true,
+      });
       if (id === draftId) {
         setDraftId(undefined);
         setDraft(blankDraft);
         setSavedSnapshot(blankDraft);
       }
-      await queryClient.invalidateQueries({ queryKey: queryKey(projectId) });
+      queryClient.removeQueries({
+        queryKey: contentEditorQueryKeys.draft(projectId, id),
+        exact: true,
+      });
+      const draftListKey = contentEditorQueryKeys.drafts(projectId);
+      const currentDrafts =
+        queryClient.getQueryData<ContentDraftSummary[]>(draftListKey);
+      if (currentDrafts) {
+        queryClient.setQueryData(
+          draftListKey,
+          currentDrafts.filter((item) => item.id !== id),
+        );
+      } else {
+        void queryClient.invalidateQueries({
+          queryKey: draftListKey,
+          exact: true,
+        });
+      }
       toast.success("Draft deleted");
     },
     onError: (error) =>
@@ -114,7 +165,10 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
 
   const openMutation = useMutation({
     mutationFn: (id: string) =>
-      getContentDraft({ data: { projectId, draftId: id } }),
+      queryClient.fetchQuery({
+        queryKey: contentEditorQueryKeys.draft(projectId, id),
+        queryFn: () => getContentDraft({ data: { projectId, draftId: id } }),
+      }),
     onSuccess: (saved) => {
       const snapshot = asInput(saved);
       setDraftId(saved.id);
@@ -129,7 +183,8 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const editorBusy =
     saveMutation.isPending ||
     openMutation.isPending ||
-    deleteMutation.isPending;
+    deleteMutation.isPending ||
+    imageUploadBusy;
 
   const startNewDraft = () => {
     if (
@@ -156,165 +211,36 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const update = (field: keyof ContentDraftInput, value: string) =>
     setDraft((current) => ({ ...current, [field]: value }));
 
-  const formatArticle = (format: ArticleFormat) => {
-    const editor = editorRef.current;
-    const start = editor?.selectionStart ?? draft.content.length;
-    const end = editor?.selectionEnd ?? start;
-    const result = formatArticleContent(draft.content, start, end, format);
-    update("content", result.content);
-    requestAnimationFrame(() => {
-      editor?.focus();
-      editor?.setSelectionRange(result.selectionStart, result.selectionEnd);
-    });
-  };
-
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
       <section className="min-w-0 space-y-5">
+        <WriterReminder key={projectId} projectId={projectId} />
         <WritingModeToggle mode={mode} onChange={setMode} />
-
-        <div className="space-y-5 rounded-xl border bg-card p-4 md:p-6">
-          <Field
-            id="content-draft-title"
-            label="Article title"
-            hint={`${draft.title.length}/180`}
+        <ArticleComposer
+          draft={draft}
+          projectId={projectId}
+          disabled={editorBusy}
+          onImageUploadStateChange={setImageUploadBusy}
+          onChange={update}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            {wordCount(draft.content).toLocaleString()} words ·{" "}
+            {dirty ? "Unsaved changes" : "All changes saved"}
+          </p>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={
+              editorBusy || (!draft.title.trim() && !draft.content.trim())
+            }
           >
-            <Input
-              id="content-draft-title"
-              disabled={editorBusy}
-              maxLength={180}
-              value={draft.title}
-              onChange={(event) => update("title", event.target.value)}
-              placeholder="What should readers learn?"
-            />
-          </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field
-              id="content-draft-keyword"
-              label="Target keyword"
-              hint="The main search topic"
-            >
-              <Input
-                id="content-draft-keyword"
-                disabled={editorBusy}
-                maxLength={120}
-                value={draft.targetKeyword}
-                onChange={(event) =>
-                  update("targetKeyword", event.target.value)
-                }
-                placeholder="e.g. technical SEO"
-              />
-            </Field>
-            <Field
-              id="content-draft-slug"
-              label="Page URL slug"
-              hint="Lowercase, short, readable"
-            >
-              <Input
-                id="content-draft-slug"
-                disabled={editorBusy}
-                maxLength={300}
-                value={draft.slug}
-                onChange={(event) => update("slug", event.target.value)}
-                placeholder="technical-seo-guide"
-              />
-            </Field>
-          </div>
-          <Field
-            id="content-draft-meta"
-            label="Search description"
-            hint={`${draft.metaDescription.length}/320`}
-          >
-            <Textarea
-              id="content-draft-meta"
-              disabled={editorBusy}
-              maxLength={320}
-              rows={3}
-              value={draft.metaDescription}
-              onChange={(event) =>
-                update("metaDescription", event.target.value)
-              }
-              placeholder="Summarize the page clearly for searchers."
-            />
-          </Field>
-          <Field
-            id="content-draft-body"
-            label="Your article"
-            hint="Markdown headings, lists, and links are supported"
-          >
-            <div
-              className="flex flex-wrap gap-1"
-              role="toolbar"
-              aria-label="Article formatting"
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={editorBusy}
-                onClick={() => formatArticle("heading")}
-              >
-                Heading
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={editorBusy}
-                onClick={() => formatArticle("bold")}
-              >
-                <strong>B</strong>
-                <span className="sr-only">Bold</span>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={editorBusy}
-                onClick={() => formatArticle("list")}
-              >
-                Bullet list
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={editorBusy}
-                onClick={() => formatArticle("link")}
-              >
-                Link
-              </Button>
-            </div>
-            <Textarea
-              ref={editorRef}
-              id="content-draft-body"
-              disabled={editorBusy}
-              maxLength={150_000}
-              className="min-h-[440px] resize-y font-mono leading-7"
-              value={draft.content}
-              onChange={(event) => update("content", event.target.value)}
-              placeholder={`Start with the answer your reader needs.\n\n## Add a clear section\n\nExplain the idea in your own words...`}
-            />
-          </Field>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-            <p className="text-sm text-muted-foreground">
-              {wordCount(draft.content).toLocaleString()} words ·{" "}
-              {dirty ? "Unsaved changes" : "All changes saved"}
-            </p>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={
-                editorBusy || (!draft.title.trim() && !draft.content.trim())
-              }
-            >
-              <Save aria-hidden />
-              {saveMutation.isPending ? "Saving…" : "Save draft"}
-            </Button>
-          </div>
+            <Save aria-hidden />
+            {saveMutation.isPending ? "Saving…" : "Save draft"}
+          </Button>
         </div>
       </section>
 
-      <aside className="space-y-4">
+      <aside className="space-y-3">
         <ReadinessPanel
           mode={mode}
           seo={seo}
@@ -327,39 +253,66 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           draftId={draftId}
           hasUnsavedChanges={dirty}
         />
-        <WriterAssistant
-          projectId={projectId}
-          draft={draft}
-          mode={mode}
-          disabled={editorBusy}
-          onUse={(content) =>
-            confirmSuggestionReplacement(draft.content) &&
-            update("content", content)
-          }
-        />
-        <SearchPreview draft={draft} />
-        <DraftsPanel
-          drafts={draftsQuery.data ?? []}
-          isLoading={draftsQuery.isPending}
-          hasError={draftsQuery.isError}
-          currentDraftId={draftId}
-          isBusy={editorBusy}
-          onNew={startNewDraft}
-          onSelect={selectDraft}
-          onDelete={(saved) => {
-            const unsaved =
-              saved.id === draftId && dirty
-                ? " Your unsaved edits will also be discarded."
-                : "";
-            if (
-              window.confirm(
-                `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
-              )
-            ) {
-              deleteMutation.mutate(saved.id);
-            }
-          }}
-        />
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            AI writing assistant
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              Optional · uses credits
+            </span>
+          </summary>
+          <div className="pt-3">
+            <WriterAssistant
+              projectId={projectId}
+              draft={draft}
+              mode={mode}
+              disabled={editorBusy}
+              onUse={(content) =>
+                confirmSuggestionReplacement(draft.content) &&
+                update("content", content)
+              }
+            />
+          </div>
+        </details>
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            Search preview
+          </summary>
+          <div className="pt-3">
+            <SearchPreview draft={draft} />
+          </div>
+        </details>
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
+            Your drafts
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {draftsQuery.data?.length ?? 0}
+            </span>
+          </summary>
+          <div className="pt-3">
+            <DraftsPanel
+              drafts={draftsQuery.data ?? []}
+              isLoading={draftsQuery.isPending}
+              hasError={draftsQuery.isError}
+              currentDraftId={draftId}
+              isBusy={editorBusy}
+              onNew={startNewDraft}
+              onSelect={selectDraft}
+              onDelete={(saved) => {
+                const unsaved =
+                  saved.id === draftId && dirty
+                    ? " Your unsaved edits will also be discarded."
+                    : "";
+                if (
+                  window.confirm(
+                    `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
+                  )
+                ) {
+                  deleteMutation.mutate(saved.id);
+                }
+              }}
+            />
+          </div>
+        </details>
       </aside>
     </div>
   );

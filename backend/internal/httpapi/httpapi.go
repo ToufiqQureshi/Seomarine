@@ -117,9 +117,11 @@ type Deps struct {
 	// then answers 503.
 	RankChecks *ranktracking.Checks
 	// Projects serves organization-scoped project management.
-	Projects      *projects.Service
-	ContentEditor *contenteditor.Repository
-	ContentWriter contenteditor.WriterService
+	Projects            *projects.Service
+	ContentEditor       *contenteditor.Repository
+	ContentWriter       contenteditor.WriterService
+	ContentImages       contenteditor.ImageStore
+	ContentImageLimiter contenteditor.ImageUploadLimiter
 	// SitePublish connects a project's website and publishes drafts to it.
 	SitePublish *sitepublish.Service
 	// SAMSessions serves the project chat-session registry.
@@ -330,7 +332,7 @@ func NewHandler(d Deps) http.Handler {
 	})
 	projects.Mount(mux, projects.Deps{Logger: d.Logger, Service: d.Projects, WithSession: withSession, WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) }})
 	if d.ContentEditor != nil {
-		contenteditor.Mount(mux, d.ContentEditor, d.ContentWriter, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
+		contenteditor.Mount(mux, d.ContentEditor, d.ContentWriter, d.ContentImages, d.ContentImageLimiter, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	}
 	var publishPlans sitepublish.PaidPlans
 	if d.Billing != nil {

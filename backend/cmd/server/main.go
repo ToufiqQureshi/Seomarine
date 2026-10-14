@@ -251,6 +251,15 @@ func run(logger *slog.Logger) (err error) {
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
 	gscService := buildGSCService(db, googleAPIClient)
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
+	var contentImages contenteditor.ImageStore
+	if cfg.SupabaseStorage != nil {
+		contentImages, err = contenteditor.NewSupabaseImageStore(cfg.SupabaseStorage)
+		if err != nil {
+			return fmt.Errorf("configure Supabase content image storage: %w", err)
+		}
+	} else {
+		logger.Warn("SUPABASE_* image storage variables not set; content editor image uploads are unavailable")
+	}
 	var localSEOData localseo.Data
 	// keywordResearch is nil when DATAFORSEO_API_KEY is not set.
 	if keywordResearch != nil {
@@ -302,6 +311,8 @@ func run(logger *slog.Logger) (err error) {
 			ContentEditor:        &contenteditor.Repository{DB: db},
 			SitePublish:          sitePublish,
 			ContentWriter:        buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
+			ContentImages:        contentImages,
+			ContentImageLimiter:  contenteditor.RedisImageUploadLimiter{Client: rdb},
 			SAMSessions:          &sam.Service{Store: sam.Repository{DB: db}},
 			EmailAuth:            emailAuthSvc,
 			APIKeys:              &apikeys.Service{DB: db, Auth: authService, Logger: logger},

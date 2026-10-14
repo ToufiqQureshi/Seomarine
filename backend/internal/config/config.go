@@ -72,6 +72,17 @@ type Config struct {
 	Release string
 	// TrustedProxyCIDRs are peers allowed to supply client IP headers.
 	TrustedProxyCIDRs []netip.Prefix
+	// SupabaseStorage configures the optional public media bucket used by
+	// editor uploads. The service role key stays on the server.
+	SupabaseStorage *SupabaseStorage
+}
+
+// SupabaseStorage contains the project API URL, server-only service key and
+// public bucket used for editorial images.
+type SupabaseStorage struct {
+	URL                *url.URL
+	ServiceRoleKey     string
+	ContentImageBucket string
 }
 
 // Razorpay holds the Razorpay credentials and the plan that is sold.
@@ -174,6 +185,10 @@ func Load(getenv func(string) string) (Config, error) {
 
 	dataForSEOKey := strings.TrimSpace(getenv("DATAFORSEO_API_KEY"))
 	openRouterKey := strings.TrimSpace(getenv("OPENROUTER_API_KEY"))
+	supabaseStorage, err := loadSupabaseStorage(getenv)
+	if err != nil {
+		return Config{}, err
+	}
 	bypassVerification := strings.TrimSpace(getenv("BYPASS_EMAIL_VERIFICATION")) == "true"
 	environment := "development"
 	if isLive(public) {
@@ -216,7 +231,30 @@ func Load(getenv func(string) string) (Config, error) {
 		Environment:                  environment,
 		Release:                      strings.TrimSpace(getenv("RAILWAY_GIT_COMMIT_SHA")),
 		TrustedProxyCIDRs:            trusted,
+		SupabaseStorage:              supabaseStorage,
 	}, nil
+}
+
+func loadSupabaseStorage(getenv func(string) string) (*SupabaseStorage, error) {
+	rawURL := strings.TrimSpace(getenv("SUPABASE_URL"))
+	serviceRoleKey := strings.TrimSpace(getenv("SUPABASE_SERVICE_ROLE_KEY"))
+	bucket := strings.TrimSpace(getenv("SUPABASE_CONTENT_IMAGE_BUCKET"))
+	configured := rawURL != "" || serviceRoleKey != "" || bucket != ""
+	if !configured {
+		return nil, nil
+	}
+	if rawURL == "" || serviceRoleKey == "" || bucket == "" {
+		return nil, errors.New("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_CONTENT_IMAGE_BUCKET must be set together")
+	}
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil || parsedURL.Scheme != "https" || parsedURL.Host == "" || parsedURL.User != nil || parsedURL.RawQuery != "" || parsedURL.Fragment != "" || (parsedURL.Path != "" && parsedURL.Path != "/") {
+		return nil, errors.New("SUPABASE_URL must be an https project origin without credentials, path, query, or fragment")
+	}
+	if strings.Trim(bucket, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != "" || strings.ContainsAny(serviceRoleKey, "\r\n") {
+		return nil, errors.New("SUPABASE_CONTENT_IMAGE_BUCKET or SUPABASE_SERVICE_ROLE_KEY is invalid")
+	}
+	parsedURL.Path = ""
+	return &SupabaseStorage{URL: parsedURL, ServiceRoleKey: serviceRoleKey, ContentImageBucket: bucket}, nil
 }
 
 // isLive reports whether the site is served to the public: over https, on a

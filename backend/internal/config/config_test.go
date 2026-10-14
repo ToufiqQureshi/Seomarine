@@ -81,6 +81,54 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestLoadSupabaseStorage(t *testing.T) {
+	base := map[string]string{
+		"DATABASE_URL": "postgres://localhost/uplumo", "REDIS_URL": "redis://localhost:6379/0",
+		"BETTER_AUTH_SECRET": secret, "PUBLIC_URL": "https://uplumo.com",
+	}
+	withSupabase := func(extra map[string]string) map[string]string {
+		env := maps.Clone(base)
+		maps.Copy(env, map[string]string{
+			"SUPABASE_URL": "https://project.supabase.co", "SUPABASE_SERVICE_ROLE_KEY": "service-secret",
+			"SUPABASE_CONTENT_IMAGE_BUCKET": "content-images",
+		})
+		maps.Copy(env, extra)
+		return env
+	}
+	tests := []struct {
+		name string
+		env  map[string]string
+		want bool
+	}{
+		{name: "optional when unset", env: base},
+		{name: "loads complete configuration", env: withSupabase(nil), want: true},
+		{name: "rejects partial configuration", env: withSupabase(map[string]string{"SUPABASE_CONTENT_IMAGE_BUCKET": ""})},
+		{name: "requires HTTPS project URL", env: withSupabase(map[string]string{"SUPABASE_URL": "http://project.supabase.co"})},
+		{name: "rejects project URL with a path", env: withSupabase(map[string]string{"SUPABASE_URL": "https://project.supabase.co/storage"})},
+		{name: "rejects bucket path traversal", env: withSupabase(map[string]string{"SUPABASE_CONTENT_IMAGE_BUCKET": "../private"})},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(func(key string) string { return tt.env[key] })
+			if tt.want {
+				if err != nil || cfg.SupabaseStorage == nil {
+					t.Fatalf("Load() = (%+v, %v), want configured image storage", cfg.SupabaseStorage, err)
+				}
+				return
+			}
+			if tt.name == "optional when unset" {
+				if err != nil || cfg.SupabaseStorage != nil {
+					t.Fatalf("Load() image storage = (%+v, %v), want nil", cfg.SupabaseStorage, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("Load() = %+v, want invalid image storage configuration error", cfg.SupabaseStorage)
+			}
+		})
+	}
+}
+
 func TestLoadPublicURL(t *testing.T) {
 	env := map[string]string{
 		"DATABASE_URL":       "postgres://localhost/uplumo",

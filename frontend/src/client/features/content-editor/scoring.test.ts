@@ -34,7 +34,7 @@ describe("content editor scoring", () => {
 
     expect(seo.score).toBeGreaterThan(60);
     expect(aeo.score).toBeGreaterThan(60);
-    expect(seo.checks.map(({ id }) => id)).toContain("keyword-coverage");
+    expect(seo.checks.map(({ id }) => id)).toContain("topic-body");
     expect(aeo.checks.map(({ id }) => id)).toContain("direct-answer");
     expect(seo.checks.map(({ id }) => id)).not.toContain("direct-answer");
     expect(aeo.checks.map(({ id }) => id)).not.toContain("keyword-coverage");
@@ -56,17 +56,16 @@ describe("content editor scoring", () => {
     ).toBe(true);
   });
 
-  it("does not treat keyword stuffing as good SEO coverage", () => {
-    const stuffed = {
-      ...completeDraft,
-      content: Array.from({ length: 40 }, () => "technical SEO").join(" "),
-    };
+  it("does not use fixed word-count or keyword-density targets as ranking rules", () => {
+    const checks = scoreContent("seo", completeDraft).checks;
 
-    const check = scoreContent("seo", stuffed).checks.find(
-      ({ id }) => id === "keyword-coverage",
+    expect(checks.map(({ id }) => id)).not.toContain("keyword-coverage");
+    expect(checks.map(({ id }) => id)).not.toContain("depth");
+    expect(checks.map(({ id }) => id)).not.toContain("title-length");
+    expect(checks.map(({ id }) => id)).not.toContain("meta-length");
+    expect(checks.find(({ id }) => id === "substance")?.detail).toContain(
+      "no universal word-count target",
     );
-    expect(check?.passed).toBe(false);
-    expect(check?.detail).toContain("50.0%");
   });
 
   it("matches whole topic phrases instead of substrings inside other words", () => {
@@ -78,10 +77,10 @@ describe("content editor scoring", () => {
         "Seoul has many useful places and an easy metro system for visitors.",
     };
     const seo = scoreContent("seo", nearMatch);
-    expect(seo.checks.find(({ id }) => id === "keyword-title")?.passed).toBe(
+    expect(seo.checks.find(({ id }) => id === "topic-title")?.passed).toBe(
       false,
     );
-    expect(seo.checks.find(({ id }) => id === "keyword-coverage")?.passed).toBe(
+    expect(seo.checks.find(({ id }) => id === "topic-body")?.passed).toBe(
       false,
     );
   });
