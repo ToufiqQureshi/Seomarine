@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="t d">
+<title id="t">Why AI assistant visits look like Direct traffic</title>
+<desc id="d">Visits from ChatGPT, Perplexity, Gemini and Copilot often arrive without a referrer, so ordinary analytics files them under Direct. Uplumo Analytics reads AI referrers and tracking tags and files them under each assistant.</desc>
+<rect width="1200" height="630" fill="#07090a"/>
+<g font-family="Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<text x="60" y="80" fill="#f2f5f3" font-size="40" font-weight="600">Where did that visitor come from?</text>
+<text x="60" y="122" fill="#a3b0aa" font-size="24">The same four visits, in ordinary analytics and in AI-aware analytics</text>
+<g font-size="24" fill="#07090a" font-weight="600">
+<rect x="60" y="180" width="250" height="64" rx="14" fill="#c6ff3d"/><text x="88" y="221">ChatGPT</text>
+<rect x="60" y="268" width="250" height="64" rx="14" fill="#c6ff3d"/><text x="88" y="309">Perplexity</text>
+<rect x="60" y="356" width="250" height="64" rx="14" fill="#c6ff3d"/><text x="88" y="397">Gemini</text>
+<rect x="60" y="444" width="250" height="64" rx="14" fill="#c6ff3d"/><text x="88" y="485">Copilot</text>
+</g>
+<g stroke="#5c6a64" stroke-width="3" fill="none">
+<path d="M310 212 C420 212 420 330 520 330"/><path d="M310 300 C420 300 420 340 520 340"/>
+<path d="M310 388 C420 388 420 350 520 350"/><path d="M310 476 C420 476 420 360 520 360"/>
+</g>
+<rect x="520" y="290" width="250" height="110" rx="16" fill="#131917" stroke="#33403b" stroke-width="2"/>
+<text x="545" y="333" fill="#f2f5f3" font-size="26" font-weight="600">Direct (none)</text>
+<text x="545" y="370" fill="#a3b0aa" font-size="20">Ordinary analytics</text>
+<g stroke="#ff7aa6" stroke-width="3" fill="none"><path d="M770 345 L840 345"/><path d="M828 333 L840 345 L828 357"/></g>
+<g font-size="22">
+<rect x="860" y="180" width="280" height="64" rx="14" fill="#0d1110" stroke="#c6ff3d" stroke-width="2"/><text x="884" y="220" fill="#f2f5f3">AI · ChatGPT</text>
+<rect x="860" y="268" width="280" height="64" rx="14" fill="#0d1110" stroke="#c6ff3d" stroke-width="2"/><text x="884" y="308" fill="#f2f5f3">AI · Perplexity</text>
+<rect x="860" y="356" width="280" height="64" rx="14" fill="#0d1110" stroke="#c6ff3d" stroke-width="2"/><text x="884" y="396" fill="#f2f5f3">AI · Gemini</text>
+<rect x="860" y="444" width="280" height="64" rx="14" fill="#0d1110" stroke="#c6ff3d" stroke-width="2"/><text x="884" y="484" fill="#f2f5f3">AI · Copilot</text>
+</g>
+<text x="860" y="560" fill="#a3b0aa" font-size="20">AI-aware analytics reads referrers and</text>
+<text x="860" y="588" fill="#a3b0aa" font-size="20">utm_source tags like chatgpt.com</text>
+</g>
+</svg>

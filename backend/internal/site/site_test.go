@@ -275,23 +275,35 @@ func TestInfoPages(t *testing.T) {
 // an app route the SPA owns, an asset, a mail address or a named outside page.
 func TestPagesHaveNoDeadLinks(t *testing.T) {
 	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
-	known := map[string]bool{"/": true, "/pricing": true, "/sign-in": true, "/sign-up": true}
+	known := map[string]bool{"/": true, "/pricing": true, "/blog": true, "/sign-in": true, "/sign-up": true}
 	// The privacy policy must point at Google's own policy and at the page
 	// where a user removes our access. Any other outside link is a mistake.
 	known["https://developers.google.com/terms/api-services-user-data-policy"] = true
 	known["https://myaccount.google.com/permissions"] = true
-	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing}
+	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing, "/blog": s.ServeBlog}
 	for _, path := range InfoPaths() {
 		known[path] = true
 		pages[path] = s.ServeInfo
 	}
-	href := regexp.MustCompile(`href="([^"]*)"`)
+	for slug := range s.posts {
+		known["/blog/"+slug] = true
+		pages["/blog/"+slug] = func(w http.ResponseWriter, r *http.Request) {
+			r.SetPathValue("slug", slug)
+			s.ServeBlogPost(w, r)
+		}
+	}
+	href := regexp.MustCompile(`(?:href|src)="([^"]*)"`)
 	for path, serve := range pages {
 		for _, m := range href.FindAllStringSubmatch(get(serve, path, nil).Body.String(), -1) {
 			link := m[1]
 			switch {
+			case strings.HasPrefix(link, AssetsPrefix):
+				file, _, _ := strings.Cut(strings.TrimPrefix(link, AssetsPrefix), "?")
+				if _, ok := s.versions[file]; !ok {
+					t.Errorf("%s uses %q, which is not an embedded asset", path, link)
+				}
 			case strings.HasPrefix(link, "mailto:"+SupportEmail), strings.HasPrefix(link, "#"),
-				strings.HasPrefix(link, AssetsPrefix), strings.HasPrefix(link, "https://uplumo.com/"):
+				strings.HasPrefix(link, "https://uplumo.com/"):
 			case !known[link]:
 				t.Errorf("%s links to %q, which no page serves", path, link)
 			}
@@ -325,7 +337,10 @@ func TestRobotsAndSitemap(t *testing.T) {
 	for _, u := range doc.URLs {
 		got[u.Loc] = true
 	}
-	want := append([]string{"/", "/pricing"}, InfoPaths()...)
+	want := append([]string{"/", "/pricing", "/blog"}, InfoPaths()...)
+	for slug := range s.posts {
+		want = append(want, "/blog/"+slug)
+	}
 	if len(got) != len(want) {
 		t.Errorf("sitemap has %d URLs, want %d", len(got), len(want))
 	}
@@ -358,6 +373,24 @@ func TestPricingPageShowsWhatThePlanCatalogEnforces(t *testing.T) {
 	for _, unwanted := range []string{"credit", "$3", "$10"} {
 		if strings.Contains(strings.ToLower(body), unwanted) {
 			t.Errorf("pricing page mentions %q", unwanted)
+		}
+	}
+}
+
+// The site carries no personal name, phone number or address of the owner;
+// the owner asked for that.
+func TestPublicPagesCarryNoPersonalContactDetails(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing, "/blog": s.ServeBlog}
+	for _, path := range InfoPaths() {
+		pages[path] = s.ServeInfo
+	}
+	for path, serve := range pages {
+		body := get(serve, path, nil).Body.String()
+		for _, banned := range []string{"Toufiq", "Qureshi", "+91", "96654", "operated by", "<h2>Phone</h2>", "<h2>Post</h2>"} {
+			if strings.Contains(body, banned) {
+				t.Errorf("%s contains %q", path, banned)
+			}
 		}
 	}
 }

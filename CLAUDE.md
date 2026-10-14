@@ -36,6 +36,64 @@ code before you trust this section.
 If a doc and the code disagree, the code is the truth: fix the doc in the same
 change.
 
+### Docs map
+
+Every Markdown file in the repo is listed here; read only the ones your
+change touches. A test (`frontend/scripts/docs-map.test.ts`) fails when a new
+`.md` file is missing from this list, so add the line in the same change.
+Skills (`.agents/skills/`, mirrored in `.claude/skills/`) are listed by the
+harness and are not repeated here.
+
+Whole product: `README.md` (what Uplumo is), `ROADMAP.md` (status),
+`docs/PRODUCT.md` (why, for whom), `docs/LOCAL_DEVELOPMENT.md`,
+`docs/DEPLOY.md`, `docs/audits/` (dated reviews, read only when asked),
+`backend/README.md` (Go server, Razorpay billing rules, checks),
+`.agents/PAPERCUTS.md` (known repo friction), `AGENTS.md` and
+`.claude/CLAUDE.md` (both point here).
+
+Go features, `backend/internal/…/README.md`, read before touching that package:
+
+| Package                                    | Covers                                              |
+| ------------------------------------------ | --------------------------------------------------- |
+| `backend/internal/activation/README.md`    | Dashboard first-run checklist state                 |
+| `backend/internal/aisearch/README.md`      | AI Visibility: Brand Lookup, Prompt Explorer        |
+| `backend/internal/analytics/README.md`     | Uplumo Analytics tracker, ingest, AI traffic        |
+| `backend/internal/analytics/geo/ATTRIBUTION.md` | DB-IP country database licence (keep)          |
+| `backend/internal/apikeys/README.md`       | API keys for MCP clients                            |
+| `backend/internal/audit/README.md`         | Site audit, Lighthouse via PageSpeed, CrUX field data |
+| `backend/internal/auth/README.md`          | Session reading, auth middleware                    |
+| `backend/internal/backlinks/README.md`     | Backlinks pages                                     |
+| `backend/internal/billing/README.md`       | Plans, credits ledger, spend guard, cancelling      |
+| `backend/internal/dashboardoverview/README.md` | Dashboard audit and backlink cards              |
+| `backend/internal/database/README.md`      | Migrations and table rules                          |
+| `backend/internal/domain/README.md`        | Domain Overview                                     |
+| `backend/internal/email/README.md`         | Loops email                                         |
+| `backend/internal/emailauth/README.md`     | Sign-up, sign-in, verification, reset, Google login |
+| `backend/internal/ga4/README.md`           | Google Analytics 4 reports                          |
+| `backend/internal/gdpr/README.md`          | Account erasure                                     |
+| `backend/internal/google/README.md`        | Google OAuth connections and tokens                 |
+| `backend/internal/gsc/README.md`           | Search Console                                      |
+| `backend/internal/keywords/README.md`      | Keyword research, saved keywords, locations         |
+| `backend/internal/mcp/README.md`           | `/mcp` server and its tools                         |
+| `backend/internal/plans/README.md`         | Plan catalog: prices, limits, features              |
+| `backend/internal/platform/dataforseo/README.md` | DataForSEO transport                          |
+| `backend/internal/platform/errreport/README.md`  | Sentry error reporting                        |
+| `backend/internal/platform/market/README.md`     | Countries and languages                       |
+| `backend/internal/platform/spend/README.md`      | Spend hold contract for paid providers        |
+| `backend/internal/projectcontext/README.md` | Project memory shared by UI, MCP, SAM              |
+| `backend/internal/projects/README.md`      | Project API                                         |
+| `backend/internal/ranktracking/README.md`  | Rank tracking                                       |
+| `backend/internal/reports/README.md`       | Reports and share links                             |
+| `backend/internal/sam/README.md`           | SAM in-app agent                                    |
+| `backend/internal/sam/product_fact_sheet.md` | Facts SAM may state about Uplumo (keep true)      |
+| `backend/internal/sitepublish/README.md`   | WordPress connection and publishing                 |
+| `backend/internal/site/blog/README.md`     | Public blog: how to add a post, SEO checklist       |
+
+Frontend features, `frontend/src/client/features/…`:
+`content-editor/README.md`, `keywords/README.md`, `saved-keywords/README.md`,
+`site-publishing/README.md`, and `ai-mcp/agentSetupPrompt.md` (the prompt
+users paste into their agent; it is product copy).
+
 ## 2. Layout
 
 ```
@@ -228,6 +286,24 @@ Propose with a recommendation; do not decide silently.
 - Do not keep plans, migration history or status logs as documents. Status
   lives in `ROADMAP.md`, history lives in git.
 - Never put secrets in a document.
+
+**Docs change with the code, in the same commit.** A PR that changes
+behaviour, a rule, an env var, a limit, an endpoint or a table also updates
+the README of that feature (and `ROADMAP.md`, `docs/DEPLOY.md` or the Docs
+map when they are affected). A stale doc is a bug: the next agent trusts it.
+Before pushing, ask "which doc says something this diff just made untrue?"
+
+**Write docs for an agent that has never seen the code:**
+
+- Lead with what the thing does and when to read the doc, in one or two
+  sentences.
+- Then the rules that must never break, the flow, env vars and edge cases,
+  as short bullets or tables, not essays.
+- Say **why** a rule exists; the code already says what it does.
+- Name exact files, functions, tables, routes and env vars, so they can be
+  searched. Give real numbers (limits, timeouts, prices), not "a few".
+- One fact in one place; link to it instead of copying it.
+- No history, dates or "we changed X" in a README; git keeps that.
 
 ## 8. Legal
 

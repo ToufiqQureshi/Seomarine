@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="t d">
+<title id="t">An answer-first page structure</title>
+<desc id="d">A page built for answer engines: the question as the heading, a two or three sentence direct answer, supporting sections, a comparison table and an FAQ, with the author and date shown.</desc>
+<rect width="1200" height="630" fill="#07090a"/>
+<g font-family="Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+<rect x="60" y="50" width="620" height="530" rx="22" fill="#0d1110" stroke="#232b28" stroke-width="2"/>
+<text x="95" y="112" fill="#f2f5f3" font-size="30" font-weight="600">H1 · The question people ask</text>
+<rect x="95" y="138" width="550" height="98" rx="12" fill="#c6ff3d"/>
+<text x="120" y="178" fill="#07090a" font-size="22" font-weight="600">Direct answer in 2–3 sentences</text>
+<text x="120" y="210" fill="#07090a" font-size="19">The part AI assistants and snippets quote</text>
+<rect x="95" y="258" width="550" height="56" rx="12" fill="#131917"/><text x="120" y="294" fill="#d9e2dd" font-size="21">H2 · Why it matters (with your own numbers)</text>
+<rect x="95" y="330" width="550" height="56" rx="12" fill="#131917"/><text x="120" y="366" fill="#d9e2dd" font-size="21">H2 · Step-by-step: how to do it</text>
+<rect x="95" y="402" width="550" height="56" rx="12" fill="#131917"/><text x="120" y="438" fill="#d9e2dd" font-size="21">Table · options compared</text>
+<rect x="95" y="474" width="550" height="56" rx="12" fill="#131917"/><text x="120" y="510" fill="#d9e2dd" font-size="21">H2 · FAQ: the follow-up questions</text>
+<g font-size="22" fill="#a3b0aa">
+<text x="740" y="190" fill="#f2f5f3" font-size="28" font-weight="600">What answer engines need</text>
+<text x="740" y="245">✓ A clear question and answer</text>
+<text x="740" y="290">✓ Facts they can quote</text>
+<text x="740" y="335">✓ Headings that match questions</text>
+<text x="740" y="380">✓ Lists and tables, not walls of text</text>
+<text x="740" y="425">✓ Who wrote it, and when</text>
+<text x="740" y="470">✓ A page Google can crawl and index</text>
+</g>
+</g>
+</svg>

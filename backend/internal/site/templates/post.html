@@ -1,0 +1,14 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<article class="wrap narrow doc">
+<p class="eyebrow"><a href="/blog" style="text-decoration:none">Blog</a></p>
+<h1>{{.Post.Title}}</h1>
+<p class="lead">{{.Post.Description}}</p>
+<p class="meta">{{.Post.Author}} · <time datetime="{{.Post.Published.Format "2006-01-02"}}">{{.Post.Published.Format "2 January 2006"}}</time>{{if ne .Post.Updated .Post.Published}} · updated <time datetime="{{.Post.Updated.Format "2006-01-02"}}">{{.Post.Updated.Format "2 January 2006"}}</time>{{end}} · {{.Post.ReadMinutes}} min read</p>
+<div class="prose">
+{{.Post.Body}}
+<p><a href="{{.SignUp}}">Try Uplumo free</a>: track your rankings, audit your site and see which AI assistants send you visitors.</p>
+</div>
+</article>
+{{template "footer" .}}
