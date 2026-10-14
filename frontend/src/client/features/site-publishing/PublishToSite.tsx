@@ -20,10 +20,12 @@ export function PublishToSite({
   projectId,
   draftId,
   hasUnsavedChanges,
+  blocksPublish,
 }: {
   projectId: string;
   draftId: string | undefined;
   hasUnsavedChanges: boolean;
+  blocksPublish: boolean;
 }) {
   const connectionQuery = useQuery(siteConnectionQueryOptions(projectId));
   const connection = connectionQuery.data;
@@ -55,6 +57,7 @@ export function PublishToSite({
           draftId={draftId}
           siteName={connection.siteName || connection.siteUrl || "your site"}
           hasUnsavedChanges={hasUnsavedChanges}
+          blocksPublish={blocksPublish}
         />
       )}
     </section>
@@ -66,11 +69,13 @@ function PublishActions({
   draftId,
   siteName,
   hasUnsavedChanges,
+  blocksPublish,
 }: {
   projectId: string;
   draftId: string;
   siteName: string;
   hasUnsavedChanges: boolean;
+  blocksPublish: boolean;
 }) {
   const queryClient = useQueryClient();
   const publicationOptions = sitePublicationQueryOptions(projectId, draftId);
@@ -98,6 +103,11 @@ function PublishActions({
           Save your changes first: the saved version is what gets published.
         </p>
       ) : null}
+      {blocksPublish ? (
+        <p role="alert" className="text-sm text-destructive">
+          Fix keyword stuffing before publishing this article.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
@@ -109,7 +119,7 @@ function PublishActions({
         </Button>
         <Button
           size="sm"
-          disabled={publish.isPending || hasUnsavedChanges}
+          disabled={publish.isPending || hasUnsavedChanges || blocksPublish}
           onClick={() => publish.mutate("publish")}
         >
           <Send aria-hidden />

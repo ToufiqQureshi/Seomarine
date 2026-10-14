@@ -5,6 +5,47 @@ target topic, URL slug and search description are saved with the article. SEO
 and answer-readiness checks are local editorial guidance; they do not query
 Google or predict rankings.
 
+## Scoring in the editor
+
+- Scores are deterministic and computed in the browser after a 300 ms pause in
+  typing. Scoring does not make network requests. A `ContentBrief` is optional
+  cached input; until one is available, the editor says it is using only
+  brief-independent checks. Fixtures used by tests are never loaded into the
+  product UI.
+- With a brief, SEO uses the approved 100-point weights: term coverage (30),
+  term ranges (10), topic placement (15), depth (10), brief subtopics (10),
+  list/table (5), sources and internal links (8), readability (7), and image
+  alt text (5). Terms are selected by competitor-domain prevalence. Depth uses
+  the 25th–75th percentile of available competitor article lengths, with a
+  bounded fallback when there are no samples.
+- Without a brief, SEO displays only local checks, scaled against the points
+  available in that mode. It does not imply competitor coverage or article
+  depth has been checked. AEO remains separately scored against its direct
+  answer, definition, question coverage, structure, sources, FAQ, entities and
+  freshness checks.
+- Readability is scored only when the draft contains no Devanagari script and
+  fewer than 5% common Hindi/Hinglish markers. Other language drafts receive no
+  readability penalty. Image alt text remains checked against the existing
+  five-image editor limit. When there are no images, its check is marked not
+  applicable and removed from the score; the remaining SEO points are scaled
+  to the full score.
+- SEO and AEO are capped at 40 and publishing is blocked when the exact target
+  topic appears at least eight times, exceeds twice the larger of its brief
+  maximum and 2% of body words, and exceeds 4% of body words. This check works
+  without a brief too. Eight-word phrase overlap with a competitor is considered
+  copied when at least four shingles match and at least 20% of the draft's
+  shingles overlap. That caps SEO at 30. SEO and AEO drafts under 100 words are
+  also capped at 30. When multiple caps apply, the lowest score cap wins, while
+  any stuffing trigger still blocks publishing. These are editorial safeguards,
+  not search-engine rules.
+- Brief term coverage is partial below the minimum (`uses / min`), full from the
+  minimum through the maximum, and overuse is handled by the separate term-range
+  check.
+- Title and description lengths are hints only. No keyword-density target is
+  used. The slug follows the title until the writer edits the slug. Unsaved
+  browser navigation warns the writer; drafts remain saved only through the
+  server API and are not stored in browser storage.
+
 ## Writing flow
 
 - Write or edit Markdown in the article field, then switch to Preview to check
