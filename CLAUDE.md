@@ -286,6 +286,24 @@ Propose with a recommendation; do not decide silently.
   lives in `ROADMAP.md`, history lives in git.
 - Never put secrets in a document.
 
+**Docs change with the code, in the same commit.** A PR that changes
+behaviour, a rule, an env var, a limit, an endpoint or a table also updates
+the README of that feature (and `ROADMAP.md`, `docs/DEPLOY.md` or the Docs
+map when they are affected). A stale doc is a bug: the next agent trusts it.
+Before pushing, ask "which doc says something this diff just made untrue?"
+
+**Write docs for an agent that has never seen the code:**
+
+- Lead with what the thing does and when to read the doc, in one or two
+  sentences.
+- Then the rules that must never break, the flow, env vars and edge cases,
+  as short bullets or tables, not essays.
+- Say **why** a rule exists; the code already says what it does.
+- Name exact files, functions, tables, routes and env vars, so they can be
+  searched. Give real numbers (limits, timeouts, prices), not "a few".
+- One fact in one place; link to it instead of copying it.
+- No history, dates or "we changed X" in a README; git keeps that.
+
 ## 8. Legal
 
 `LICENSE` is proprietary (all rights reserved) for Uplumo's own work.
