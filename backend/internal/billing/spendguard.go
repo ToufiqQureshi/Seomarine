@@ -8,7 +8,6 @@ import (
 	"math"
 	"sync"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
@@ -110,11 +109,6 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	}
 	h.reservationID, h.reserved = reservation.ID, reservation.AmountCredits
 	return h, nil
-}
-
-// querier is a pool or a transaction.
-type querier interface {
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 // checkDaily refuses with spend.ErrPaused when today's spend plus estimate
