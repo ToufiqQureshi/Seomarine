@@ -13,6 +13,8 @@ const skipDirs = new Set([
   "testdata",
 ]);
 const frontendFeatures = "frontend/src/client/features/";
+// Blog posts are site content, not docs; only the folder's README is listed.
+const blogPosts = "backend/internal/site/blog/";
 
 function markdownFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -31,6 +33,7 @@ describe("CLAUDE.md docs map", () => {
   it("lists every Markdown file in the repository", () => {
     const claude = readFileSync(join(repoRoot, "CLAUDE.md"), "utf8");
     const listed = (path: string) =>
+      (path.startsWith(blogPosts) && !path.endsWith("/README.md")) ||
       claude.includes(`\`${path}\``) ||
       (path.startsWith("docs/audits/") && claude.includes("`docs/audits/`")) ||
       (path.startsWith(frontendFeatures) &&
