@@ -61,6 +61,8 @@ func ParseAuditConfig(raw string) (Config, bool) {
 			switch strategy {
 			case string(LighthouseNone), "manual":
 				config.LighthouseStrategy = LighthouseNone
+			case string(LighthouseHomepage):
+				config.LighthouseStrategy = LighthouseHomepage
 			default:
 				// "auto", "all" and anything unknown.
 				config.LighthouseStrategy = LighthouseAuto

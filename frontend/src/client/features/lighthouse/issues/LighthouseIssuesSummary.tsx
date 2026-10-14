@@ -26,25 +26,50 @@ export function LighthouseIssuesSummary({
         </div>
       ) : null}
       {metricItems.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 rounded-lg border border-border bg-muted/30 px-4 py-3">
-          {metricItems.map((metric) => (
-            <div
-              key={metric.label}
-              className="flex items-baseline justify-between gap-2 py-1"
-            >
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                {metric.label}
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-foreground">
-                {metric.value}
-              </span>
-            </div>
-          ))}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Lab test: one simulated visit by Google
+          </p>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {metricItems.map((metric) => {
+              const tone = scoreTone(metric.score);
+              return (
+                <li
+                  key={metric.label}
+                  title={metric.meaning}
+                  className="rounded-lg border border-border bg-muted/30 px-3 py-2"
+                >
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-2 rounded-full",
+                        tone ? SCORE_DOT_CLASS[tone] : "bg-border",
+                      )}
+                    />
+                    {metric.label}
+                  </span>
+                  <span className="block text-base font-semibold tabular-nums">
+                    {metric.value}
+                  </span>
+                  <span className="block text-[11px] leading-tight text-muted-foreground">
+                    {metric.meaning}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : null}
     </>
   );
 }
+
+const SCORE_DOT_CLASS = {
+  success: "bg-success",
+  warning: "bg-warning",
+  destructive: "bg-destructive",
+};
 
 const SCORE_STROKE_CLASS = {
   success: "stroke-success",
@@ -104,16 +129,55 @@ function getMetricItems(metrics?: LighthouseMetrics | null) {
   if (!metrics) return [];
 
   return [
-    { label: "FCP", value: metrics.firstContentfulPaint.displayValue },
-    { label: "LCP", value: metrics.largestContentfulPaint.displayValue },
-    { label: "TBT", value: metrics.totalBlockingTime.displayValue },
-    { label: "SI", value: metrics.speedIndex.displayValue },
-    { label: "TTI", value: metrics.timeToInteractive.displayValue },
-    { label: "CLS", value: metrics.cumulativeLayoutShift.displayValue },
-    { label: "INP", value: metrics.interactionToNextPaint.displayValue },
-    { label: "TTFB", value: metrics.serverResponseTime.displayValue },
-  ].filter(
-    (metric): metric is { label: string; value: string } =>
-      metric.value != null,
-  );
+    {
+      label: "LCP",
+      metric: metrics.largestContentfulPaint,
+      meaning: "Main content shows",
+    },
+    {
+      label: "CLS",
+      metric: metrics.cumulativeLayoutShift,
+      meaning: "Page jumps while loading",
+    },
+    {
+      label: "TBT",
+      metric: metrics.totalBlockingTime,
+      meaning: "Page frozen, cannot react",
+    },
+    {
+      label: "FCP",
+      metric: metrics.firstContentfulPaint,
+      meaning: "Anything shows",
+    },
+    {
+      label: "Speed Index",
+      metric: metrics.speedIndex,
+      meaning: "How fast the screen fills",
+    },
+    {
+      label: "TTI",
+      metric: metrics.timeToInteractive,
+      meaning: "Fully usable",
+    },
+    {
+      label: "INP",
+      metric: metrics.interactionToNextPaint,
+      meaning: "Reacts to a tap",
+    },
+    {
+      label: "TTFB",
+      metric: metrics.serverResponseTime,
+      meaning: "Server answers",
+    },
+  ].flatMap(({ label, metric, meaning }) => {
+    // The server-response audit's displayValue is a sentence ("Root document
+    // took 420 ms"), too long for a tile, so it is shown from its number.
+    const value =
+      label === "TTFB" && metric.numericValue != null
+        ? `${Math.round(metric.numericValue)} ms`
+        : metric.displayValue;
+    return value == null
+      ? []
+      : [{ label, meaning, value, score: metric.score }];
+  });
 }

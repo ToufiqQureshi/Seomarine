@@ -25,7 +25,6 @@ import { getFieldError, getFormError } from "@/client/lib/forms";
 import { RENDERED_MAX_AUDIT_PAGES } from "@/shared/audit-limits";
 import { renderingEstimateText } from "@/shared/audit-rendering";
 import { SUBSCRIBE_ROUTE } from "@/shared/billing";
-import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 
 type Props = {
   launchForm: ReturnType<typeof useLaunchController>["launchForm"];
@@ -33,6 +32,7 @@ type Props = {
   maxPagesLimit: number;
   paidMaxPagesLimit: number;
   canRenderJavaScript?: boolean;
+  isFreePlan: boolean;
 };
 
 export function LaunchFormCard({
@@ -41,6 +41,7 @@ export function LaunchFormCard({
   maxPagesLimit,
   paidMaxPagesLimit,
   canRenderJavaScript,
+  isFreePlan,
 }: Props) {
   return (
     <Card>
@@ -91,7 +92,6 @@ export function LaunchFormCard({
               </Button>
             )}
           </launchForm.Subscribe>
-          <CreditCostHint feature="site_audit" className="lg:col-span-3" />
 
           <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-12 lg:items-start">
             <LaunchOptions
@@ -101,7 +101,10 @@ export function LaunchFormCard({
               paidMaxPagesLimit={paidMaxPagesLimit}
             />
             <div className="space-y-4">
-              <LighthouseOptions launchForm={launchForm} />
+              <LighthouseOptions
+                launchForm={launchForm}
+                isFreePlan={isFreePlan}
+              />
               <RenderingOptions
                 launchForm={launchForm}
                 maxPagesLimit={maxPagesLimit}
@@ -122,7 +125,7 @@ function LaunchOptions({
   commitMaxPagesInput,
   maxPagesLimit,
   paidMaxPagesLimit,
-}: Props) {
+}: Omit<Props, "isFreePlan">) {
   return (
     <Field className="rounded-lg border border-border p-3">
       <FieldLabel htmlFor="audit-max-pages">Max pages</FieldLabel>
@@ -166,7 +169,10 @@ function LaunchOptions({
   );
 }
 
-function LighthouseOptions({ launchForm }: Pick<Props, "launchForm">) {
+function LighthouseOptions({
+  launchForm,
+  isFreePlan,
+}: Pick<Props, "launchForm" | "isFreePlan">) {
   return (
     <Field className="rounded-lg border border-border p-3">
       <div className="flex items-center gap-2">
@@ -181,9 +187,9 @@ function LighthouseOptions({ launchForm }: Pick<Props, "launchForm">) {
         </launchForm.Field>
         <FieldLabel
           htmlFor="audit-run-lighthouse"
-          title="Lighthouse measures the performance of your pages and identifies issues."
+          title="Google's Lighthouse measures how fast your pages load and lists what to fix. Uses no credits."
         >
-          Include Lighthouse
+          Include page speed test
         </FieldLabel>
       </div>
 
@@ -193,8 +199,18 @@ function LighthouseOptions({ launchForm }: Pick<Props, "launchForm">) {
         {(runLighthouse) =>
           runLighthouse ? (
             <FieldDescription>
-              We choose a sample of 20 pages to audit, removing pages from
-              duplicate templates.
+              {isFreePlan ? (
+                <>
+                  Tests your homepage on mobile and desktop.{" "}
+                  <Link to={SUBSCRIBE_ROUTE} search={{ upgrade: true }}>
+                    Upgrade
+                  </Link>{" "}
+                  to test up to 10 pages, one of each page type.
+                </>
+              ) : (
+                "Tests up to 10 pages on mobile and desktop: your homepage and one page of each type."
+              )}{" "}
+              Uses no credits.
             </FieldDescription>
           ) : null
         }

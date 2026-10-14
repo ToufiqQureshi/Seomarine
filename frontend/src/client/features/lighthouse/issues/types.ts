@@ -18,3 +18,4 @@ export type ExportPayload = Omit<
 export type LighthouseIssue = LighthouseIssuesData["issues"][number];
 export type LighthouseScores = NonNullable<LighthouseIssuesData["scores"]>;
 export type LighthouseMetrics = NonNullable<LighthouseIssuesData["metrics"]>;
+export type LighthouseFieldData = LighthouseIssuesData["fieldData"];

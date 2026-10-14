@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -56,13 +57,14 @@ type StoredLighthouseScores struct {
 
 // StoredLighthouseMetadata identifies a stored Lighthouse report.
 type StoredLighthouseMetadata struct {
-	RequestedURL      string   `json:"requestedUrl"`
-	FinalURL          string   `json:"finalUrl"`
-	Strategy          string   `json:"strategy"`
-	FetchedAt         string   `json:"fetchedAt"`
-	LighthouseVersion *string  `json:"lighthouseVersion"`
-	TaskID            *string  `json:"taskId"`
-	Cost              *float64 `json:"cost"`
+	RequestedURL      string  `json:"requestedUrl"`
+	FinalURL          string  `json:"finalUrl"`
+	Strategy          string  `json:"strategy"`
+	FetchedAt         string  `json:"fetchedAt"`
+	LighthouseVersion *string `json:"lighthouseVersion"`
+	// TaskID and Cost are set only on payloads stored from DataForSEO.
+	TaskID *string  `json:"taskId"`
+	Cost   *float64 `json:"cost"`
 }
 
 // StoredLighthousePayload is the compact Lighthouse report stored and served.
@@ -74,6 +76,9 @@ type StoredLighthousePayload struct {
 	Scores          StoredLighthouseScores   `json:"scores"`
 	Metrics         StoredLighthouseMetrics  `json:"metrics"`
 	Issues          []StoredLighthouseIssue  `json:"issues"`
+	// FieldData is nil for payloads stored before PageSpeed Insights, and for
+	// sites with too little Chrome traffic for Google to report.
+	FieldData *StoredFieldData `json:"fieldData,omitempty"`
 }
 
 // scoreToPercent converts a Lighthouse 0-1 score to a rounded percentage.
@@ -385,44 +390,128 @@ type LighthouseInput struct {
 	Strategy string
 }
 
-// ParseDataForseoLighthousePayload reduces a DataForSEO Lighthouse response into
-// the compact stored payload, failing when the provider returned no usable
-// report. Mirrors parseDataforseoLighthousePayload.
-func ParseDataForseoLighthousePayload(payload []byte, input LighthouseInput, now time.Time) (StoredLighthousePayload, error) {
-	var envelope struct {
-		StatusCode    *int   `json:"status_code"`
-		StatusMessage string `json:"status_message"`
-		Tasks         []struct {
-			ID            *string  `json:"id"`
-			Cost          *float64 `json:"cost"`
-			StatusCode    *int     `json:"status_code"`
-			StatusMessage string   `json:"status_message"`
-			Result        []struct {
-				RequestedURL      *string                          `json:"requestedUrl"`
-				FinalURL          *string                          `json:"finalUrl"`
-				LighthouseVersion *string                          `json:"lighthouseVersion"`
-				Categories        map[string]rawLighthouseCategory `json:"categories"`
-				Audits            map[string]rawLighthouseAudit    `json:"audits"`
-			} `json:"result"`
-		} `json:"tasks"`
+// pageSpeedSource marks a payload built from a PageSpeed Insights response.
+// Payloads stored before the switch carry storedPayloadSource instead.
+const pageSpeedSource = "pagespeed-insights"
+
+// rawFieldMetric is one CrUX metric as PageSpeed Insights returns it.
+type rawFieldMetric struct {
+	Percentile    *float64 `json:"percentile"`
+	Category      string   `json:"category"`
+	Distributions []struct {
+		Proportion float64 `json:"proportion"`
+	} `json:"distributions"`
+}
+
+// rawLoadingExperience is the CrUX block of a PageSpeed Insights response.
+type rawLoadingExperience struct {
+	Metrics         map[string]rawFieldMetric `json:"metrics"`
+	OverallCategory string                    `json:"overall_category"`
+}
+
+// StoredFieldMetric is one real-user (CrUX) metric at the 75th percentile, with
+// the share of visits in each of Google's good / needs improvement / poor bands.
+type StoredFieldMetric struct {
+	Key string `json:"key"`
+	// Percentile is milliseconds, except CLS, which is unitless.
+	Percentile       float64 `json:"percentile"`
+	Category         string  `json:"category"`
+	Good             float64 `json:"good"`
+	NeedsImprovement float64 `json:"needsImprovement"`
+	Poor             float64 `json:"poor"`
+}
+
+// StoredFieldData is what real Chrome users experienced over the last 28 days.
+// Scope is "page" when Google has data for the URL itself and "origin" when it
+// fell back to the whole site.
+type StoredFieldData struct {
+	Scope string `json:"scope"`
+	// CoreWebVitals is "passed" when LCP, CLS and (when measured) INP are all
+	// good, "failed" otherwise; the same rule PageSpeed Insights shows.
+	CoreWebVitals string              `json:"coreWebVitals"`
+	Metrics       []StoredFieldMetric `json:"metrics"`
+}
+
+// fieldMetricKeys maps CrUX metric names onto stored keys, in display order.
+var fieldMetricKeys = []struct{ crux, key string }{
+	{"LARGEST_CONTENTFUL_PAINT_MS", "lcp"},
+	{"INTERACTION_TO_NEXT_PAINT", "inp"},
+	{"CUMULATIVE_LAYOUT_SHIFT_SCORE", "cls"},
+	{"FIRST_CONTENTFUL_PAINT_MS", "fcp"},
+	{"EXPERIMENTAL_TIME_TO_FIRST_BYTE", "ttfb"},
+}
+
+// buildFieldData keeps the page's CrUX data, falling back to the origin's. A new
+// or low-traffic site has neither, which is normal and returns nil.
+func buildFieldData(page, origin *rawLoadingExperience) *StoredFieldData {
+	scope, source := "page", page
+	if source == nil || len(source.Metrics) == 0 {
+		scope, source = "origin", origin
 	}
-	if err := json.Unmarshal(payload, &envelope); err != nil {
-		return StoredLighthousePayload{}, fmt.Errorf("DataForSEO Lighthouse returned an invalid response: %w", err)
+	if source == nil || len(source.Metrics) == 0 {
+		return nil
 	}
-	if envelope.StatusCode == nil || *envelope.StatusCode != 20000 {
-		return StoredLighthousePayload{}, fmt.Errorf("%s", orDefault(envelope.StatusMessage, "DataForSEO Lighthouse request failed"))
+	data := &StoredFieldData{Scope: scope, Metrics: []StoredFieldMetric{}}
+	categories := map[string]string{}
+	for _, name := range fieldMetricKeys {
+		raw, ok := source.Metrics[name.crux]
+		if !ok || raw.Percentile == nil {
+			continue
+		}
+		metric := StoredFieldMetric{Key: name.key, Percentile: *raw.Percentile, Category: raw.Category}
+		if name.key == "cls" {
+			// CrUX reports CLS multiplied by 100.
+			metric.Percentile /= 100
+		}
+		if len(raw.Distributions) == 3 {
+			metric.Good = raw.Distributions[0].Proportion
+			metric.NeedsImprovement = raw.Distributions[1].Proportion
+			metric.Poor = raw.Distributions[2].Proportion
+		}
+		categories[name.key] = raw.Category
+		data.Metrics = append(data.Metrics, metric)
 	}
-	if len(envelope.Tasks) == 0 {
-		return StoredLighthousePayload{}, fmt.Errorf("DataForSEO Lighthouse response missing task")
+	if len(data.Metrics) == 0 {
+		return nil
 	}
-	task := envelope.Tasks[0]
-	if task.StatusCode == nil || *task.StatusCode != 20000 {
-		return StoredLighthousePayload{}, fmt.Errorf("%s", orDefault(task.StatusMessage, "DataForSEO Lighthouse task failed"))
+	data.CoreWebVitals = "failed"
+	lcp, hasLCP := categories["lcp"]
+	cls, hasCLS := categories["cls"]
+	inp, hasINP := categories["inp"]
+	if hasLCP && hasCLS && lcp == "FAST" && cls == "FAST" && (!hasINP || inp == "FAST") {
+		data.CoreWebVitals = "passed"
 	}
-	if len(task.Result) == 0 {
-		return StoredLighthousePayload{}, fmt.Errorf("DataForSEO Lighthouse response missing result")
+	return data
+}
+
+// ParsePageSpeedPayload reduces a PageSpeed Insights v5 response into the
+// compact stored payload, failing when Lighthouse could not produce a report.
+func ParsePageSpeedPayload(payload []byte, input LighthouseInput, now time.Time) (StoredLighthousePayload, error) {
+	var response struct {
+		LoadingExperience       *rawLoadingExperience `json:"loadingExperience"`
+		OriginLoadingExperience *rawLoadingExperience `json:"originLoadingExperience"`
+		LighthouseResult        *struct {
+			RequestedURL      *string                          `json:"requestedUrl"`
+			FinalURL          *string                          `json:"finalUrl"`
+			LighthouseVersion *string                          `json:"lighthouseVersion"`
+			Categories        map[string]rawLighthouseCategory `json:"categories"`
+			Audits            map[string]rawLighthouseAudit    `json:"audits"`
+			RuntimeError      *struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"runtimeError"`
+		} `json:"lighthouseResult"`
 	}
-	result := task.Result[0]
+	if err := json.Unmarshal(payload, &response); err != nil {
+		return StoredLighthousePayload{}, fmt.Errorf("PageSpeed Insights returned an invalid response: %w", err)
+	}
+	result := response.LighthouseResult
+	if result == nil {
+		return StoredLighthousePayload{}, errors.New("PageSpeed Insights response missing lighthouseResult")
+	}
+	if result.RuntimeError != nil && result.RuntimeError.Code != "" && result.RuntimeError.Code != "NO_ERROR" {
+		return StoredLighthousePayload{}, fmt.Errorf("%s %s. %s", lighthouseLoadErrorPrefix, result.RuntimeError.Code, result.RuntimeError.Message)
+	}
 
 	categories := result.Categories
 	if categories == nil {
@@ -433,22 +522,18 @@ func ParseDataForseoLighthousePayload(payload []byte, input LighthouseInput, now
 		audits = map[string]rawLighthouseAudit{}
 	}
 	hasIssueDetails, issues := buildStoredLighthouseIssues(audits, categories)
-	metrics := buildStoredLighthouseMetrics(audits)
 
 	finalURL := orDefault(derefString(result.FinalURL), input.URL)
-	requestedURL := orDefault(derefString(result.RequestedURL), input.URL)
 	stored := StoredLighthousePayload{
-		Version:         2,
-		Source:          "dataforseo-lighthouse",
+		Version:         storedPayloadVersion,
+		Source:          pageSpeedSource,
 		HasIssueDetails: hasIssueDetails,
 		Metadata: StoredLighthouseMetadata{
-			RequestedURL:      requestedURL,
+			RequestedURL:      orDefault(derefString(result.RequestedURL), input.URL),
 			FinalURL:          finalURL,
 			Strategy:          input.Strategy,
 			FetchedAt:         now.UTC().Format(time.RFC3339Nano),
 			LighthouseVersion: result.LighthouseVersion,
-			TaskID:            task.ID,
-			Cost:              task.Cost,
 		},
 		Scores: StoredLighthouseScores{
 			Performance:   scoreToPercent(categoryScore(categories, "performance")),
@@ -456,12 +541,13 @@ func ParseDataForseoLighthousePayload(payload []byte, input LighthouseInput, now
 			BestPractices: scoreToPercent(categoryScore(categories, "best-practices")),
 			SEO:           scoreToPercent(categoryScore(categories, "seo")),
 		},
-		Metrics: metrics,
-		Issues:  issues,
+		Metrics:   buildStoredLighthouseMetrics(audits),
+		Issues:    issues,
+		FieldData: buildFieldData(response.LoadingExperience, response.OriginLoadingExperience),
 	}
 	if stored.Scores.Performance == nil && stored.Scores.Accessibility == nil &&
 		stored.Scores.BestPractices == nil && stored.Scores.SEO == nil {
-		return StoredLighthousePayload{}, fmt.Errorf("DataForSEO Lighthouse returned no category scores for %s", finalURL)
+		return StoredLighthousePayload{}, fmt.Errorf("PageSpeed Insights returned no category scores for %s", finalURL)
 	}
 	return stored, nil
 }

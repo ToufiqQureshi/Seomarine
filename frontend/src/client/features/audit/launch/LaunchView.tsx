@@ -37,6 +37,7 @@ export function LaunchView({
           maxPagesLimit={controller.maxPagesLimit}
           paidMaxPagesLimit={controller.paidMaxPagesLimit}
           canRenderJavaScript={controller.canRenderJavaScript}
+          isFreePlan={isFreePlan}
         />
 
         <AuditHistorySection

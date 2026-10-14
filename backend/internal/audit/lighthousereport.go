@@ -12,7 +12,9 @@ import (
 
 const (
 	storedPayloadVersion = 2
-	storedPayloadSource  = "dataforseo-lighthouse"
+	// storedPayloadSource marks payloads stored from DataForSEO, before the
+	// switch to PageSpeed Insights. They stay readable.
+	storedPayloadSource = "dataforseo-lighthouse"
 )
 
 // ExportMode selects what a Lighthouse export contains.
@@ -59,6 +61,7 @@ type LighthouseIssuesResult struct {
 	Scores          *StoredLighthouseScores  `json:"scores"`
 	Metrics         *StoredLighthouseMetrics `json:"metrics"`
 	Issues          []StoredLighthouseIssue  `json:"issues"`
+	FieldData       *StoredFieldData         `json:"fieldData"`
 }
 
 // LighthouseExportFile is a downloadable Lighthouse export.
@@ -73,7 +76,7 @@ type LighthouseExportFile struct {
 func parseStoredPayload(payloadJSON string) (*StoredLighthousePayload, error) {
 	var stored StoredLighthousePayload
 	if err := json.Unmarshal([]byte(payloadJSON), &stored); err == nil &&
-		stored.Version == storedPayloadVersion && stored.Source == storedPayloadSource {
+		stored.Version == storedPayloadVersion && (stored.Source == storedPayloadSource || stored.Source == pageSpeedSource) {
 		return &stored, nil
 	}
 	if !json.Valid([]byte(payloadJSON)) {
@@ -136,6 +139,7 @@ func BuildLighthouseIssues(detail LighthouseDetail) (LighthouseIssuesResult, err
 		result.HasIssueDetails = stored.HasIssueDetails
 		result.Scores = &stored.Scores
 		result.Metrics = &stored.Metrics
+		result.FieldData = stored.FieldData
 	}
 	return result, nil
 }

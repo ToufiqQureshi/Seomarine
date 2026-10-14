@@ -137,7 +137,13 @@ func TestPaidLookupsSpendTheWorkspacesCreditsEndToEnd(t *testing.T) {
 	if usage.BalanceCredits != balance || len(usage.Spent) != 1 || usage.Spent[0].Feature != "domain_research" || usage.Spent[0].Credits != spentCredits {
 		t.Fatalf("usage = %+v, want %d credits left and %d spent on domain_research", usage, balance, spentCredits)
 	}
-	if len(usage.Costs) != 9 {
-		t.Fatalf("usage lists %d action costs, want 9", len(usage.Costs))
+	// Site audit's page speed test runs on Google's free API, so it has no cost.
+	if len(usage.Costs) != 8 {
+		t.Fatalf("usage lists %d action costs, want 8", len(usage.Costs))
+	}
+	for _, cost := range usage.Costs {
+		if cost.Feature == "site_audit" {
+			t.Fatalf("usage lists a cost for site_audit, which uses no credits: %+v", cost)
+		}
 	}
 }

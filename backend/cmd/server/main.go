@@ -235,7 +235,7 @@ func run(logger *slog.Logger) (err error) {
 		return err
 	}
 	crawlerAccessSvc := &crawleraccess.Service{DB: db, Secret: cfg.BetterAuthSecret}
-	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient, crawlerAccessSvc)
+	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, cfg.PageSpeedAPIKey, crawlerAccessSvc)
 	if err != nil {
 		return err
 	}
@@ -541,15 +541,15 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 // buildAuditService wires the audit engine: the SSRF-guarded crawler, the
 // Lighthouse provider, the Postgres-backed job scheduler and the background
 // worker that runs audits.
-func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
+func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, pageSpeedAPIKey string, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
 	progress := audit.NewProgress(rdb)
 	guard := audit.NewGuard()
 	crawler := audit.NewCrawler(audit.CrawlerOptions{Guard: guard})
 
 	var lighthouseProvider audit.LighthouseProvider
-	if dfClient != nil {
-		lighthouseProvider = audit.NewDataForseoLighthouseProvider(dfClient)
+	if pageSpeedAPIKey != "" {
+		lighthouseProvider = audit.NewPageSpeedProvider(pageSpeedAPIKey, audit.RedisPageSpeedQuota{Client: rdb})
 	}
 
 	queue, err := jobs.New(db)

@@ -103,3 +103,34 @@ func TestAuditProgressNilClientIsSafe(t *testing.T) {
 		t.Fatalf("clear: %v", err)
 	}
 }
+
+func TestRedisPageSpeedQuotaIsPerOrganization(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	client := progressRedis(ctx, t)
+	quota := RedisPageSpeedQuota{Client: client}
+	heavy, light := "org-heavy-"+suffix(t), "org-light-"+suffix(t)
+	for i := range PageSpeedDailyChecksPerOrganization {
+		allowed, err := quota.Allow(ctx, heavy)
+		if err != nil || !allowed {
+			t.Fatalf("check %d: allowed=%v err=%v, want allowed", i+1, allowed, err)
+		}
+	}
+	if allowed, err := quota.Allow(ctx, heavy); err != nil || allowed {
+		t.Fatalf("check over the share: allowed=%v err=%v, want refused", allowed, err)
+	}
+	if allowed, err := quota.Allow(ctx, light); err != nil || !allowed {
+		t.Fatalf("another workspace: allowed=%v err=%v; one workspace's use must not block another", allowed, err)
+	}
+}
+
+func TestRedisPageSpeedQuotaFailsClosed(t *testing.T) {
+	if allowed, err := (RedisPageSpeedQuota{}).Allow(t.Context(), "org-1"); err == nil || allowed {
+		t.Fatalf("allowed=%v err=%v, want refused with an error", allowed, err)
+	}
+	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1})
+	t.Cleanup(func() { _ = client.Close() })
+	if allowed, err := (RedisPageSpeedQuota{Client: client}).Allow(t.Context(), "org-1"); err == nil || allowed {
+		t.Fatalf("allowed=%v err=%v, want refused when Redis is down", allowed, err)
+	}
+}

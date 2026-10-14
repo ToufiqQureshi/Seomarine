@@ -162,6 +162,15 @@ const lighthouseMetricSchema = z.object({
   numericValue: nullableNumber,
 });
 
+const fieldMetricSchema = z.object({
+  key: z.enum(["lcp", "inp", "cls", "fcp", "ttfb"]),
+  percentile: z.number(),
+  category: z.string(),
+  good: z.number(),
+  needsImprovement: z.number(),
+  poor: z.number(),
+});
+
 const lighthouseIssuesSchema = z.object({
   id: z.string(),
   finalUrl: z.string(),
@@ -186,6 +195,14 @@ const lighthouseIssuesSchema = z.object({
       timeToInteractive: lighthouseMetricSchema,
       interactionToNextPaint: lighthouseMetricSchema,
       serverResponseTime: lighthouseMetricSchema,
+    })
+    .nullable(),
+  // Real-user data from Google; null for older runs and low-traffic sites.
+  fieldData: z
+    .object({
+      scope: z.enum(["page", "origin"]),
+      coreWebVitals: z.enum(["passed", "failed"]),
+      metrics: z.array(fieldMetricSchema),
     })
     .nullable(),
   issues: z.array(

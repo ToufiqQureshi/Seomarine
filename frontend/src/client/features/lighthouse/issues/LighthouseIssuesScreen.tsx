@@ -94,8 +94,10 @@ export function LighthouseIssuesScreen({
           isLoading={issuesQuery.isPending}
           scannedAt={issuesQuery.data?.createdAt}
           finalUrl={issuesQuery.data?.finalUrl}
+          strategy={issuesQuery.data?.strategy}
           scores={issuesQuery.data?.scores}
           metrics={issuesQuery.data?.metrics}
+          fieldData={issuesQuery.data?.fieldData}
           severityCounts={severityCounts}
         />
 

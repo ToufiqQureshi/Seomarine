@@ -1,7 +1,8 @@
 # audit
 
 Site audit: crawl a site, run per-page and cross-page checks, optionally sample
-Lighthouse through DataForSEO, and serve the results to the React audit pages.
+Lighthouse through Google's PageSpeed Insights API, and serve the results to the
+React audit pages.
 Ported from the TypeScript engine; the JSON contract is unchanged so the pages
 only changed their transport.
 
@@ -36,8 +37,34 @@ are rejected): `start`, `status`, `results`, `history`, `progress`, `delete`,
 
 - `AUDIT_BROWSER_RENDERING=true` or `CONTEXT_API_KEY` enables JavaScript
   rendering. Without either, `renderJavaScript` requests answer 403.
-- DataForSEO (`DATAFORSEO_API_KEY`) is needed for Lighthouse. Without it audits
-  still run; Lighthouse is skipped.
+- `PAGESPEED_API_KEY` (a Google Cloud API key with the PageSpeed Insights API
+  enabled) is needed for Lighthouse. Without it audits still run; Lighthouse is
+  skipped.
+
+## Lighthouse through PageSpeed Insights
+
+Google runs Lighthouse on its own machines, so a check costs no money and no
+credits. Running Lighthouse ourselves would need Chrome in the image and about
+half a gigabyte of memory per check on the shared server. DataForSEO ran the
+same Lighthouse for a fee.
+
+- The one cost is quota: 25,000 checks a day for the whole Google Cloud project,
+  shared by every workspace. So each workspace may run
+  `PageSpeedDailyChecksPerOrganization` (200) checks per UTC day, counted in
+  Redis. Over that, the check fails with a message saying when it resets; the
+  rest of the audit still runs. If Redis is down the check fails closed.
+- A free plan's "auto" becomes "homepage": 2 checks (mobile and desktop). Paid
+  plans sample the homepage plus one page per URL template, up to 10 pages, 20
+  checks.
+- Each response also carries Google's real-visitor data (CrUX, last 28 days),
+  stored as `fieldData`: the page's own data, or the whole site's when the page
+  has too few visits, or nothing for a low-traffic site. "Core Web Vitals
+  passed" follows PageSpeed Insights: LCP and CLS good, and INP good when
+  measured.
+- The key goes in the `X-Goog-Api-Key` header, never the URL: a transport error
+  repeats the URL, and that message is stored on the audit for the customer.
+- A page Google could not load (`NO_FCP`, `ERRORED_DOCUMENT_REQUEST`) is the
+  customer's site, so it is logged as a warning, not an error.
 
 ## Rules that must never break
 
@@ -45,7 +72,8 @@ are rejected): `start`, `status`, `results`, `history`, `progress`, `delete`,
   link-local addresses are blocked).
 - Every read and delete is scoped by `project_id`. A result from another
   project is "not found", never "forbidden".
-- Never send DataForSEO a request it would reject: failed tasks are billed.
+- One workspace's page speed checks never use up another's: the daily cap is
+  per organization.
 - A free plan crawls at most `FreeMaxAuditPages`; paid at most `PaidMaxAuditPages`.
 
 ## Deliberate differences from the TypeScript version
@@ -59,7 +87,8 @@ are rejected): `start`, `status`, `results`, `history`, `progress`, `delete`,
 
 ## Edge cases
 
-- A stored payload that is valid JSON but not a version-2 DataForSEO payload is
+- A stored payload that is valid JSON but not a version-2 payload (source
+  `pagespeed-insights`, or `dataforseo-lighthouse` from before the switch) is
   treated as "no issue details", not an error. Text that is not JSON is a 500.
 - The full Lighthouse export returns the stored text untouched.
 - Missing scores sort last (treated as 100) when ranking issues.

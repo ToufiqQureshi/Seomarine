@@ -9,7 +9,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/audit"
 )
 
-var runSiteAuditInputSchema = json.RawMessage("{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1,\"description\":\"Project to audit.\"},\"url\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2048,\"description\":\"Start URL to crawl.\"},\"maxPages\":{\"type\":\"integer\",\"minimum\":10,\"maximum\":10000,\"description\":\"Page budget for the crawl (default 50).\"},\"renderJavaScript\":{\"type\":\"boolean\",\"description\":\"Render JavaScript before auditing. Slower and limited to 1000 pages. Default false.\"},\"runLighthouse\":{\"type\":\"boolean\",\"description\":\"Run Lighthouse on representative pages. Adds time and usage. Default false.\"}},\"required\":[\"projectId\",\"url\"]}")
+var runSiteAuditInputSchema = json.RawMessage("{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1,\"description\":\"Project to audit.\"},\"url\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2048,\"description\":\"Start URL to crawl.\"},\"maxPages\":{\"type\":\"integer\",\"minimum\":10,\"maximum\":10000,\"description\":\"Page budget for the crawl (default 50).\"},\"renderJavaScript\":{\"type\":\"boolean\",\"description\":\"Render JavaScript before auditing. Slower and limited to 1000 pages. Default false.\"},\"runLighthouse\":{\"type\":\"boolean\",\"description\":\"Run Lighthouse (Google PageSpeed Insights) on representative pages: the homepage only on the Free plan, up to 10 pages otherwise. Adds a few minutes; uses no credits. Default false.\"}},\"required\":[\"projectId\",\"url\"]}")
 
 func runSiteAuditTool() *tool {
 	return &tool{
