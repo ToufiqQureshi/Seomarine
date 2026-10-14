@@ -7,6 +7,12 @@ import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
 import { Field } from "./EditorPanels";
+import { uploadContentImage } from "./contentEditorApi";
+import {
+  compressEditorImage,
+  countArticleImages,
+  MAX_ARTICLE_IMAGES,
+} from "./image-processing";
 import {
   formatArticleContent,
   insertImageContent,
@@ -15,13 +21,17 @@ import {
 
 type ArticleComposerProps = {
   draft: ContentDraftInput;
+  projectId: string;
   disabled: boolean;
+  onImageUploadStateChange: (uploading: boolean) => void;
   onChange: (field: keyof ContentDraftInput, value: string) => void;
 };
 
 export function ArticleComposer({
   draft,
+  projectId,
   disabled,
+  onImageUploadStateChange,
   onChange,
 }: ArticleComposerProps) {
   return (
@@ -86,8 +96,10 @@ export function ArticleComposer({
         />
       </Field>
       <ArticleBody
+        projectId={projectId}
         content={draft.content}
         disabled={disabled}
+        onUploadStateChange={onImageUploadStateChange}
         onChange={(content) => onChange("content", content)}
       />
     </div>
@@ -95,19 +107,26 @@ export function ArticleComposer({
 }
 
 function ArticleBody({
+  projectId,
   content,
   disabled,
+  onUploadStateChange,
   onChange,
 }: {
+  projectId: string;
   content: string;
   disabled: boolean;
+  onUploadStateChange: (uploading: boolean) => void;
   onChange: (content: string) => void;
 }) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [imageFieldsOpen, setImageFieldsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
+  const [imageFile, setImageFile] = useState<File>();
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState("");
 
   const formatArticle = (format: ArticleFormat) => {
@@ -122,31 +141,62 @@ function ArticleBody({
     });
   };
 
-  const insertImage = () => {
+  const insertImage = (url: string) => {
+    if (countArticleImages(content) >= MAX_ARTICLE_IMAGES) {
+      setImageError(
+        `An article can include up to ${MAX_ARTICLE_IMAGES} images.`,
+      );
+      return false;
+    }
     const editor = editorRef.current;
     const start = editor?.selectionStart ?? content.length;
     const end = editor?.selectionEnd ?? start;
     try {
-      const result = insertImageContent(
-        content,
-        start,
-        end,
-        imageUrl,
-        imageAlt,
-      );
+      const result = insertImageContent(content, start, end, url, imageAlt);
       onChange(result.content);
       setImageError("");
       setImageUrl("");
       setImageAlt("");
+      setImageFile(undefined);
+      if (imageInputRef.current) imageInputRef.current.value = "";
       setImageFieldsOpen(false);
       requestAnimationFrame(() => {
         editor?.focus();
         editor?.setSelectionRange(result.selectionStart, result.selectionEnd);
       });
+      return true;
     } catch (cause) {
       setImageError(
         cause instanceof Error ? cause.message : "Could not add this image.",
       );
+      return false;
+    }
+  };
+
+  const uploadAndInsertImage = async () => {
+    if (!imageFile || !imageAlt.trim()) return;
+    if (countArticleImages(content) >= MAX_ARTICLE_IMAGES) {
+      setImageError(
+        `An article can include up to ${MAX_ARTICLE_IMAGES} images.`,
+      );
+      return;
+    }
+    setUploadingImage(true);
+    onUploadStateChange(true);
+    setImageError("");
+    try {
+      const compressedFile = await compressEditorImage(imageFile);
+      const uploaded = await uploadContentImage({
+        data: { projectId, file: compressedFile },
+      });
+      insertImage(uploaded.url);
+    } catch (cause) {
+      setImageError(
+        cause instanceof Error ? cause.message : "Could not upload this image.",
+      );
+    } finally {
+      setUploadingImage(false);
+      onUploadStateChange(false);
     }
   };
 
@@ -221,6 +271,7 @@ function ArticleBody({
           type="button"
           variant={previewMode ? "default" : "outline"}
           size="sm"
+          disabled={disabled}
           aria-pressed={previewMode}
           onClick={() => {
             setPreviewMode((preview) => !preview);
@@ -267,14 +318,45 @@ function ArticleBody({
           <Button
             type="button"
             size="sm"
-            onClick={insertImage}
-            disabled={disabled || !imageUrl.trim() || !imageAlt.trim()}
+            onClick={() => insertImage(imageUrl)}
+            disabled={
+              disabled || uploadingImage || !imageUrl.trim() || !imageAlt.trim()
+            }
           >
             Insert image
           </Button>
+          <Field
+            id="content-image-file"
+            label="Or upload an image"
+            hint="PNG or JPEG, up to 10 MB before compression"
+          >
+            <Input
+              ref={imageInputRef}
+              id="content-image-file"
+              type="file"
+              accept="image/png,image/jpeg"
+              disabled={disabled || uploadingImage}
+              onChange={(event) => {
+                setImageFile(event.target.files?.[0]);
+                setImageError("");
+              }}
+            />
+          </Field>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => void uploadAndInsertImage()}
+            disabled={
+              disabled || uploadingImage || !imageFile || !imageAlt.trim()
+            }
+          >
+            {uploadingImage ? "Uploading…" : "Upload & insert"}
+          </Button>
           <p className="text-xs text-muted-foreground sm:col-span-3">
-            Add a publicly hosted image URL. Image uploads need connected media
-            storage.
+            Uploads are resized and compressed to WebP (up to 1 MB) before they
+            reach storage. Articles support up to {MAX_ARTICLE_IMAGES} images.
+            Add a description for accessibility.
           </p>
           {imageError ? (
             <p role="alert" className="text-sm text-destructive sm:col-span-3">

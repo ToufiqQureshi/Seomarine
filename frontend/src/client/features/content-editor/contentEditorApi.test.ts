@@ -6,6 +6,7 @@ import {
   generateWritingSuggestion,
   listContentDrafts,
   saveContentDraft,
+  uploadContentImage,
 } from "./contentEditorApi";
 
 const draft = {
@@ -126,5 +127,51 @@ describe("content editor API contract", () => {
         }),
       },
     ]);
+  });
+
+  it("uploads one image as multipart form data and validates the public URL", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        { url: "https://media.uplumo.com/content-editor/a.png" },
+        { status: 201 },
+      ),
+    );
+    const file = new File(["image bytes"], "cover.webp", {
+      type: "image/webp",
+    });
+    await expect(
+      uploadContentImage({ data: { projectId: "p/1", file } }),
+    ).resolves.toEqual({
+      url: "https://media.uplumo.com/content-editor/a.png",
+    });
+    const [path, init] = fetchMock.mock.calls[0];
+    expect(path).toBe("/api/v1/projects/p%2F1/content/images/upload");
+    expect(init).toMatchObject({ method: "POST", credentials: "same-origin" });
+    expect(init?.headers).toBeUndefined();
+    const body = init?.body;
+    if (!(body instanceof FormData)) {
+      throw new Error("Expected the upload request to contain FormData.");
+    }
+    expect(body.get("image")).toBeInstanceOf(File);
+  });
+
+  it("shows safe upload errors returned by the server", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        {
+          error: {
+            code: "invalid_image",
+            message: "Choose a PNG or JPEG image.",
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    const file = new File(["not an image"], "cover.webp", {
+      type: "image/webp",
+    });
+    await expect(
+      uploadContentImage({ data: { projectId: "p1", file } }),
+    ).rejects.toMatchObject({ status: 400, code: "invalid_image" });
   });
 });

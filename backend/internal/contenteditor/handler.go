@@ -14,6 +14,7 @@ import (
 )
 
 const maxRequestBody = MaxContentLength + (16 << 10)
+const maxImageRequestBody = MaxImageUploadSize + (64 << 10)
 
 // Store defines persistence operations used by the content editor.
 type Store interface {
@@ -25,20 +26,95 @@ type Store interface {
 
 // Handler serves content editor requests.
 type Handler struct {
-	Store  Store
-	Writer WriterService
-	Logger *slog.Logger
+	Store        Store
+	Writer       WriterService
+	Images       ImageStore
+	ImageLimiter ImageUploadLimiter
+	Logger       *slog.Logger
 }
 
 // Mount registers content editor endpoints on mux.
-func Mount(mux *http.ServeMux, store Store, writer WriterService, withSession, withProjectAccess func(http.Handler) http.Handler) {
-	handler := Handler{Store: store, Writer: writer, Logger: slog.Default()}
+func Mount(mux *http.ServeMux, store Store, writer WriterService, images ImageStore, imageLimiter ImageUploadLimiter, withSession, withProjectAccess func(http.Handler) http.Handler) {
+	handler := Handler{Store: store, Writer: writer, Images: images, ImageLimiter: imageLimiter, Logger: slog.Default()}
 	protect := func(next http.Handler) http.Handler { return withSession(withProjectAccess(next)) }
+	mux.Handle("POST /api/v1/projects/{projectId}/content/images/upload", protect(http.HandlerFunc(handler.uploadImage)))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/list", protect(http.HandlerFunc(handler.list)))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/{draftId}/get", protect(http.HandlerFunc(handler.get)))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/save", protect(http.HandlerFunc(handler.save)))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/{draftId}/delete", protect(http.HandlerFunc(handler.delete)))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/assistant/generate", protect(http.HandlerFunc(handler.generate)))
+}
+
+func (h Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
+	if h.Images == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "content_image_storage_unavailable", "Image uploads are not configured on this server yet. You can still insert a public image URL.")
+		return
+	}
+	organizationID, ok := auth.ProjectOrganizationFromContext(r.Context())
+	if !ok || organizationID == "" {
+		httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")
+		return
+	}
+	if h.ImageLimiter == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "content_image_storage_unavailable", "Image uploads are temporarily unavailable.")
+		return
+	}
+	allowed, err := h.ImageLimiter.Allow(r.Context(), organizationID)
+	if err != nil {
+		h.internalError(w, r, "limit content image uploads", err)
+		return
+	}
+	if !allowed {
+		httpx.WriteError(w, http.StatusTooManyRequests, "image_upload_limit", "This workspace has reached its image upload limit. Try again in an hour.")
+		return
+	}
+	if r.ContentLength > maxImageRequestBody {
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge, "image_too_large", "Compressed images must be 1 MB or smaller.")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxImageRequestBody)
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "image_too_large", "Compressed images must be 1 MB or smaller.")
+			return
+		}
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_image_upload", "Choose one compressed WebP image up to 1 MB.")
+		return
+	}
+	if r.MultipartForm != nil {
+		defer func() { _ = r.MultipartForm.RemoveAll() }()
+	}
+	if len(r.MultipartForm.Value) != 0 || len(r.MultipartForm.File) != 1 || len(r.MultipartForm.File["image"]) != 1 {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_image_upload", "Choose one compressed WebP image up to 1 MB.")
+		return
+	}
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_image_upload", "Choose one compressed WebP image up to 1 MB.")
+		return
+	}
+	defer func() { _ = file.Close() }()
+	if header.Size > MaxImageUploadSize {
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge, "image_too_large", "Compressed images must be 1 MB or smaller.")
+		return
+	}
+	data, err := readUpload(file, MaxImageUploadSize)
+	if err != nil {
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge, "image_too_large", "Compressed images must be 1 MB or smaller.")
+		return
+	}
+	imageURL, err := h.Images.Upload(r.Context(), data)
+	if err != nil {
+		var validationErr *ImageValidationError
+		if errors.As(err, &validationErr) {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_image", validationErr.Error())
+			return
+		}
+		h.internalError(w, r, "upload content image", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"url": imageURL})
 }
 
 func (h Handler) generate(w http.ResponseWriter, r *http.Request) {

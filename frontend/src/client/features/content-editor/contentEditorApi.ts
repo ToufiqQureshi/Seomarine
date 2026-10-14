@@ -1,4 +1,4 @@
-import { apiRequest } from "@/client/lib/uplumoApi";
+import { ApiError, apiRequest } from "@/client/lib/uplumoApi";
 import { z } from "zod";
 import type { ContentDraftInput } from "./scoring";
 
@@ -20,6 +20,7 @@ const draftSummarySchema = draftSchema.pick({
   targetKeyword: true,
   updatedAt: true,
 });
+const uploadedImageSchema = z.object({ url: z.string().url() });
 
 export type ContentDraft = z.infer<typeof draftSchema>;
 
@@ -99,4 +100,39 @@ export function generateWritingSuggestion({ data }: { data: WriterRequest }) {
     "POST",
     input,
   );
+}
+
+export async function uploadContentImage({
+  data,
+}: {
+  data: { projectId: string; file: File };
+}) {
+  const form = new FormData();
+  form.append("image", data.file, data.file.name);
+  const response = await fetch(
+    `/api/v1/projects/${encodeURIComponent(data.projectId)}/content/images/upload`,
+    { method: "POST", credentials: "same-origin", body: form },
+  );
+  const body: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) {
+    const parsedError = z
+      .object({ error: z.object({ code: z.string(), message: z.string() }) })
+      .safeParse(body);
+    throw new ApiError(
+      response.status,
+      parsedError.success ? parsedError.data.error.code : "unknown",
+      parsedError.success
+        ? parsedError.data.error.message
+        : "Could not upload this image. Try again.",
+    );
+  }
+  const parsed = uploadedImageSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError(
+      0,
+      "invalid_response",
+      "The server returned an unexpected image URL. Try again.",
+    );
+  }
+  return parsed.data;
 }

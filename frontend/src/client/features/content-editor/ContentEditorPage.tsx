@@ -60,6 +60,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const [draftId, setDraftId] = useState<string>();
   const [savedSnapshot, setSavedSnapshot] = useState(blankDraft);
   const [initialized, setInitialized] = useState(false);
+  const [imageUploadBusy, setImageUploadBusy] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedSnapshot);
   const seo = useMemo(() => scoreContent("seo", draft), [draft]);
   const aeo = useMemo(() => scoreContent("aeo", draft), [draft]);
@@ -181,7 +182,8 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const editorBusy =
     saveMutation.isPending ||
     openMutation.isPending ||
-    deleteMutation.isPending;
+    deleteMutation.isPending ||
+    imageUploadBusy;
 
   const startNewDraft = () => {
     if (
@@ -215,7 +217,9 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
         <WritingModeToggle mode={mode} onChange={setMode} />
         <ArticleComposer
           draft={draft}
+          projectId={projectId}
           disabled={editorBusy}
+          onImageUploadStateChange={setImageUploadBusy}
           onChange={update}
         />
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">

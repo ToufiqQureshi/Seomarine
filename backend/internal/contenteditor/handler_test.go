@@ -1,7 +1,10 @@
 package contenteditor
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,6 +26,26 @@ type fakeWriterService struct {
 	input          WriterInput
 	output         WriterOutput
 	err            error
+}
+
+type fakeImageStore struct {
+	data []byte
+	url  string
+	err  error
+}
+
+type fakeImageUploadLimiter struct {
+	allowed bool
+	err     error
+}
+
+func (f fakeImageUploadLimiter) Allow(context.Context, string) (bool, error) {
+	return f.allowed, f.err
+}
+
+func (f *fakeImageStore) Upload(_ context.Context, data []byte) (string, error) {
+	f.data = append([]byte(nil), data...)
+	return f.url, f.err
 }
 
 func (f *fakeWriterService) Generate(_ context.Context, organizationID string, input WriterInput) (WriterOutput, error) {
@@ -50,7 +73,7 @@ func TestHandlerValidatesBodiesAndKeepsOperationsProjectScoped(t *testing.T) {
 	store := &memoryStore{}
 	identity := func(next http.Handler) http.Handler { return next }
 	mux := http.NewServeMux()
-	Mount(mux, store, nil, identity, identity)
+	Mount(mux, store, nil, nil, nil, identity, identity)
 
 	request := func(method, path, body string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
@@ -83,7 +106,7 @@ func TestHandlerValidatesBodiesAndKeepsOperationsProjectScoped(t *testing.T) {
 func TestHandlerRejectsOversizedPayload(t *testing.T) {
 	identity := func(next http.Handler) http.Handler { return next }
 	mux := http.NewServeMux()
-	Mount(mux, &memoryStore{}, nil, identity, identity)
+	Mount(mux, &memoryStore{}, nil, nil, nil, identity, identity)
 	body := `{"content":"` + strings.Repeat("x", maxRequestBody+1) + `"}`
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/drafts/save", strings.NewReader(body)))
@@ -101,7 +124,7 @@ func TestWriterHandlerRequiresProjectOrganizationAndValidRequest(t *testing.T) {
 		})
 	}
 	mux := http.NewServeMux()
-	Mount(mux, &memoryStore{}, writer, identity, withOrganization)
+	Mount(mux, &memoryStore{}, writer, nil, nil, identity, withOrganization)
 	request := func(body string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
 		mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(body)))
@@ -115,7 +138,7 @@ func TestWriterHandlerRequiresProjectOrganizationAndValidRequest(t *testing.T) {
 	}
 
 	withoutOrganization := http.NewServeMux()
-	Mount(withoutOrganization, &memoryStore{}, writer, identity, identity)
+	Mount(withoutOrganization, &memoryStore{}, writer, nil, nil, identity, identity)
 	failed := httptest.NewRecorder()
 	withoutOrganization.ServeHTTP(failed, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
 	if failed.Code != http.StatusNotFound {
@@ -140,12 +163,92 @@ func TestWriterHandlerMapsUnavailableAndNoCreditErrors(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			Mount(mux, &memoryStore{}, test.writer, identity, withOrganization)
+			Mount(mux, &memoryStore{}, test.writer, nil, nil, identity, withOrganization)
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/assistant/generate", strings.NewReader(`{"action":"outline"}`)))
 			if recorder.Code != test.want {
 				t.Fatalf("status = %d, want %d: %s", recorder.Code, test.want, recorder.Body)
 			}
 		})
+	}
+}
+
+func TestImageUploadRequiresProjectAccessAndStoresOnlyValidRasterImages(t *testing.T) {
+	identity := func(next http.Handler) http.Handler { return next }
+	withOrganization := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-42")))
+		})
+	}
+	imageBytes := testWebP(2, 2)
+	store := &fakeImageStore{url: "https://media.uplumo.com/content-editor/example.png"}
+	mux := http.NewServeMux()
+	Mount(mux, &memoryStore{}, nil, store, fakeImageUploadLimiter{allowed: true}, identity, withOrganization)
+	upload := func(data []byte, filename string) *httptest.ResponseRecorder {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		part, err := writer.CreateFormFile("image", filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(data); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, req)
+		return recorder
+	}
+	valid := upload(imageBytes, "image.webp")
+	var response struct {
+		URL string `json:"url"`
+	}
+	if valid.Code != http.StatusCreated || json.Unmarshal(valid.Body.Bytes(), &response) != nil || response.URL != store.url || !bytes.Equal(store.data, imageBytes) {
+		t.Fatalf("valid upload = %d %s; stored bytes=%d", valid.Code, valid.Body, len(store.data))
+	}
+	withoutProject := http.NewServeMux()
+	Mount(withoutProject, &memoryStore{}, nil, store, fakeImageUploadLimiter{allowed: true}, identity, identity)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, _ := writer.CreateFormFile("image", "image.webp")
+	_, _ = part.Write(imageBytes)
+	_ = writer.Close()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	recorder := httptest.NewRecorder()
+	withoutProject.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("missing project authorization status = %d, want 404", recorder.Code)
+	}
+}
+
+func TestImageUploadReportsUnavailableStorageAndRejectsOversizedRequests(t *testing.T) {
+	identity := func(next http.Handler) http.Handler { return next }
+	withOrganization := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-42")))
+		})
+	}
+	mux := http.NewServeMux()
+	Mount(mux, &memoryStore{}, nil, nil, nil, identity, identity)
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(""))
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("missing storage status = %d, want 503", recorder.Code)
+	}
+
+	configured := http.NewServeMux()
+	Mount(configured, &memoryStore{}, nil, &fakeImageStore{}, fakeImageUploadLimiter{allowed: true}, identity, withOrganization)
+	tooLarge := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(strings.Repeat("x", maxImageRequestBody+1)))
+	tooLarge.Header.Set("Content-Type", "multipart/form-data; boundary=invalid")
+	tooLargeRecorder := httptest.NewRecorder()
+	configured.ServeHTTP(tooLargeRecorder, tooLarge)
+	if tooLargeRecorder.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized request status = %d, want 413", tooLargeRecorder.Code)
 	}
 }
