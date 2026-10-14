@@ -54,6 +54,8 @@ Needed before real users sign up:
 | `STAFF_EMAILS` | The owner and the team are held to the Free plan like any customer. |
 | `DATAFORSEO_API_KEY`                                     | No keywords, rank tracking, backlinks or AI visibility (`503`).                                                                                  |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`                 | No AI assistant or AI writing.                                                                                                                   |
+| `PAGESPEED_API_KEY` | Site audits skip the page speed (Lighthouse) test. A free Google Cloud API key with the PageSpeed Insights API enabled; restrict the key to that API. |
+| `CRUX_API_KEY` | Real-visitor (Core Web Vitals) data on audits comes only from what PageSpeed Insights still embeds. A free key with the Chrome UX Report API enabled; it may be the same key as `PAGESPEED_API_KEY` if both APIs are enabled and allowed on it. |
 
 `SENTRY_DSN` turns on error reporting: every error the server logs is sent
 to Sentry (`backend/internal/platform/errreport/README.md`). Without it

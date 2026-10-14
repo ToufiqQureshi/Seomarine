@@ -235,7 +235,7 @@ func run(logger *slog.Logger) (err error) {
 		return err
 	}
 	crawlerAccessSvc := &crawleraccess.Service{DB: db, Secret: cfg.BetterAuthSecret}
-	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, dfClient, crawlerAccessSvc)
+	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, cfg.PageSpeedAPIKey, cfg.CrUXAPIKey, crawlerAccessSvc)
 	if err != nil {
 		return err
 	}
@@ -541,15 +541,19 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 // buildAuditService wires the audit engine: the SSRF-guarded crawler, the
 // Lighthouse provider, the Postgres-backed job scheduler and the background
 // worker that runs audits.
-func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, dfClient *dataforseo.Client, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
+func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, rdb *redis.Client, billingSvc *billing.Service, pageSpeedAPIKey, cruxAPIKey string, crawlerAccess audit.CrawlerAccessResolver) (*audit.Service, error) {
 	repository := audit.NewRepository(db)
 	progress := audit.NewProgress(rdb)
 	guard := audit.NewGuard()
 	crawler := audit.NewCrawler(audit.CrawlerOptions{Guard: guard})
 
 	var lighthouseProvider audit.LighthouseProvider
-	if dfClient != nil {
-		lighthouseProvider = audit.NewDataForseoLighthouseProvider(dfClient)
+	if pageSpeedAPIKey != "" {
+		lighthouseProvider = audit.NewPageSpeedProvider(pageSpeedAPIKey, audit.RedisPageSpeedQuota{Client: rdb})
+	}
+	var fieldData audit.FieldDataProvider
+	if cruxAPIKey != "" {
+		fieldData = audit.NewCrUXProvider(cruxAPIKey, audit.RedisFieldDataCache{Client: rdb}, logger)
 	}
 
 	queue, err := jobs.New(db)
@@ -571,17 +575,17 @@ func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Poo
 		Hosted:   billingSvc != nil, Env: os.Getenv, Logger: logger,
 	})
 
-	startAuditWorker(ctx, logger, queue, repository, progress, guard, crawler, lighthouseProvider, crawlerAccess)
+	startAuditWorker(ctx, logger, queue, repository, progress, guard, crawler, lighthouseProvider, fieldData, crawlerAccess)
 	return service, nil
 }
 
 // startAuditWorker consumes audits from the jobs queue until ctx ends. The
 // worker's jobs are at-least-once, so a crashed worker's audit is retried and
 // its deterministic row ids keep the retry idempotent.
-func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider, crawlerAccess audit.CrawlerAccessResolver) {
+func startAuditWorker(ctx context.Context, logger *slog.Logger, queue *jobs.Queue, repository *audit.Repository, progress *audit.Progress, guard *audit.Guard, crawler *audit.Crawler, lighthouseProvider audit.LighthouseProvider, fieldData audit.FieldDataProvider, crawlerAccess audit.CrawlerAccessResolver) {
 	runner := audit.NewRunner(audit.RunnerConfig{
 		Repository: repository, Progress: progress, Guard: guard, Crawler: crawler,
-		Lighthouse: lighthouseProvider, Logger: logger, Resolver: crawlerAccess,
+		Lighthouse: lighthouseProvider, FieldData: fieldData, Logger: logger, Resolver: crawlerAccess,
 	})
 	worker := jobs.Worker{
 		Queue: queue, QueueName: audit.AuditQueueName, Handle: audit.RunnerHandler(runner),

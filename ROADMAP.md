@@ -52,7 +52,7 @@ mean each one has been tried on production with real provider keys.
 | AI Visibility        | Brand Lookup (mentions, citations, share of voice) and Prompt Explorer                        |
 | Keywords             | Research, SERP analysis, saved keywords with tags                                             |
 | Rank tracking        | Configs, manual and scheduled checks, city-level locations                                    |
-| Site audit           | Crawl, issues, Lighthouse                                                                     |
+| Site audit           | Crawl, issues, Lighthouse through Google PageSpeed Insights (free; homepage only on Free) with real-visitor Core Web Vitals |
 | Backlinks, Domain    | Overview, rows, referring domains, top pages; domain keywords and pages                       |
 | Google               | Search Console performance and URL inspection, GA4 reports and measurement health             |
 | Reports              | White-label reports (logo, name, colour, website), public share links                         |

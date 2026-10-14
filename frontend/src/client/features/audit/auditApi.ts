@@ -162,6 +162,15 @@ const lighthouseMetricSchema = z.object({
   numericValue: nullableNumber,
 });
 
+const fieldMetricSchema = z.object({
+  key: z.enum(["lcp", "inp", "cls", "fcp", "ttfb"]),
+  percentile: z.number(),
+  category: z.string(),
+  good: z.number(),
+  needsImprovement: z.number(),
+  poor: z.number(),
+});
+
 const lighthouseIssuesSchema = z.object({
   id: z.string(),
   finalUrl: z.string(),
@@ -186,6 +195,25 @@ const lighthouseIssuesSchema = z.object({
       timeToInteractive: lighthouseMetricSchema,
       interactionToNextPaint: lighthouseMetricSchema,
       serverResponseTime: lighthouseMetricSchema,
+    })
+    .nullable(),
+  // Real-visitor data from Google. Null on reports saved before it was
+  // recorded, which says nothing about whether Google has data now.
+  fieldData: z
+    .object({
+      status: z.enum([
+        "available",
+        "insufficient_data",
+        "unavailable",
+        "not_configured",
+      ]),
+      source: z.enum(["crux", "pagespeed"]).optional(),
+      scope: z.enum(["page", "origin"]).optional(),
+      coreWebVitals: z.enum(["passed", "failed", "not_assessed"]).optional(),
+      collectionPeriod: z
+        .object({ firstDate: z.string(), lastDate: z.string() })
+        .optional(),
+      metrics: z.array(fieldMetricSchema),
     })
     .nullable(),
   issues: z.array(

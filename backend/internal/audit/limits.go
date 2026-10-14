@@ -29,14 +29,16 @@ const (
 	FetchError       PageFetchClass = "error"
 )
 
-// LighthouseStrategy selects how many pages get a paid Lighthouse check.
+// LighthouseStrategy selects how many pages get a Lighthouse check.
 type LighthouseStrategy string
 
-// The two surviving strategies. "auto" samples the homepage plus one page per
-// URL template (capped at 10); "none" skips Lighthouse entirely.
+// "auto" samples the homepage plus one page per URL template (capped at 10);
+// "homepage" checks the homepage only, which is what a free plan gets; "none"
+// skips Lighthouse entirely.
 const (
-	LighthouseAuto LighthouseStrategy = "auto"
-	LighthouseNone LighthouseStrategy = "none"
+	LighthouseAuto     LighthouseStrategy = "auto"
+	LighthouseHomepage LighthouseStrategy = "homepage"
+	LighthouseNone     LighthouseStrategy = "none"
 )
 
 // clampMaxPages applies the launch form's bounds to a requested page count,
@@ -96,10 +98,13 @@ func getEstimatedCapacity(maxPages int, strategy LighthouseStrategy) estimatedCa
 	if strategy == "" {
 		strategy = LighthouseAuto
 	}
-	// "auto" samples up to 10 pages, checked on mobile + desktop.
+	// Each sampled page is checked on mobile + desktop.
 	lighthouseChecks := 0
-	if strategy == LighthouseAuto {
+	switch strategy {
+	case LighthouseAuto:
 		lighthouseChecks = 20
+	case LighthouseHomepage:
+		lighthouseChecks = 2
 	}
 	return estimatedCapacity{PagesTotal: pagesTotal, LighthouseTotal: lighthouseChecks, Total: pagesTotal + lighthouseChecks}
 }

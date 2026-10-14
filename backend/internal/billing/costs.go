@@ -26,7 +26,6 @@ var typicalUSD = []struct {
 	{spend.DomainResearch, "domain report tab", 0.02},
 	{spend.Backlinks, "backlink report", 0.03},
 	{spend.AIVisibility, "AI visibility check", 0.1},
-	{spend.SiteAudit, "page speed test (mobile and desktop)", 0.0085},
 	{spend.AIAssistant, "AI assistant reply", 0.03},
 	{spend.AIWriting, "AI writing action", 0.01},
 }

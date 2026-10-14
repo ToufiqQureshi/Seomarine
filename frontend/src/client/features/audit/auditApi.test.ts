@@ -167,6 +167,7 @@ describe("Lighthouse endpoints", () => {
         hasIssueDetails: false,
         scores: null,
         metrics: null,
+        fieldData: null,
         issues: [],
       }),
     );
@@ -181,6 +182,71 @@ describe("Lighthouse endpoints", () => {
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
       JSON.stringify({ resultId: "lh-1" }),
     );
+  });
+
+  it("keeps Google's real-visitor data from the issues route", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        id: "lh-1",
+        finalUrl: "https://example.com/",
+        strategy: "desktop",
+        createdAt: "2026-10-09T10:00:00.000Z",
+        hasIssueDetails: true,
+        scores: null,
+        metrics: null,
+        fieldData: {
+          status: "available",
+          source: "crux",
+          scope: "origin",
+          coreWebVitals: "not_assessed",
+          collectionPeriod: { firstDate: "2026-09-13", lastDate: "2026-10-10" },
+          metrics: [
+            {
+              key: "cls",
+              percentile: 0.12,
+              category: "AVERAGE",
+              good: 0.7,
+              needsImprovement: 0.2,
+              poor: 0.1,
+            },
+          ],
+        },
+        issues: [],
+      }),
+    );
+
+    const data = await getAuditLighthouseIssues({
+      data: { projectId: "p1", resultId: "lh-1" },
+    });
+
+    expect(data.fieldData?.scope).toBe("origin");
+    expect(data.fieldData?.coreWebVitals).toBe("not_assessed");
+    expect(data.fieldData?.metrics[0]).toMatchObject({
+      key: "cls",
+      percentile: 0.12,
+    });
+  });
+
+  it("accepts field data that has no metrics because Google has none", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        id: "lh-1",
+        finalUrl: "https://example.com/",
+        strategy: "mobile",
+        createdAt: "2026-10-09T10:00:00.000Z",
+        hasIssueDetails: true,
+        scores: null,
+        metrics: null,
+        fieldData: { status: "insufficient_data", source: "crux", metrics: [] },
+        issues: [],
+      }),
+    );
+
+    const data = await getAuditLighthouseIssues({
+      data: { projectId: "p1", resultId: "lh-1" },
+    });
+
+    expect(data.fieldData?.status).toBe("insufficient_data");
   });
 
   it("sends the export mode and category but not the project id in the body", async () => {

@@ -284,21 +284,36 @@ func TestFormatISO(t *testing.T) {
 	}
 }
 
-func TestStartAuditSkipsLighthouseOnTheFreePlan(t *testing.T) {
-	store := newMemoryStore()
-	service := newTestService(store, &recordingScheduler{}, nil, nil, nil, false, nil)
-	if _, err := service.StartAudit(context.Background(), StartAuditInput{
-		ActorUserID: "user-1", OrganizationID: "org-1", ProjectID: "proj-1",
-		StartURL: "example.com", MaxPages: 10, LighthouseStrategy: LighthouseAuto, LimitTier: TierFree,
-	}); err != nil {
-		t.Fatal(err)
+func TestStartAuditChecksOnlyTheHomepageOnTheFreePlan(t *testing.T) {
+	cases := []struct {
+		name      string
+		tier      LimitTier
+		requested LighthouseStrategy
+		want      LighthouseStrategy
+		wantTotal int
+	}{
+		{"free auto becomes homepage", TierFree, LighthouseAuto, LighthouseHomepage, 2},
+		{"free none stays none", TierFree, LighthouseNone, LighthouseNone, 0},
+		{"paid auto stays auto", TierPaid, LighthouseAuto, LighthouseAuto, 20},
 	}
-	audit, err := store.GetAuditForProject(context.Background(), "audit-1", "proj-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	config, ok := ParseAuditConfig(audit.Config)
-	if !ok || config.LighthouseStrategy != LighthouseNone || audit.LighthouseTotal != 0 {
-		t.Fatalf("free audit config = %+v, lighthouse total %d; want no paid Lighthouse checks", config, audit.LighthouseTotal)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newMemoryStore()
+			service := newTestService(store, &recordingScheduler{}, nil, nil, nil, false, nil)
+			if _, err := service.StartAudit(context.Background(), StartAuditInput{
+				ActorUserID: "user-1", OrganizationID: "org-1", ProjectID: "proj-1",
+				StartURL: "example.com", MaxPages: 10, LighthouseStrategy: tc.requested, LimitTier: tc.tier,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			audit, err := store.GetAuditForProject(context.Background(), "audit-1", "proj-1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			config, ok := ParseAuditConfig(audit.Config)
+			if !ok || config.LighthouseStrategy != tc.want || audit.LighthouseTotal != tc.wantTotal {
+				t.Fatalf("config = %+v, lighthouse total %d; want %s and %d", config, audit.LighthouseTotal, tc.want, tc.wantTotal)
+			}
+		})
 	}
 }

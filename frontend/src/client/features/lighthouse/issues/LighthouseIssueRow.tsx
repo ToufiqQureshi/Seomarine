@@ -3,6 +3,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import { TableCell, TableRow } from "@/client/components/ui/table";
 import { SeverityBadge } from "@/client/features/audit/shared";
 import type { LighthouseIssue } from "./types";
+import { categoryLabel } from "./utils";
 
 export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
   const [open, setOpen] = useState(false);
@@ -38,12 +39,13 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
         </TableCell>
         <TableCell className="py-3 hidden sm:table-cell">
           <span className="text-xs text-muted-foreground">
-            {issue.category}
+            {categoryLabel(issue.category)}
           </span>
         </TableCell>
         <TableCell className="py-3 hidden md:table-cell text-right">
           {issue.impactMs != null || issue.impactBytes != null ? (
             <span className="text-xs tabular-nums text-muted-foreground">
+              {issue.impactMs || issue.impactBytes ? "Saves " : null}
               {issue.impactMs ? formatMs(issue.impactMs) : null}
               {issue.impactMs && issue.impactBytes ? " / " : null}
               {issue.impactBytes ? formatBytes(issue.impactBytes) : null}
@@ -97,7 +99,7 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
 
 function formatMs(ms: number) {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
+  return `${Math.round(ms)}ms`;
 }
 
 function formatBytes(bytes: number) {

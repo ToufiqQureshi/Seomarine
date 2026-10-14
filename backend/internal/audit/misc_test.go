@@ -70,6 +70,7 @@ func TestParseAuditConfig(t *testing.T) {
 		{"valid", `{"maxPages":50,"lighthouseStrategy":"auto"}`, true, 50, LighthouseAuto, ""},
 		{"retired all maps to auto", `{"maxPages":50,"lighthouseStrategy":"all"}`, true, 50, LighthouseAuto, ""},
 		{"retired manual maps to none", `{"maxPages":50,"lighthouseStrategy":"manual"}`, true, 50, LighthouseNone, ""},
+		{"homepage", `{"maxPages":50,"lighthouseStrategy":"homepage"}`, true, 50, LighthouseHomepage, ""},
 		{"unknown strategy falls back to auto", `{"maxPages":50,"lighthouseStrategy":"weird"}`, true, 50, LighthouseAuto, ""},
 		{"missing strategy defaults to auto", `{"maxPages":50}`, true, 50, LighthouseAuto, ""},
 		{"shopify platform", `{"maxPages":50,"lighthouseStrategy":"auto","sitePlatform":"shopify"}`, true, 50, LighthouseAuto, "shopify"},
@@ -114,6 +115,9 @@ func TestClampMaxPagesAndCapacity(t *testing.T) {
 	capacity := getEstimatedCapacity(50, LighthouseAuto)
 	if capacity.PagesTotal != 50 || capacity.LighthouseTotal != 20 || capacity.Total != 70 {
 		t.Fatalf("capacity = %+v", capacity)
+	}
+	if homepage := getEstimatedCapacity(50, LighthouseHomepage); homepage.LighthouseTotal != 2 {
+		t.Fatalf("capacity = %+v", homepage)
 	}
 	silent := getEstimatedCapacity(50, LighthouseNone)
 	if silent.LighthouseTotal != 0 {

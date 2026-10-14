@@ -14,10 +14,13 @@ import { SeverityBadge } from "@/client/features/audit/shared";
 import type {
   CategoryTab,
   ExportPayload,
+  LighthouseFieldData as LighthouseFieldDataValue,
   LighthouseIssue,
   LighthouseMetrics,
   LighthouseScores,
 } from "./types";
+import { Badge } from "@/client/components/ui/badge";
+import { LighthouseFieldData } from "./LighthouseFieldData";
 import { LighthouseIssueRow } from "./LighthouseIssueRow";
 import { LighthouseIssuesSummary } from "./LighthouseIssuesSummary";
 import { categoryLabel } from "./utils";
@@ -28,16 +31,20 @@ export function LighthouseIssuesHeader({
   isLoading,
   scannedAt,
   finalUrl,
+  strategy,
   scores,
   metrics,
+  fieldData,
   severityCounts,
 }: {
   onBack: () => void;
   isLoading: boolean;
   scannedAt?: string;
   finalUrl?: string;
+  strategy?: "mobile" | "desktop";
   scores?: LighthouseScores | null;
   metrics?: LighthouseMetrics | null;
+  fieldData?: LighthouseFieldDataValue;
   severityCounts: { critical: number; warning: number; info: number };
 }) {
   return (
@@ -56,11 +63,19 @@ export function LighthouseIssuesHeader({
       <Card>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Lighthouse Issues</h1>
+            <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
+              Page speed report
+              {strategy ? (
+                <Badge variant="outline" className="capitalize">
+                  {strategy}
+                </Badge>
+              ) : null}
+            </h1>
             <p className="text-sm text-muted-foreground break-all">
               {finalUrl ?? (isLoading ? "Loading URL..." : null)}
             </p>
           </div>
+          <LighthouseFieldData fieldData={fieldData} />
           <LighthouseIssuesSummary scores={scores} metrics={metrics} />
           <div className="flex flex-wrap gap-2">
             <SeverityBadge severity="critical">

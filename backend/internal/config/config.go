@@ -40,6 +40,14 @@ type Config struct {
 	// DataForSEOAPIKey is the base64 "login:password" of the DataForSEO
 	// account behind AI search. Empty turns those endpoints off.
 	DataForSEOAPIKey string
+	// PageSpeedAPIKey is the Google Cloud API key for PageSpeed Insights, which
+	// runs the site audit's Lighthouse checks for free. Empty skips them.
+	PageSpeedAPIKey string
+	// CrUXAPIKey is the Google Cloud API key for the Chrome UX Report API,
+	// the source of real-visitor data on audits. Empty falls back to what
+	// PageSpeed Insights still embeds. It may be the same key as
+	// PageSpeedAPIKey if both APIs are enabled on it.
+	CrUXAPIKey string
 	// OpenRouterAPIKey is Uplumo's own model key for SAM.
 	OpenRouterAPIKey string
 	// StaffEmails are the people whose own workspaces are never limited by a
@@ -218,6 +226,8 @@ func Load(getenv func(string) string) (Config, error) {
 		BetterAuthURL:                betterAuthURL,
 		Razorpay:                     rzp,
 		DataForSEOAPIKey:             dataForSEOKey,
+		PageSpeedAPIKey:              strings.TrimSpace(getenv("PAGESPEED_API_KEY")),
+		CrUXAPIKey:                   strings.TrimSpace(getenv("CRUX_API_KEY")),
 		OpenRouterAPIKey:             openRouterKey,
 		OpenRouterModel:              strings.TrimSpace(getenv("OPENROUTER_MODEL")),
 		LoopsAPIKey:                  strings.TrimSpace(getenv("LOOPS_API_KEY")),
