@@ -1,4 +1,13 @@
-export type ArticleFormat = "heading" | "bold" | "list" | "link";
+export type ArticleFormat =
+  | "heading"
+  | "heading3"
+  | "bold"
+  | "italic"
+  | "list"
+  | "numbered-list"
+  | "quote"
+  | "table"
+  | "link";
 
 export function formatArticleContent(
   content: string,
@@ -7,9 +16,22 @@ export function formatArticleContent(
   format: ArticleFormat,
 ) {
   const selected = content.slice(start, end);
-  if (format === "heading" || format === "list") {
+  if (
+    format === "heading" ||
+    format === "heading3" ||
+    format === "list" ||
+    format === "numbered-list" ||
+    format === "quote"
+  ) {
     const lineStart = content.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const marker = format === "heading" ? "## " : "- ";
+    const markers = {
+      heading: "## ",
+      heading3: "### ",
+      list: "- ",
+      "numbered-list": "1. ",
+      quote: "> ",
+    };
+    const marker = markers[format];
     return {
       content: `${content.slice(0, lineStart)}${marker}${content.slice(lineStart)}`,
       selectionStart: start + marker.length,
@@ -17,8 +39,23 @@ export function formatArticleContent(
     };
   }
 
-  const before = format === "bold" ? "**" : "[";
-  const after = format === "bold" ? "**" : "](https://example.com)";
+  if (format === "table") {
+    const table =
+      "| Column 1 | Column 2 |\n| --- | --- |\n| " +
+      (selected || "Value") +
+      " | Value |";
+    return {
+      content: `${content.slice(0, start)}${table}${content.slice(end)}`,
+      selectionStart: start,
+      selectionEnd: start + table.length,
+    };
+  }
+
+  const before = format === "bold" ? "**" : format === "italic" ? "*" : "[";
+  const after =
+    format === "bold" || format === "italic"
+      ? before
+      : "](https://example.com)";
   const text = selected || (format === "link" ? "link text" : "text");
   const nextStart = start + before.length;
   return {

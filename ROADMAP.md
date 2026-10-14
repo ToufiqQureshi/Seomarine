@@ -13,6 +13,13 @@ their email and use the free features. **Nobody pays real money yet**:
 Razorpay runs with test-mode keys in production, so checkout works only with
 test cards. DataForSEO and OpenRouter keys are not in production.
 
+## Content editor build sequence
+
+PR 1 adds deterministic local SEO/AEO scoring, optional cached-brief scoring
+inputs, and editor guidance that works without a brief. Brief collection and
+AI actions remain separate follow-up PRs; this change does not add provider
+calls or change credit use.
+
 ## Launch checklist
 
 | Item                                                                         | Status |

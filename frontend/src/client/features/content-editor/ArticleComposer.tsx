@@ -7,6 +7,7 @@ import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
 import { Field } from "./EditorPanels";
+import { ImageFields } from "./ImageFields";
 import { uploadContentImage } from "./contentEditorApi";
 import {
   compressEditorImage,
@@ -22,6 +23,7 @@ import {
 type ArticleComposerProps = {
   draft: ContentDraftInput;
   projectId: string;
+  onTopicLink?: string;
   disabled: boolean;
   onImageUploadStateChange: (uploading: boolean) => void;
   onChange: (field: keyof ContentDraftInput, value: string) => void;
@@ -30,6 +32,7 @@ type ArticleComposerProps = {
 export function ArticleComposer({
   draft,
   projectId,
+  onTopicLink,
   disabled,
   onImageUploadStateChange,
   onChange,
@@ -51,20 +54,32 @@ export function ArticleComposer({
         />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field
-          id="content-draft-keyword"
-          label="Target topic"
-          hint="Main search topic"
-        >
-          <Input
+        <div className="space-y-2">
+          <Field
             id="content-draft-keyword"
-            disabled={disabled}
-            maxLength={120}
-            value={draft.targetKeyword}
-            onChange={(event) => onChange("targetKeyword", event.target.value)}
-            placeholder="e.g. technical SEO"
-          />
-        </Field>
+            label="Target topic"
+            hint="Main search topic"
+          >
+            <Input
+              id="content-draft-keyword"
+              disabled={disabled}
+              maxLength={120}
+              value={draft.targetKeyword}
+              onChange={(event) =>
+                onChange("targetKeyword", event.target.value)
+              }
+              placeholder="e.g. technical SEO"
+            />
+          </Field>
+          {onTopicLink ? (
+            <a
+              className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+              href={onTopicLink}
+            >
+              See keyword data →
+            </a>
+          ) : null}
+        </div>
         <Field
           id="content-draft-slug"
           label="Page URL slug"
@@ -222,7 +237,16 @@ function ArticleBody({
           disabled={disabled || previewMode}
           onClick={() => formatArticle("heading")}
         >
-          Heading
+          H2
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled || previewMode}
+          onClick={() => formatArticle("heading3")}
+        >
+          H3
         </Button>
         <Button
           type="button"
@@ -239,9 +263,46 @@ function ArticleBody({
           variant="ghost"
           size="sm"
           disabled={disabled || previewMode}
+          onClick={() => formatArticle("italic")}
+        >
+          <em>I</em>
+          <span className="sr-only">Italic</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled || previewMode}
           onClick={() => formatArticle("list")}
         >
           Bullet list
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled || previewMode}
+          onClick={() => formatArticle("numbered-list")}
+        >
+          Numbered list
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled || previewMode}
+          onClick={() => formatArticle("quote")}
+        >
+          Quote
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled || previewMode}
+          onClick={() => formatArticle("table")}
+        >
+          Table
         </Button>
         <Button
           type="button"
@@ -283,87 +344,23 @@ function ArticleBody({
         </Button>
       </div>
       {imageFieldsOpen ? (
-        <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-          <Field
-            id="content-image-url"
-            label="Image URL"
-            hint="Public http(s) URL"
-          >
-            <Input
-              id="content-image-url"
-              type="url"
-              inputMode="url"
-              autoComplete="url"
-              maxLength={2_000}
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="https://example.com/image.jpg"
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            id="content-image-alt"
-            label="Image description"
-            hint="Describe what it shows"
-          >
-            <Input
-              id="content-image-alt"
-              maxLength={300}
-              value={imageAlt}
-              onChange={(event) => setImageAlt(event.target.value)}
-              placeholder="Alt text for accessibility"
-              disabled={disabled}
-            />
-          </Field>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => insertImage(imageUrl)}
-            disabled={
-              disabled || uploadingImage || !imageUrl.trim() || !imageAlt.trim()
-            }
-          >
-            Insert image
-          </Button>
-          <Field
-            id="content-image-file"
-            label="Or upload an image"
-            hint="PNG or JPEG, up to 10 MB before compression"
-          >
-            <Input
-              ref={imageInputRef}
-              id="content-image-file"
-              type="file"
-              accept="image/png,image/jpeg"
-              disabled={disabled || uploadingImage}
-              onChange={(event) => {
-                setImageFile(event.target.files?.[0]);
-                setImageError("");
-              }}
-            />
-          </Field>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => void uploadAndInsertImage()}
-            disabled={
-              disabled || uploadingImage || !imageFile || !imageAlt.trim()
-            }
-          >
-            {uploadingImage ? "Uploading…" : "Upload & insert"}
-          </Button>
-          <p className="text-xs text-muted-foreground sm:col-span-3">
-            Uploads are resized and compressed to WebP (up to 1 MB) before they
-            reach storage. Articles support up to {MAX_ARTICLE_IMAGES} images.
-            Add a description for accessibility.
-          </p>
-          {imageError ? (
-            <p role="alert" className="text-sm text-destructive sm:col-span-3">
-              {imageError}
-            </p>
-          ) : null}
-        </div>
+        <ImageFields
+          disabled={disabled}
+          uploading={uploadingImage}
+          imageUrl={imageUrl}
+          imageAlt={imageAlt}
+          imageFile={imageFile}
+          imageError={imageError}
+          imageInputRef={imageInputRef}
+          onImageUrlChange={setImageUrl}
+          onImageAltChange={setImageAlt}
+          onImageFileChange={(file) => {
+            setImageFile(file);
+            setImageError("");
+          }}
+          onInsert={() => insertImage(imageUrl)}
+          onUpload={() => void uploadAndInsertImage()}
+        />
       ) : null}
       {previewMode ? (
         <article

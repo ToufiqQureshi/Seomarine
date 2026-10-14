@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { insertImageContent } from "./formatting";
+import { formatArticleContent, insertImageContent } from "./formatting";
+
+describe("article formatting toolbar", () => {
+  it.each([
+    ["heading", "## text"],
+    ["heading3", "### text"],
+    ["list", "- text"],
+    ["numbered-list", "1. text"],
+    ["quote", "> text"],
+  ] as const)(
+    "inserts the %s marker at the current line",
+    (format, expected) => {
+      expect(formatArticleContent("text", 0, 4, format).content).toBe(expected);
+    },
+  );
+
+  it("wraps text and inserts a table with selected text", () => {
+    expect(formatArticleContent("words", 0, 5, "bold").content).toBe(
+      "**words**",
+    );
+    expect(formatArticleContent("words", 0, 5, "italic").content).toBe(
+      "*words*",
+    );
+    expect(formatArticleContent("Topic", 0, 5, "table").content).toBe(
+      "| Column 1 | Column 2 |\n| --- | --- |\n| Topic | Value |",
+    );
+  });
+});
 
 describe("image insertion", () => {
   it("adds an image with descriptive alt text and an encoded URL", () => {
