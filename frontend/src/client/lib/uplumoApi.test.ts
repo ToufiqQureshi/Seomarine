@@ -125,6 +125,16 @@ describe("apiRequest", () => {
       message: "You have used this month's credits.",
     },
     {
+      name: "a 502 data provider outage says the data is unavailable",
+      status: 502,
+      body: errorBody(
+        "provider_error",
+        "Keyword data is temporarily unavailable. Please try again.",
+      ),
+      code: "provider_error",
+      message: "Keyword data is temporarily unavailable. Please try again.",
+    },
+    {
       name: "a 502 HTML page from a proxy still becomes an ApiError",
       status: 502,
       body: "<html>Bad gateway</html>",

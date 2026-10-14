@@ -24,6 +24,7 @@ type fakeWordPress struct {
 	mu           sync.Mutex
 	plain        bool // only ?rest_route= works, as with plain permalinks
 	appPasswords bool
+	stripsAuth   bool // the host drops the Authorization header
 	capabilities map[string]bool
 	posts        map[int64]Post
 	media        []string // filenames uploaded, in order
@@ -74,8 +75,14 @@ func (wp *fakeWordPress) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, password, ok := r.BasicAuth()
-	if !ok || user != testUser || password != testPassword {
+	switch {
+	// As WordPress answers: no Authorization header reached it at all
+	// (some hosts strip it), or one arrived with the wrong password.
+	case !ok || wp.stripsAuth:
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"code": "rest_not_logged_in", "message": "You are not currently logged in."})
+		return
+	case user != testUser || password != testPassword:
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"code": "incorrect_password", "message": "The provided password is an invalid application password."})
 		return
 	}
 	switch {

@@ -198,6 +198,8 @@ func (h handler) writeSiteError(w http.ResponseWriter, r *http.Request, operatio
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "site_not_wordpress", "We could not find WordPress at this address. Check the address, or ask your developer whether the WordPress REST API is turned off.")
 	case errors.Is(err, ErrAppPasswordsOff):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "app_passwords_off", "Application passwords are turned off on this site, often by a security plugin. Turn them on, then try again.")
+	case errors.Is(err, ErrAuthHeaderDropped):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "auth_header_dropped", "Your hosting removed the login details before they reached WordPress, so the password was never checked. Add these two lines at the top of the .htaccess file in your site's main folder, then try again: RewriteEngine On and RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]. Your host's support can do it for you.")
 	case errors.Is(err, ErrBadCredentials):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "bad_credentials", "WordPress did not accept this username and application password. Check both. If they are right, your hosting may be removing the login header; ask them to allow the Authorization header.")
 	case errors.Is(err, ErrMissingPermission):

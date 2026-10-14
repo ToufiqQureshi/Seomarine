@@ -1,11 +1,10 @@
 import { Eye, ImagePlus, Pencil } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { useRef, useState } from "react";
-import remarkGfm from "remark-gfm";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
+import { ArticlePreview } from "./ArticlePreview";
 import { Field } from "./EditorPanels";
 import { ImageFields } from "./ImageFields";
 import { uploadContentImage } from "./contentEditorApi";
@@ -368,7 +367,7 @@ function ArticleBody({
           className="min-h-[440px] overflow-auto rounded-md border bg-background p-4 leading-7"
         >
           {content.trim() ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ArticlePreview content={content} />
           ) : (
             <p className="text-sm text-muted-foreground">
               Your article preview will appear here.

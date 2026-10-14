@@ -175,3 +175,19 @@ func TestFirewallBlocksAreToldApartFromNotWordPress(t *testing.T) {
 		t.Errorf("WordPress 403: err = %v, want ErrBadCredentials", err)
 	}
 }
+
+// Hostinger and other LiteSpeed/CGI hosts drop the Authorization header, and
+// WordPress then answers as if no login was sent. The customer must be told
+// to fix the host, not to retype a password that was never checked.
+func TestVerifyTellsADroppedLoginHeaderFromAWrongPassword(t *testing.T) {
+	wp := newFakeWordPress(t)
+	base := wp.server.URL + "/wp-json"
+	if _, err := wp.client().Verify(t.Context(), Credentials{APIBase: base, Username: testUser, Password: "wrong"}); !errors.Is(err, ErrBadCredentials) {
+		t.Errorf("wrong password: err = %v, want ErrBadCredentials", err)
+	}
+	wp.stripsAuth = true
+	_, err := wp.client().Verify(t.Context(), Credentials{APIBase: base, Username: testUser, Password: testPassword})
+	if !errors.Is(err, ErrAuthHeaderDropped) || errors.Is(err, ErrBadCredentials) {
+		t.Errorf("header dropped by the host: err = %v, want ErrAuthHeaderDropped", err)
+	}
+}

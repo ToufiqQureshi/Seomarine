@@ -124,6 +124,11 @@ func (w WordPress) Verify(ctx context.Context, creds Credentials) (string, error
 		// WordPress itself answers in JSON with a code; a firewall does not.
 		case remote.Code == "" && blockedStatus(remote.Status):
 			return "", fmt.Errorf("%w: %w", ErrSiteBlocked, err)
+		// WordPress answers rest_not_logged_in only when no credentials
+		// reached it; a wrong password gets incorrect_password or
+		// invalid_username. So the hosting dropped the Authorization header.
+		case remote.Code == "rest_not_logged_in":
+			return "", ErrAuthHeaderDropped
 		case remote.Status == http.StatusUnauthorized || remote.Status == http.StatusForbidden:
 			return "", ErrBadCredentials
 		}

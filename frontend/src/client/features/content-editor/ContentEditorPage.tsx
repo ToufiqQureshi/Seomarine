@@ -238,7 +238,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     });
   };
   const words = wordCount(draft.content);
-  const readMinutes = Math.max(1, Math.ceil(words / 200));
+  const readMinutes = Math.ceil(words / 200);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
@@ -263,7 +263,8 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
               {draft.title || "Untitled draft"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {words.toLocaleString()} words · about {readMinutes} min read ·{" "}
+              {words.toLocaleString()} words ·{" "}
+              {words > 0 ? `about ${readMinutes} min read · ` : ""}
               {dirty ? "Unsaved changes" : "All changes saved"}
             </p>
           </div>
