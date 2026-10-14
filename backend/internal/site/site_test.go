@@ -275,12 +275,12 @@ func TestInfoPages(t *testing.T) {
 // an app route the SPA owns, an asset, a mail address or a named outside page.
 func TestPagesHaveNoDeadLinks(t *testing.T) {
 	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
-	known := map[string]bool{"/": true, "/pricing": true, "/sign-in": true, "/sign-up": true}
+	known := map[string]bool{"/": true, "/pricing": true, "/blog": true, "/sign-in": true, "/sign-up": true}
 	// The privacy policy must point at Google's own policy and at the page
 	// where a user removes our access. Any other outside link is a mistake.
 	known["https://developers.google.com/terms/api-services-user-data-policy"] = true
 	known["https://myaccount.google.com/permissions"] = true
-	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing}
+	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing, "/blog": s.ServeBlog}
 	for _, path := range InfoPaths() {
 		known[path] = true
 		pages[path] = s.ServeInfo
@@ -325,7 +325,7 @@ func TestRobotsAndSitemap(t *testing.T) {
 	for _, u := range doc.URLs {
 		got[u.Loc] = true
 	}
-	want := append([]string{"/", "/pricing"}, InfoPaths()...)
+	want := append([]string{"/", "/pricing", "/blog"}, InfoPaths()...)
 	if len(got) != len(want) {
 		t.Errorf("sitemap has %d URLs, want %d", len(got), len(want))
 	}
@@ -358,6 +358,24 @@ func TestPricingPageShowsWhatThePlanCatalogEnforces(t *testing.T) {
 	for _, unwanted := range []string{"credit", "$3", "$10"} {
 		if strings.Contains(strings.ToLower(body), unwanted) {
 			t.Errorf("pricing page mentions %q", unwanted)
+		}
+	}
+}
+
+// The site carries no personal name, phone number or address of the owner;
+// the owner asked for that.
+func TestPublicPagesCarryNoPersonalContactDetails(t *testing.T) {
+	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
+	pages := map[string]http.HandlerFunc{"/": s.ServeLanding, "/pricing": s.ServePricing, "/blog": s.ServeBlog}
+	for _, path := range InfoPaths() {
+		pages[path] = s.ServeInfo
+	}
+	for path, serve := range pages {
+		body := get(serve, path, nil).Body.String()
+		for _, banned := range []string{"Toufiq", "Qureshi", "+91", "96654", "operated by", "<h2>Phone</h2>", "<h2>Post</h2>"} {
+			if strings.Contains(body, banned) {
+				t.Errorf("%s contains %q", path, banned)
+			}
 		}
 	}
 }

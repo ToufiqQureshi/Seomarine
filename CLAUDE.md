@@ -87,6 +87,7 @@ Go features, `backend/internal/…/README.md`, read before touching that package
 | `backend/internal/sam/README.md`           | SAM in-app agent                                    |
 | `backend/internal/sam/product_fact_sheet.md` | Facts SAM may state about Uplumo (keep true)      |
 | `backend/internal/sitepublish/README.md`   | WordPress connection and publishing                 |
+| `backend/internal/site/blog/README.md`     | Public blog: how to add a post, SEO checklist       |
 
 Frontend features, `frontend/src/client/features/…`:
 `content-editor/README.md`, `keywords/README.md`, `saved-keywords/README.md`,

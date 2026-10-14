@@ -39,14 +39,14 @@ const (
 	// their text changes.
 	policyUpdated = "13 October 2026"
 	// operatorName and operatorAddress are the legal name and postal address
-	// of whoever runs Uplumo. The legal and contact pages print them once
-	// they are set; a payment gateway and Google's app review both look for
-	// them.
-	operatorName    = "Toufiq Qureshi"
-	operatorAddress = "Mumbai, Maharashtra, India"
-	// supportPhone is the number the contact page gives for support calls.
-	supportPhone = "+91 96654 58841"
-	contentType  = "text/html; charset=utf-8"
+	// of whoever runs Uplumo, and supportPhone a support number. The legal
+	// and contact pages print each only when it is set. The owner asked for
+	// no personal name or number on the site; set a registered business name
+	// here if a payment gateway or Google's app review asks for one.
+	operatorName    = ""
+	operatorAddress = ""
+	supportPhone    = ""
+	contentType     = "text/html; charset=utf-8"
 	// The pages load nothing from other origins and run no script; the
 	// JSON-LD block is data, which script-src does not govern.
 	contentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; font-src 'self'; " +
@@ -96,11 +96,16 @@ type page struct {
 	Plans       []Plan
 	FAQ         []QA
 	JSONLD      any
+	// Posts is the blog index; Post is the post on a post page.
+	Posts []Post
+	Post  *Post
 }
 
 // Site serves the pre-rendered pages and the static assets.
 type Site struct {
-	landing, pricing renderedPage
+	landing, pricing, blog renderedPage
+	// posts are the rendered blog posts, keyed by slug.
+	posts map[string]renderedPage
 	// info holds the pages that are plain text (about, contact and the legal
 	// pages), keyed by URL path.
 	info            map[string]renderedPage
@@ -121,6 +126,15 @@ type renderedPage struct {
 // https://uplumo.com), as the base of canonical, Open Graph and JSON-LD
 // URLs.
 func New(publicURL *url.URL) (*Site, error) {
+	blogFiles, err := fs.Sub(blogFS, "blog")
+	if err != nil {
+		return nil, fmt.Errorf("open blog posts: %w", err)
+	}
+	return build(publicURL, blogFiles)
+}
+
+// build is New with the blog posts read from blogFiles.
+func build(publicURL *url.URL, blogFiles fs.FS) (*Site, error) {
 	static, err := fs.Sub(embedded, "static")
 	if err != nil {
 		return nil, fmt.Errorf("open static assets: %w", err)
@@ -172,7 +186,33 @@ func New(publicURL *url.URL) (*Site, error) {
 	pricing.FAQ = pricingFAQ()
 	pricing.JSONLD = jsonLD(origin, pricing.Description, plans)
 
-	s := &Site{static: static, versions: versions, info: map[string]renderedPage{}}
+	posts, err := loadPosts(blogFiles)
+	if err != nil {
+		return nil, err
+	}
+	s := &Site{static: static, versions: versions, info: map[string]renderedPage{}, posts: map[string]renderedPage{}}
+	blog := base
+	blog.Path = "/blog"
+	blog.Title = "Uplumo blog: SEO and AI search guides"
+	blog.Description = "Plain-language guides to ranking on Google and showing up in AI answers, for business owners and agencies in India."
+	blog.Canonical = origin + "/blog"
+	blog.Posts = posts
+	blog.JSONLD = jsonLD(origin, blog.Description, plans)
+	if s.blog, err = render(tmpl, "blog.html", blog); err != nil {
+		return nil, err
+	}
+	for _, post := range posts {
+		data := base
+		data.Path = "/blog/" + post.Slug
+		data.Title = post.Title + " | Uplumo"
+		data.Description = post.Description
+		data.Canonical = origin + data.Path
+		data.Post = &post
+		data.JSONLD = blogPostingJSONLD(origin, post, base.OGImage)
+		if s.posts[post.Slug], err = render(tmpl, "post.html", data); err != nil {
+			return nil, err
+		}
+	}
 	for _, p := range infoPages {
 		data := base
 		data.Path = p.path
@@ -185,7 +225,7 @@ func New(publicURL *url.URL) (*Site, error) {
 		}
 	}
 	s.robots = []byte("User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: " + origin + "/sitemap.xml\n")
-	s.sitemap = sitemap(origin)
+	s.sitemap = sitemap(origin, posts)
 	if s.landing, err = render(tmpl, "landing.html", landing); err != nil {
 		return nil, err
 	}
@@ -225,6 +265,21 @@ func (s *Site) ServeInfo(w http.ResponseWriter, r *http.Request) {
 	servePage(w, r, p, "public, max-age=300, no-transform")
 }
 
+// ServeBlog writes the blog index.
+func (s *Site) ServeBlog(w http.ResponseWriter, r *http.Request) {
+	servePage(w, r, s.blog, "public, max-age=300, no-transform")
+}
+
+// ServeBlogPost writes the post named by the {slug} path value.
+func (s *Site) ServeBlogPost(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.posts[r.PathValue("slug")]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	servePage(w, r, p, "public, max-age=300, no-transform")
+}
+
 // ServeRobots writes robots.txt: everything public may be crawled, the API
 // may not.
 func (s *Site) ServeRobots(w http.ResponseWriter, _ *http.Request) {
@@ -244,16 +299,27 @@ func serveText(w http.ResponseWriter, contentType string, body []byte) {
 	_, _ = w.Write(body)
 }
 
-// sitemap lists the landing page, the pricing page and every info page.
-func sitemap(origin string) []byte {
+// sitemap lists every public page: the landing page, pricing, the info pages,
+// the blog and each post with the date it last changed.
+func sitemap(origin string, posts []Post) []byte {
 	var b strings.Builder
 	b.WriteString(xml.Header + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
-	for _, path := range append([]string{"/", "/pricing"}, InfoPaths()...) {
+	write := func(path, lastmod string) {
 		b.WriteString("<url><loc>")
-		// A path here is a constant from this package; escaping keeps the
-		// file valid if one ever carries a special character.
+		// Paths are constants or validated slugs; escaping keeps the file
+		// valid if one ever carries a special character.
 		_ = xml.EscapeText(&b, []byte(origin+path))
-		b.WriteString("</loc></url>\n")
+		b.WriteString("</loc>")
+		if lastmod != "" {
+			b.WriteString("<lastmod>" + lastmod + "</lastmod>")
+		}
+		b.WriteString("</url>\n")
+	}
+	for _, path := range append([]string{"/", "/pricing", "/blog"}, InfoPaths()...) {
+		write(path, "")
+	}
+	for _, post := range posts {
+		write("/blog/"+post.Slug, post.Updated.Format(time.DateOnly))
 	}
 	b.WriteString("</urlset>\n")
 	return []byte(b.String())

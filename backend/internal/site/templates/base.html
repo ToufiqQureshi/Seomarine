@@ -7,7 +7,7 @@
 <meta name="description" content="{{.Description}}">
 <link rel="canonical" href="{{.Canonical}}">
 <meta name="theme-color" content="#07090a">
-<meta property="og:type" content="website">
+<meta property="og:type" content="{{if .Post}}article{{else}}website{{end}}">
 <meta property="og:site_name" content="Uplumo">
 <meta property="og:locale" content="en_IN">
 <meta property="og:title" content="{{.Title}}">
@@ -150,6 +150,20 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 .prose ul{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.5rem}
 .prose a{color:var(--lime)}
 .prose strong{color:var(--fg);font-weight:600}
+.prose h3{font-size:clamp(1.375rem,3vw,1.75rem);color:var(--fg);margin-top:1rem}
+.prose ol{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.5rem}
+.prose img{max-width:100%;height:auto;border-radius:12px;border:1px solid var(--border)}
+.prose pre{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;font:.875rem/1.5 var(--mono)}
+.prose code{font-family:var(--mono);font-size:.9em}
+.prose blockquote{margin:0;padding-left:1rem;border-left:3px solid var(--lime);color:var(--muted)}
+.prose table{border-collapse:collapse;width:100%;font-size:.9375rem}
+.prose th,.prose td{border:1px solid var(--line);padding:.5rem .75rem;text-align:left}
+.posts{list-style:none;margin:3rem 0 0;padding:0;display:flex;flex-direction:column;gap:1rem;max-width:44rem}
+.posts a{display:block;padding:1.25rem 1.5rem;border:1px solid var(--border);border-radius:16px;background:var(--card);text-decoration:none}
+.posts a:hover{border-color:var(--strong)}
+.posts h2{font-size:clamp(1.5rem,3.5vw,2rem);line-height:1.1}
+.posts p{color:var(--muted);margin-top:.5rem}
+.meta{font-family:var(--mono);font-size:.75rem;color:var(--faint);margin-top:1rem}
 @media (max-width:30rem){.nav a.link.hide-sm{display:none}.window{box-shadow:6px 6px 0 var(--lime)}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
@@ -163,6 +177,7 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 <nav class="wrap nav" aria-label="Main">
 <a class="brand" href="/"><img src="{{asset "logo.svg"}}" alt="" width="30" height="30">Uplumo</a>
 <a class="link hide-sm" href="/pricing"{{if eq .Path "/pricing"}} aria-current="page"{{end}}>Pricing</a>
+<a class="link hide-sm" href="/blog"{{if eq .Path "/blog"}} aria-current="page"{{end}}>Blog</a>
 <a class="link hide-sm" href="/about"{{if eq .Path "/about"}} aria-current="page"{{end}}>About</a>
 <a class="link" href="/sign-in">Log in</a>
 <a class="btn btn-sm" href="{{.SignUp}}">Start free</a>
@@ -205,7 +220,7 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 <p>SEO and AI search, made simple. See where you rank, where AI names you and what to fix next.</p>
 </div>
 <nav aria-label="Product"><h2>Product</h2><a href="/pricing">Pricing</a><a href="/sign-in">Log in</a><a href="{{.SignUp}}">Start free</a></nav>
-<nav aria-label="Company"><h2>Company</h2><a href="/about">About</a><a href="/contact">Contact</a></nav>
+<nav aria-label="Company"><h2>Company</h2><a href="/blog">Blog</a><a href="/about">About</a><a href="/contact">Contact</a></nav>
 <nav aria-label="Legal"><h2>Legal</h2><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/shipping">Delivery</a></nav>
 </div>
 <p class="legal"><span>&copy; Uplumo</span><span>built for solo owners and agencies · made in India</span></p>

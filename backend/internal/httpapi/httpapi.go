@@ -204,6 +204,8 @@ func NewHandler(d Deps) http.Handler {
 	for _, path := range site.InfoPaths() {
 		mux.HandleFunc("GET "+path, d.Site.ServeInfo)
 	}
+	mux.HandleFunc("GET /blog", d.Site.ServeBlog)
+	mux.HandleFunc("GET /blog/{slug}", d.Site.ServeBlogPost)
 	mux.HandleFunc("GET /robots.txt", d.Site.ServeRobots)
 	mux.HandleFunc("GET /sitemap.xml", d.Site.ServeSitemap)
 	mux.HandleFunc("GET "+site.AssetsPrefix, d.Site.ServeAsset)

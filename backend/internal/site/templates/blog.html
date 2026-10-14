@@ -1,0 +1,17 @@
+{{template "head" .}}
+{{template "nav" .}}
+<main id="main">
+<div class="wrap narrow doc">
+<p class="eyebrow">Blog</p>
+<h1>SEO and AI search, <em>in plain words.</em></h1>
+<p class="lead">Guides for business owners and agencies: what to fix, what to write and how to show up in Google and AI answers.</p>
+{{if .Posts}}<ul class="posts">
+{{range .Posts}}<li><a href="/blog/{{.Slug}}">
+<h2>{{.Title}}</h2>
+<p>{{.Description}}</p>
+<p class="meta"><time datetime="{{.Published.Format "2006-01-02"}}">{{.Published.Format "2 January 2006"}}</time> · {{.ReadMinutes}} min read</p>
+</a></li>
+{{end}}</ul>
+{{else}}<p class="lead" style="margin-top:3rem">The first posts are on their way.</p>
+{{end}}</div>
+{{template "footer" .}}
