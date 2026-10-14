@@ -29,6 +29,9 @@ const CUSTOMER_FACING_CODES = new Set([
   "daily_credit_limit",
   "site_unreachable",
   "site_error",
+  // A fixed "<data> is temporarily unavailable" line from our own handlers,
+  // never the provider's raw error.
+  "provider_error",
 ]);
 
 // Statuses whose server message is not meant for the user, or that need the

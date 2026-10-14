@@ -256,7 +256,9 @@ function ProgressCard({
   const crawlProgressQuery = useQuery({
     queryKey: ["audit-crawl-progress", projectId, auditId],
     queryFn: () => getCrawlProgress({ data: { projectId, auditId } }),
-    refetchInterval: 1500,
+    // Same pace as the status poll: the feed is a capped list, and polling it
+    // twice as often only doubles the requests.
+    refetchInterval: 3000,
   });
 
   const crawledUrls = crawlProgressQuery.data ?? [];
