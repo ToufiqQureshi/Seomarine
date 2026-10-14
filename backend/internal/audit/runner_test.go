@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -235,5 +236,68 @@ func TestRunnerContextCanceled(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+}
+
+// ctxStore fails writes once their context is done, as Postgres does.
+type ctxStore struct{ *memoryStore }
+
+func (s ctxStore) InsertLighthouseResults(ctx context.Context, auditID string, results []LighthouseRecord) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return s.memoryStore.InsertLighthouseResults(ctx, auditID, results)
+}
+
+func (s ctxStore) UpdateAuditProgress(ctx context.Context, auditID, workflowInstanceID string, update ProgressUpdate) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return s.memoryStore.UpdateAuditProgress(ctx, auditID, workflowInstanceID, update)
+}
+
+// slowAfterFirstProvider answers the first check, then hangs until the caller
+// gives up, like a provider that stopped responding mid-audit.
+type slowAfterFirstProvider struct{ calls int }
+
+func (p *slowAfterFirstProvider) FetchLighthouse(ctx context.Context, _ string, input LighthouseInput) (StoredLighthousePayload, error) {
+	p.calls++
+	if p.calls == 1 {
+		return ParsePageSpeedPayload([]byte(pageSpeedPayload), input, time.Now())
+	}
+	<-ctx.Done()
+	return StoredLighthousePayload{}, ctx.Err()
+}
+
+func TestRegressionLighthouseDeadlineKeepsCompletedChecks(t *testing.T) {
+	memory := newMemoryStore()
+	seedAudit(t, memory, Config{MaxPages: 10, LighthouseStrategy: LighthouseAuto})
+	if err := memory.InsertCrawledBatch(context.Background(), "audit-1", []CrawledPageResult{
+		{ID: "p1", URL: "http://audit.test/", StatusCode: 200, FetchClass: FetchOK},
+		{ID: "p2", URL: "http://audit.test/blog/post-one", StatusCode: 200, FetchClass: FetchOK},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	runner := NewRunner(RunnerConfig{Repository: ctxStore{memory}, Lighthouse: &slowAfterFirstProvider{}, Logger: discardLogger(), Now: time.Now})
+	runner.minCheckTime = 50 * time.Millisecond
+	job := JobPayload{AuditID: "audit-1", ProjectID: "proj-1", StartURL: "http://audit.test/", OrganizationID: "org-1", Config: Config{MaxPages: 10, LighthouseStrategy: LighthouseAuto}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := runner.lighthousePhase(ctx, job); err != nil {
+		t.Fatalf("lighthouse phase failed the audit: %v; a slow provider must not", err)
+	}
+	completed := 0
+	for _, record := range memory.lighthouse["audit-1"] {
+		if record.ErrorMessage == nil {
+			completed++
+		}
+	}
+	if completed != 1 || len(memory.lighthouse["audit-1"]) != 4 {
+		t.Fatalf("stored %d results, %d completed; want all 4 recorded and the finished check kept", len(memory.lighthouse["audit-1"]), completed)
+	}
+	last := memory.lighthouse["audit-1"][3]
+	if last.ErrorMessage == nil || !strings.Contains(*last.ErrorMessage, "ran out of time") {
+		t.Fatalf("last check = %+v, want it skipped once the budget is spent instead of started", last)
 	}
 }

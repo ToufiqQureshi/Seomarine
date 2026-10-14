@@ -139,7 +139,11 @@ func BuildLighthouseIssues(detail LighthouseDetail) (LighthouseIssuesResult, err
 		result.HasIssueDetails = stored.HasIssueDetails
 		result.Scores = &stored.Scores
 		result.Metrics = &stored.Metrics
-		result.FieldData = stored.FieldData
+		// A payload stored before field data had a status (an unreleased
+		// build) cannot say what it means, so it reads as "not recorded".
+		if stored.FieldData != nil && stored.FieldData.Status != "" {
+			result.FieldData = stored.FieldData
+		}
 	}
 	return result, nil
 }

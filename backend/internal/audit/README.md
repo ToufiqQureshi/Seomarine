@@ -56,16 +56,60 @@ same Lighthouse for a fee.
 - A free plan's "auto" becomes "homepage": 2 checks (mobile and desktop). Paid
   plans sample the homepage plus one page per URL template, up to 10 pages, 20
   checks.
-- Each response also carries Google's real-visitor data (CrUX, last 28 days),
-  stored as `fieldData`: the page's own data, or the whole site's when the page
-  has too few visits, or nothing for a low-traffic site. "Core Web Vitals
-  passed" follows PageSpeed Insights: LCP and CLS good, and INP good when
-  measured.
+- Real-visitor (field) data comes from the Chrome UX Report API when
+  `CRUX_API_KEY` is set, otherwise from the copy PageSpeed Insights still embeds
+  (Google has said PSI will stop embedding it; the Lighthouse API stays). See
+  "Field data" below.
 - The key goes in the `X-Goog-Api-Key` header, never the URL: a transport error
   repeats the URL, and that message is stored on the audit for the customer.
 - A 429 (per-minute quota, when many audits run at once) or 503 is retried
-  once after 5 seconds; it counts as one check against the workspace's share.
-  A 500 is not retried.
+  once after 5 seconds. Every request, the retry included, takes its own slot
+  of the workspace's daily share; a retry without a slot is not sent. A 500
+  is not retried.
+- Time: the crawl has a 30-minute deadline; finalizing and the Lighthouse
+  checks then run on the job's clock, the checks with their own 12-minute
+  budget (20 checks take about 10). A check is not started with less than 30
+  seconds left; it is recorded as skipped. Finished checks are saved on a
+  separate 30-second clock, so a slow provider never loses them or fails the
+  audit. Crawl + checks stay inside the job queue's 45-minute timeout.
+
+## Field data
+
+Stored per check as `fieldData` with a `status`:
+
+| Status              | Meaning                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `available`         | Metrics returned, with `source` (`crux`/`pagespeed`), `scope` (`page`/`origin`), `coreWebVitals` and, from CrUX, `collectionPeriod`. |
+| `insufficient_data` | CrUX answered `404 NOT_FOUND` for the URL and then for the origin. The only status that says the site lacks traffic. |
+| `unavailable`       | The lookup failed: key rejected, 429, timeout, outage, malformed answer. Says nothing about traffic. |
+| `not_configured`    | No `CRUX_API_KEY` and PSI embedded nothing.                                               |
+
+A report with no `fieldData` was saved before it was recorded: "not recorded",
+never "Google has no data".
+
+- CrUX lookup: `POST chromeuxreport.googleapis.com/v1/records:queryRecord` with
+  `formFactor` `PHONE` (mobile check) or `DESKTOP`, first `url`, then `origin`
+  only if the URL got Google's `404 NOT_FOUND`. A 404 without that body (a
+  proxy) is a failure. Failures never fall back to the origin.
+- Units: CrUX sends CLS p75 as a decimal string ("0.05"); PSI's embedded copy
+  sends it times 100. Each source is parsed on its own terms. Categories come
+  from Google's published thresholds.
+- Core Web Vitals: passed when LCP, CLS and (if measured) INP are good at p75;
+  `not_assessed` when LCP or CLS is missing, as PageSpeed Insights does.
+- PSI's embedded copy: a page block with `origin_fallback: true` is the whole
+  site's data and is stored with `scope: origin`.
+- Cache: answers (records and "no record") are cached in Redis for 12 hours
+  per form factor and URL or origin. Google recomputes the 28-day window once
+  a day, around 04:00 UTC, so this changes at most one day of 28. Failures are
+  not cached. Identical concurrent lookups on an instance share one request.
+- Quota: CrUX allows 150 queries a minute per Google Cloud project, free and
+  not raisable. An audit makes at most 40 lookups (20 checks, URL then
+  origin), spread over the minutes its PSI checks take, and the cache absorbs
+  repeats. Past the limit a lookup is `unavailable` and the report keeps PSI's
+  embedded copy if there is one.
+- Setup: enable "Chrome UX Report API" on a Google Cloud API key, restrict the
+  key to that API (or to it and PageSpeed Insights if one key serves both) and
+  set `CRUX_API_KEY`. The key travels in `X-Goog-Api-Key`, never the URL.
 - A page Google could not load (`NO_FCP`, `ERRORED_DOCUMENT_REQUEST`) is the
   customer's site, so it is logged as a warning, not an error.
 

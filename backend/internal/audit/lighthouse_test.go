@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -135,7 +136,7 @@ func TestParsePageSpeedPayload(t *testing.T) {
 		t.Error("expected hasIssueDetails")
 	}
 	field := stored.FieldData
-	if field == nil || field.Scope != "page" || field.CoreWebVitals != "passed" {
+	if field == nil || field.Scope != "page" || field.Source != "pagespeed" || field.CoreWebVitals != CoreWebVitalsPassed {
 		t.Fatalf("field data = %+v", field)
 	}
 	keys := []string{}
@@ -150,49 +151,69 @@ func TestParsePageSpeedPayload(t *testing.T) {
 	}
 }
 
-func TestBuildFieldData(t *testing.T) {
-	metric := func(category string) rawFieldMetric {
-		percentile := 100.0
-		return rawFieldMetric{Percentile: &percentile, Category: category}
-	}
-	experience := func(metrics map[string]rawFieldMetric) *rawLoadingExperience {
-		return &rawLoadingExperience{Metrics: metrics}
-	}
+func TestAssessCoreWebVitals(t *testing.T) {
+	m := func(key, category string) StoredFieldMetric { return StoredFieldMetric{Key: key, Category: category} }
 	cases := []struct {
-		name       string
-		page       *rawLoadingExperience
-		origin     *rawLoadingExperience
-		wantNil    bool
-		wantScope  string
-		wantStatus string
+		name    string
+		metrics []StoredFieldMetric
+		want    string
 	}{
-		{"no data at all", nil, nil, true, "", ""},
-		{"empty page and origin", experience(nil), experience(nil), true, "", ""},
-		{"falls back to the origin", experience(nil), experience(map[string]rawFieldMetric{
-			"LARGEST_CONTENTFUL_PAINT_MS": metric("FAST"), "CUMULATIVE_LAYOUT_SHIFT_SCORE": metric("FAST"),
-		}), false, "origin", "passed"},
-		{"slow INP fails", experience(map[string]rawFieldMetric{
-			"LARGEST_CONTENTFUL_PAINT_MS": metric("FAST"), "CUMULATIVE_LAYOUT_SHIFT_SCORE": metric("FAST"), "INTERACTION_TO_NEXT_PAINT": metric("SLOW"),
-		}), nil, false, "page", "failed"},
-		{"average LCP fails", experience(map[string]rawFieldMetric{
-			"LARGEST_CONTENTFUL_PAINT_MS": metric("AVERAGE"), "CUMULATIVE_LAYOUT_SHIFT_SCORE": metric("FAST"),
-		}), nil, false, "page", "failed"},
-		{"missing CLS cannot pass", experience(map[string]rawFieldMetric{
-			"LARGEST_CONTENTFUL_PAINT_MS": metric("FAST"),
-		}), nil, false, "page", "failed"},
-		{"only unknown metrics", experience(map[string]rawFieldMetric{"SOMETHING_NEW": metric("FAST")}), nil, true, "", ""},
+		{"all three good", []StoredFieldMetric{m("lcp", fieldGood), m("cls", fieldGood), m("inp", fieldGood)}, CoreWebVitalsPassed},
+		{"no INP, LCP and CLS good", []StoredFieldMetric{m("lcp", fieldGood), m("cls", fieldGood)}, CoreWebVitalsPassed},
+		{"slow INP fails", []StoredFieldMetric{m("lcp", fieldGood), m("cls", fieldGood), m("inp", fieldPoor)}, CoreWebVitalsFailed},
+		{"LCP needs work fails", []StoredFieldMetric{m("lcp", fieldNeedsImprovement), m("cls", fieldGood)}, CoreWebVitalsFailed},
+		{"missing CLS is not assessed", []StoredFieldMetric{m("lcp", fieldGood), m("inp", fieldGood)}, CoreWebVitalsNotAssessed},
+		{"missing LCP is not assessed even when CLS is poor", []StoredFieldMetric{m("cls", fieldPoor)}, CoreWebVitalsNotAssessed},
+		{"nothing measured", nil, CoreWebVitalsNotAssessed},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := buildFieldData(tc.page, tc.origin)
+			if got := assessCoreWebVitals(tc.metrics); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFieldThresholdsAreInclusive(t *testing.T) {
+	lcp := fieldThreshold{2500, 4000}
+	for value, want := range map[float64]string{2500: fieldGood, 2501: fieldNeedsImprovement, 4000: fieldNeedsImprovement, 4001: fieldPoor} {
+		if got := lcp.categorize(value); got != want {
+			t.Errorf("LCP %v = %s, want %s", value, got, want)
+		}
+	}
+}
+
+func TestPageSpeedFieldDataScope(t *testing.T) {
+	block := func(fallback bool) *rawLoadingExperience {
+		lcp, cls := 2000.0, 5.0
+		return &rawLoadingExperience{OriginFallback: fallback, Metrics: map[string]rawFieldMetric{
+			"LARGEST_CONTENTFUL_PAINT_MS": {Percentile: &lcp}, "CUMULATIVE_LAYOUT_SHIFT_SCORE": {Percentile: &cls},
+		}}
+	}
+	cases := []struct {
+		name         string
+		page, origin *rawLoadingExperience
+		wantNil      bool
+		wantScope    string
+	}{
+		{"page data", block(false), nil, false, "page"},
+		{"origin data inside the page block", block(true), nil, false, "origin"},
+		{"separate origin block", &rawLoadingExperience{}, block(false), false, "origin"},
+		{"no data", nil, nil, true, ""},
+		{"empty blocks", &rawLoadingExperience{}, &rawLoadingExperience{}, true, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := pageSpeedFieldData(tc.page, tc.origin)
 			if tc.wantNil {
 				if got != nil {
 					t.Fatalf("got %+v, want nil", got)
 				}
 				return
 			}
-			if got == nil || got.Scope != tc.wantScope || got.CoreWebVitals != tc.wantStatus {
-				t.Fatalf("got %+v, want scope %q status %q", got, tc.wantScope, tc.wantStatus)
+			if got == nil || got.Scope != tc.wantScope || got.Source != "pagespeed" || got.Status != FieldAvailable || got.CoreWebVitals != CoreWebVitalsPassed {
+				t.Fatalf("got %+v, want available %s-level PageSpeed data that passes", got, tc.wantScope)
 			}
 		})
 	}
@@ -310,8 +331,8 @@ func TestPageSpeedProviderRetriesOnceOnRateLimit(t *testing.T) {
 			if (err != nil) != tc.wantErr || requests != tc.wantRequests {
 				t.Fatalf("err = %v after %d requests; want error %v after %d", err, requests, tc.wantErr, tc.wantRequests)
 			}
-			if quota.calls != 1 {
-				t.Fatalf("quota counted %d times; a retry is the same check", quota.calls)
+			if quota.calls != tc.wantRequests {
+				t.Fatalf("quota counted %d times for %d requests; every request needs its own slot", quota.calls, requests)
 			}
 		})
 	}
@@ -386,7 +407,7 @@ func TestSelectLighthouseSampleHomepageOnly(t *testing.T) {
 
 func TestFetchLighthouseResultDailyLimit(t *testing.T) {
 	provider := &pageSpeedProvider{apiKey: "test-key", endpoint: "http://unused.invalid", client: &http.Client{}, quota: &fakeQuota{allow: false}, now: time.Now}
-	got := FetchLighthouseResult(t.Context(), provider, nil, "org-1", "https://example.com/", "page-1", "mobile")
+	got := FetchLighthouseResult(t.Context(), provider, nil, nil, "org-1", "https://example.com/", "page-1", "mobile")
 	if got.Result.ErrorMessage == nil || !strings.Contains(*got.Result.ErrorMessage, "resets at midnight UTC") || got.PayloadJSON != "" {
 		t.Fatalf("got %+v, want a failed check that tells the customer when it resets", got.Result)
 	}
@@ -399,5 +420,51 @@ func TestFailedLighthouseFetch(t *testing.T) {
 	}
 	if got.PayloadJSON != "" {
 		t.Fatal("a failure carries no payload")
+	}
+}
+
+func TestRegressionMissingCLSIsNotAssessed(t *testing.T) {
+	percentile := 2000.0
+	page := &rawLoadingExperience{Metrics: map[string]rawFieldMetric{
+		"LARGEST_CONTENTFUL_PAINT_MS": {Percentile: &percentile},
+	}}
+	got := pageSpeedFieldData(page, nil)
+	if got == nil || got.CoreWebVitals != "not_assessed" {
+		t.Fatalf("got %+v, want coreWebVitals not_assessed when CLS is missing", got)
+	}
+}
+
+func TestRegressionEmbeddedOriginFallbackIsOrigin(t *testing.T) {
+	var page rawLoadingExperience
+	if err := json.Unmarshal([]byte(`{"origin_fallback":true,"metrics":{"LARGEST_CONTENTFUL_PAINT_MS":{"percentile":2000,"category":"FAST"}}}`), &page); err != nil {
+		t.Fatal(err)
+	}
+	if got := pageSpeedFieldData(&page, nil); got == nil || got.Scope != "origin" {
+		t.Fatalf("got %+v, want scope origin for an origin_fallback block", got)
+	}
+}
+
+type countingQuota struct{ remaining, calls int }
+
+func (q *countingQuota) Allow(context.Context, string) (bool, error) {
+	q.calls++
+	if q.remaining == 0 {
+		return false, nil
+	}
+	q.remaining--
+	return true, nil
+}
+
+func TestRegressionRetryNeedsItsOwnQuotaSlot(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	provider := &pageSpeedProvider{apiKey: "test-key", endpoint: server.URL, client: server.Client(), quota: &countingQuota{remaining: 1}, now: time.Now}
+	_, _ = provider.FetchLighthouse(t.Context(), "org-1", testInput)
+	if requests != 1 {
+		t.Fatalf("%d requests sent with one quota slot; the retry must not go out without a slot", requests)
 	}
 }

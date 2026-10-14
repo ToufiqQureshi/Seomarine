@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, Users } from "lucide-react";
+import { CircleCheck, CircleHelp, CircleX, Users } from "lucide-react";
 import { cn } from "cn";
 import { Badge } from "@/client/components/ui/badge";
 import type { LighthouseFieldData } from "./types";
@@ -44,7 +44,7 @@ const CATEGORY_BADGE: Record<
 
 /**
  * What real Chrome visitors experienced over the last 28 days (Google's CrUX
- * data, sent with every PageSpeed check). This is what Google uses for
+ * data, looked up with every page speed check). This is what Google uses for
  * ranking, unlike the lab scores, which come from one simulated visit.
  */
 export function LighthouseFieldData({
@@ -53,6 +53,7 @@ export function LighthouseFieldData({
   fieldData: LighthouseFieldData | undefined;
 }) {
   if (fieldData === undefined) return null;
+  const available = fieldData?.status === "available" ? fieldData : null;
 
   return (
     <section className="space-y-3 rounded-lg border border-border p-4">
@@ -63,22 +64,24 @@ export function LighthouseFieldData({
             Real visitors, last 28 days
           </h2>
           <p className="text-xs text-muted-foreground">
-            {fieldData == null
-              ? "Google has no real-visitor data for this site yet. That is normal for new or low-traffic sites; the lab test below still applies."
-              : fieldData.scope === "origin"
-                ? "This page has too few visits of its own, so this is your whole site's data, from Chrome users."
-                : "From Chrome users who opened this page. Google uses this data for ranking."}
+            {fieldDataNote(fieldData)}
           </p>
+          {available?.collectionPeriod ? (
+            <p className="text-[11px] text-muted-foreground">
+              Data from {formatDate(available.collectionPeriod.firstDate)} to{" "}
+              {formatDate(available.collectionPeriod.lastDate)}
+            </p>
+          ) : null}
         </div>
-        {fieldData ? (
-          <CoreWebVitalsBadge status={fieldData.coreWebVitals} />
+        {available?.coreWebVitals ? (
+          <CoreWebVitalsBadge status={available.coreWebVitals} />
         ) : null}
       </div>
 
-      {fieldData && fieldData.metrics.length > 0 ? (
+      {available && available.metrics.length > 0 ? (
         <>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {fieldData.metrics.map((metric) => (
+            {available.metrics.map((metric) => (
               <FieldMetricItem key={metric.key} metric={metric} />
             ))}
           </ul>
@@ -89,14 +92,52 @@ export function LighthouseFieldData({
   );
 }
 
-function CoreWebVitalsBadge({ status }: { status: "passed" | "failed" }) {
-  const passed = status === "passed";
+// One sentence per state. Only "insufficient_data" says the site lacks
+// traffic; a failed or skipped lookup never implies that.
+function fieldDataNote(fieldData: LighthouseFieldData) {
+  if (fieldData == null)
+    return "Real-visitor data was not recorded for this report. Run a new audit to see it.";
+  switch (fieldData.status) {
+    case "insufficient_data":
+      return "Google does not have enough Chrome visits to this page or site to report yet. That is normal for new or low-traffic sites; the lab test below still applies.";
+    case "unavailable":
+      return "Google's real-visitor data could not be loaded for this report. Try again later; the lab test below is not affected.";
+    case "not_configured":
+      return "Real-visitor data is not switched on yet. The lab test below still applies.";
+    case "available":
+      return fieldData.scope === "origin"
+        ? "This page has too few visits of its own, so this is your whole site's data, from Chrome users."
+        : "From Chrome users who opened this page. Google uses this data for ranking.";
+  }
+}
+
+const CWV_BADGE = {
+  passed: { variant: "success", icon: CircleCheck, label: "passed" },
+  failed: { variant: "destructive", icon: CircleX, label: "failed" },
+  not_assessed: {
+    variant: "outline",
+    icon: CircleHelp,
+    label: "not assessed (too little LCP or CLS data)",
+  },
+} as const;
+
+function CoreWebVitalsBadge({ status }: { status: keyof typeof CWV_BADGE }) {
+  const { variant, icon: Icon, label } = CWV_BADGE[status];
   return (
-    <Badge variant={passed ? "success" : "destructive"}>
-      {passed ? <CircleCheck /> : <CircleX />}
-      Core Web Vitals {passed ? "passed" : "failed"}
+    <Badge variant={variant}>
+      <Icon />
+      Core Web Vitals {label}
     </Badge>
   );
+}
+
+function formatDate(isoDate: string) {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function FieldMetricItem({ metric }: { metric: FieldMetric }) {

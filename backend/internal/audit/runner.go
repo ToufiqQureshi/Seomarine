@@ -19,10 +19,13 @@ type Runner struct {
 	guard      *Guard
 	crawler    *Crawler
 	lighthouse LighthouseProvider
+	fieldData  FieldDataProvider
 	rendering  RenderingMeter
 	logger     *slog.Logger
 	now        func() time.Time
 	resolver   CrawlerAccessResolver
+	// minCheckTime is minLighthouseCheckTime; tests shorten it.
+	minCheckTime time.Duration
 }
 
 // RunnerConfig configures a Runner.
@@ -32,10 +35,13 @@ type RunnerConfig struct {
 	Guard      *Guard
 	Crawler    *Crawler
 	Lighthouse LighthouseProvider
-	Rendering  RenderingMeter
-	Logger     *slog.Logger
-	Now        func() time.Time
-	Resolver   CrawlerAccessResolver
+	// FieldData looks up real-visitor data for each check; nil uses only
+	// what PageSpeed Insights embeds.
+	FieldData FieldDataProvider
+	Rendering RenderingMeter
+	Logger    *slog.Logger
+	Now       func() time.Time
+	Resolver  CrawlerAccessResolver
 }
 
 // NewRunner builds a Runner.
@@ -58,13 +64,27 @@ func NewRunner(config RunnerConfig) *Runner {
 	}
 	return &Runner{
 		repo: config.Repository, progress: config.Progress, guard: guard, crawler: crawler,
-		lighthouse: config.Lighthouse, rendering: config.Rendering, logger: logger, now: now,
-		resolver: config.Resolver,
+		lighthouse: config.Lighthouse, fieldData: config.FieldData, rendering: config.Rendering, logger: logger, now: now,
+		minCheckTime: minLighthouseCheckTime,
+		resolver:     config.Resolver,
 	}
 }
 
-// auditDeadline bounds one audit's crawl.
-const auditDeadline = 30 * time.Minute
+const (
+	// auditDeadline bounds one audit's crawl and checks.
+	auditDeadline = 30 * time.Minute
+	// lighthouseBudget bounds the Lighthouse checks that follow, on their own
+	// clock: a crawl that used its whole deadline must not leave them none.
+	// 20 checks take about 10 minutes; crawl + checks stays inside the job
+	// queue's 45-minute timeout.
+	lighthouseBudget = 12 * time.Minute
+	// minLighthouseCheckTime is the least time worth starting a check with;
+	// below it the remaining checks are recorded as skipped.
+	minLighthouseCheckTime = 30 * time.Second
+	// persistTimeout bounds the writes that save finished work after the
+	// phase's own deadline has passed.
+	persistTimeout = 30 * time.Second
+)
 
 // Run executes the audit. A returned error means the audit failed and was
 // marked failed; a nil error means it completed (possibly with partial data).
@@ -75,15 +95,17 @@ func (r *Runner) Run(ctx context.Context, job JobPayload) error {
 	if err := r.setPhase(runCtx, job, "discovery"); err != nil {
 		return err
 	}
-	if err := r.run(runCtx, job); err != nil {
+	if err := r.run(runCtx, ctx, job); err != nil {
 		r.failAudit(ctx, job, err)
 		return err
 	}
 	return nil
 }
 
-// run performs the phases and completes the audit.
-func (r *Runner) run(ctx context.Context, job JobPayload) error {
+// run performs the phases and completes the audit. ctx bounds the crawl;
+// jobCtx is the job's own context, which the Lighthouse phase and completion
+// run under.
+func (r *Runner) run(ctx, jobCtx context.Context, job JobPayload) error {
 	maxPages := job.Config.MaxPages
 	if maxPages <= 0 {
 		maxPages = DefaultAuditPages
@@ -103,10 +125,15 @@ func (r *Runner) run(ctx context.Context, job JobPayload) error {
 		return err
 	}
 
+	// The crawl may have used its whole deadline. What follows runs on the
+	// job's clock, so a full-length crawl is still finalized and saved.
+	ctx = jobCtx
 	if err := r.finalizeChecks(ctx, job); err != nil {
 		return err
 	}
-	if err := r.lighthousePhase(ctx, job); err != nil {
+	lighthouseCtx, cancelLighthouse := context.WithTimeout(ctx, lighthouseBudget)
+	defer cancelLighthouse()
+	if err := r.lighthousePhase(lighthouseCtx, job); err != nil {
 		return err
 	}
 	if err := r.repo.CompleteAudit(ctx, job.AuditID, job.AuditID, pagesCrawled, maxPages); err != nil {
@@ -338,7 +365,12 @@ func (r *Runner) lighthousePhase(ctx context.Context, job JobPayload) error {
 	for _, pageURL := range selected {
 		pageID := DeterministicAuditRowID(job.AuditID, pageURL)
 		for _, strategy := range []string{"mobile", "desktop"} {
-			fetched := FetchLighthouseResult(ctx, r.lighthouse, r.logger, job.OrganizationID, pageURL, pageID, strategy)
+			var fetched LighthouseFetchResult
+			if deadline, ok := ctx.Deadline(); ctx.Err() != nil || (ok && time.Until(deadline) < r.minCheckTime) {
+				fetched = FailedLighthouseFetch(pageURL, pageID, strategy, "Skipped: the audit ran out of time for page speed checks.")
+			} else {
+				fetched = FetchLighthouseResult(ctx, r.lighthouse, r.fieldData, r.logger, job.OrganizationID, pageURL, pageID, strategy)
+			}
 			record := LighthouseRecord{
 				PageID: pageID, URL: pageURL, Strategy: strategy,
 				PerformanceScore:   intFromFloat(fetched.Result.PerformanceScore),
@@ -360,10 +392,14 @@ func (r *Runner) lighthousePhase(ctx context.Context, job JobPayload) error {
 			}
 		}
 	}
-	if err := r.repo.InsertLighthouseResults(ctx, job.AuditID, results); err != nil {
+	// The phase's deadline may have passed by now; the finished checks are
+	// saved regardless, on a short clock of their own.
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
+	defer cancel()
+	if err := r.repo.InsertLighthouseResults(persistCtx, job.AuditID, results); err != nil {
 		return err
 	}
-	return r.repo.UpdateAuditProgress(ctx, job.AuditID, job.AuditID, ProgressUpdate{
+	return r.repo.UpdateAuditProgress(persistCtx, job.AuditID, job.AuditID, ProgressUpdate{
 		LighthouseCompleted: &completed, LighthouseFailed: &failed, CurrentPhase: phasePtr("finalizing"),
 	})
 }

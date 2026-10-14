@@ -197,11 +197,22 @@ const lighthouseIssuesSchema = z.object({
       serverResponseTime: lighthouseMetricSchema,
     })
     .nullable(),
-  // Real-user data from Google; null for older runs and low-traffic sites.
+  // Real-visitor data from Google. Null on reports saved before it was
+  // recorded, which says nothing about whether Google has data now.
   fieldData: z
     .object({
-      scope: z.enum(["page", "origin"]),
-      coreWebVitals: z.enum(["passed", "failed"]),
+      status: z.enum([
+        "available",
+        "insufficient_data",
+        "unavailable",
+        "not_configured",
+      ]),
+      source: z.enum(["crux", "pagespeed"]).optional(),
+      scope: z.enum(["page", "origin"]).optional(),
+      coreWebVitals: z.enum(["passed", "failed", "not_assessed"]).optional(),
+      collectionPeriod: z
+        .object({ firstDate: z.string(), lastDate: z.string() })
+        .optional(),
       metrics: z.array(fieldMetricSchema),
     })
     .nullable(),

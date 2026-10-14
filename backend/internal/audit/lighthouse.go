@@ -96,27 +96,26 @@ func (p *pageSpeedProvider) FetchLighthouse(ctx context.Context, organizationID 
 	if p == nil || p.apiKey == "" || p.quota == nil {
 		return StoredLighthousePayload{}, errors.New("lighthouse provider is not configured")
 	}
-	allowed, err := p.quota.Allow(ctx, organizationID)
-	if err != nil {
+	query := url.Values{"url": {input.URL}, "strategy": {strings.ToUpper(input.Strategy)}, "category": lighthouseRequestCategories}
+	if err := p.reserve(ctx, organizationID); err != nil {
 		return StoredLighthousePayload{}, err
 	}
-	if !allowed {
-		return StoredLighthousePayload{}, ErrPageSpeedDailyLimit
-	}
-
-	query := url.Values{"url": {input.URL}, "strategy": {strings.ToUpper(input.Strategy)}, "category": lighthouseRequestCategories}
 	status, body, err := p.call(ctx, query)
 	// A 429 (per-minute quota, when several audits run at once) or a 503 is
-	// usually gone a few seconds later, so it is tried once more. Nothing
-	// else is retried: a 500 is the customer's page failing to load, and
-	// trying it again only spends quota.
+	// usually gone a few seconds later, so it is tried once more. The retry
+	// is a request like any other and needs its own slot in the workspace's
+	// daily share; without one it is not sent. Nothing else is retried: a 500
+	// is the customer's page failing to load, and repeating it only spends
+	// quota.
 	if err == nil && (status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable) {
 		select {
 		case <-ctx.Done():
 			return StoredLighthousePayload{}, fmt.Errorf("call PageSpeed Insights: %w", ctx.Err())
 		case <-time.After(p.retryDelay):
 		}
-		status, body, err = p.call(ctx, query)
+		if p.reserve(ctx, organizationID) == nil {
+			status, body, err = p.call(ctx, query)
+		}
 	}
 	if err != nil {
 		return StoredLighthousePayload{}, err
@@ -125,6 +124,20 @@ func (p *pageSpeedProvider) FetchLighthouse(ctx context.Context, organizationID 
 		return StoredLighthousePayload{}, pageSpeedError(status, body)
 	}
 	return ParsePageSpeedPayload(body, input, p.now())
+}
+
+// reserve takes one slot of the workspace's daily share for one request. The
+// Redis counter is incremented atomically, so concurrent checks cannot both
+// take the last slot.
+func (p *pageSpeedProvider) reserve(ctx context.Context, organizationID string) error {
+	allowed, err := p.quota.Allow(ctx, organizationID)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrPageSpeedDailyLimit
+	}
+	return nil
 }
 
 // call sends one request and returns the status and the (bounded) body.
@@ -298,7 +311,7 @@ func FailedLighthouseFetch(url, pageID, strategy, errorMessage string) Lighthous
 // FetchLighthouseResult runs one Lighthouse check, mapping provider scores onto
 // the persisted result. Provider errors become a result carrying errorMessage,
 // matching the TypeScript's behaviour.
-func FetchLighthouseResult(ctx context.Context, provider LighthouseProvider, logger *slog.Logger, organizationID, url, pageID, strategy string) LighthouseFetchResult {
+func FetchLighthouseResult(ctx context.Context, provider LighthouseProvider, fields FieldDataProvider, logger *slog.Logger, organizationID, url, pageID, strategy string) LighthouseFetchResult {
 	if provider == nil {
 		return FailedLighthouseFetch(url, pageID, strategy, "lighthouse provider is not configured")
 	}
@@ -318,6 +331,7 @@ func FetchLighthouseResult(ctx context.Context, provider LighthouseProvider, log
 		}
 		return FailedLighthouseFetch(url, pageID, strategy, message)
 	}
+	data.FieldData = resolveFieldData(ctx, fields, data, strategy)
 	payloadJSON, err := json.Marshal(data)
 	if err != nil {
 		return FailedLighthouseFetch(url, pageID, strategy, fmt.Sprintf("encode lighthouse payload: %v", err))
@@ -347,4 +361,23 @@ func floatFromInt(value *int) *float64 {
 	}
 	result := float64(*value)
 	return &result
+}
+
+// resolveFieldData picks the field data stored with a check. The CrUX API is
+// the source when configured; PageSpeed Insights' embedded copy is kept when
+// CrUX is not configured or its lookup failed, since a failed lookup says
+// nothing about the site.
+func resolveFieldData(ctx context.Context, fields FieldDataProvider, data StoredLighthousePayload, strategy string) *StoredFieldData {
+	embedded := data.FieldData
+	if fields == nil {
+		if embedded != nil {
+			return embedded
+		}
+		return &StoredFieldData{Status: FieldNotConfigured, Metrics: []StoredFieldMetric{}}
+	}
+	looked := fields.FieldData(ctx, data.Metadata.FinalURL, strategy)
+	if looked.Status == FieldUnavailable && embedded != nil {
+		return embedded
+	}
+	return &looked
 }

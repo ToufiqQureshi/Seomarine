@@ -76,8 +76,8 @@ type StoredLighthousePayload struct {
 	Scores          StoredLighthouseScores   `json:"scores"`
 	Metrics         StoredLighthouseMetrics  `json:"metrics"`
 	Issues          []StoredLighthouseIssue  `json:"issues"`
-	// FieldData is nil for payloads stored before PageSpeed Insights, and for
-	// sites with too little Chrome traffic for Google to report.
+	// FieldData is nil on payloads stored before field data was recorded;
+	// that means "not recorded", never "Google has no data".
 	FieldData *StoredFieldData `json:"fieldData,omitempty"`
 }
 
@@ -394,96 +394,6 @@ type LighthouseInput struct {
 // Payloads stored before the switch carry storedPayloadSource instead.
 const pageSpeedSource = "pagespeed-insights"
 
-// rawFieldMetric is one CrUX metric as PageSpeed Insights returns it.
-type rawFieldMetric struct {
-	Percentile    *float64 `json:"percentile"`
-	Category      string   `json:"category"`
-	Distributions []struct {
-		Proportion float64 `json:"proportion"`
-	} `json:"distributions"`
-}
-
-// rawLoadingExperience is the CrUX block of a PageSpeed Insights response.
-type rawLoadingExperience struct {
-	Metrics         map[string]rawFieldMetric `json:"metrics"`
-	OverallCategory string                    `json:"overall_category"`
-}
-
-// StoredFieldMetric is one real-user (CrUX) metric at the 75th percentile, with
-// the share of visits in each of Google's good / needs improvement / poor bands.
-type StoredFieldMetric struct {
-	Key string `json:"key"`
-	// Percentile is milliseconds, except CLS, which is unitless.
-	Percentile       float64 `json:"percentile"`
-	Category         string  `json:"category"`
-	Good             float64 `json:"good"`
-	NeedsImprovement float64 `json:"needsImprovement"`
-	Poor             float64 `json:"poor"`
-}
-
-// StoredFieldData is what real Chrome users experienced over the last 28 days.
-// Scope is "page" when Google has data for the URL itself and "origin" when it
-// fell back to the whole site.
-type StoredFieldData struct {
-	Scope string `json:"scope"`
-	// CoreWebVitals is "passed" when LCP, CLS and (when measured) INP are all
-	// good, "failed" otherwise; the same rule PageSpeed Insights shows.
-	CoreWebVitals string              `json:"coreWebVitals"`
-	Metrics       []StoredFieldMetric `json:"metrics"`
-}
-
-// fieldMetricKeys maps CrUX metric names onto stored keys, in display order.
-var fieldMetricKeys = []struct{ crux, key string }{
-	{"LARGEST_CONTENTFUL_PAINT_MS", "lcp"},
-	{"INTERACTION_TO_NEXT_PAINT", "inp"},
-	{"CUMULATIVE_LAYOUT_SHIFT_SCORE", "cls"},
-	{"FIRST_CONTENTFUL_PAINT_MS", "fcp"},
-	{"EXPERIMENTAL_TIME_TO_FIRST_BYTE", "ttfb"},
-}
-
-// buildFieldData keeps the page's CrUX data, falling back to the origin's. A new
-// or low-traffic site has neither, which is normal and returns nil.
-func buildFieldData(page, origin *rawLoadingExperience) *StoredFieldData {
-	scope, source := "page", page
-	if source == nil || len(source.Metrics) == 0 {
-		scope, source = "origin", origin
-	}
-	if source == nil || len(source.Metrics) == 0 {
-		return nil
-	}
-	data := &StoredFieldData{Scope: scope, Metrics: []StoredFieldMetric{}}
-	categories := map[string]string{}
-	for _, name := range fieldMetricKeys {
-		raw, ok := source.Metrics[name.crux]
-		if !ok || raw.Percentile == nil {
-			continue
-		}
-		metric := StoredFieldMetric{Key: name.key, Percentile: *raw.Percentile, Category: raw.Category}
-		if name.key == "cls" {
-			// CrUX reports CLS multiplied by 100.
-			metric.Percentile /= 100
-		}
-		if len(raw.Distributions) == 3 {
-			metric.Good = raw.Distributions[0].Proportion
-			metric.NeedsImprovement = raw.Distributions[1].Proportion
-			metric.Poor = raw.Distributions[2].Proportion
-		}
-		categories[name.key] = raw.Category
-		data.Metrics = append(data.Metrics, metric)
-	}
-	if len(data.Metrics) == 0 {
-		return nil
-	}
-	data.CoreWebVitals = "failed"
-	lcp, hasLCP := categories["lcp"]
-	cls, hasCLS := categories["cls"]
-	inp, hasINP := categories["inp"]
-	if hasLCP && hasCLS && lcp == "FAST" && cls == "FAST" && (!hasINP || inp == "FAST") {
-		data.CoreWebVitals = "passed"
-	}
-	return data
-}
-
 // ParsePageSpeedPayload reduces a PageSpeed Insights v5 response into the
 // compact stored payload, failing when Lighthouse could not produce a report.
 func ParsePageSpeedPayload(payload []byte, input LighthouseInput, now time.Time) (StoredLighthousePayload, error) {
@@ -543,7 +453,7 @@ func ParsePageSpeedPayload(payload []byte, input LighthouseInput, now time.Time)
 		},
 		Metrics:   buildStoredLighthouseMetrics(audits),
 		Issues:    issues,
-		FieldData: buildFieldData(response.LoadingExperience, response.OriginLoadingExperience),
+		FieldData: pageSpeedFieldData(response.LoadingExperience, response.OriginLoadingExperience),
 	}
 	if stored.Scores.Performance == nil && stored.Scores.Accessibility == nil &&
 		stored.Scores.BestPractices == nil && stored.Scores.SEO == nil {

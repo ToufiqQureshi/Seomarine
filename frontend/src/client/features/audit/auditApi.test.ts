@@ -195,8 +195,11 @@ describe("Lighthouse endpoints", () => {
         scores: null,
         metrics: null,
         fieldData: {
+          status: "available",
+          source: "crux",
           scope: "origin",
-          coreWebVitals: "failed",
+          coreWebVitals: "not_assessed",
+          collectionPeriod: { firstDate: "2026-09-13", lastDate: "2026-10-10" },
           metrics: [
             {
               key: "cls",
@@ -217,10 +220,33 @@ describe("Lighthouse endpoints", () => {
     });
 
     expect(data.fieldData?.scope).toBe("origin");
+    expect(data.fieldData?.coreWebVitals).toBe("not_assessed");
     expect(data.fieldData?.metrics[0]).toMatchObject({
       key: "cls",
       percentile: 0.12,
     });
+  });
+
+  it("accepts field data that has no metrics because Google has none", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        id: "lh-1",
+        finalUrl: "https://example.com/",
+        strategy: "mobile",
+        createdAt: "2026-10-09T10:00:00.000Z",
+        hasIssueDetails: true,
+        scores: null,
+        metrics: null,
+        fieldData: { status: "insufficient_data", source: "crux", metrics: [] },
+        issues: [],
+      }),
+    );
+
+    const data = await getAuditLighthouseIssues({
+      data: { projectId: "p1", resultId: "lh-1" },
+    });
+
+    expect(data.fieldData?.status).toBe("insufficient_data");
   });
 
   it("sends the export mode and category but not the project id in the body", async () => {

@@ -159,3 +159,35 @@ func TestBuildLighthouseExportFullReturnsPayloadUntouched(t *testing.T) {
 		t.Fatalf("issues export of an invalid payload err = %v", err)
 	}
 }
+
+func TestBuildLighthouseIssuesFieldData(t *testing.T) {
+	withField := func(field string) string {
+		return `{"version":2,"source":"pagespeed-insights","metadata":{"finalUrl":"https://example.com/"},"issues":[],"fieldData":` + field + `}`
+	}
+	cases := []struct {
+		name    string
+		payload string
+		want    FieldDataStatus
+	}{
+		{"recorded", withField(`{"status":"insufficient_data","source":"crux","metrics":[]}`), FieldInsufficientData},
+		{"stored before field data had a status", withField(`{"scope":"page","coreWebVitals":"failed","metrics":[]}`), ""},
+		{"stored before field data", `{"version":2,"source":"dataforseo-lighthouse","metadata":{},"issues":[]}`, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := BuildLighthouseIssues(detailFixture(tc.payload))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if result.FieldData != nil {
+					t.Fatalf("fieldData = %+v, want nil (not recorded)", result.FieldData)
+				}
+				return
+			}
+			if result.FieldData == nil || result.FieldData.Status != tc.want {
+				t.Fatalf("fieldData = %+v, want status %s", result.FieldData, tc.want)
+			}
+		})
+	}
+}
