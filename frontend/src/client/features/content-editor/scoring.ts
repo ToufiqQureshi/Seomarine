@@ -50,7 +50,7 @@ export function scoreContent(
         : staticSeo(draft, body)
       : aeo(draft, body, brief);
   let score =
-      mode === "seo" && !brief
+      mode === "seo"
         ? Math.round(
             (sum(checks) * 100) /
               Math.max(

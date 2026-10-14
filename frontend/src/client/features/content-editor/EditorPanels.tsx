@@ -321,20 +321,23 @@ export function DraftsPanel({
 }
 
 function CheckItem({ check }: { check: ScoreCheck }) {
-  const Icon = check.passed ? Check : X;
+  const notApplicable = check.weight === 0;
+  const Icon = notApplicable ? CircleHelp : check.passed ? Check : X;
   return (
     <li className="flex gap-2.5">
       <Icon
-        className={`mt-0.5 size-4 shrink-0 ${check.passed ? "text-success" : "text-muted-foreground"}`}
+        className={`mt-0.5 size-4 shrink-0 ${check.passed && !notApplicable ? "text-success" : "text-muted-foreground"}`}
         aria-hidden
       />
       <div className="min-w-0">
         <p className="text-sm font-medium">
           {check.label}
           <span className="ml-1.5 font-mono text-xs text-muted-foreground">
-            {check.earned > 0
-              ? `${Math.round(check.earned)}/${check.weight}`
-              : `+${check.weight - check.earned}`}
+            {notApplicable
+              ? "Not applicable"
+              : check.earned > 0
+                ? `${Math.round(check.earned)}/${check.weight}`
+                : `+${check.weight - check.earned}`}
           </span>
         </p>
         <p className="mt-0.5 text-xs leading-5 text-muted-foreground">

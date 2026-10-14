@@ -92,8 +92,8 @@ export function staticSeo(
       "Descriptive image alt text",
       images.length
         ? alt + "/" + images.length + " images have descriptive alt text."
-        : "No images to check.",
-      5,
+        : "Not applicable: no images in this draft.",
+      images.length ? 5 : 0,
       images.length ? (5 * alt) / images.length : 0,
     ),
   ];

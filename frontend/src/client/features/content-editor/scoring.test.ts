@@ -224,9 +224,21 @@ Updated in 2026.`;
   });
 
   it("does not award image alt-text points when the draft has no images", () => {
-    const result = scoreContent("seo", draft);
-    expect(result.checks.find((item) => item.id === "alt-text")?.earned).toBe(
+    const result = scoreContent("seo", draft, brief);
+    const altCheck = result.checks.find((item) => item.id === "alt-text");
+    expect(altCheck?.weight).toBe(0);
+    expect(altCheck?.earned).toBe(0);
+    expect(altCheck?.detail.toLocaleLowerCase()).toContain("not applicable");
+    const activeWeight = result.checks.reduce(
+      (total, item) => total + item.weight,
       0,
+    );
+    expect(activeWeight).toBe(95);
+    expect(result.score).toBe(
+      Math.round(
+        (result.checks.reduce((total, item) => total + item.earned, 0) * 100) /
+          activeWeight,
+      ),
     );
   });
 
@@ -309,6 +321,11 @@ Updated in 2026.`;
 
   it("keeps each SEO score cap and publish block tied to its trigger", () => {
     const stuffed = scoreContent("seo", fixtures[2].draft, brief);
+    const shortStuffed = scoreContent(
+      "seo",
+      { ...draft, content: "technical SEO ".repeat(40) },
+      brief,
+    );
     const copiedBrief = { ...brief, competitorTexts: [goodText] };
     const copied = scoreContent("seo", draft, copiedBrief);
     const short = scoreContent(
@@ -318,6 +335,9 @@ Updated in 2026.`;
     );
     expect(stuffed.cappedAt).toBe(40);
     expect(stuffed.blocksPublish).toBe(true);
+    expect(shortStuffed.cappedAt).toBe(30);
+    expect(shortStuffed.score).toBeLessThanOrEqual(30);
+    expect(shortStuffed.blocksPublish).toBe(true);
     expect(copied.cappedAt).toBe(30);
     expect(copied.blocksPublish).toBe(false);
     expect(short.cappedAt).toBe(30);

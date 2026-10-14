@@ -60,30 +60,40 @@ export function seoScoreCap(
     uses > normalMaximum * 2 &&
     uses / Math.max(1, wordCount) > 0.04,
   );
+  const caps: Array<{ cap: number; reason: string; blocksPublish: boolean }> =
+    [];
   if (stuffing) {
-    return {
+    caps.push({
       cap: 40,
       reason: "Repeated target topic use may read as keyword stuffing.",
       blocksPublish: true,
-    };
+    });
   }
   if (
     checkCopyOverlap &&
     brief &&
     overlapsCompetitor(body, brief.competitorTexts)
   ) {
-    return {
+    caps.push({
       cap: 30,
       reason: "Substantial phrase overlap with a competitor was found.",
       blocksPublish: false,
-    };
+    });
   }
   if (wordCount < 100) {
-    return {
+    caps.push({
       cap: 30,
       reason: "Score is capped for drafts under 100 words.",
       blocksPublish: false,
-    };
+    });
   }
-  return { blocksPublish: false };
+  return {
+    ...(caps.length
+      ? {
+          cap: Math.min(...caps.map((item) => item.cap)),
+          reason: caps.map((item) => item.reason).join(" "),
+        }
+      : {}),
+    blocksPublish: caps.some((item) => item.blocksPublish),
+  };
 }

@@ -26,17 +26,21 @@ Google or predict rankings.
 - Readability is scored only when the draft contains no Devanagari script and
   fewer than 5% common Hindi/Hinglish markers. Other language drafts receive no
   readability penalty. Image alt text remains checked against the existing
-  five-image editor limit.
+  five-image editor limit. When there are no images, its check is marked not
+  applicable and removed from the score; the remaining SEO points are scaled
+  to the full score.
 - SEO and AEO are capped at 40 and publishing is blocked when the exact target
   topic appears at least eight times, exceeds twice the larger of its brief
   maximum and 2% of body words, and exceeds 4% of body words. This check works
   without a brief too. Eight-word phrase overlap with a competitor is considered
   copied when at least four shingles match and at least 20% of the draft's
   shingles overlap. That caps SEO at 30. SEO and AEO drafts under 100 words are
-  also capped at 30. These are editorial safeguards, not search-engine rules.
+  also capped at 30. When multiple caps apply, the lowest score cap wins, while
+  any stuffing trigger still blocks publishing. These are editorial safeguards,
+  not search-engine rules.
 - Brief term coverage is partial below the minimum (`uses / min`), full from the
   minimum through the maximum, and overuse is handled by the separate term-range
-  check. A missing image does not earn alt-text points.
+  check.
 - Title and description lengths are hints only. No keyword-density target is
   used. The slug follows the title until the writer edits the slug. Unsaved
   browser navigation warns the writer; drafts remain saved only through the
