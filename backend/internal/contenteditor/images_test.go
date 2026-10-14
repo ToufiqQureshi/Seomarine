@@ -3,6 +3,7 @@ package contenteditor
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,22 +14,18 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/config"
 )
 
-func testWebP(width, height int) []byte {
+func testWebP() []byte {
 	data := make([]byte, 30)
 	copy(data[0:4], "RIFF")
 	copy(data[8:12], "WEBP")
 	copy(data[12:16], "VP8X")
-	data[24] = byte(width - 1)
-	data[25] = byte((width - 1) >> 8)
-	data[26] = byte((width - 1) >> 16)
-	data[27] = byte(height - 1)
-	data[28] = byte((height - 1) >> 8)
-	data[29] = byte((height - 1) >> 16)
+	data[24] = 2
+	data[27] = 1
 	return data
 }
 
 func TestSupabaseImageStoreValidatesAndUploadsCompressedWebP(t *testing.T) {
-	data := testWebP(3, 2)
+	data := testWebP()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/storage/v1/object/content-images/content-editor/") || !strings.HasSuffix(r.URL.Path, ".webp") {
 			t.Errorf("request = %s %s", r.Method, r.URL.Path)
@@ -73,7 +70,7 @@ func TestSupabaseImageStoreRejectsOversizedAndInvalidWebP(t *testing.T) {
 }
 
 func TestNewSupabaseImageStoreRequiresConfiguration(t *testing.T) {
-	if _, err := NewSupabaseImageStore(nil); err != ErrImageStorageUnavailable {
+	if _, err := NewSupabaseImageStore(nil); !errors.Is(err, ErrImageStorageUnavailable) {
 		t.Fatalf("NewSupabaseImageStore(nil) error = %v", err)
 	}
 	projectURL, _ := url.Parse("https://project.supabase.co")

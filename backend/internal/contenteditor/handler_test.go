@@ -180,7 +180,7 @@ func TestImageUploadRequiresProjectAccessAndStoresOnlyValidRasterImages(t *testi
 			next.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-42")))
 		})
 	}
-	imageBytes := testWebP(2, 2)
+	imageBytes := testWebP()
 	store := &fakeImageStore{url: "https://media.uplumo.com/content-editor/example.png"}
 	mux := http.NewServeMux()
 	Mount(mux, &memoryStore{}, nil, store, fakeImageUploadLimiter{allowed: true}, identity, withOrganization)
@@ -197,7 +197,7 @@ func TestImageUploadRequiresProjectAccessAndStoresOnlyValidRasterImages(t *testi
 		if err := writer.Close(); err != nil {
 			t.Fatal(err)
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 		recorder := httptest.NewRecorder()
 		mux.ServeHTTP(recorder, req)
@@ -217,7 +217,7 @@ func TestImageUploadRequiresProjectAccessAndStoresOnlyValidRasterImages(t *testi
 	part, _ := writer.CreateFormFile("image", "image.webp")
 	_, _ = part.Write(imageBytes)
 	_ = writer.Close()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/images/upload", &body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	withoutProject.ServeHTTP(recorder, req)
@@ -235,7 +235,7 @@ func TestImageUploadReportsUnavailableStorageAndRejectsOversizedRequests(t *test
 	}
 	mux := http.NewServeMux()
 	Mount(mux, &memoryStore{}, nil, nil, nil, identity, identity)
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(""))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(""))
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusServiceUnavailable {
@@ -244,7 +244,7 @@ func TestImageUploadReportsUnavailableStorageAndRejectsOversizedRequests(t *test
 
 	configured := http.NewServeMux()
 	Mount(configured, &memoryStore{}, nil, &fakeImageStore{}, fakeImageUploadLimiter{allowed: true}, identity, withOrganization)
-	tooLarge := httptest.NewRequest(http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(strings.Repeat("x", maxImageRequestBody+1)))
+	tooLarge := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p1/content/images/upload", strings.NewReader(strings.Repeat("x", maxImageRequestBody+1)))
 	tooLarge.Header.Set("Content-Type", "multipart/form-data; boundary=invalid")
 	tooLargeRecorder := httptest.NewRecorder()
 	configured.ServeHTTP(tooLargeRecorder, tooLarge)

@@ -73,6 +73,7 @@ func (h Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxImageRequestBody)
+	// #nosec G120 -- MaxBytesReader caps the entire multipart body before parsing.
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {

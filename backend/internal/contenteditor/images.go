@@ -24,6 +24,7 @@ const (
 	maxImagePixels     = 8_000_000
 )
 
+// ErrImageStorageUnavailable indicates that Supabase image storage is absent.
 var ErrImageStorageUnavailable = errors.New("content image storage is not configured")
 
 // ImageValidationError indicates the uploaded file is not a supported image.
@@ -48,6 +49,7 @@ type ImageUploadLimiter interface {
 // hour, shared across application instances.
 type RedisImageUploadLimiter struct{ Client *redis.Client }
 
+// Allow reports whether the organization can upload another image this hour.
 func (l RedisImageUploadLimiter) Allow(ctx context.Context, organizationID string) (bool, error) {
 	if l.Client == nil {
 		return false, errors.New("image upload limiter is not configured")
@@ -70,6 +72,7 @@ type SupabaseImageStore struct {
 	bucket string
 }
 
+// NewSupabaseImageStore creates a server-side client for the configured bucket.
 func NewSupabaseImageStore(cfg *config.SupabaseStorage) (*SupabaseImageStore, error) {
 	if cfg == nil {
 		return nil, ErrImageStorageUnavailable
@@ -105,6 +108,7 @@ func (s *SupabaseImageStore) Upload(ctx context.Context, data []byte) (string, e
 	key := "content-editor/" + objectID + ".webp"
 	endpoint := *s.url
 	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/storage/v1/object/" + url.PathEscape(s.bucket) + "/" + key
+	// #nosec G704 -- endpoint is derived from the HTTPS project origin validated at startup.
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), bytes.NewReader(data))
 	if err != nil {
 		return "", fmt.Errorf("create Supabase image upload request: %w", err)
@@ -114,6 +118,7 @@ func (s *SupabaseImageStore) Upload(ctx context.Context, data []byte) (string, e
 	request.Header.Set("Content-Type", "image/webp")
 	request.Header.Set("Cache-Control", "public, max-age=31536000, immutable")
 	request.Header.Set("x-upsert", "false")
+	// #nosec G704 -- the request target is the configured Supabase origin, never user input.
 	response, err := s.client.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("upload content image to Supabase: %w", err)
