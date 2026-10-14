@@ -26,6 +26,24 @@ export const billingStatusQueryOptions = {
   retry: shouldRetryApiError,
 };
 
+/**
+ * Razorpay tells the browser a payment succeeded about a second before its
+ * webhook reaches the Go API, and only the webhook changes the plan. Reads
+ * the status until the paid plan shows (or the attempts run out) and returns
+ * the last status read.
+ */
+export async function waitForPaidPlan(
+  delayMs = 1500,
+  attempts = 20,
+): Promise<BillingStatus> {
+  let status = await billingStatusQueryOptions.queryFn();
+  for (let i = 1; i < attempts && status.plan === "free"; i++) {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    status = await billingStatusQueryOptions.queryFn();
+  }
+  return status;
+}
+
 export function createCheckout(
   plan: "basic" | "pro" | "agency",
 ): Promise<CheckoutSession> {

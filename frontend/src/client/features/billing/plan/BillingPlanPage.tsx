@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ErrorState } from "@/client/components/ErrorState";
 import { PageHeader } from "@/client/components/PageHeader";
@@ -26,6 +27,7 @@ import {
   cancelSubscription,
   createCheckout,
   describeStatus,
+  waitForPaidPlan,
   type BillingPlan,
   type BillingStatus,
 } from "./planApi";
@@ -324,24 +326,42 @@ function UpgradeButton({
   price: number;
 }) {
   const queryClient = useQueryClient();
+  const [activating, setActivating] = useState(false);
   const upgrade = useMutation({
-    mutationFn: async () => openRazorpayCheckout(await createCheckout(plan)),
+    mutationFn: async () => {
+      const paid = await openRazorpayCheckout(await createCheckout(plan), name);
+      if (!paid) return null;
+      setActivating(true);
+      try {
+        return await waitForPaidPlan();
+      } finally {
+        setActivating(false);
+      }
+    },
     meta: { errorToast: false },
-    onSuccess: async (paid) => {
-      if (!paid) return;
-      toast.success(`Payment received. Welcome to Uplumo ${name}!`);
-      await queryClient.invalidateQueries({
-        queryKey: billingStatusQueryOptions.queryKey,
-      });
+    onSuccess: async (status) => {
+      if (!status) return;
+      if (status.plan === "free") {
+        toast.success(
+          `Payment received. Uplumo ${name} turns on within a few minutes.`,
+        );
+      } else {
+        toast.success(`Payment received. Welcome to Uplumo ${name}!`);
+      }
+      queryClient.setQueryData(billingStatusQueryOptions.queryKey, status);
+      // Every screen reads the plan and credits; refresh them all.
+      await queryClient.invalidateQueries();
     },
   });
 
   return (
     <div className="w-full space-y-3">
       <Button onClick={() => upgrade.mutate()} disabled={upgrade.isPending}>
-        {upgrade.isPending
-          ? "Opening checkout…"
-          : `Choose ${name} · ${inr.format(price)}/month`}
+        {activating
+          ? "Activating your plan…"
+          : upgrade.isPending
+            ? "Opening checkout…"
+            : `Choose ${name} · ${inr.format(price)}/month`}
       </Button>
       {upgrade.isError ? (
         <ErrorState

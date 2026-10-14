@@ -19,7 +19,9 @@ Rules that must never break:
 
 - **The plan comes from Razorpay.** A webhook carries the Razorpay `plan_id`
   that was paid for, and that decides the plan, never what the browser asked
-  for at checkout.
+  for at checkout. Razorpay tells the browser "paid" about a second before
+  the webhook arrives, so the Billing screen keeps reading the status (up to
+  30 seconds) until the plan changes, instead of reading it once.
 - **An unknown `plan_id` is our mistake, not the event's.** It fails with
   `ErrUnknownPlan`, is logged at error level (so it reaches Sentry) and
   answers `500`, so Razorpay retries until the plan id variable is fixed. The
