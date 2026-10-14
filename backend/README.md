@@ -196,8 +196,16 @@ happens next through webhooks, so subscribe the webhook to
   `active` or `pending` (Razorpay retrying a failed charge). `halted`,
   `cancelled`, `completed` and the rest are the free plan.
 - A checkout never replaces a subscription that could still charge
-  (`authenticated`, `active`, `pending`, `halted`, `paused`). An unpaid one
-  is replaced by a fresh subscription.
+  (`authenticated`, `active`, `pending`, `halted`, `paused`).
+- A workspace has at most one payable subscription. Checkouts of a workspace
+  are serialized by an advisory lock; an unpaid (`created`) subscription to
+  the same plan is handed out again (no `start_at` is set, so Razorpay keeps
+  it payable), and one to another plan is cancelled at Razorpay before the
+  new one is created; if that cancel fails, checkout fails.
+- A second subscription that goes live while another is live (it should
+  never happen; an old bug or a manual action) earns no credits and is
+  cancelled at once. The error log says to refund its charge by hand. Until
+  the cancel succeeds the event is not recorded, so Razorpay redelivers it.
 
 ## Database
 
