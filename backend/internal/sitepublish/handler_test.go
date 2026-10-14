@@ -200,3 +200,14 @@ func TestHandlerRefusesToPublishAStuffedDraft(t *testing.T) {
 		t.Fatalf("publish a stuffed draft = %d %v", status, body)
 	}
 }
+
+func TestHandlerExplainsADroppedLoginHeader(t *testing.T) {
+	wp := newFakeWordPress(t)
+	wp.stripsAuth = true
+	service, _ := newTestService(t, wp, memoryDrafts{})
+	mux := testMux(service, planStub{allowed: true}, owner)
+	status, body := post(t, mux, "/api/v1/projects/p/site-connection/save", connectBody(wp.server.URL, testPassword))
+	if status != http.StatusUnprocessableEntity || errorCode(body) != "auth_header_dropped" {
+		t.Fatalf("connect when the host drops the header = %d %v", status, body)
+	}
+}

@@ -71,8 +71,12 @@ contract.
 
 ## Edge cases
 
-- **Hosting strips the `Authorization` header** (some Apache/CGI setups):
-  WordPress answers 401 and the customer is told to ask the host to allow it.
+- **Hosting strips the `Authorization` header** (Hostinger/LiteSpeed and
+  some Apache/CGI setups): WordPress then answers `rest_not_logged_in`, which
+  it never sends for a wrong password (that is `incorrect_password` or
+  `invalid_username`). Connect answers `auth_header_dropped` with the
+  `.htaccess` lines that pass the header through, instead of "check your
+  password". Seen on a real Hostinger site.
 - **A firewall or bot check blocks our server** (Hostinger hCDN, Cloudflare,
   Wordfence): the site answers our server with 403/429/503 while a browser
   sees it fine. Without a WordPress JSON error code that is `site_blocked`, not

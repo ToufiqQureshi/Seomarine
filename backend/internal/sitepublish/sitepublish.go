@@ -27,6 +27,7 @@ var (
 	ErrSiteBlocked       = errors.New("the website's firewall blocked the request")
 	ErrAppPasswordsOff   = errors.New("application passwords are turned off on this site")
 	ErrBadCredentials    = errors.New("WordPress refused the username or application password")
+	ErrAuthHeaderDropped = errors.New("the website's hosting removed the login header")
 	ErrMissingPermission = errors.New("this WordPress user cannot publish posts and upload images")
 	ErrRemoteMissing     = errors.New("the published post no longer exists on the site")
 	ErrKeywordStuffing   = errors.New("the draft repeats its target topic too often to publish")
