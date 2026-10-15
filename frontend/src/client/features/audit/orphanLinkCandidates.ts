@@ -1,4 +1,5 @@
 import type { AuditResultsData } from "@/client/features/audit/auditApi";
+import { sortBy } from "remeda";
 
 type AuditPage = AuditResultsData["pages"][number];
 type AuditIssue = AuditResultsData["issues"][number];
@@ -35,7 +36,7 @@ export function getOrphanLinkCandidates(
       .map((issue) => normalizeUrl(issue.pageUrl)),
   );
 
-  return pages
+  const candidates = pages
     .filter(
       (page) =>
         page.isIndexable &&
@@ -50,13 +51,13 @@ export function getOrphanLinkCandidates(
       ).length;
       return { page, overlap };
     })
-    .filter((candidate) => candidate.overlap > 0)
-    .toSorted(
-      (a, b) =>
-        b.overlap - a.overlap ||
-        b.page.internalLinkCount - a.page.internalLinkCount ||
-        a.page.url.localeCompare(b.page.url),
-    )
+    .filter((candidate) => candidate.overlap > 0);
+
+  return sortBy(
+    candidates,
+    (candidate) =>
+      -(candidate.overlap * 1_000_000 + candidate.page.internalLinkCount),
+  )
     .slice(0, 3)
     .map(({ page, overlap }) => ({
       sourceUrl: page.url,
