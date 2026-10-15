@@ -21,27 +21,28 @@ code before you trust this section.
 
 ## 1. What to read, and when
 
-| You are about to...                      | Read first                                                    |
-| ---------------------------------------- | ------------------------------------------------------------- |
-| Do anything                              | This file                                                     |
-| Choose, scope or prioritise a feature    | `docs/PRODUCT.md`, `ROADMAP.md`                               |
-| Check what the owner already decided     | `DECISIONS.md` (decisions, Railway variable names, open asks) |
-| Touch a feature's code                   | That feature's `README.md` (next to its code), then its tests |
-| Add or change a table                    | `backend/internal/database/README.md`                         |
-| Add or change an HTTP endpoint           | `backend/api/<feature>.yaml` if it exists, the feature README |
-| Run it locally                           | `docs/LOCAL_DEVELOPMENT.md`                                   |
-| Deploy, or change a production setting   | `docs/DEPLOY.md`                                              |
-| Change email (Loops)                     | `backend/internal/email/README.md`                            |
-| Hit repo friction (flaky script, gotcha) | Log it in `.agents/PAPERCUTS.md` with the `papercuts` skill   |
+| You are about to...                      | Read first                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| Do anything                              | This file                                                                |
+| Choose, scope or prioritise a feature    | `docs/PRODUCT.md`, `ROADMAP.md`                                          |
+| Check what the owner already decided     | `DECISIONS.md` (decisions, Railway variable names, open asks)            |
+| Touch a feature's code                   | Its `README.md` → `flow.md` → `decision.md`, then tests and API contract |
+| Add or change a table                    | `backend/internal/database/README.md`                                    |
+| Add or change an HTTP endpoint           | `backend/api/<feature>.yaml` if it exists, the feature README            |
+| Run it locally                           | `docs/LOCAL_DEVELOPMENT.md`                                              |
+| Deploy, or change a production setting   | `docs/DEPLOY.md`                                                         |
+| Change email (Loops)                     | `backend/internal/email/README.md`                                       |
+| Hit repo friction (flaky script, gotcha) | Log it in `.agents/PAPERCUTS.md` with the `papercuts` skill              |
 
 If a doc and the code disagree, the code is the truth: fix the doc in the same
 change.
 
 ### Docs map
 
-Every Markdown file in the repo is listed here; read only the ones your
-change touches. A test (`frontend/scripts/docs-map.test.ts`) fails when a new
-`.md` file is missing from this list, so add the line in the same change.
+This map lists repo-wide guidance; feature docs stay next to their code so an
+agent can find them without scanning a long index. Each feature folder has a
+`README.md`, `flow.md` and `decision.md`; the docs-map test checks this set.
+Read only the docs for the feature being changed and its direct dependencies.
 Skills (`.agents/skills/`, mirrored in `.claude/skills/`) are listed by the
 harness and are not repeated here.
 
@@ -52,50 +53,16 @@ Whole product: `README.md` (what Uplumo is), `ROADMAP.md` (status),
 `.agents/PAPERCUTS.md` (known repo friction), `AGENTS.md` and
 `.claude/CLAUDE.md` (both point here).
 
-Go features, `backend/internal/…/README.md`, read before touching that package:
+Go package docs live beside the code in `backend/internal/<package>/`;
+`README.md` is the entry point, then read `flow.md` and `decision.md` before
+changing that package. Keep special references such as
+`backend/internal/analytics/geo/ATTRIBUTION.md` (licence) and
+`backend/internal/sam/product_fact_sheet.md` (SAM's approved product facts)
+intact and consult them when working in those areas.
 
-| Package                                    | Covers                                              |
-| ------------------------------------------ | --------------------------------------------------- |
-| `backend/internal/activation/README.md`    | Dashboard first-run checklist state                 |
-| `backend/internal/aisearch/README.md`      | AI Visibility: Brand Lookup, Prompt Explorer        |
-| `backend/internal/analytics/README.md`     | Uplumo Analytics tracker, ingest, AI traffic        |
-| `backend/internal/analytics/geo/ATTRIBUTION.md` | DB-IP country database licence (keep)          |
-| `backend/internal/apikeys/README.md`       | API keys for MCP clients                            |
-| `backend/internal/audit/README.md`         | Site audit, Lighthouse via PageSpeed, CrUX field data |
-| `backend/internal/auth/README.md`          | Session reading, auth middleware                    |
-| `backend/internal/backlinks/README.md`     | Backlinks pages                                     |
-| `backend/internal/billing/README.md`       | Plans, credits ledger, spend guard, cancelling      |
-| `backend/internal/contentauthors/README.md` | Project author profiles and draft bylines         |
-| `backend/internal/dashboardoverview/README.md` | Dashboard audit and backlink cards              |
-| `backend/internal/database/README.md`      | Migrations and table rules                          |
-| `backend/internal/domain/README.md`        | Domain Overview                                     |
-| `backend/internal/email/README.md`         | Loops email                                         |
-| `backend/internal/emailauth/README.md`     | Sign-up, sign-in, verification, reset, Google login |
-| `backend/internal/ga4/README.md`           | Google Analytics 4 reports                          |
-| `backend/internal/gdpr/README.md`          | Account erasure                                     |
-| `backend/internal/google/README.md`        | Google OAuth connections and tokens                 |
-| `backend/internal/gsc/README.md`           | Search Console                                      |
-| `backend/internal/keywords/README.md`      | Keyword research, saved keywords, locations         |
-| `backend/internal/linksuggest/README.md`   | Free internal link suggestions from GSC and audits  |
-| `backend/internal/mcp/README.md`           | `/mcp` server and its tools                         |
-| `backend/internal/plans/README.md`         | Plan catalog: prices, limits, features              |
-| `backend/internal/platform/dataforseo/README.md` | DataForSEO transport                          |
-| `backend/internal/platform/errreport/README.md`  | Sentry error reporting                        |
-| `backend/internal/platform/market/README.md`     | Countries and languages                       |
-| `backend/internal/platform/spend/README.md`      | Spend hold contract for paid providers        |
-| `backend/internal/projectcontext/README.md` | Project memory shared by UI, MCP, SAM              |
-| `backend/internal/projects/README.md`      | Project API                                         |
-| `backend/internal/ranktracking/README.md`  | Rank tracking                                       |
-| `backend/internal/reports/README.md`       | Reports and share links                             |
-| `backend/internal/sam/README.md`           | SAM in-app agent                                    |
-| `backend/internal/sam/product_fact_sheet.md` | Facts SAM may state about Uplumo (keep true)      |
-| `backend/internal/sitepublish/README.md`   | WordPress connection and publishing                 |
-| `backend/internal/site/blog/README.md`     | Public blog: how to add a post, SEO checklist       |
-
-Frontend features, `frontend/src/client/features/…`:
-`content-editor/README.md`, `keywords/README.md`, `saved-keywords/README.md`,
-`site-publishing/README.md`, and `ai-mcp/agentSetupPrompt.md` (the prompt
-users paste into their agent; it is product copy).
+Frontend feature docs live in `frontend/src/client/features/<feature>/` next
+to the UI and API client. `ai-mcp/agentSetupPrompt.md` is product copy users
+paste into their agent; it is not internal engineering documentation.
 
 ## 2. Layout
 
@@ -111,10 +78,14 @@ Migrations are goose SQL in `backend/internal/database/migrations`, applied by
 the server at startup. Number a new one after the highest that exists; two
 files with the same number stop the server from starting.
 
-Every feature folder (Go package or frontend feature) has a `README.md`: what
-it does, the flow, tables, env vars, the rules that must never break, edge
-cases and production limits. Say **why**, not what the code already says.
-Code and README change in the same PR.
+Every Go package and frontend feature folder has three internal docs next to
+its code. `README.md` is the short entry point and code map; `flow.md` traces
+the user action/request through APIs, providers, storage and the response;
+`decision.md` records why the design exists and which cost, security and data
+invariants must survive. Read all three before editing that feature, then its
+tests and API contract. Update the affected docs in the same PR, using the code
+as truth when docs disagree. Do not repeat every implementation detail: point
+to the source files and explain behavior, dependencies, failure paths and why.
 
 ## 3. How to write code
 
