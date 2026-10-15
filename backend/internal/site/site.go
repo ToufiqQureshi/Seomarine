@@ -493,7 +493,7 @@ func includedTools(plan planCatalog.Definition) []string {
 		label   string
 	}{
 		{planCatalog.GoogleData, "Google Search Console and Google Analytics"},
-		{planCatalog.Keywords, "Keyword research and SERP analysis"},
+		{planCatalog.Keywords, "Keyword research, SERP analysis, Local SEO and Google Business research"},
 		{planCatalog.RankTracking, "Rank tracking"},
 		{planCatalog.Publishing, "Publish articles to WordPress"},
 		{planCatalog.Backlinks, "Backlink research"},
@@ -559,7 +559,7 @@ func comparison() []CompareRow {
 			return "Starter"
 		}),
 		row("Google Search Console and Google Analytics", included(planCatalog.GoogleData)),
-		row("Keyword research", included(planCatalog.Keywords)),
+		row("Keyword research, SERP analysis, Local SEO and Google Business research", included(planCatalog.Keywords)),
 		row("Rank tracking", func(plan planCatalog.Definition) string {
 			if !plan.Allows(planCatalog.RankTracking) {
 				return "—"
