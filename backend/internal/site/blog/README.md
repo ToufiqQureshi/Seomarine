@@ -33,7 +33,7 @@ starting, and the tests fail first, so a broken post never reaches the site.
    | `draft`       | no       | `true` keeps the post off the site.                                    |
 
 3. Images: put them in `backend/internal/site/static/blog/` and write
-   `![What the image shows](/site/blog/file-name.webp)`. Only images on
+   `![What the image shows](/site/blog/file-name.svg)` or use `.webp`. Only images on
    uplumo.com load (the pages' security policy blocks other sites).
 4. Raw HTML in a post is dropped. Use Markdown only.
 5. Commit on a branch, open a PR, merge, then deploy (`docs/DEPLOY.md`).
@@ -49,7 +49,7 @@ starting, and the tests fail first, so a broken post never reaches the site.
 - **Structure:** `##` sections a reader can scan, short paragraphs, lists
   and tables for steps and comparisons, a short FAQ at the end.
 - **Show it is real:** your own numbers, screenshots and examples from
-  Indian businesses. Thin, generic or copied text does not rank.
+  the markets you serve, such as India and the United States. Thin, generic or copied text does not rank.
 - **Link** to 2–3 other Uplumo posts or pages, and to sources you cite.
 - **Length:** as long as the answer needs. Most guides land at 1,000–2,000
   words.
@@ -58,3 +58,4 @@ starting, and the tests fail first, so a broken post never reaches the site.
 - After a post is live, ask Google to index it in Search Console (URL
   inspection → "Request indexing"). The sitemap is already submitted at
   `https://uplumo.com/sitemap.xml`.
+
