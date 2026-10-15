@@ -25,6 +25,7 @@ code before you trust this section.
 | ---------------------------------------- | ------------------------------------------------------------- |
 | Do anything                              | This file                                                     |
 | Choose, scope or prioritise a feature    | `docs/PRODUCT.md`, `ROADMAP.md`                               |
+| Check what the owner already decided     | `DECISIONS.md` (decisions, Railway variable names, open asks) |
 | Touch a feature's code                   | That feature's `README.md` (next to its code), then its tests |
 | Add or change a table                    | `backend/internal/database/README.md`                         |
 | Add or change an HTTP endpoint           | `backend/api/<feature>.yaml` if it exists, the feature README |
@@ -285,6 +286,9 @@ Propose with a recommendation; do not decide silently.
   run it and how to deploy it. Dated reviews go in `docs/audits/`.
 - Do not keep plans, migration history or status logs as documents. Status
   lives in `ROADMAP.md`, history lives in git.
+- The one exception is `DECISIONS.md`: the owner's decisions, which Railway
+  variables are set (names only) and what waits on the owner. Update it in the
+  same change when one of those changes.
 - Never put secrets in a document.
 
 **Docs change with the code, in the same commit.** A PR that changes
