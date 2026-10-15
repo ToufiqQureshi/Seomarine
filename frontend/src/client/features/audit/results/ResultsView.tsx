@@ -141,7 +141,9 @@ export function ResultsView({
         lighthouseSummary={stats.lighthouseSummary}
       />
 
-      {activeTab === "issues" && <IssuesView issues={issues} tabs={tabs} />}
+      {activeTab === "issues" && (
+        <IssuesView issues={issues} pages={pages} tabs={tabs} />
+      )}
       {activeTab === "pages" && (
         <PagesTable
           pages={pages}
