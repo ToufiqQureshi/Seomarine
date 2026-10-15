@@ -34,6 +34,7 @@ import {
   type ExportTarget,
 } from "@/client/features/search-performance/SearchPerformanceParts";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { ContentRefreshQueue } from "@/client/features/search-performance/ContentRefreshQueue";
 import {
   exportSearchPerformanceTable,
   getSearchPerformanceReport,
@@ -281,6 +282,7 @@ export function SearchPerformancePage({
                 </TabsTrigger>
                 <TabsTrigger value="queries">Queries</TabsTrigger>
                 <TabsTrigger value="pages">Pages</TabsTrigger>
+                <TabsTrigger value="refresh">Refresh queue</TabsTrigger>
               </DataTableTabs>
               <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
                 <Button
@@ -328,6 +330,13 @@ export function SearchPerformancePage({
                   isFiltered={activeFilterCount > 0}
                   onClearFilters={resetFilters}
                 />
+              ) : tab === "refresh" ? (
+                <div className="p-4">
+                  <ContentRefreshQueue
+                    projectId={projectId}
+                    rows={report.strikingDistance}
+                  />
+                </div>
               ) : (
                 <DimensionSection
                   projectId={projectId}

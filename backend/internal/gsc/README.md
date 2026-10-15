@@ -20,6 +20,12 @@ report/table/export routes. It reads the existing `gsc_connections` mapping
 and uses the shared Google API client. Consent is in `internal/google`. The
 React integration settings and the Search Performance page call these routes.
 
+The Search Performance page's content refresh queue groups the report's
+striking-distance queries by page and highlights pages with at least 50
+impressions at average positions 5–20. It reuses the existing report response,
+makes no extra provider request, and presents review candidates rather than
+claiming a page is stale or changing site content.
+
 Property selection and disconnect require an owner or admin role. Selecting a
 property verifies that the chosen Google grant belongs to the user, that the
 exact site URL appears in that grant, and that the permission is not
