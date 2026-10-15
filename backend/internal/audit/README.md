@@ -33,6 +33,12 @@ are rejected): `start`, `status`, `results`, `history`, `progress`, `delete`,
 `go_audits`, `go_audit_pages`, `go_audit_issues`, `go_audit_lighthouse_results`
 (migration `00007_audit.sql`). Pages, issues and results cascade with the audit.
 
+The audit history view also compares the two latest completed crawls with the
+same start URL. It reports changes in title, meta description, canonical URL,
+indexability, HTTP status, page coverage, and issue count. It fetches saved
+results only after a user asks to compare; a URL missing from a later crawl is
+shown as missing from that crawl, not assumed to have been deleted from the site.
+
 ## Env vars
 
 - `AUDIT_BROWSER_RENDERING=true` or `CONTEXT_API_KEY` enables JavaScript
@@ -77,12 +83,12 @@ same Lighthouse for a fee.
 
 Stored per check as `fieldData` with a `status`:
 
-| Status              | Meaning                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------- |
+| Status              | Meaning                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `available`         | Metrics returned, with `source` (`crux`/`pagespeed`), `scope` (`page`/`origin`), `coreWebVitals` and, from CrUX, `collectionPeriod`. |
-| `insufficient_data` | CrUX answered `404 NOT_FOUND` for the URL and then for the origin. The only status that says the site lacks traffic. |
-| `unavailable`       | The lookup failed: key rejected, 429, timeout, outage, malformed answer. Says nothing about traffic. |
-| `not_configured`    | No `CRUX_API_KEY` and PSI embedded nothing.                                               |
+| `insufficient_data` | CrUX answered `404 NOT_FOUND` for the URL and then for the origin. The only status that says the site lacks traffic.                 |
+| `unavailable`       | The lookup failed: key rejected, 429, timeout, outage, malformed answer. Says nothing about traffic.                                 |
+| `not_configured`    | No `CRUX_API_KEY` and PSI embedded nothing.                                                                                          |
 
 A report with no `fieldData` was saved before it was recorded: "not recorded",
 never "Google has no data".
