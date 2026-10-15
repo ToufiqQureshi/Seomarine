@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/client/components/PageHeader";
 import { ContentEditorPage } from "@/client/features/content-editor/ContentEditorPage";
+import { EditorSessionProvider } from "@/client/features/content-editor/editor-session";
 
 export const Route = createFileRoute("/_app/p/$projectId/content-editor")({
   component: ContentEditorRoute,
@@ -15,7 +16,9 @@ function ContentEditorRoute() {
           title="Content Editor"
           description="Write for people first. Switch between search visibility and answer readiness as you shape your draft."
         />
-        <ContentEditorPage key={projectId} projectId={projectId} />
+        <EditorSessionProvider>
+          <ContentEditorPage key={projectId} projectId={projectId} />
+        </EditorSessionProvider>
       </div>
     </div>
   );

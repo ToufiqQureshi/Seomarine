@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
@@ -29,6 +30,10 @@ const (
 
 // ErrInvalidRequest marks a request the client refuses to send.
 var ErrInvalidRequest = errors.New("invalid DataForSEO request")
+
+// ErrBudgetExceeded means successful provider responses reported a total
+// above the one ceiling reserved for a bounded operation.
+var ErrBudgetExceeded = errors.New("DataForSEO operation exceeded its reserved budget")
 
 // Cost is the provider-reported price of one DataForSEO task.
 type Cost struct {
@@ -170,6 +175,70 @@ func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Fe
 	}
 	return payload, err
 }
+
+// DoBudgeted reserves one ceiling for a multi-request provider operation.
+// Provider task costs are still recorded individually; customer credits are
+// settled once after all requests succeed and fully released on any failure.
+// Use only for bounded operations whose complete worst-case price is known.
+func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature spend.Feature, ceilingUSD float64, work func(DoBudgetedRequest) error) error {
+	if strings.TrimSpace(organizationID) == "" || len(organizationID) > 128 || strings.TrimSpace(string(feature)) == "" || math.IsNaN(ceilingUSD) || math.IsInf(ceilingUSD, 0) || ceilingUSD <= 0 || work == nil {
+		return fmt.Errorf("%w: invalid budgeted operation", ErrInvalidRequest)
+	}
+	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, EstimateUSD: ceilingUSD})
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrBillingIssue, err)
+	}
+	var mu sync.Mutex
+	var charged float64
+	open := true
+	request := func(method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if !open {
+			return nil, errors.New("DataForSEO budgeted operation is closed")
+		}
+		if _, err := c.endpoint(path); err != nil {
+			return nil, err
+		}
+		payload, cost, requestErr := c.do(ctx, organizationID, true, method, path, body, retrySafe)
+		charged += cost
+		return payload, requestErr
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			mu.Lock()
+			open = false
+			mu.Unlock()
+			settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			if settleErr := hold.Settle(settleCtx, 0); settleErr != nil {
+				// Preserve the original panic; the unsettled reservation is
+				// reported by the normal billing reconciliation path.
+			}
+			panic(recovered)
+		}
+	}()
+	workErr := work(request)
+	mu.Lock()
+	open = false
+	total := charged
+	mu.Unlock()
+	if workErr != nil {
+		total = 0
+	} else if total > ceilingUSD {
+		total = ceilingUSD
+		workErr = ErrBudgetExceeded
+	}
+	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if settleErr := hold.Settle(settleCtx, total); settleErr != nil {
+		return errors.Join(workErr, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{USD: total}, Cause: settleErr})
+	}
+	return workErr
+}
+
+// DoBudgetedRequest sends one request under its operation's existing hold.
+type DoBudgetedRequest func(method, path string, body []byte, retrySafe bool) (json.RawMessage, error)
 
 // DoUnmetered sends one request whose cost is not recorded. Use it only for
 // free calls whose response still carries a cost field, such as collecting a

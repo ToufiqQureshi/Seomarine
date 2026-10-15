@@ -14,7 +14,8 @@ import (
 // new endpoint costs a customer a large hold rather than costing Uplumo money.
 const (
 	serpLivePageUSD      = 0.002
-	serpLiveExtraUSD     = 0.0015
+	serpLiveExtraUSD     = 0.002
+	contentParsePageUSD  = 0.000125
 	serpQueuedPageUSD    = 0.0006
 	serpQueuedExtraUSD   = 0.00045
 	serpPriorityFactor   = 2
@@ -81,6 +82,8 @@ func taskCeiling(path string, task map[string]any) float64 {
 		return googleAdsTaskUSD
 	case strings.HasPrefix(path, "/v3/ai_optimization/"):
 		return aiOptimizationUSD
+	case strings.HasPrefix(path, "/v3/on_page/content_parsing/live"):
+		return contentParsePageUSD
 	case strings.HasPrefix(path, "/v3/on_page/lighthouse"):
 		return lighthouseTaskUSD
 	case strings.HasPrefix(path, "/v3/business_data/"):

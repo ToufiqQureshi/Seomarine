@@ -39,8 +39,8 @@ func TestEachPlanIncludesExactlyItsFeatures(t *testing.T) {
 	all := []Feature{GoogleData, Keywords, RankTracking, FullAudit, Publishing, Backlinks, DomainResearch, AIVisibility, AIWriting, WhiteLabel}
 	want := map[string][]Feature{
 		Free:   nil,
-		Basic:  {GoogleData, Keywords, RankTracking, FullAudit, Publishing},
-		Pro:    {GoogleData, Keywords, RankTracking, FullAudit, Publishing, Backlinks, DomainResearch, AIVisibility, AIWriting},
+		Basic:  {GoogleData, Keywords, RankTracking, FullAudit, Publishing, AIWriting},
+		Pro:    {GoogleData, Keywords, RankTracking, FullAudit, Publishing, AIWriting, Backlinks, DomainResearch, AIVisibility},
 		Agency: all,
 	}
 	for id, included := range want {

@@ -138,11 +138,12 @@ type Deps struct {
 	Team          *team.Service
 	CrawlerAccess *crawleraccess.Service
 	// Reports owns project report documents, templates, and sharing.
-	Reports              *reports.Service
-	PublicURL            *url.URL
-	DataForSEOConfigured bool
-	OpenRouterConfigured bool
-	Credits              *billing.CreditLedgerService
+	Reports                 *reports.Service
+	PublicURL               *url.URL
+	DataForSEOConfigured    bool
+	OpenRouterConfigured    bool
+	ContentWriterConfigured bool
+	Credits                 *billing.CreditLedgerService
 	// MCP serves API-key and Go-issued OAuth requests through the Go dispatcher.
 	MCP *mcp.Deps
 	// Site is the public landing and pricing pages.
@@ -234,6 +235,14 @@ func NewHandler(d Deps) http.Handler {
 	crawleraccess.Mount(mux, d.CrawlerAccess, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	mux.Handle("GET /api/v1/config/seo-api-key-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"configured": d.DataForSEOConfigured})
+	})))
+	mux.Handle("GET /api/v1/config/content-writer-status", withSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		configured := d.ContentWriterConfigured
+		message := ""
+		if !configured {
+			message = "AI writing is temporarily unavailable because its approved provider model or API key is not configured."
+		}
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"configured": configured, "message": message})
 	})))
 	withSAMProjectAccess := func(next http.Handler) http.Handler {
 		return withSession(requireProjectAccess(d.Logger, d.Auth, next))

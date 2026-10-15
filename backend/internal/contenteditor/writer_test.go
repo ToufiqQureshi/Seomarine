@@ -30,11 +30,12 @@ func (f *fakeWriterLLM) Stream(_ context.Context, request openrouter.Request, _ 
 }
 
 type fakeWriterMeter struct {
-	allowed bool
-	orgID   string
-	ceiling float64
-	cost    float64
-	settled int
+	allowed   bool
+	orgID     string
+	ceiling   float64
+	cost      float64
+	settled   int
+	settleErr error
 }
 
 type writerPlanResult bool
@@ -46,7 +47,7 @@ func (f *fakeWriterMeter) Hold(_ context.Context, orgID string, ceiling float64)
 	if !f.allowed {
 		return nil, spend.ErrNoCredits
 	}
-	return fakeWriterHold{f}, nil
+	return fakeWriterHold{meter: f}, nil
 }
 
 type fakeWriterHold struct{ meter *fakeWriterMeter }
@@ -54,7 +55,7 @@ type fakeWriterHold struct{ meter *fakeWriterMeter }
 func (h fakeWriterHold) Settle(_ context.Context, cost float64) error {
 	h.meter.cost = cost
 	h.meter.settled++
-	return nil
+	return h.meter.settleErr
 }
 
 func TestWriterAgentUsesTaskSpecificPromptAndChargesOrganization(t *testing.T) {
@@ -68,7 +69,7 @@ func TestWriterAgentUsesTaskSpecificPromptAndChargesOrganization(t *testing.T) {
 	if err != nil || got.Content != "## Helpful outline" {
 		t.Fatalf("Generate() = (%+v, %v)", got, err)
 	}
-	if llm.request.Model != openrouter.DefaultModel || llm.request.MaxTokens != maxWriterOutput || len(llm.request.Messages) != 2 {
+	if llm.request.Model != writerModel || llm.request.MaxTokens != writerOutputLimit(WriterOutline) || len(llm.request.Messages) != 2 {
 		t.Fatalf("unexpected model request: %+v", llm.request)
 	}
 	if !strings.Contains(llm.request.Messages[0].Content, "direct answer opening") || !strings.Contains(llm.request.Messages[0].Content, "answer engines can extract") || !strings.Contains(llm.request.Messages[1].Content, "technical SEO") {
@@ -77,9 +78,8 @@ func TestWriterAgentUsesTaskSpecificPromptAndChargesOrganization(t *testing.T) {
 	if meter.orgID != "org-1" || meter.cost != 0.002 || meter.settled != 1 {
 		t.Fatalf("usage not metered to organization: %+v", meter)
 	}
-	// The hold covers the full output budget at the expensive fallback price.
-	if floor := float64(maxWriterOutput) * 25.0 / 1_000_000; meter.ceiling < floor {
-		t.Fatalf("ceiling %v is below the output budget's %v", meter.ceiling, floor)
+	if meter.ceiling <= 0 || meter.ceiling >= 0.012 {
+		t.Fatalf("writer hold %v must fit within the 15-credit ceiling", meter.ceiling)
 	}
 }
 
@@ -107,13 +107,13 @@ func TestWriterAgentRequiresEligiblePlanBeforeCallingModel(t *testing.T) {
 	}
 }
 
-func TestWriterAgentChargesProviderUsageWhenGenerationPartiallyFails(t *testing.T) {
+func TestWriterAgentReleasesCreditsWhenGenerationFails(t *testing.T) {
 	llm := &fakeWriterLLM{result: openrouter.Result{Text: "partial", Usage: openrouter.Usage{CostUSD: 0.004}}, err: errors.New("stream ended")}
 	meter := &fakeWriterMeter{allowed: true}
 	agent := &WriterAgent{LLM: llm, Meter: meter}
 	_, err := agent.Generate(context.Background(), "org-1", WriterInput{Action: WriterImprove, Mode: "seo", Content: "Article"})
-	if err == nil || meter.cost != 0.004 {
-		t.Fatalf("Generate() error = %v; metered cost = %v, want partial provider usage charged", err, meter.cost)
+	if err == nil || meter.cost != 0 {
+		t.Fatalf("Generate() error = %v; metered cost = %v, want failed request released", err, meter.cost)
 	}
 }
 
@@ -163,7 +163,37 @@ func TestWriterAgentChargesAnEstimateWhenTheProviderReportsNoCost(t *testing.T) 
 	if _, err := agent.Generate(context.Background(), "org-1", WriterInput{Action: WriterDraft, Mode: "seo", Title: "A title"}); err != nil {
 		t.Fatal(err)
 	}
-	if meter.cost <= 0 {
+	if meter.cost <= 0 || meter.cost > meter.ceiling {
 		t.Fatalf("metered cost = %v, want an estimate: a missing cost field must not make writing free", meter.cost)
+	}
+}
+
+func TestWriterRejectsContextThatWouldExceedFifteenCredits(t *testing.T) {
+	llm := &fakeWriterLLM{}
+	meter := &fakeWriterMeter{allowed: true}
+	agent := &WriterAgent{LLM: llm, Meter: meter}
+	_, err := agent.Generate(context.Background(), "org-1", WriterInput{
+		Action: WriterSection, Mode: "seo", Content: strings.Repeat("ह", maxWriterContext),
+	})
+	var validation *ValidationError
+	if !errors.As(err, &validation) || len(llm.request.Messages) != 0 || meter.settled != 0 {
+		t.Fatalf("Generate() = %v; want a pre-call cost-limit validation", err)
+	}
+}
+
+func TestWriterDoesNotReturnSuggestionWhenCreditSettlementFails(t *testing.T) {
+	llm := &fakeWriterLLM{result: openrouter.Result{Text: "suggestion", Usage: openrouter.Usage{CostUSD: 0.001}}}
+	meter := &fakeWriterMeter{allowed: true, settleErr: errors.New("ledger down")}
+	agent := &WriterAgent{LLM: llm, Meter: meter}
+	if output, err := agent.Generate(context.Background(), "org-1", WriterInput{Action: WriterOutline, Mode: "seo"}); err == nil || output.Content != "" {
+		t.Fatalf("Generate() = (%+v, %v), want no unmetered suggestion", output, err)
+	}
+}
+
+func TestWriterActionsHaveBoundedTokenBudgets(t *testing.T) {
+	for _, action := range []WriterAction{WriterOutline, WriterSection, WriterFillGap, WriterAnswerFirst, WriterFixTopIssue, WriterTitleMeta, WriterFAQ, WriterDestuff, WriterFactCheck, WriterToneLanguage} {
+		if limit := writerOutputLimit(action); limit <= 0 || limit > 2_000 {
+			t.Errorf("action %q has unsafe token limit %d", action, limit)
+		}
 	}
 }

@@ -56,6 +56,65 @@ func TestDoHoldsTheCeilingAndSettlesTheRealCost(t *testing.T) {
 	}
 }
 
+func TestDoBudgetedUsesOneHoldAndReleasesOnAnyProviderFailure(t *testing.T) {
+	for _, failSecond := range []bool{false, true} {
+		t.Run(map[bool]string{false: "success", true: "second call fails"}[failSecond], func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if failSecond && calls == 2 {
+					http.Error(w, "provider down", http.StatusBadGateway)
+					return
+				}
+				cost := `0.006`
+				if calls == 2 {
+					cost = `0.001`
+				}
+				_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp"],"cost":`+cost+`}]}`)
+			}))
+			defer server.Close()
+			guard := &spendtest.Guard{}
+			client := guardedClient(t, server, &testRecorder{}, guard, 0)
+			err := client.DoBudgeted(context.Background(), "org-1", spend.AIWriting, 0.007, func(request DoBudgetedRequest) error {
+				if _, err := request(http.MethodPost, "/v3/serp/google/organic/live/advanced", []byte(`[{}]`), false); err != nil {
+					return err
+				}
+				_, err := request(http.MethodPost, "/v3/on_page/content_parsing/live", []byte(`[{}]`), false)
+				return err
+			})
+			if (err != nil) != failSecond {
+				t.Fatalf("DoBudgeted() error = %v", err)
+			}
+			if held := guard.Held(); len(held) != 1 || held[0].EstimateUSD != 0.007 {
+				t.Fatalf("holds = %+v", held)
+			}
+			settled := guard.Settled()
+			if len(settled) != 1 || (failSecond && settled[0] != 0) || (!failSecond && settled[0] != 0.007) {
+				t.Fatalf("settled = %v", settled)
+			}
+		})
+	}
+}
+
+func TestDoBudgetedCapsProviderOverageAtReservedCeiling(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp"],"cost":0.02}]}`)
+	}))
+	defer server.Close()
+	guard := &spendtest.Guard{}
+	client := guardedClient(t, server, &testRecorder{}, guard, 0)
+	err := client.DoBudgeted(context.Background(), "org", spend.KeywordResearch, 0.007, func(request DoBudgetedRequest) error {
+		_, err := request(http.MethodPost, "/v3/serp/google/organic/live/advanced", []byte(`[{}]`), false)
+		return err
+	})
+	if !errors.Is(err, ErrBudgetExceeded) {
+		t.Fatalf("DoBudgeted() error = %v, want ErrBudgetExceeded", err)
+	}
+	if got := guard.Settled(); len(got) != 1 || got[0] != 0.007 {
+		t.Fatalf("settled = %v, want the approved ceiling", got)
+	}
+}
+
 func TestDoReleasesTheHoldWhenTheProviderFails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "down", http.StatusBadGateway)
