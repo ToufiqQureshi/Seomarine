@@ -114,6 +114,12 @@ func (w WordPress) Discover(ctx context.Context, siteURL string) (SiteInfo, erro
 // Verify signs in and checks the user may publish posts and upload images.
 // It returns the user's display name.
 func (w WordPress) Verify(ctx context.Context, creds Credentials) (string, error) {
+	name, _, err := w.verify(ctx, creds)
+	return name, err
+}
+
+// verify signs in and reads the full edit-context profile.
+func (w WordPress) verify(ctx context.Context, creds Credentials) (string, map[string]bool, error) {
 	var me struct {
 		Name         string          `json:"name"`
 		Capabilities map[string]bool `json:"capabilities"`
@@ -123,23 +129,36 @@ func (w WordPress) Verify(ctx context.Context, creds Credentials) (string, error
 		switch {
 		// WordPress itself answers in JSON with a code; a firewall does not.
 		case remote.Code == "" && blockedStatus(remote.Status):
-			return "", fmt.Errorf("%w: %w", ErrSiteBlocked, err)
+			return "", nil, fmt.Errorf("%w: %w", ErrSiteBlocked, err)
 		// WordPress answers rest_not_logged_in only when no credentials
 		// reached it; a wrong password gets incorrect_password or
 		// invalid_username. So the hosting dropped the Authorization header.
 		case remote.Code == "rest_not_logged_in":
-			return "", ErrAuthHeaderDropped
+			return "", nil, ErrAuthHeaderDropped
 		case remote.Status == http.StatusUnauthorized || remote.Status == http.StatusForbidden:
-			return "", ErrBadCredentials
+			return "", nil, ErrBadCredentials
 		}
 	}
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if !me.Capabilities["publish_posts"] || !me.Capabilities["upload_files"] {
-		return "", ErrMissingPermission
+		return "", nil, ErrMissingPermission
 	}
-	return me.Name, nil
+	return me.Name, me.Capabilities, nil
+}
+
+// ViewRawHTML reports whether this WordPress user may keep raw script and
+// style tags in post content. WordPress strips <script> from post content
+// without the unfiltered_html capability (roles above editor have it;
+// multisite keeps it away from administrators), so structured data can only
+// ride in the post content when it is present.
+func (w WordPress) ViewRawHTML(ctx context.Context, creds Credentials) (bool, error) {
+	_, capabilities, err := w.verify(ctx, creds)
+	if err != nil {
+		return false, err
+	}
+	return capabilities["unfiltered_html"], nil
 }
 
 // Media is an image in the site's media library.
@@ -179,6 +198,9 @@ type Saved struct {
 	ID     string
 	Link   string
 	Status string
+	// DateGMT is the post's publish time (date_gmt), empty when the site
+	// does not return one.
+	DateGMT string
 }
 
 // SavePost creates a post, or updates the post remoteID when it is set. It
@@ -193,9 +215,10 @@ func (w WordPress) SavePost(ctx context.Context, creds Credentials, remoteID str
 		return Saved{}, fmt.Errorf("encode post: %w", err)
 	}
 	var saved struct {
-		ID     int64  `json:"id"`
-		Link   string `json:"link"`
-		Status string `json:"status"`
+		ID      int64  `json:"id"`
+		Link    string `json:"link"`
+		Status  string `json:"status"`
+		DateGMT string `json:"date_gmt"`
 	}
 	err = w.call(ctx, creds, http.MethodPost, route, nil, body, "application/json", nil, &saved)
 	var remote *RemoteError
@@ -208,7 +231,7 @@ func (w WordPress) SavePost(ctx context.Context, creds Credentials, remoteID str
 	if saved.ID == 0 {
 		return Saved{}, errors.New("site returned no post id")
 	}
-	return Saved{ID: strconv.FormatInt(saved.ID, 10), Link: saved.Link, Status: saved.Status}, nil
+	return Saved{ID: strconv.FormatInt(saved.ID, 10), Link: saved.Link, Status: saved.Status, DateGMT: saved.DateGMT}, nil
 }
 
 // FetchImage downloads a public image so it can be copied to the site.

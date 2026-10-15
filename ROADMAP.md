@@ -19,73 +19,75 @@ test cards. DataForSEO and OpenRouter keys are not in production.
   `POST /api/v1/projects/{projectId}/content/brief`, shared 30-day cache),
   13 AI writing actions with per-action credit ceilings, publish to
   WordPress, and "Track this article" links to Rank Tracking and Prompt
-  Explorer after publishing.
+  Explorer after publishing. The free editor pack also adds project author
+  profiles, review dates, WordPress Article/FAQ schema where permitted, and
+  internal links from Search Console or the latest audit.
 - Not built: scheduled tracking of a published URL's position and AI
   mentions inside the editor (today the writer opens Rank Tracking and
   Prompt Explorer from the publish card).
 
 ## Launch checklist
 
-| Item                                                                         | Status |
-| ---------------------------------------------------------------------------- | ------ |
-| Railway deploy, domain, `www` redirect                                       | ✅     |
-| Sign-up, email verification, password reset, Google sign-in                  | ✅     |
-| `support@uplumo.com` (Cloudflare forwards it)                                | ✅     |
-| Loops email: verify and reset working; invitation template made, not tested  | 🔨     |
-| Public pages: landing, pricing, about, contact, terms, privacy, refunds, shipping | ✅ |
-| Razorpay account approved (KYC)                                              | ✅     |
-| Razorpay test-mode keys in Railway                                            | ✅     |
-| Razorpay test payment, renewal and cancel through the site, then live keys    | ⏳     |
-| One-click cancel (`POST /api/v1/billing/cancel`, "Cancel Pro" on Billing)    | ✅ built, not yet run against Razorpay |
-| DataForSEO key in production (keywords, rank tracking, backlinks, AI visibility answer 503 without it) | ⏳ |
-| Google OAuth app verification (Search Console and Analytics scopes)          | ⏳     |
-| Live usage shown to the customer (credits on Billing, cost next to paid actions) | ✅ built |
-| Spend guard: credits held before every paid lookup and AI call, daily limit   | ✅ built |
-| Lawyer review of the legal pages                                             | ⏳     |
+| Item                                                                                                   | Status                                 |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| Railway deploy, domain, `www` redirect                                                                 | ✅                                     |
+| Sign-up, email verification, password reset, Google sign-in                                            | ✅                                     |
+| `support@uplumo.com` (Cloudflare forwards it)                                                          | ✅                                     |
+| Loops email: verify and reset working; invitation template made, not tested                            | 🔨                                     |
+| Public pages: landing, pricing, about, contact, terms, privacy, refunds, shipping                      | ✅                                     |
+| Razorpay account approved (KYC)                                                                        | ✅                                     |
+| Razorpay test-mode keys in Railway                                                                     | ✅                                     |
+| Razorpay test payment, renewal and cancel through the site, then live keys                             | ⏳                                     |
+| One-click cancel (`POST /api/v1/billing/cancel`, "Cancel Pro" on Billing)                              | ✅ built, not yet run against Razorpay |
+| DataForSEO key in production (keywords, rank tracking, backlinks, AI visibility answer 503 without it) | ⏳                                     |
+| Google OAuth app verification (Search Console and Analytics scopes)                                    | ⏳                                     |
+| Live usage shown to the customer (credits on Billing, cost next to paid actions)                       | ✅ built                               |
+| Spend guard: credits held before every paid lookup and AI call, daily limit                            | ✅ built                               |
+| Lawyer review of the legal pages                                                                       | ⏳                                     |
 
 ## What is built
 
 Built means the Go API and the page exist and are tested in CI. It does not
 mean each one has been tried on production with real provider keys.
 
-| Area                 | What exists                                                                                   |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| Accounts             | Email and password, verification, reset, Google sign-in, workspaces, invitations, roles, API keys |
-| Uplumo Analytics     | Tracking script, ingest, dashboard (visitors, pages, sources, devices, countries), button clicks via `data-uplumo-event` |
-| AI traffic detection | ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus AI traffic hiding as "Direct"    |
-| AI Visibility        | Brand Lookup (mentions, citations, share of voice) and Prompt Explorer                        |
-| Keywords             | Research, SERP analysis, saved keywords with tags                                             |
-| Rank tracking        | Configs, manual and scheduled checks, city-level locations                                    |
-| Site audit           | Crawl, issues, Lighthouse through Google PageSpeed Insights (free; homepage only on Free) with real-visitor Core Web Vitals |
-| Backlinks, Domain    | Overview, rows, referring domains, top pages; domain keywords and pages                       |
-| Google               | Search Console performance and URL inspection, GA4 reports and measurement health             |
-| Reports              | White-label reports (logo, name, colour, website), public share links                         |
-| Content editor       | Project drafts, live SEO/AEO checks, AI writing actions                                       |
-| Website publishing   | Connect a WordPress site (onboarding or Settings → Integrations), publish or update drafts with their images (Basic and above) |
-| Local SEO            | Business search, profile, Google Maps rank grid                                               |
-| Assistant (SAM)      | Chat with tools over the project's data                                                       |
-| MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                              |
+| Area                 | What exists                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Accounts             | Email and password, verification, reset, Google sign-in, workspaces, invitations, roles, API keys                                                                                          |
+| Uplumo Analytics     | Tracking script, ingest, dashboard (visitors, pages, sources, devices, countries), button clicks via `data-uplumo-event`                                                                   |
+| AI traffic detection | ChatGPT, Perplexity, Gemini, Claude, Copilot referrers, plus AI traffic hiding as "Direct"                                                                                                 |
+| AI Visibility        | Brand Lookup (mentions, citations, share of voice) and Prompt Explorer                                                                                                                     |
+| Keywords             | Research, SERP analysis, saved keywords with tags                                                                                                                                          |
+| Rank tracking        | Configs, manual and scheduled checks, city-level locations                                                                                                                                 |
+| Site audit           | Crawl, issues, Lighthouse through Google PageSpeed Insights (free; homepage only on Free) with real-visitor Core Web Vitals                                                                |
+| Backlinks, Domain    | Overview, rows, referring domains, top pages; domain keywords and pages                                                                                                                    |
+| Google               | Search Console performance and URL inspection, GA4 reports and measurement health                                                                                                          |
+| Reports              | White-label reports (logo, name, colour, website), public share links                                                                                                                      |
+| Content editor       | Project drafts, live SEO/AEO checks, AI writing actions                                                                                                                                    |
+| Website publishing   | Connect a WordPress site (onboarding or Settings → Integrations), publish or update drafts with their images (Basic and above)                                                             |
+| Local SEO            | Business search, profile, Google Maps rank grid                                                                                                                                            |
+| Assistant (SAM)      | Chat with tools over the project's data                                                                                                                                                    |
+| MCP server           | Tools for Claude, ChatGPT and Cursor, with OAuth                                                                                                                                           |
 | Billing              | Free, Basic, Pro and Agency on Razorpay Subscriptions, with site, tracked-keyword and member limits; webhooks, cancel, monthly credits with a spend guard on every paid lookup and AI call |
-| Privacy              | `cmd/erase-user` erases one account                                                           |
+| Privacy              | `cmd/erase-user` erases one account                                                                                                                                                        |
 
 ## Not built yet
 
-| Feature                                                                 | Status |
-| ----------------------------------------------------------------------- | ------ |
-| Changing from one paid plan to another without writing to support       | ⏳     |
-| Agency: client access, and extra sites at ₹400 each                     | ⏳     |
-| Live usage on the Billing page                                          | ⏳     |
-| AI Visibility: sentiment, tracking over time, drop alerts               | ⏳     |
-| "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics) | ⏳ |
-| Publishing to Shopify, Wix, Webflow, plain HTML (SFTP) and an Uplumo-hosted blog | ⏳ |
-| Content editor on an external site; delivering fixes (JS snippet, GitHub PR, copy-paste) | ⏳ |
-| Site audit: AI "how to fix" for every issue (English + Hinglish)        | ⏳     |
-| Scheduled reports, emailed to clients                                   | ⏳     |
-| Client portal: clients log in and see only their own reports            | ⏳     |
-| Google Business Profile audit and review tracking                       | ⏳     |
-| Plain-language and Hinglish copy pass across the app                    | ⏳     |
-| USD pricing                                                             | ⏳     |
-| Account deletion and data export from Settings                          | ⏳     |
+| Feature                                                                                  | Status |
+| ---------------------------------------------------------------------------------------- | ------ |
+| Changing from one paid plan to another without writing to support                        | ⏳     |
+| Agency: client access, and extra sites at ₹400 each                                      | ⏳     |
+| Live usage on the Billing page                                                           | ⏳     |
+| AI Visibility: sentiment, tracking over time, drop alerts                                | ⏳     |
+| "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics)            | ⏳     |
+| Publishing to Shopify, Wix, Webflow, plain HTML (SFTP) and an Uplumo-hosted blog         | ⏳     |
+| Content editor on an external site; delivering fixes (JS snippet, GitHub PR, copy-paste) | ⏳     |
+| Site audit: AI "how to fix" for every issue (English + Hinglish)                         | ⏳     |
+| Scheduled reports, emailed to clients                                                    | ⏳     |
+| Client portal: clients log in and see only their own reports                             | ⏳     |
+| Google Business Profile audit and review tracking                                        | ⏳     |
+| Plain-language and Hinglish copy pass across the app                                     | ⏳     |
+| USD pricing                                                                              | ⏳     |
+| Account deletion and data export from Settings                                           | ⏳     |
 
 ## Next up
 
@@ -140,6 +142,7 @@ Secrets go into Railway variables only, never into the repo or chat.
   feature: Basic is keywords, rankings, Google data, search briefs and AI
   writing for one site; Pro adds backlinks, competitor research and AI
   Visibility.
+
 - The owner's and the team's own workspaces are never limited by a plan
   (`STAFF_EMAILS`).
 

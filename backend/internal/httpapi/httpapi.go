@@ -22,6 +22,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/backlinks"
 	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
 	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
+	"github.com/toufiqqureshi/uplumo/backend/internal/contentauthors"
 	"github.com/toufiqqureshi/uplumo/backend/internal/contenteditor"
 	"github.com/toufiqqureshi/uplumo/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/uplumo/backend/internal/dashboardoverview"
@@ -31,6 +32,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/google"
 	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/linksuggest"
 	"github.com/toufiqqureshi/uplumo/backend/internal/localseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
@@ -126,6 +128,11 @@ type Deps struct {
 	ContentImageLimiter contenteditor.ImageUploadLimiter
 	// SitePublish connects a project's website and publishes drafts to it.
 	SitePublish *sitepublish.Service
+	// ContentAuthors serves the project's author profiles for the byline.
+	ContentAuthors *contentauthors.Repository
+	// LinkSuggest serves free internal link suggestions for drafts. Nil
+	// answers 503.
+	LinkSuggest *linksuggest.Service
 	// SAMSessions serves the project chat-session registry.
 	SAMSessions *sam.Service
 	// EmailAuth serves sign-up, sign-in, verification and password reset; nil
@@ -360,6 +367,16 @@ func NewHandler(d Deps) http.Handler {
 	if d.Billing != nil {
 		publishPlans = d.Billing.Gate(planCatalog.Publishing)
 	}
+	if d.ContentAuthors != nil {
+		contentauthors.Mount(mux, contentauthors.Deps{
+			Logger: d.Logger, Service: d.ContentAuthors, WithSession: withSession,
+			WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+		})
+	}
+	linksuggest.Mount(mux, linksuggest.Deps{
+		Logger: d.Logger, Service: d.LinkSuggest, WithSession: withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	sitepublish.Mount(mux, sitepublish.Deps{
 		Logger: d.Logger, Service: d.SitePublish, Plans: publishPlans, WithSession: withSession,
 		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },

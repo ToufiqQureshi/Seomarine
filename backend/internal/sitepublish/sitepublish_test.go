@@ -163,7 +163,7 @@ func TestPublishCopiesImagesOnceAndUpdatesTheSamePost(t *testing.T) {
 	service, _ := newTestService(t, wp, drafts)
 	connect(t, service, wp, "project-1")
 
-	first, err := service.Publish(t.Context(), "project-1", "draft-1", StatusDraft)
+	first, _, err := service.Publish(t.Context(), "project-1", "draft-1", StatusDraft, SchemaOptions{Article: true, FAQ: true})
 	if err != nil {
 		t.Fatalf("first Publish: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestPublishCopiesImagesOnceAndUpdatesTheSamePost(t *testing.T) {
 		t.Errorf("featured image = %d, want the first image %d", post.FeaturedMedia, first.Media[images.URL+"/a.png"].ID)
 	}
 
-	second, err := service.Publish(t.Context(), "project-1", "draft-1", StatusPublish)
+	second, _, err := service.Publish(t.Context(), "project-1", "draft-1", StatusPublish, SchemaOptions{Article: true, FAQ: true})
 	if err != nil {
 		t.Fatalf("second Publish: %v", err)
 	}
@@ -206,12 +206,12 @@ func TestPublishRecreatesAPostDeletedOnTheSite(t *testing.T) {
 	drafts := memoryDrafts{"d": {ID: "d", ProjectID: "p", Title: "T", Content: "Body"}}
 	service, _ := newTestService(t, wp, drafts)
 	connect(t, service, wp, "p")
-	first, err := service.Publish(t.Context(), "p", "d", StatusDraft)
+	first, _, err := service.Publish(t.Context(), "p", "d", StatusDraft, SchemaOptions{Article: true, FAQ: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	wp.deletePosts()
-	second, err := service.Publish(t.Context(), "p", "d", StatusDraft)
+	second, _, err := service.Publish(t.Context(), "p", "d", StatusDraft, SchemaOptions{Article: true, FAQ: true})
 	if err != nil {
 		t.Fatalf("Publish after the post was deleted: %v", err)
 	}
@@ -226,13 +226,13 @@ func TestPublishStartsFreshAfterConnectingAnotherSite(t *testing.T) {
 	oldSite := newFakeWordPress(t)
 	service, _ := newTestService(t, oldSite, drafts)
 	connect(t, service, oldSite, "p")
-	if _, err := service.Publish(t.Context(), "p", "d", StatusDraft); err != nil {
+	if _, _, err := service.Publish(t.Context(), "p", "d", StatusDraft, SchemaOptions{Article: true, FAQ: true}); err != nil {
 		t.Fatal(err)
 	}
 	newSite := newFakeWordPress(t)
 	service.WordPress = newSite.client()
 	connect(t, service, newSite, "p")
-	if _, err := service.Publish(t.Context(), "p", "d", StatusDraft); err != nil {
+	if _, _, err := service.Publish(t.Context(), "p", "d", StatusDraft, SchemaOptions{Article: true, FAQ: true}); err != nil {
 		t.Fatalf("Publish to the new site: %v", err)
 	}
 	posts, media, _ := newSite.snapshot()
@@ -258,20 +258,20 @@ func TestPublishRefusals(t *testing.T) {
 	}
 	service, _ := newTestService(t, wp, drafts)
 
-	if _, err := service.Publish(t.Context(), "p", "fine", StatusDraft); !errors.Is(err, ErrNotConnected) {
+	if _, _, err := service.Publish(t.Context(), "p", "fine", StatusDraft, SchemaOptions{Article: true, FAQ: true}); !errors.Is(err, ErrNotConnected) {
 		t.Errorf("not connected: err = %v", err)
 	}
 	connect(t, service, wp, "p")
 	for _, id := range []string{"empty", "many", "broken", "svgOnly"} {
 		var validation *ValidationError
-		if _, err := service.Publish(t.Context(), "p", id, StatusDraft); !errors.As(err, &validation) {
+		if _, _, err := service.Publish(t.Context(), "p", id, StatusDraft, SchemaOptions{Article: true, FAQ: true}); !errors.As(err, &validation) {
 			t.Errorf("%s: err = %v, want a ValidationError", id, err)
 		}
 	}
-	if _, err := service.Publish(t.Context(), "p", "fine", "private"); err == nil {
+	if _, _, err := service.Publish(t.Context(), "p", "fine", "private", SchemaOptions{}); err == nil {
 		t.Error("status private was accepted")
 	}
-	if _, err := service.Publish(t.Context(), "p", "other", StatusDraft); !errors.Is(err, contenteditor.ErrNotFound) {
+	if _, _, err := service.Publish(t.Context(), "p", "other", StatusDraft, SchemaOptions{Article: true, FAQ: true}); !errors.Is(err, contenteditor.ErrNotFound) {
 		t.Errorf("another project's draft: err = %v, want ErrNotFound", err)
 	}
 	if posts, media, _ := wp.snapshot(); len(posts) != 0 || len(media) != 0 {

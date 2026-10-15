@@ -1,5 +1,51 @@
 import { sortBy } from "remeda";
 import { makeScoreCheck as check, type ScoreCheck } from "./scoring-utils";
+
+// freshnessRule: the "Show freshness" check passes only when the draft has
+// a reviewed date less than 12 months old. The check keeps its 5-point
+// weight; only the source of truth changed from a guessed date in the text
+// to the draft's reviewed date.
+
+export function freshnessCheck(
+  d: ContentDraftInput,
+  now: Date = new Date(),
+): { passed: boolean; message: string; weight: number } {
+  const weight = 5;
+  if (!d.lastReviewedAt?.trim()) {
+    return {
+      passed: false,
+      message: "Mark this draft as reviewed to show readers it is fresh.",
+      weight,
+    };
+  }
+  if (!freshWithinTwelveMonths(d.lastReviewedAt, now)) {
+    return {
+      passed: false,
+      message:
+        "The last review is more than 12 months old; mark it reviewed after checking the facts.",
+      weight,
+    };
+  }
+  return {
+    passed: true,
+    message: "Reviewed within the last 12 months.",
+    weight,
+  };
+}
+
+// freshWithinTwelveMonths compares calendar months: the review stays fresh
+// through the same day of the twelfth month, and a day after expires.
+export function freshWithinTwelveMonths(reviewed: string, now: Date): boolean {
+  const parsed = new Date(`${reviewed}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const ageMonths =
+    (now.getUTCFullYear() - parsed.getUTCFullYear()) * 12 +
+    (now.getUTCMonth() - parsed.getUTCMonth());
+  if (ageMonths < 12) return true;
+  if (ageMonths > 12) return false;
+  // Exactly 12 months: fresh until the same calendar day passes.
+  return parsed.getUTCDate() >= now.getUTCDate();
+}
 import {
   containsPhrase as has,
   countWords as count,
@@ -251,9 +297,7 @@ export function aeo(
         .match(/\b[A-Z][\p{L}\p{N}&.-]*(?:\s+[A-Z][\p{L}\p{N}&.-]*){0,3}/gu) ??
         [],
     ).size,
-    fresh = /\b(as of|updated|last updated|in 20\d{2}|current as of)\b/iu.test(
-      body,
-    );
+    freshness = freshnessCheck(d);
   return [
     check(
       "direct-answer",
@@ -319,9 +363,9 @@ export function aeo(
     check(
       "freshness",
       "Show freshness",
-      "Add a reviewed date for information that changes over time.",
-      5,
-      fresh ? 5 : 0,
+      freshness.message,
+      freshness.weight,
+      freshness.passed ? freshness.weight : 0,
     ),
   ];
 }

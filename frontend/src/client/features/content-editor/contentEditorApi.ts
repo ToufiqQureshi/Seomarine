@@ -10,6 +10,10 @@ const draftSchema = z.object({
   slug: z.string(),
   metaDescription: z.string(),
   content: z.string(),
+  authorId: z.string().optional(),
+  // The review date arrives as an RFC 3339 midnight timestamp; the editor
+  // only ever shows and sends its YYYY-MM-DD part.
+  lastReviewedAt: z.iso.datetime({ offset: true }).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

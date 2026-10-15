@@ -18,6 +18,10 @@ const publicationSchema = z.object({
   status: z.string().optional(),
   publishedAt: z.iso.datetime({ offset: true }).optional(),
   updatedAt: z.iso.datetime({ offset: true }).optional(),
+  // What the publish did with structured data; absent on older answers.
+  schema: z
+    .object({ added: z.boolean(), note: z.string().optional() })
+    .optional(),
 });
 export type SitePublication = z.infer<typeof publicationSchema>;
 
@@ -76,11 +80,12 @@ export function publishDraft(
   projectId: string,
   draftId: string,
   status: "draft" | "publish",
+  schema?: { article: boolean; faq: boolean },
 ): Promise<SitePublication> {
   return apiRequest(
     `${projectPath(projectId)}/content/drafts/${encodeURIComponent(draftId)}/publish`,
     publicationSchema,
     "POST",
-    { status },
+    { status, ...(schema ? { schema } : {}) },
   );
 }
