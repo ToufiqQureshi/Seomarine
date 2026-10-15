@@ -30,6 +30,9 @@ const draft: ContentDraftInput = {
   metaDescription:
     "A practical guide to technical SEO, crawlability and indexing for site owners.",
   content: goodText,
+  // Reviewed recently: the freshness rule reads the review date, not the
+  // article text.
+  lastReviewedAt: "2026-10-01",
 };
 const brief: ContentBrief = {
   collectedAt: "2026-10-01T00:00:00Z",
@@ -210,10 +213,7 @@ describe("scoring rule mutation checks", () => {
       "freshness",
       (value: ContentDraftInput) => ({
         ...value,
-        content: value.content.replace(
-          /Updated in 2026\./u,
-          "Reviewed recently.",
-        ),
+        lastReviewedAt: "2024-01-01",
       }),
     ],
   ])("AEO rule %s responds to a targeted input mutation", (id, mutate) => {

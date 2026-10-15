@@ -1,6 +1,7 @@
 import { BriefPanel } from "./BriefPanel";
 import { briefForWriter } from "./brief-view";
 import { DraftsPanel } from "./EditorPanels";
+import { LinkSuggestionsCard, PublishTabPanel } from "./FreeSeoPublishCards";
 import { ScorePanel } from "./ScorePanel";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { WriterAssistant } from "./WriterAssistant";
@@ -165,15 +166,29 @@ export function ContentEditorSidePanel({
           </section>
         ) : null}
         {tab === "publish" ? (
-          <PublishToSite
+          <PublishTabPanel
             projectId={projectId}
             draftId={draftId}
-            hasUnsavedChanges={dirty}
-            blocksPublish={seo.blocksPublish}
-            targetKeyword={draft.targetKeyword}
+            draft={draft}
+            editorBusy={editorBusy}
+            publishToSite={(schema) => (
+              <PublishToSite
+                projectId={projectId}
+                draftId={draftId}
+                hasUnsavedChanges={dirty}
+                blocksPublish={seo.blocksPublish}
+                targetKeyword={draft.targetKeyword}
+                schema={schema}
+              />
+            )}
           />
         ) : null}
       </div>
+      <LinkSuggestionsCard
+        projectId={projectId}
+        draft={draft}
+        isBusy={editorBusy}
+      />
       <details className="group">
         <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
           Your drafts

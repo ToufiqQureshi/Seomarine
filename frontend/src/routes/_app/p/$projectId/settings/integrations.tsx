@@ -5,6 +5,7 @@ import { GoogleConnectionCard } from "@/client/features/integrations/GoogleConne
 import { CrawlerAccessSettings } from "@/client/features/settings/CrawlerAccessSettings";
 import { SectionHeader } from "@/client/components/PageHeader";
 import { WebsiteConnectionCard } from "@/client/features/site-publishing/WebsiteConnectionCard";
+import { AuthorProfiles } from "@/client/features/content-editor/AuthorProfiles";
 
 export const Route = createFileRoute(
   "/_app/p/$projectId/settings/integrations",
@@ -43,6 +44,14 @@ function ProjectIntegrationsRoute() {
           hint="Publish content-editor articles straight to your WordPress site."
         />
         <WebsiteConnectionCard projectId={projectId} />
+      </section>
+
+      <section id="authors" className="scroll-mt-6 space-y-3">
+        <SectionHeader
+          title="Author profiles"
+          hint="Shown bylined on articles you publish, and used in the article's structured data."
+        />
+        <AuthorProfiles projectId={projectId} />
       </section>
 
       <CrawlerAccessSettings projectId={projectId} />

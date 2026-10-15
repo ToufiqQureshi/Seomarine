@@ -99,6 +99,29 @@ type Service struct {
 	Drafts    Drafts
 	Cipher    Cipher
 	WordPress WordPress
+	// Authors supplies the author profile a byline and Article schema are
+	// built from; nil means drafts are published without an author.
+	Authors AuthorStore
+}
+
+// AuthorStore loads one project's author profile.
+type AuthorStore interface {
+	Author(ctx context.Context, projectID, authorID string) (AuthorInfo, error)
+}
+
+// publishedAuthor loads the author a draft names, never leaking another
+// project's profile (the store is project-scoped).
+func (s *Service) publishedAuthor(ctx context.Context, projectID, authorID string) (AuthorInfo, bool) {
+	if s.Authors == nil || authorID == "" {
+		return AuthorInfo{}, false
+	}
+	info, err := s.Authors.Author(ctx, projectID, authorID)
+	if err != nil {
+		// A deleted author cannot block a publish: the byline dies, not the
+		// article.
+		return AuthorInfo{}, false
+	}
+	return info, info.Name != ""
 }
 
 // ConnectInput is what the customer types to connect a WordPress site.
@@ -164,30 +187,31 @@ func (s *Service) Publication(ctx context.Context, projectID, draftID string) (P
 }
 
 // Publish sends a draft to the project's website as a post with the given
-// status. Publishing the same draft again updates that post; its images are
-// copied into the site's media library once.
-func (s *Service) Publish(ctx context.Context, projectID, draftID, status string) (Publication, error) {
+// status, adding the chosen JSON-LD schema when WordPress allows it.
+// Publishing the same draft again updates that post; its images are copied
+// into the site's media library once.
+func (s *Service) Publish(ctx context.Context, projectID, draftID, status string, options SchemaOptions) (Publication, PublicationSchema, error) {
 	if status != StatusDraft && status != StatusPublish {
-		return Publication{}, &ValidationError{Message: "Choose draft or publish."}
+		return Publication{}, PublicationSchema{}, &ValidationError{Message: "Choose draft or publish."}
 	}
 	connection, err := s.Store.Connection(ctx, projectID)
 	if err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	}
 	draft, err := s.Drafts.Get(ctx, projectID, draftID)
 	if err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	}
 	if strings.TrimSpace(draft.Title) == "" || strings.TrimSpace(draft.Content) == "" {
-		return Publication{}, &ValidationError{Message: "Add a title and some content before publishing."}
+		return Publication{}, PublicationSchema{}, &ValidationError{Message: "Add a title and some content before publishing."}
 	}
 	// A WordPress draft is private, so only going live is refused.
 	if status == StatusPublish && keywordStuffed(draft.TargetKeyword, draft.Content) {
-		return Publication{}, ErrKeywordStuffing
+		return Publication{}, PublicationSchema{}, ErrKeywordStuffing
 	}
 	password, err := s.Cipher.Decrypt(connection.SecretCiphertext)
 	if err != nil {
-		return Publication{}, fmt.Errorf("decrypt site password: %w", err)
+		return Publication{}, PublicationSchema{}, fmt.Errorf("decrypt site password: %w", err)
 	}
 	creds := Credentials{APIBase: connection.APIBase, Username: connection.Username, Password: password}
 
@@ -196,7 +220,7 @@ func (s *Service) Publish(ctx context.Context, projectID, draftID, status string
 	case errors.Is(err, ErrNotFound):
 		previous = Publication{}
 	case err != nil:
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	case previous.SiteURL != connection.SiteURL:
 		// Connected to another site since: start fresh there.
 		previous = Publication{}
@@ -204,14 +228,21 @@ func (s *Service) Publish(ctx context.Context, projectID, draftID, status string
 
 	media, replace, featured, err := s.copyImages(ctx, creds, connection.SiteURL, draft.Content, previous.Media)
 	if err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	}
-	html, err := renderHTML(draft.Content, replace)
+	author, hasAuthor := s.publishedAuthor(ctx, projectID, draft.AuthorID)
+	schema, err := schemaPass(draft, author, hasAuthor, media, options)
 	if err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
+	}
+	// The byline is Markdown added to the article before rendering, while
+	// the audit-linked copy backs it with dateModified and the same date.
+	markup, err := renderHTML(draft.Content+schema.Byline, replace)
+	if err != nil {
+		return Publication{}, PublicationSchema{}, err
 	}
 	post := Post{
-		Title: strings.TrimSpace(draft.Title), Content: html, Excerpt: strings.TrimSpace(draft.MetaDescription),
+		Title: strings.TrimSpace(draft.Title), Content: markup, Excerpt: strings.TrimSpace(draft.MetaDescription),
 		Slug: strings.TrimSpace(draft.Slug), Status: status, FeaturedMedia: featured,
 	}
 	saved, err := s.WordPress.SavePost(ctx, creds, previous.RemoteID, post)
@@ -220,16 +251,86 @@ func (s *Service) Publish(ctx context.Context, projectID, draftID, status string
 		saved, err = s.WordPress.SavePost(ctx, creds, "", post)
 	}
 	if err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	}
+	schemaInfo := s.addSchema(ctx, creds, saved, post, markup, schema)
 	publication := Publication{
 		DraftID: draftID, ProjectID: projectID, SiteURL: connection.SiteURL,
 		RemoteID: saved.ID, RemoteURL: saved.Link, RemoteStatus: saved.Status, Media: media,
 	}
 	if err := s.Store.SavePublication(ctx, publication); err != nil {
-		return Publication{}, err
+		return Publication{}, PublicationSchema{}, err
 	}
-	return s.Store.Publication(ctx, projectID, draftID)
+	final, err := s.Store.Publication(ctx, projectID, draftID)
+	if err != nil {
+		return Publication{}, PublicationSchema{}, err
+	}
+	return final, schemaInfo, nil
+}
+
+// PublicationSchema reports what a publish did with the requested JSON-LD.
+type PublicationSchema struct {
+	// Added is true when at least one block reached the post.
+	Added bool `json:"added"`
+	// Note explains why a requested block was left off; empty when all went
+	// out.
+	Note string `json:"note,omitempty"`
+}
+
+// schemaPass builds the per-publish schema plan from the saved images and
+// the draft's author and review date. The first image's site address feeds
+// the Article schema, so use its copied URL when one exists.
+func schemaPass(draft contenteditor.Draft, author AuthorInfo, hasAuthor bool, media map[string]Media, options SchemaOptions) (SchemaBuild, error) {
+	image := ""
+	for _, entry := range media {
+		if entry.URL != "" {
+			image = entry.URL
+			break
+		}
+	}
+	if image == "" {
+		urls := imageURLs(draft.Content)
+		if len(urls) > 0 {
+			image = urls[0]
+		}
+	}
+	return buildSchemas(schemaInput{
+		Title: strings.TrimSpace(draft.Title), Meta: draft.MetaDescription, Content: draft.Content,
+		Image: image, Author: author, HasAuthor: hasAuthor,
+		Reviewed: draft.LastReviewedAt,
+	}, options), nil
+}
+
+// addSchema appends the built JSON-LD to the saved post, and only when the
+// WordPress user can keep scripts in post content. A schema problem never
+// fails the publish: the post from the first save stands, and the writer
+// is told what could not be added.
+func (s *Service) addSchema(ctx context.Context, creds Credentials, saved Saved, post Post, markup string, schema SchemaBuild) PublicationSchema {
+	info := PublicationSchema{}
+	if len(schema.Blocks) == 0 {
+		info.Note = schema.Skipped
+		return info
+	}
+	allowed, err := s.WordPress.ViewRawHTML(ctx, creds)
+	switch {
+	case err != nil:
+		info.Note = schema.Skipped + " The schema is left off because checking this WordPress user failed."
+		return info
+	case !allowed:
+		info.Note = schema.Skipped + " This WordPress user cannot keep scripts in post content, so the schema is not sent here."
+		return info
+	}
+	var scripts strings.Builder
+	for _, block := range schema.Blocks {
+		scripts.WriteString("\n" + schemaScriptTag(block))
+	}
+	post.Content = markup + scripts.String()
+	if _, err := s.WordPress.SavePost(ctx, creds, saved.ID, post); err != nil {
+		info.Note = schema.Skipped + " The schema could not be saved on the site, but the article itself is published."
+		return info
+	}
+	info.Added = true
+	return info
 }
 
 // copyImages uploads the draft's images to the site's media library, reusing

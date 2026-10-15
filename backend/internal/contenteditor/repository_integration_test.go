@@ -88,6 +88,59 @@ func TestRepositoryDraftLifecycleIsProjectScoped(t *testing.T) {
 	}
 }
 
+func TestRepositoryDraftAuthorIsProjectScoped(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	pool := contentTestPool(ctx, t)
+	suffix := strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", "")
+	organizationID := "author-test-org-" + suffix
+	projectID, otherProjectID := "author-test-p-"+suffix, "author-test-p2-"+suffix
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'A', $1, now())`, organizationID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cleanupCancel()
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM organization WHERE id=$1`, organizationID)
+	})
+	for _, id := range []string{projectID, otherProjectID} {
+		if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name) VALUES ($1, $2, $1)`, id, organizationID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var authorID string
+	if err := pool.QueryRow(ctx, `INSERT INTO go_content_authors (id, project_id, name)
+		VALUES ($1, $2, 'Aman') RETURNING id`, "author-"+suffix, projectID).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	repo := Repository{DB: pool}
+	var validation *ValidationError
+	// Another project's author can never sign this project's draft.
+	if _, err := repo.Save(ctx, otherProjectID, Input{Title: "T", AuthorID: authorID}); !errors.As(err, &validation) {
+		t.Fatalf("cross-project author error = %v, want a ValidationError", err)
+	}
+	created, err := repo.Save(ctx, projectID, Input{
+		Title: "T", AuthorID: authorID, LastReviewedDate: "2026-10-15",
+	})
+	if err != nil {
+		t.Fatalf("save with author: %v", err)
+	}
+	if created.AuthorID != authorID || created.LastReviewedAt == nil || created.LastReviewedAt.Format("2006-01-02") != "2026-10-15" {
+		t.Fatalf("author fields lost: %+v", created)
+	}
+	var badDate *ValidationError
+	if _, err := repo.Save(ctx, projectID, Input{Title: "T", LastReviewedDate: "15/10/2026"}); !errors.As(err, &badDate) {
+		t.Fatalf("malformed review date error = %v, want a ValidationError", err)
+	}
+	// Deleting the author clears the draft's author_id, never the draft.
+	if _, err := pool.Exec(ctx, `DELETE FROM go_content_authors WHERE id=$1`, authorID); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := repo.Get(ctx, projectID, created.ID); err != nil || got.ID != created.ID || got.AuthorID != "" {
+		t.Fatalf("draft after author delete = %+v, %v", got, err)
+	}
+}
+
 func TestValidateDraftRejectsOversizedFields(t *testing.T) {
 	tests := []struct {
 		name  string

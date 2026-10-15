@@ -29,6 +29,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/billing"
 	"github.com/toufiqqureshi/uplumo/backend/internal/branding"
 	"github.com/toufiqqureshi/uplumo/backend/internal/config"
+	"github.com/toufiqqureshi/uplumo/backend/internal/contentauthors"
 	"github.com/toufiqqureshi/uplumo/backend/internal/contenteditor"
 	"github.com/toufiqqureshi/uplumo/backend/internal/crawleraccess"
 	"github.com/toufiqqureshi/uplumo/backend/internal/dashboardoverview"
@@ -42,6 +43,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/httpapi"
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
+	"github.com/toufiqqureshi/uplumo/backend/internal/linksuggest"
 	"github.com/toufiqqureshi/uplumo/backend/internal/localseo"
 	"github.com/toufiqqureshi/uplumo/backend/internal/mcp"
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
@@ -253,6 +255,11 @@ func run(logger *slog.Logger) (err error) {
 	authService := auth.NewService(db, cfg.BetterAuthSecret)
 	savedKeywordsSvc := &keywords.SavedService{Store: keywords.SavedRepository{DB: db}}
 	gscService := buildGSCService(db, googleAPIClient)
+	contentAuthors := &contentauthors.Repository{DB: db}
+	linkSuggestSvc := &linksuggest.Service{
+		Sources: []linksuggest.Source{linksuggest.GSC{Service: gscService}, linksuggest.AuditSource{DB: db}},
+		Redis:   linksuggest.RedisCache{Client: rdb}, Logger: logger,
+	}
 	projectContextSvc := &projectcontext.Service{Repo: projectcontext.Repository{DB: db}}
 	var contentImages contenteditor.ImageStore
 	if cfg.SupabaseStorage != nil {
@@ -315,6 +322,8 @@ func run(logger *slog.Logger) (err error) {
 			RankChecks:              rankChecks,
 			Projects:                &projects.Service{Store: projects.Repository{DB: db}, Plans: billingRoutes},
 			ContentEditor:           &contenteditor.Repository{DB: db},
+			ContentAuthors:          contentAuthors,
+			LinkSuggest:             linkSuggestSvc,
 			SitePublish:             sitePublish,
 			ContentWriter:           buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
 			ContentBriefs:           buildContentBriefs(db, dfClient),
@@ -397,6 +406,7 @@ func buildSitePublish(cfg config.Config, db *pgxpool.Pool) (*sitepublish.Service
 		Drafts:    contenteditor.Repository{DB: db},
 		Cipher:    cipher,
 		WordPress: sitepublish.WordPress{HTTP: audit.NewGuard().NewClient(30 * time.Second)},
+		Authors:   &contentauthors.Repository{DB: db},
 	}, nil
 }
 

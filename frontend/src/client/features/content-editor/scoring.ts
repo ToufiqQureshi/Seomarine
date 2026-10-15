@@ -10,6 +10,11 @@ export type ContentDraftInput = {
   slug: string;
   metaDescription: string;
   content: string;
+  // authorId selects a project author for the byline; lastReviewedAt is the
+  // review date as YYYY-MM-DD. Both optional and used by the AEO freshness
+  // check and the publish-tab cards.
+  authorId?: string;
+  lastReviewedAt?: string;
 };
 export type ContentBrief = {
   collectedAt: string;

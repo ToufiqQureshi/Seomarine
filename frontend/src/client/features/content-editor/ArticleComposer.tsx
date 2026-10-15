@@ -4,6 +4,7 @@ import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
 import { Field, SearchPreview } from "./EditorPanels";
+import { useFreeSeoEditor } from "./FreeSeoEditorContext";
 import { ImageFields } from "./ImageFields";
 import { uploadContentImage } from "./contentEditorApi";
 import {
@@ -165,6 +166,14 @@ function ArticleBody({
   onChange: (content: string) => void;
 }) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const { setEditor: setSharedEditor } = useFreeSeoEditor();
+  const onEditorReady = useCallback(
+    (next: Editor | null) => {
+      setEditor(next);
+      setSharedEditor(next);
+    },
+    [setSharedEditor],
+  );
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageFieldsOpen, setImageFieldsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -264,7 +273,7 @@ function ArticleBody({
         disabled={disabled}
         onChange={onChange}
         onAddImage={openImagePanel}
-        onReady={setEditor}
+        onReady={onEditorReady}
       />
       <p className="text-xs text-muted-foreground">
         Select text to make it bold or add a link. Type / on an empty line for

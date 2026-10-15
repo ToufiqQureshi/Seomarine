@@ -20,14 +20,26 @@ contract.
      `upload_files`;
    - only then stores the connection, the password encrypted with AES-GCM.
 2. **Publish** (`POST .../content/drafts/{draftId}/publish`, any member, Basic
-   and above), `{"status": "draft" | "publish"}`:
+   and above), `{"status": "draft" | "publish", "schema": {"article": true, "faq": true}}`:
    - each image in the draft's Markdown is downloaded and uploaded to the
      site's media library, then the article points at the site's copy; the
      first image becomes the featured image;
    - the Markdown is rendered to HTML (goldmark, GitHub-flavoured);
    - the post is created, or the earlier post updated.
+   - the selected project author is appended as a visible byline. Article
+     JSON-LD uses the author and the published URL. FAQ JSON-LD is built only
+     from a visible FAQ section whose plain answers match the article text.
+   - WordPress receives JSON-LD script tags only when the connected account
+     has `unfiltered_html`. If it lacks the capability, or an update strips
+     the scripts, the article stays published and the response explains why
+     schema was omitted. The author can install an optional schema plugin
+     later; no plugin-specific REST fields are assumed available.
 3. `.../site-connection/get`, `.../site-connection/delete` (owner or admin)
    and `.../content/drafts/{draftId}/publication/get` read and remove.
+
+`POST .../content/drafts/{draftId}/schema-preview` builds the selected schema
+blocks from the saved draft without calling WordPress. The editor makes clear
+that unsaved changes are not in this preview.
 
 ## Tables
 
@@ -49,6 +61,8 @@ contract.
   or metadata addresses, checked at dial time against DNS rebinding.
 - **Raw HTML in a draft is dropped and `javascript:` links are not rendered**,
   so an article cannot carry a script onto the customer's site.
+- JSON-LD is checked with `json.Valid` and HTML escaped before adding the
+  script tag; a title or answer containing `</script>` cannot break out.
 - **Nothing is stored unless WordPress accepted the password.**
 - **A keyword-stuffed draft cannot go live** (`keyword_stuffing`, 422), even
   through the API. Sending it as a private WordPress draft still works.

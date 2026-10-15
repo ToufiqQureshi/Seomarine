@@ -93,6 +93,21 @@ Google Cloud project `agentproject-473109`:
 - Blocked by DataForSEO verification: keyword research and prompt explorer.
 - Blocked by Hostinger: WordPress connect (the `.htaccess` fix is pending).
 
+## Content publishing implementation choices (15 October 2026)
+
+- Author profiles belong to projects, not login accounts. A draft may select
+  one; deleting the profile clears its reference without deleting the draft.
+  The review date is set by the writer and feeds the existing AEO freshness
+  check without changing its weight.
+- WordPress JSON-LD is sent as script tags only after the connected account's
+  `unfiltered_html` capability is checked. WordPress can strip scripts for
+  other roles; in that case publication succeeds without schema and the
+  writer sees the reason. The API does not assume Rank Math or Yoast REST meta
+  fields are exposed on every customer site.
+- Internal links are suggested from the project's Search Console pages, then
+  its latest audit as fallback. The writer starts the free lookup explicitly;
+  typing and page loads do not make provider calls.
+
 ## 6. Cost notes
 
 - A content brief costs about $0.0065 (9 credits). Pro (10,000 credits) ≈ 1,111 briefs a month. The daily limit per workspace is a third of its monthly credits.

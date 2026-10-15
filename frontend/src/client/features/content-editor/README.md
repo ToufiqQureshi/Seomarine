@@ -110,6 +110,19 @@ Google or predict rankings.
   writer always uses `openai/gpt-4.1-mini`; `OPENROUTER_MODEL` configures SAM
   only.
 
+## Free publishing guidance
+
+- A draft can select a project author profile and record its last review date.
+  The AEO freshness check uses that date, through the same calendar day twelve
+  months later.
+- The Publish tab previews `BlogPosting` and `FAQPage` JSON-LD from the last
+  saved draft. Each block has its own switch. FAQ requires a visible section
+  with matching questions and answers. WordPress may omit schema if the account
+  cannot keep script tags in post content; the publish result explains why.
+- **Find internal links** reads the project's Search Console or audit pages on
+  request. Typing never starts this lookup. **Link it** applies one TipTap link
+  command to the matching anchor after URL validation. No credits are spent.
+
 ## Rules and limits
 
 - Do not describe readiness checks as Google's ranking algorithm or a ranking

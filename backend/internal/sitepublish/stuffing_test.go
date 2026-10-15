@@ -41,13 +41,13 @@ func TestPublishNowRefusesAStuffedDraftButSendAsDraftWorks(t *testing.T) {
 	service, _ := newTestService(t, wp, memoryDrafts{"d": stuffed})
 	connect(t, service, wp, "p")
 
-	if _, err := service.Publish(t.Context(), "p", "d", StatusPublish); !errors.Is(err, ErrKeywordStuffing) {
+	if _, _, err := service.Publish(t.Context(), "p", "d", StatusPublish, SchemaOptions{}); !errors.Is(err, ErrKeywordStuffing) {
 		t.Fatalf("publish a stuffed draft: err = %v, want ErrKeywordStuffing", err)
 	}
 	if len(wp.posts) != 0 {
 		t.Fatalf("a stuffed draft reached the site: %d posts", len(wp.posts))
 	}
-	if _, err := service.Publish(t.Context(), "p", "d", StatusDraft); err != nil {
+	if _, _, err := service.Publish(t.Context(), "p", "d", StatusDraft, SchemaOptions{Article: true, FAQ: true}); err != nil {
 		t.Fatalf("send a stuffed draft as a WordPress draft: %v", err)
 	}
 }

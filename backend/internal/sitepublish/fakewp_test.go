@@ -25,6 +25,10 @@ type fakeWordPress struct {
 	plain        bool // only ?rest_route= works, as with plain permalinks
 	appPasswords bool
 	stripsAuth   bool // the host drops the Authorization header
+	// unfiltered grants the unfiltered_html capability, which WordPress
+	// keeps for roles above editor on single sites; the schema feature
+	// publishes JSON-LD only when it is present.
+	unfiltered   bool
 	capabilities map[string]bool
 	posts        map[int64]Post
 	media        []string // filenames uploaded, in order
@@ -87,7 +91,8 @@ func (wp *fakeWordPress) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case route == "/wp/v2/users/me" && r.Method == http.MethodGet:
-		writeJSON(w, http.StatusOK, map[string]any{"name": "Editor", "capabilities": wp.capabilities})
+		capabilities := map[string]bool{"publish_posts": wp.capabilities["publish_posts"], "upload_files": wp.capabilities["upload_files"], "unfiltered_html": wp.unfiltered}
+		writeJSON(w, http.StatusOK, map[string]any{"name": "Editor", "capabilities": capabilities})
 	case route == "/wp/v2/media" && r.Method == http.MethodPost:
 		_, _ = io.Copy(io.Discard, r.Body)
 		name := r.Header.Get("Content-Disposition")

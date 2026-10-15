@@ -45,6 +45,15 @@ bounded pagination, and optional position/impression thresholds. Thresholds
 are applied to at most 1,000 provider rows because Search Console cannot filter
 those metrics server-side. `searchAppearance` must be the only dimension.
 
+## Internal link source
+
+The content editor's free link suggestions read the project's Search Console
+pages with impressions in the last 90 days and their top queries. The
+`linksuggest` service applies its own 200-page bound, ranks candidates by
+clicks and impressions, and falls back to the latest site audit when GSC has
+no pages. The lookup is requested explicitly in the editor and does not
+charge credits.
+
 ## URL inspection
 
 `POST /api/v1/projects/{projectId}/gsc/url-inspection/inspect` inspects 1–10

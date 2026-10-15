@@ -65,6 +65,7 @@ Go features, `backend/internal/…/README.md`, read before touching that package
 | `backend/internal/auth/README.md`          | Session reading, auth middleware                    |
 | `backend/internal/backlinks/README.md`     | Backlinks pages                                     |
 | `backend/internal/billing/README.md`       | Plans, credits ledger, spend guard, cancelling      |
+| `backend/internal/contentauthors/README.md` | Project author profiles and draft bylines         |
 | `backend/internal/dashboardoverview/README.md` | Dashboard audit and backlink cards              |
 | `backend/internal/database/README.md`      | Migrations and table rules                          |
 | `backend/internal/domain/README.md`        | Domain Overview                                     |
@@ -75,6 +76,7 @@ Go features, `backend/internal/…/README.md`, read before touching that package
 | `backend/internal/google/README.md`        | Google OAuth connections and tokens                 |
 | `backend/internal/gsc/README.md`           | Search Console                                      |
 | `backend/internal/keywords/README.md`      | Keyword research, saved keywords, locations         |
+| `backend/internal/linksuggest/README.md`   | Free internal link suggestions from GSC and audits  |
 | `backend/internal/mcp/README.md`           | `/mcp` server and its tools                         |
 | `backend/internal/plans/README.md`         | Plan catalog: prices, limits, features              |
 | `backend/internal/platform/dataforseo/README.md` | DataForSEO transport                          |

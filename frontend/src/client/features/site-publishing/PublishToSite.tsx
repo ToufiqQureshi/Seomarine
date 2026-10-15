@@ -22,12 +22,14 @@ export function PublishToSite({
   hasUnsavedChanges,
   blocksPublish,
   targetKeyword,
+  schema,
 }: {
   projectId: string;
   draftId: string | undefined;
   hasUnsavedChanges: boolean;
   blocksPublish: boolean;
   targetKeyword: string;
+  schema?: { article: boolean; faq: boolean };
 }) {
   const connectionQuery = useQuery(siteConnectionQueryOptions(projectId));
   const connection = connectionQuery.data;
@@ -61,6 +63,7 @@ export function PublishToSite({
           hasUnsavedChanges={hasUnsavedChanges}
           blocksPublish={blocksPublish}
           targetKeyword={targetKeyword}
+          schema={schema}
         />
       )}
     </section>
@@ -74,6 +77,7 @@ function PublishActions({
   hasUnsavedChanges,
   blocksPublish,
   targetKeyword,
+  schema,
 }: {
   projectId: string;
   draftId: string;
@@ -81,13 +85,14 @@ function PublishActions({
   hasUnsavedChanges: boolean;
   blocksPublish: boolean;
   targetKeyword: string;
+  schema?: { article: boolean; faq: boolean };
 }) {
   const queryClient = useQueryClient();
   const publicationOptions = sitePublicationQueryOptions(projectId, draftId);
   const publication = useQuery(publicationOptions).data;
   const publish = useMutation({
     mutationFn: (status: "draft" | "publish") =>
-      publishDraft(projectId, draftId, status),
+      publishDraft(projectId, draftId, status, schema),
     meta: { errorToast: false },
     onSuccess: (next) => {
       queryClient.setQueryData(publicationOptions.queryKey, next);
@@ -138,6 +143,11 @@ function PublishActions({
               : "Publish now"}
         </Button>
       </div>
+      {publication?.schema?.added === false && publication.schema.note ? (
+        <p className="text-xs text-muted-foreground">
+          {publication.schema.note}
+        </p>
+      ) : null}
       {publish.isError ? (
         <ErrorState
           variant="inline"

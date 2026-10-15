@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
@@ -55,6 +56,7 @@ func Mount(mux *http.ServeMux, deps Deps) {
 	mux.Handle("POST /api/v1/projects/{projectId}/site-connection/delete", protect(h.deleteConnection))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/{draftId}/publication/get", protect(h.getPublication))
 	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/{draftId}/publish", protect(h.publish))
+	mux.Handle("POST /api/v1/projects/{projectId}/content/drafts/{draftId}/schema-preview", protect(h.schemaPreview))
 }
 
 type connectionView struct {
@@ -72,12 +74,13 @@ func viewConnection(c Connection) connectionView {
 }
 
 type publicationView struct {
-	Published   bool       `json:"published"`
-	SiteURL     string     `json:"siteUrl,omitempty"`
-	URL         string     `json:"url,omitempty"`
-	Status      string     `json:"status,omitempty"`
-	PublishedAt *time.Time `json:"publishedAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+	Published   bool               `json:"published"`
+	SiteURL     string             `json:"siteUrl,omitempty"`
+	URL         string             `json:"url,omitempty"`
+	Status      string             `json:"status,omitempty"`
+	PublishedAt *time.Time         `json:"publishedAt,omitempty"`
+	UpdatedAt   *time.Time         `json:"updatedAt,omitempty"`
+	Schema      *PublicationSchema `json:"schema,omitempty"`
 }
 
 func viewPublication(p Publication) publicationView {
@@ -156,10 +159,15 @@ func (h handler) publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Status string `json:"status"`
+		Status string         `json:"status"`
+		Schema *SchemaOptions `json:"schema,omitempty"`
 	}
 	if !decode(w, r, &input) {
 		return
+	}
+	options := SchemaOptions{Article: true, FAQ: true}
+	if input.Schema != nil {
+		options = *input.Schema
 	}
 	// Copying images can outlast the server's 30 second write timeout.
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(publishTimeout + 10*time.Second)); err != nil {
@@ -167,12 +175,66 @@ func (h handler) publish(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), publishTimeout)
 	defer cancel()
-	publication, err := h.Service.Publish(ctx, r.PathValue("projectId"), r.PathValue("draftId"), input.Status)
+	publication, schema, err := h.Service.Publish(ctx, r.PathValue("projectId"), r.PathValue("draftId"), input.Status, options)
 	if err != nil {
 		h.writeSiteError(w, r, "publish draft", err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, viewPublication(publication))
+	view := viewPublication(publication)
+	view.Schema = &schema
+	httpx.WriteJSON(w, http.StatusOK, view)
+}
+
+// schemaPreview answers the JSON-LD the saved draft would publish with. It
+// is the same builder the publish flow runs, so the editor's preview can
+// never promise something a publish would not send. Schema problems are
+// notes, never publish failures.
+func (h handler) schemaPreview(w http.ResponseWriter, r *http.Request) {
+	if !h.ready(w) {
+		return
+	}
+	var input struct {
+		Schema *SchemaOptions `json:"schema,omitempty"`
+	}
+	if !decode(w, r, &input) {
+		return
+	}
+	options := SchemaOptions{Article: true, FAQ: true}
+	if input.Schema != nil {
+		options = *input.Schema
+	}
+	draft, err := h.Service.Drafts.Get(r.Context(), r.PathValue("projectId"), r.PathValue("draftId"))
+	if errors.Is(err, contenteditor.ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "This draft is no longer available.")
+		return
+	}
+	if err != nil {
+		h.internal(w, r, "load draft for schema preview", err)
+		return
+	}
+	if strings.TrimSpace(draft.Title) == "" || strings.TrimSpace(draft.Content) == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Add a title and some content first.")
+		return
+	}
+	author, hasAuthor := h.Service.publishedAuthor(r.Context(), r.PathValue("projectId"), draft.AuthorID)
+	serves := make([]map[string]any, 0, 2)
+	images := imageURLs(draft.Content)
+	image := ""
+	if len(images) > 0 {
+		image = images[0]
+	}
+	build, err := schemaPass(draft, author, hasAuthor, nil, options)
+	if err != nil {
+		h.internal(w, r, "build schema preview", err)
+		return
+	}
+	for _, block := range build.Blocks {
+		var parsed map[string]any
+		if json.Unmarshal([]byte(block), &parsed) == nil && parsed != nil {
+			serves = append(serves, parsed)
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"schemas": serves, "byline": build.Byline, "skipped": build.Skipped, "image": image})
 }
 
 // writeSiteError answers with what the customer can do about err.

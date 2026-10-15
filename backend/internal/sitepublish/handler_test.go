@@ -109,6 +109,34 @@ func TestHandlerConnectPublishAndDisconnect(t *testing.T) {
 	}
 }
 
+func TestSchemaPreviewRespectsSelectedBlocks(t *testing.T) {
+	service, _ := newTestService(t, newFakeWordPress(t), memoryDrafts{
+		"d": {ID: "d", ProjectID: "p", Title: "Guide", Content: "## FAQ\n### What is it?\nA guide.\n"},
+	})
+	mux := testMux(service, planStub{allowed: true}, owner)
+	path := "/api/v1/projects/p/content/drafts/d/schema-preview"
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"FAQ only", `{"schema":{"article":false,"faq":true}}`, "FAQPage"},
+		{"Article only", `{"schema":{"article":true,"faq":false}}`, "BlogPosting"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			status, body := post(t, mux, path, tc.body)
+			blocks, ok := body["schemas"].([]any)
+			if status != http.StatusOK || !ok || len(blocks) != 1 {
+				t.Fatalf("preview = %d %v", status, body)
+			}
+			block, ok := blocks[0].(map[string]any)
+			if !ok || block["@type"] != tc.want {
+				t.Fatalf("preview block = %v, want %s", blocks[0], tc.want)
+			}
+		})
+	}
+}
+
 func TestHandlerOnlyOwnersAndAdminsManageTheConnection(t *testing.T) {
 	wp := newFakeWordPress(t)
 	service, store := newTestService(t, wp, nil)

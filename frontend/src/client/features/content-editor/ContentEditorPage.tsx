@@ -22,6 +22,7 @@ import {
 } from "./scoring";
 import { WriterReminder } from "./EditorPanels";
 import { ArticleComposer } from "./ArticleComposer";
+import { FreeSeoEditorProvider } from "./FreeSeoEditorContext";
 import {
   ContentEditorSidePanel,
   type EditorTab,
@@ -262,96 +263,98 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const readMinutes = Math.ceil(words / 200);
 
   return (
-    <div className="space-y-5">
-      <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">
-            {draft.title || "Untitled draft"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {words.toLocaleString()} words ·{" "}
-            {words > 0 ? `about ${readMinutes} min read · ` : ""}
-            {dirty ? "Unsaved changes" : "All changes saved"}
-          </p>
+    <FreeSeoEditorProvider onDraftFieldChange={update}>
+      <div className="space-y-5">
+        <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {draft.title || "Untitled draft"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {words.toLocaleString()} words ·{" "}
+              {words > 0 ? `about ${readMinutes} min read · ` : ""}
+              {dirty ? "Unsaved changes" : "All changes saved"}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Monitor aria-hidden />
+            Preview as on website
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => saveMutation.mutate()}
+            disabled={
+              editorBusy ||
+              !isArticleContentWithinLimit(draft.content) ||
+              (!draft.title.trim() && !draft.content.trim())
+            }
+          >
+            <Save aria-hidden />
+            {saveMutation.isPending ? "Saving…" : "Save draft"}
+          </Button>
+          <Button onClick={() => setTab("publish")}>
+            <Send aria-hidden />
+            Publish
+          </Button>
         </div>
-        <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-          <Monitor aria-hidden />
-          Preview as on website
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => saveMutation.mutate()}
-          disabled={
-            editorBusy ||
-            !isArticleContentWithinLimit(draft.content) ||
-            (!draft.title.trim() && !draft.content.trim())
-          }
-        >
-          <Save aria-hidden />
-          {saveMutation.isPending ? "Saving…" : "Save draft"}
-        </Button>
-        <Button onClick={() => setTab("publish")}>
-          <Send aria-hidden />
-          Publish
-        </Button>
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="min-w-0 space-y-5">
-          <WriterReminder key={projectId} projectId={projectId} />
-          <ArticleComposer
-            draft={draft}
-            projectId={projectId}
-            onTopicLink={
-              draft.targetKeyword.trim()
-                ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`
-                : undefined
-            }
-            disabled={editorBusy}
-            onImageUploadStateChange={setImageUploadBusy}
-            onChange={update}
-            previewOpen={previewOpen}
-            onPreviewOpenChange={setPreviewOpen}
-          />
-        </section>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="min-w-0 space-y-5">
+            <WriterReminder key={projectId} projectId={projectId} />
+            <ArticleComposer
+              draft={draft}
+              projectId={projectId}
+              onTopicLink={
+                draft.targetKeyword.trim()
+                  ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`
+                  : undefined
+              }
+              disabled={editorBusy}
+              onImageUploadStateChange={setImageUploadBusy}
+              onChange={update}
+              previewOpen={previewOpen}
+              onPreviewOpenChange={setPreviewOpen}
+            />
+          </section>
 
-        <ContentEditorSidePanel
-          projectId={projectId}
-          draft={draft}
-          draftId={draftId}
-          dirty={dirty}
-          mode={mode}
-          onModeChange={setMode}
-          brief={brief}
-          onBrief={setBrief}
-          tab={tab}
-          onTabChange={setTab}
-          seo={seo}
-          aeo={aeo}
-          editorBusy={editorBusy}
-          drafts={draftsQuery.data ?? []}
-          draftsLoading={draftsQuery.isPending}
-          draftsError={draftsQuery.isError}
-          onNewDraft={startNewDraft}
-          onSelectDraft={selectDraft}
-          onDeleteDraft={(saved) => {
-            const unsaved =
-              saved.id === draftId && dirty
-                ? " Your unsaved edits will also be discarded."
-                : "";
-            if (
-              window.confirm(
-                `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
-              )
-            ) {
-              deleteMutation.mutate(saved.id);
+          <ContentEditorSidePanel
+            projectId={projectId}
+            draft={draft}
+            draftId={draftId}
+            dirty={dirty}
+            mode={mode}
+            onModeChange={setMode}
+            brief={brief}
+            onBrief={setBrief}
+            tab={tab}
+            onTabChange={setTab}
+            seo={seo}
+            aeo={aeo}
+            editorBusy={editorBusy}
+            drafts={draftsQuery.data ?? []}
+            draftsLoading={draftsQuery.isPending}
+            draftsError={draftsQuery.isError}
+            onNewDraft={startNewDraft}
+            onSelectDraft={selectDraft}
+            onDeleteDraft={(saved) => {
+              const unsaved =
+                saved.id === draftId && dirty
+                  ? " Your unsaved edits will also be discarded."
+                  : "";
+              if (
+                window.confirm(
+                  `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
+                )
+              ) {
+                deleteMutation.mutate(saved.id);
+              }
+            }}
+            onUseSuggestion={(content) =>
+              confirmSuggestionReplacement(draft.content) &&
+              update("content", content)
             }
-          }}
-          onUseSuggestion={(content) =>
-            confirmSuggestionReplacement(draft.content) &&
-            update("content", content)
-          }
-        />
+          />
+        </div>
       </div>
-    </div>
+    </FreeSeoEditorProvider>
   );
 }
