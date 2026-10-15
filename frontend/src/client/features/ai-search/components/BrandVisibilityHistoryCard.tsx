@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { AlertTriangle, TrendingUp } from "lucide-react";
 import { Line, LineChart } from "recharts";
 import {
@@ -15,6 +17,11 @@ import {
 } from "@/client/components/ui/chart";
 import type { BrandVisibilitySnapshot } from "@/types/schemas/ai-search";
 import { formatCount } from "@/client/features/search-performance/SearchPerformanceColumns";
+import {
+  analyticsSummaryQueryOptions,
+  rangeForDays,
+} from "@/client/features/analytics/analyticsApi";
+import { aiSourceRows } from "@/client/features/analytics/presentation";
 
 const chartConfig = {
   mentions: { label: "AI mentions", color: "var(--chart-1)" },
@@ -30,14 +37,19 @@ function periodLabel(period: string) {
 }
 
 export function BrandVisibilityHistoryCard({
+  projectId,
   snapshots,
   isLoading,
   isError,
 }: {
+  projectId: string;
   snapshots: BrandVisibilitySnapshot[] | undefined;
   isLoading: boolean;
   isError: boolean;
 }) {
+  const analyticsQuery = useQuery(
+    analyticsSummaryQueryOptions(projectId, rangeForDays(30, new Date())),
+  );
   const chartData = useMemo(
     () =>
       (snapshots ?? []).map((snapshot) => ({
@@ -155,6 +167,53 @@ export function BrandVisibilityHistoryCard({
             Data is saved once per month from a complete manual lookup. This
             chart uses stored results and makes no extra provider calls.
           </p>
+          <div className="border-t pt-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-medium">
+                AI referrals in Uplumo Analytics
+              </p>
+              <Link
+                to="/p/$projectId/analytics"
+                params={{ projectId }}
+                search={{ days: 30 }}
+                className="text-xs underline underline-offset-4"
+              >
+                View Analytics
+              </Link>
+            </div>
+            {analyticsQuery.isPending ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Loading tracked AI visits…
+              </p>
+            ) : analyticsQuery.isError ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Tracked referral data is unavailable right now.
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {aiSourceRows(analyticsQuery.data.aiSources)
+                  .filter((source) => source.visitors > 0)
+                  .map((source) => (
+                    <span key={source.key}>
+                      {source.label}: {formatCount(source.visitors)}
+                    </span>
+                  ))}
+                {aiSourceRows(analyticsQuery.data.aiSources).every(
+                  (source) => source.visitors === 0,
+                ) ? (
+                  <span>
+                    No AI referral visits tracked in the last 30 days. Install
+                    Uplumo Analytics to measure them.
+                  </span>
+                ) : null}
+              </div>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Citation counts and site visits are separate measures; the
+              referral totals are site-wide and are not matched to individual
+              cited pages.
+            </p>
+          </div>
         </div>
       )}
     </CardShell>
