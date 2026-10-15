@@ -8,6 +8,9 @@ Gemini and Perplexity, answers side by side). Ported from the legacy
 Redis cache only. Successful, user-triggered Brand Lookups also save one
 aggregate visibility snapshot per month in Redis for a 13-month trend; history
 reads use saved snapshots and do not call DataForSEO.
+The Brand Lookup page can also show first-party AI referral totals from Uplumo
+Analytics. Those site-wide visits are kept separate from citation counts and
+are not matched to specific cited URLs.
 
 ## Flow
 
