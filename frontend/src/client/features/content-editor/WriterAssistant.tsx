@@ -1,37 +1,58 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/client/components/ui/button";
 import { Textarea } from "@/client/components/ui/textarea";
-import { generateWritingSuggestion } from "./contentEditorApi";
+import {
+  generateWritingSuggestion,
+  getContentWriterStatus,
+} from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode } from "./scoring";
 import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
+import { useEditorSession } from "./editor-session";
 
 const actions = [
   ["outline", "Create outline"],
-  ["draft", "Write first draft"],
-  ["improve", "Improve clarity"],
-  ["rewrite", "Rewrite article"],
-  ["faq", "Create FAQs"],
+  ["write_section", "Write this section"],
+  ["fill_gap", "Fill a gap"],
+  ["answer_first", "Answer first"],
+  ["fix_top_issue", "Fix top issue"],
+  ["title_meta", "Title and meta options"],
+  ["faq", "FAQ from brief questions"],
+  ["destuff", "Remove repetition"],
+  ["fact_check", "Fact check"],
+  ["tone_language", "Tone and language"],
 ] as const;
 
 export function WriterAssistant({
   projectId,
   draft,
   mode,
+  brief,
   disabled,
   onUse,
 }: {
   projectId: string;
   draft: ContentDraftInput;
   mode: EditorMode;
+  brief: string;
   disabled: boolean;
   onUse: (content: string) => void;
 }) {
+  const { editor } = useEditorSession();
   const [instructions, setInstructions] = useState("");
   const [language, setLanguage] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const availability = useQuery({
+    queryKey: ["contentWriterStatus"],
+    queryFn: getContentWriterStatus,
+    staleTime: 60_000,
+  });
+  const writerDisabled =
+    availability.isPending ||
+    availability.isError ||
+    !availability.data?.configured;
   const mutation = useMutation({
     mutationFn: (action: (typeof actions)[number][0]) =>
       generateWritingSuggestion({
@@ -44,6 +65,7 @@ export function WriterAssistant({
           content: draft.content,
           language,
           instructions,
+          brief,
         },
       }),
     onSuccess: (suggestion) => {
@@ -69,6 +91,16 @@ export function WriterAssistant({
         Usage is charged to your organization’s AI credits. Review suggestions
         before using them; generated facts may need verification.
       </p>
+      {writerDisabled ? (
+        <p
+          role="status"
+          className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground"
+        >
+          {availability.isError
+            ? "Could not check AI writing availability. Try again shortly."
+            : availability.data?.message || "Checking AI writing availability…"}
+        </p>
+      ) : null}
       <label className="block space-y-1 text-sm">
         <span>
           Output language{" "}
@@ -109,8 +141,9 @@ export function WriterAssistant({
             variant="outline"
             disabled={
               disabled ||
+              writerDisabled ||
               mutation.isPending ||
-              (action !== "draft" && !draft.content.trim())
+              (action !== "outline" && !draft.content.trim())
             }
             onClick={() => mutation.mutate(action)}
           >
@@ -146,10 +179,43 @@ export function WriterAssistant({
             type="button"
             size="sm"
             disabled={disabled || !result.trim()}
-            onClick={() => onUse(result)}
+            onClick={() => {
+              if (editor) {
+                editor
+                  .chain()
+                  .focus()
+                  .insertContent(result, { contentType: "markdown" })
+                  .run();
+              } else {
+                onUse(result);
+              }
+            }}
           >
-            Use in article
+            Accept suggestion
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setResult("");
+              mutation.reset();
+              setError("");
+            }}
+          >
+            Discard
+          </Button>
+          {mutation.variables ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || mutation.isPending}
+              onClick={() => mutation.mutate(mutation.variables)}
+            >
+              Try again
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </section>

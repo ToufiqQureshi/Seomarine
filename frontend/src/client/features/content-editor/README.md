@@ -81,6 +81,35 @@ Google or predict rankings.
   fresh reuses the cached response. The shared query client keeps in-memory
   query data for five minutes. A full browser reload clears that cache.
 
+## Search brief
+
+- The Brief tab calls `POST /api/v1/projects/{projectId}/content/brief` with
+  `{"keyword", "refresh"}` (backend: `contenteditor/brief*.go`). Only when the
+  writer presses the button: a brief costs credits, so it never runs on its
+  own, and it is never fetched while typing.
+- One brief = a depth-30 Google SERP plus up to 8 competitor pages read with
+  DataForSEO content parsing, **one page per call** (the live endpoint takes
+  one task). Unreadable pages are skipped; fewer than 3 readable pages means
+  no brief and no charge. Worst case $0.0072 (about 9.2 credits); the customer
+  pays what DataForSEO reports, never more. Any overage is Uplumo's.
+- The cache (`go_content_brief_cache`) is shared by every workspace for 30
+  days, keyed by keyword, location and language. A cache hit is free; two
+  requests for the same key at once make one provider call (advisory lock).
+  The customer's own domain is filtered out when the brief is read, never in
+  the key. "Refresh" rebuilds it and charges the refreshing workspace.
+- Plans: Basic and up (`plans.Keywords` gate). It fails closed: no plan
+  service or a failing plan check means nothing is fetched.
+- The brief gives terms (phrases most pages use, ranked by how many pages use
+  them, with a 25th–75th percentile use range), subtopics (phrases several
+  pages use in headings), People Also Ask questions, and each page's headings,
+  word count and main text (20,000 characters max, for depth and the copy
+  check). A brief applies only to the topic it was built for; changing the
+  topic stops it applying.
+- AI writing actions get the brief's terms, questions and headings, never the
+  competitor text, to stay inside the 15-credit per-action ceiling. The AI
+  writer always uses `openai/gpt-4.1-mini`; `OPENROUTER_MODEL` configures SAM
+  only.
+
 ## Rules and limits
 
 - Do not describe readiness checks as Google's ranking algorithm or a ranking

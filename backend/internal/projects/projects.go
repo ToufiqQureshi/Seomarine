@@ -271,6 +271,21 @@ func (r Repository) Get(ctx context.Context, org, id string, archived bool) (Pro
 	return p, nil
 }
 
+// ProjectMarket returns an active project's own domain (empty when unset)
+// and its search location and language, for features that read search
+// results for the project.
+func (r Repository) ProjectMarket(ctx context.Context, org, id string) (string, int, string, error) {
+	p, err := r.Get(ctx, org, id, false)
+	if err != nil {
+		return "", 0, "", err
+	}
+	domain := ""
+	if p.Domain != nil {
+		domain = *p.Domain
+	}
+	return domain, p.LocationCode, p.LanguageCode, nil
+}
+
 // Create inserts a project for an organization.
 func (r Repository) Create(ctx context.Context, org string, in Input) (Project, error) {
 	id, err := ids.New()

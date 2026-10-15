@@ -1,8 +1,10 @@
+import { BriefPanel } from "./BriefPanel";
+import { briefForWriter } from "./brief-view";
 import { DraftsPanel } from "./EditorPanels";
 import { ScorePanel } from "./ScorePanel";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { WriterAssistant } from "./WriterAssistant";
-import type { ContentDraftSummary } from "./contentEditorApi";
+import type { ContentDraftSummary, SearchBrief } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
 
 export type EditorTab = "score" | "brief" | "outline" | "ai" | "publish";
@@ -14,11 +16,12 @@ export function ContentEditorSidePanel({
   dirty,
   mode,
   onModeChange,
+  brief,
+  onBrief,
   tab,
   onTabChange,
   seo,
   aeo,
-  activeScore,
   editorBusy,
   drafts,
   draftsLoading,
@@ -34,6 +37,8 @@ export function ContentEditorSidePanel({
   dirty: boolean;
   mode: EditorMode;
   onModeChange: (mode: EditorMode) => void;
+  brief: SearchBrief | null;
+  onBrief: (brief: SearchBrief) => void;
   tab: EditorTab;
   onTabChange: (tab: EditorTab) => void;
   seo: {
@@ -44,13 +49,6 @@ export function ContentEditorSidePanel({
     capReason?: string;
   };
   aeo: {
-    score: number;
-    checks: ScoreCheck[];
-    hasBrief: boolean;
-    blocksPublish: boolean;
-    capReason?: string;
-  };
-  activeScore: {
     score: number;
     checks: ScoreCheck[];
     hasBrief: boolean;
@@ -115,20 +113,13 @@ export function ContentEditorSidePanel({
           />
         ) : null}
         {tab === "brief" ? (
-          <section className="rounded-xl border bg-card p-4">
-            <h2 className="font-medium">Search brief</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {activeScore.hasBrief
-                ? "Brief terms, questions and competitor context are included in the score."
-                : "No search brief is loaded. This editor currently scores checks that work without competitor data."}
-            </p>
-            {!activeScore.hasBrief ? (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Term ranges, competitor depth and reader questions will appear
-                here when a brief is available.
-              </p>
-            ) : null}
-          </section>
+          <BriefPanel
+            projectId={projectId}
+            keyword={draft.targetKeyword}
+            content={draft.content}
+            brief={brief}
+            onBrief={onBrief}
+          />
         ) : null}
         {tab === "outline" ? (
           <section className="rounded-xl border bg-card p-4">
@@ -167,6 +158,7 @@ export function ContentEditorSidePanel({
               projectId={projectId}
               draft={draft}
               mode={mode}
+              brief={briefForWriter(brief)}
               disabled={editorBusy}
               onUse={onUseSuggestion}
             />
@@ -178,6 +170,7 @@ export function ContentEditorSidePanel({
             draftId={draftId}
             hasUnsavedChanges={dirty}
             blocksPublish={seo.blocksPublish}
+            targetKeyword={draft.targetKeyword}
           />
         ) : null}
       </div>

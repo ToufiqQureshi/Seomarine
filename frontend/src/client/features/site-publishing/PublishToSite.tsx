@@ -21,11 +21,13 @@ export function PublishToSite({
   draftId,
   hasUnsavedChanges,
   blocksPublish,
+  targetKeyword,
 }: {
   projectId: string;
   draftId: string | undefined;
   hasUnsavedChanges: boolean;
   blocksPublish: boolean;
+  targetKeyword: string;
 }) {
   const connectionQuery = useQuery(siteConnectionQueryOptions(projectId));
   const connection = connectionQuery.data;
@@ -58,6 +60,7 @@ export function PublishToSite({
           siteName={connection.siteName || connection.siteUrl || "your site"}
           hasUnsavedChanges={hasUnsavedChanges}
           blocksPublish={blocksPublish}
+          targetKeyword={targetKeyword}
         />
       )}
     </section>
@@ -70,12 +73,14 @@ function PublishActions({
   siteName,
   hasUnsavedChanges,
   blocksPublish,
+  targetKeyword,
 }: {
   projectId: string;
   draftId: string;
   siteName: string;
   hasUnsavedChanges: boolean;
   blocksPublish: boolean;
+  targetKeyword: string;
 }) {
   const queryClient = useQueryClient();
   const publicationOptions = sitePublicationQueryOptions(projectId, draftId);
@@ -98,6 +103,9 @@ function PublishActions({
   return (
     <div className="space-y-3">
       {published ? <PublishedLine publication={publication} /> : null}
+      {published && publication.status === "publish" ? (
+        <TrackArticle projectId={projectId} targetKeyword={targetKeyword} />
+      ) : null}
       {hasUnsavedChanges ? (
         <p className="text-sm text-muted-foreground">
           Save your changes first: the saved version is what gets published.
@@ -162,5 +170,42 @@ function PublishedLine({ publication }: { publication: SitePublication }) {
         </a>
       ) : null}
     </p>
+  );
+}
+
+/**
+ * After an article goes live, the two follow-ups that tell the writer if it
+ * worked. Both open the existing tools, which show their own credit cost
+ * before anything is checked.
+ */
+function TrackArticle({
+  projectId,
+  targetKeyword,
+}: {
+  projectId: string;
+  targetKeyword: string;
+}) {
+  const topic = targetKeyword.trim();
+  return (
+    <div className="space-y-1.5 rounded-md bg-muted px-3 py-2.5 text-sm">
+      <p className="font-medium">Track this article</p>
+      <Link
+        to="/p/$projectId/rank-tracking"
+        params={{ projectId }}
+        className="block text-primary underline-offset-4 hover:underline"
+      >
+        Track its Google position →
+      </Link>
+      {topic ? (
+        <Link
+          to="/p/$projectId/prompt-explorer"
+          params={{ projectId }}
+          search={{ q: `What is ${topic}?` }}
+          className="block text-primary underline-offset-4 hover:underline"
+        >
+          Check if AI answers mention you →
+        </Link>
+      ) : null}
+    </div>
   );
 }
