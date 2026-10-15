@@ -1,6 +1,6 @@
 import type { AuditResultsData } from "@/client/features/audit/auditApi";
 
-export type AuditChange = {
+type AuditChange = {
   url: string;
   field:
     | "Title"
