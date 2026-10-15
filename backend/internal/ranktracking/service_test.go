@@ -467,6 +467,22 @@ func (f fakeKeywordLimits) SerpDepthLimit(context.Context, string) (int, error) 
 	return f.depth, f.err
 }
 
+type barrierKeywordUsage struct {
+	Store
+	ready   chan<- struct{}
+	release <-chan struct{}
+}
+
+func (u barrierKeywordUsage) OrganizationKeywords(ctx context.Context, projectID string) (string, int, error) {
+	org, tracked, err := u.Store.OrganizationKeywords(ctx, projectID)
+	if err != nil {
+		return "", 0, err
+	}
+	u.ready <- struct{}{}
+	<-u.release
+	return org, tracked, nil
+}
+
 func TestSerpDepthStopsAtThePlanLimit(t *testing.T) {
 	ctx := context.Background()
 	pool := openPool(t)
@@ -567,5 +583,63 @@ func TestAddKeywordsStopsAtThePlanLimit(t *testing.T) {
 	}
 	if _, _, err := (Store{DB: pool}).OrganizationKeywords(ctx, "no-such-project"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("OrganizationKeywords() of an unknown project error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestConcurrentKeywordAddsRespectOrganizationPlanLimit(t *testing.T) {
+	ctx := context.Background()
+	pool := openPool(t)
+	s, project := newTestService(t, nil)
+	org := "org-" + project
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Concurrent limits', $1, now())`, org); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name, location_code, language_code) VALUES ($1, $2, 'Live', 2840, 'en')`, project, org); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM organization WHERE id = $1`, org); err != nil {
+			t.Errorf("clean organization: %v", err)
+		}
+	})
+	first := create(t, s, project, nil)
+	second := create(t, s, project, func(in *CreateInput) { in.Domain = "second.example" })
+	ready, release := make(chan struct{}, 2), make(chan struct{})
+	s.Usage = barrierKeywordUsage{Store: Store{DB: pool}, ready: ready, release: release}
+	s.Limits = fakeKeywordLimits{limit: 5}
+
+	results := make(chan AddResult, 2)
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for _, configID := range []string{first.ID, second.ID} {
+		wg.Add(1)
+		go func(configID string) {
+			defer wg.Done()
+			result, err := s.AddKeywords(ctx, project, configID, []string{"a", "b", "c", "d"}, false)
+			results <- result
+			errs <- err
+		}(configID)
+	}
+	<-ready
+	<-ready // both requests observed the same pre-insert count
+	close(release)
+	wg.Wait()
+	close(results)
+	close(errs)
+	added := 0
+	for result := range results {
+		added += result.Added
+	}
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if added != 5 {
+		t.Fatalf("concurrent requests added %d keywords, want the organization cap of 5", added)
+	}
+	_, tracked, err := (Store{DB: pool}).OrganizationKeywords(ctx, project)
+	if err != nil || tracked != 5 {
+		t.Fatalf("tracked=%d, err=%v; want exactly 5", tracked, err)
 	}
 }

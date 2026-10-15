@@ -17,7 +17,7 @@
 Done (Go, tested against a real Postgres):
 
 - Rules: `schedule.go` (next-check anchors), `cost.go` (live vs queued estimates), `keywords.go` (domain and keyword normalising, caps).
-- Storage: migration `00009`, `store.go` (pgx, no ORM). The keyword cap is enforced inside one transaction that locks the config row, so racing adds cannot pass 1,000.
+- Storage: migration `00009`, `store.go` (pgx, no ORM). The per-config keyword cap is enforced inside one transaction that locks the config row. The plan's workspace-wide cap also takes an organization advisory lock and recounts active keywords before insert, so concurrent additions across configs cannot exceed the plan.
 - Service and API: configs (list, create, update, archive, reactivate) and keywords (list, add, remove, estimate cost). Contract in `backend/api/ranktracking.yaml`; every route is a POST with a JSON body, like the audit API.
 
 - Results: latest table with compared positions, latest run, keyword history, trend buckets and the position matrix, read from completed runs only. The newest snapshot of a keyword and device wins, subset runs included; trend and matrix use full runs only. Comparison is the newest snapshot at or before the period mark, else the keyword's first snapshot. Freshness comes from the newest completed snapshot, so a newer failed run does not hide it.

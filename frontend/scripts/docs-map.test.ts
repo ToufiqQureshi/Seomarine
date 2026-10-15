@@ -24,7 +24,7 @@ function markdownFiles(dir: string): string[] {
         : markdownFiles(join(dir, entry.name));
     }
     return entry.name.endsWith(".md")
-      ? [relative(repoRoot, join(dir, entry.name))]
+      ? [relative(repoRoot, join(dir, entry.name)).replaceAll("\\", "/")]
       : [];
   });
 }

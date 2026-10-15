@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
@@ -18,6 +19,37 @@ type fakeData struct {
 	calls   atomic.Int32
 	fail    bool
 	billing bool
+}
+
+type fixedPlans struct {
+	allowed bool
+	err     error
+}
+
+func (f fixedPlans) HasPaidPlan(context.Context, string) (bool, error) { return f.allowed, f.err }
+
+func TestLocalSEORoutesCheckPlanBeforeProvider(t *testing.T) {
+	for _, tt := range []struct {
+		plans  fixedPlans
+		status int
+	}{
+		{fixedPlans{allowed: false}, http.StatusPaymentRequired},
+		{fixedPlans{err: errors.New("database unavailable")}, http.StatusServiceUnavailable},
+	} {
+		provider := &fakeData{}
+		mux := http.NewServeMux()
+		Mount(mux, &Service{Data: provider, Plans: tt.plans}, func(h http.Handler) http.Handler { return h }, func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				h.ServeHTTP(w, r.WithContext(auth.WithProjectOrganization(r.Context(), "org-1")))
+			})
+		})
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/projects/p/local-seo/rank-grid", strings.NewReader(`{}`))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		if w.Code != tt.status || provider.calls.Load() != 0 {
+			t.Fatalf("status=%d provider calls=%d, want %d and 0", w.Code, provider.calls.Load(), tt.status)
+		}
+	}
 }
 
 func (f *fakeData) LocalSERP(_ context.Context, org string, in keywords.LocalSERPInput) ([]map[string]any, error) {

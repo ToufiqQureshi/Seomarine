@@ -151,6 +151,9 @@ func run(logger *slog.Logger) (err error) {
 	// The owner's and staff's own workspaces are never limited by a plan,
 	// with or without payments configured.
 	billingRoutes.SetStaffEmails(cfg.StaffEmails)
+	// A live deployment must enforce entitlements even while checkout is
+	// unavailable. The read-only service still knows the stored subscription.
+	gateSvc := planGateService(cfg.Environment, billingSvc, billingRoutes)
 	credits.Unlimited = billingRoutes.IsUnlimited
 	// Every paid DataForSEO request and AI call goes through this guard.
 	// Without payments (self-hosted) nobody is charged credits, but the daily
@@ -230,20 +233,20 @@ func run(logger *slog.Logger) (err error) {
 		return err
 	}
 
-	rankChecks, err := buildRankChecks(ctx, logger, db, billingSvc, dfClient)
+	rankChecks, err := buildRankChecks(ctx, logger, db, gateSvc, dfClient)
 	if err != nil {
 		return err
 	}
 	crawlerAccessSvc := &crawleraccess.Service{DB: db, Secret: cfg.BetterAuthSecret}
-	auditSvc, err := buildAuditService(ctx, logger, db, rdb, billingSvc, cfg.PageSpeedAPIKey, cfg.CrUXAPIKey, crawlerAccessSvc)
+	auditSvc, err := buildAuditService(ctx, logger, db, rdb, gateSvc, cfg.PageSpeedAPIKey, cfg.CrUXAPIKey, crawlerAccessSvc)
 	if err != nil {
 		return err
 	}
 	rankTrackingService := ranktracking.NewService(ranktracking.Store{DB: db}, ranktracking.Store{DB: db}, rankLocationChecker)
 	rankTrackingService.Metrics = keywordResearch
 	rankTrackingService.Limits, rankTrackingService.Usage = billingRoutes, ranktracking.Store{DB: db}
-	if billingSvc != nil {
-		rankTrackingService.Plans = billingSvc.Gate(planCatalog.Keywords)
+	if gateSvc != nil {
+		rankTrackingService.Plans = gateSvc.Gate(planCatalog.RankTracking)
 	}
 	reportsSvc := &reports.Service{Store: reports.Repository{DB: db}}
 
@@ -268,8 +271,11 @@ func run(logger *slog.Logger) (err error) {
 		}
 	}
 	localSEOService := &localseo.Service{Data: localSEOData}
+	if gateSvc != nil {
+		localSEOService.Plans = gateSvc.Gate(planCatalog.Keywords)
+	}
 	mcpDeps := &mcp.Deps{
-		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: billingSvc,
+		Logger: logger, DB: db, Redis: rdb, Auth: authService, Billing: gateSvc,
 		Credits:   credits,
 		PublicURL: cfg.PublicURL,
 		Audit:     auditSvc, Backlinks: backlinksSvc, Domain: domainSvc, Locations: locationSvc, SavedKeywords: savedKeywordsSvc, KeywordResearch: keywordResearch, ProjectContext: projectContextSvc,
@@ -287,7 +293,7 @@ func run(logger *slog.Logger) (err error) {
 			Auth:                 authService,
 			Analytics:            analytics.NewService(db, rdb, countryLookup),
 			TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
-			Billing:              billingSvc,
+			Billing:              gateSvc,
 			BillingRoutes:        billingRoutes,
 			Branding:             branding.NewService(db),
 			OpenAIAppsChallenge:  cfg.OpenAIAppsChallenge,
@@ -360,6 +366,16 @@ func run(logger *slog.Logger) (err error) {
 	}
 	if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("serve: %w", err)
+	}
+	return nil
+}
+
+func planGateService(environment string, payments, readOnly *billing.Service) *billing.Service {
+	if payments != nil {
+		return payments
+	}
+	if environment == "production" {
+		return readOnly
 	}
 	return nil
 }
@@ -487,7 +503,7 @@ func buildGSCConnectionOperations(db *pgxpool.Pool, api *google.APIClient, oauth
 
 // buildRankChecks starts the rank check worker and returns the service that
 // queues checks. Without a DataForSEO key it returns nil and the check route
-// answers 503. Checks run ungated only when billing is not configured.
+// answers 503. Checks run ungated only in self-hosted development.
 func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool, billingSvc *billing.Service, dfClient *dataforseo.Client) (*ranktracking.Checks, error) {
 	if dfClient == nil {
 		return nil, nil
@@ -561,8 +577,8 @@ func buildAuditService(ctx context.Context, logger *slog.Logger, db *pgxpool.Poo
 		return nil, fmt.Errorf("create audit job queue: %w", err)
 	}
 
-	// Paid features gate on the plan only when billing is configured; a
-	// self-hosted deployment without billing runs audits ungated.
+	// Live deployments gate audits even when checkout is unavailable; a
+	// self-hosted development server without billing runs audits ungated.
 	var plans audit.PaidPlans
 	if billingSvc != nil {
 		plans = billingSvc.Gate(planCatalog.FullAudit)

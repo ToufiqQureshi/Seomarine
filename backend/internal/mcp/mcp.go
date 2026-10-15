@@ -18,6 +18,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/ga4"
 	"github.com/toufiqqureshi/uplumo/backend/internal/gsc"
 	"github.com/toufiqqureshi/uplumo/backend/internal/keywords"
+	"github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
 	"github.com/toufiqqureshi/uplumo/backend/internal/reports"
@@ -42,11 +43,14 @@ var corsHeaders = map[string]string{
 
 // Deps contains the services needed by the MCP dispatcher.
 type Deps struct {
-	Logger          *slog.Logger
-	DB              *pgxpool.Pool
-	Redis           *redis.Client
-	Auth            *auth.Service
-	Billing         *billing.Service
+	Logger  *slog.Logger
+	DB      *pgxpool.Pool
+	Redis   *redis.Client
+	Auth    *auth.Service
+	Billing *billing.Service
+	Plans   interface {
+		Allows(context.Context, string, plans.Feature) (bool, error)
+	}
 	Credits         CreditBalances
 	PublicURL       *url.URL
 	Audit           *audit.Service

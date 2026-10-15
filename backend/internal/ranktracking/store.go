@@ -219,10 +219,10 @@ func (s Store) OrganizationKeywords(ctx context.Context, projectID string) (stri
 	return organizationID, tracked, nil
 }
 
-// AddKeywords inserts keywords that are not stored yet and returns the ids it
-// added. It locks the config row so two requests cannot together pass
-// maxKeywords, and keeps only as many keywords as still fit.
-func (s Store) AddKeywords(ctx context.Context, configID string, keywords []NewKeyword, maxKeywords int) ([]string, error) {
+// AddKeywords inserts new keywords and returns the ids added. It locks the
+// config row for its cap and, when plan limited, an organization advisory lock
+// for the workspace-wide cap.
+func (s Store) AddKeywords(ctx context.Context, configID string, keywords []NewKeyword, maxKeywords, organizationLimit int) ([]string, error) {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin add keywords: %w", err)
@@ -236,19 +236,41 @@ func (s Store) AddKeywords(ctx context.Context, configID string, keywords []NewK
 		}
 		return nil, fmt.Errorf("lock rank tracking config: %w", err)
 	}
+	var organizationID string
+	if organizationLimit > 0 {
+		if err := tx.QueryRow(ctx, `SELECT p.organization_id FROM go_rank_tracking_configs c
+			JOIN projects p ON p.id = c.project_id WHERE c.id = $1`, configID).Scan(&organizationID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, ErrNotFound
+			}
+			return nil, fmt.Errorf("find organization for plan keyword limit: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('rank-keywords:' || $1, 0))`, organizationID); err != nil {
+			return nil, fmt.Errorf("lock organization tracked keyword limit: %w", err)
+		}
+	}
 	ids, texts, cases := make([]string, 0, len(keywords)), make([]string, 0, len(keywords)), make([]bool, 0, len(keywords))
 	for _, k := range keywords {
 		ids, texts, cases = append(ids, k.ID), append(texts, k.Keyword), append(cases, k.MatchCase)
 	}
-	// ON CONFLICT skips keywords another request stored first; the LIMIT keeps
-	// the table at or below maxKeywords.
+	// ON CONFLICT skips keywords another request stored first. The config row
+	// lock protects its cap; the organization advisory lock protects the plan
+	// cap across configs and projects.
 	rows, err := tx.Query(ctx, `INSERT INTO go_rank_tracking_keywords (id, config_id, keyword, match_case)
 		SELECT t.id, $1, t.keyword, t.match_case
 		FROM unnest($2::text[], $3::text[], $4::boolean[]) WITH ORDINALITY AS t(id, keyword, match_case, n)
 		ORDER BY t.n
-		LIMIT GREATEST($5 - (SELECT count(*) FROM go_rank_tracking_keywords WHERE config_id = $1), 0)
+		LIMIT LEAST(
+			GREATEST($5 - (SELECT count(*) FROM go_rank_tracking_keywords WHERE config_id = $1), 0),
+			CASE WHEN $6 = 0 THEN cardinality($2::text[]) ELSE GREATEST($6 - (
+				SELECT count(*) FROM go_rank_tracking_keywords k
+				JOIN go_rank_tracking_configs c ON c.id = k.config_id
+				JOIN projects p ON p.id = c.project_id
+				WHERE p.organization_id = $7 AND p.archived_at IS NULL AND c.is_active
+			), 0) END
+		)
 		ON CONFLICT (config_id, keyword) DO NOTHING
-		RETURNING id`, configID, ids, texts, cases, maxKeywords)
+		RETURNING id`, configID, ids, texts, cases, maxKeywords, organizationLimit, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("insert rank tracking keywords: %w", err)
 	}

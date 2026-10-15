@@ -3,12 +3,12 @@
 The one list of what each Uplumo plan costs, limits and includes
 (`catalog.go`). Nothing else in the repository states a price or a limit.
 
-| Plan   | Price a month | Sites | Tracked keywords | Members | Adds                                                                 |
-| ------ | ------------- | ----- | ---------------- | ------- | -------------------------------------------------------------------- |
-| Free   | ₹0            | 1     | none             | 1       | Uplumo Analytics with AI traffic detection, starter site audit       |
-| Basic  | ₹999          | 1     | 100              | 1       | Keyword research, rank tracking, Google data, full site audit        |
-| Pro    | ₹2,499        | 2     | 500              | 3       | Backlinks, competitor research, AI Visibility, AI writing assistant  |
-| Agency | ₹5,999        | 10    | 2,000            | 10      | White-label reports                                                  |
+| Plan   | Price a month | Sites | Tracked keywords | Members | Monthly credits | Adds                                                                |
+| ------ | ------------- | ----- | ---------------- | ------- | --------------- | ------------------------------------------------------------------- |
+| Free   | ₹0            | 1     | none             | 1       | 0               | Uplumo Analytics with AI traffic detection, starter site audit      |
+| Basic  | ₹999          | 1     | 100              | 1       | 4,000           | Keyword research, rank tracking, Google data, full site audit, SAM  |
+| Pro    | ₹2,499        | 2     | 500              | 3       | 10,000          | Backlinks, competitor research, AI Visibility, AI writing assistant |
+| Agency | ₹5,999        | 10    | 2,000            | 10      | 25,000          | White-label reports                                                 |
 
 ## Who reads it
 
@@ -57,4 +57,5 @@ The one list of what each Uplumo plan costs, limits and includes
   cannot add more.
 - Keyword research has no monthly cap of its own on Basic.
 - The assistant (SAM) is limited by credits, not by a feature of its own.
-  Free and Basic are granted no credits, so it does not run for them.
+  Free has no credits; Basic, Pro and Agency can use SAM from their monthly
+  grant when the AI provider is configured.

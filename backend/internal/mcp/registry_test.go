@@ -10,7 +10,70 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/plans"
 )
+
+type fixedPlanAccess struct {
+	plan string
+	err  error
+}
+
+func (f fixedPlanAccess) Allows(_ context.Context, _ string, feature plans.Feature) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	definition, _ := plans.Get(f.plan)
+	return definition.Allows(feature), nil
+}
+
+func TestEveryMCPToolHasAnExplicitPlanClassification(t *testing.T) {
+	for _, candidate := range registry() {
+		if _, ok := toolFeature(candidate.Name); !ok {
+			t.Errorf("MCP tool %q has no plan classification", candidate.Name)
+		}
+	}
+	if _, ok := toolFeature("future_paid_tool"); ok {
+		t.Fatal("unknown tools must fail closed")
+	}
+}
+
+func TestMCPPlanGateRunsBeforeToolHandler(t *testing.T) {
+	for _, tt := range []struct {
+		plan, name string
+		allowed    bool
+	}{
+		{plans.Free, "get_backlinks_overview", false},
+		{plans.Basic, "get_backlinks_overview", false},
+		{plans.Pro, "get_backlinks_overview", true},
+		{plans.Basic, "get_keyword_metrics", true},
+		{plans.Free, "get_keyword_metrics", false},
+		{plans.Free, "get_search_console_performance", false},
+		{plans.Free, "whoami", true},
+	} {
+		t.Run(tt.plan+"/"+tt.name, func(t *testing.T) {
+			called := false
+			h := newHandler(Deps{Plans: fixedPlanAccess{plan: tt.plan}})
+			candidate := &tool{Name: tt.name, Handler: func(context.Context, json.RawMessage, *callEnv) (*callResult, error) {
+				called = true
+				return textResult("ok"), nil
+			}}
+			result, outcome := h.callTool(context.Background(), candidate, json.RawMessage(`{}`), Auth{OrganizationID: "org"})
+			if called != tt.allowed || result.IsError == tt.allowed {
+				t.Fatalf("called=%v, error=%v, outcome=%s; want allowed=%v", called, result.IsError, outcome.errorCode, tt.allowed)
+			}
+		})
+	}
+	h := newHandler(Deps{Plans: fixedPlanAccess{err: errors.New("database unavailable")}})
+	called := false
+	result, _ := h.callTool(context.Background(), &tool{Name: "get_backlinks_overview", Handler: func(context.Context, json.RawMessage, *callEnv) (*callResult, error) {
+		called = true
+		return textResult("ok"), nil
+	}}, json.RawMessage(`{}`), Auth{OrganizationID: "org"})
+	if called || !result.IsError {
+		t.Fatal("failed entitlement lookup must deny the tool")
+	}
+}
 
 func TestListToolsServesOnlyTheGoRegistry(t *testing.T) {
 	h := newHandler(Deps{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})

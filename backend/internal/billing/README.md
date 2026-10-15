@@ -37,9 +37,14 @@ Rules that must never break:
 
 **Checking a plan.** A feature package asks one question through
 `Service.Gate(plans.<Feature>)`, and limits come from `SiteLimit`,
-`KeywordLimit` and `MemberLimit` (0 means no limit). On a server without
-Razorpay the gates are not wired at all, so features are open; the site and
-member limits still apply, because they are read from the stored plan.
+`KeywordLimit` and `MemberLimit` (0 means no limit). On a live server without
+Razorpay, the read-only billing service still gates features from stored
+subscription status. Self-hosted development without Razorpay leaves feature
+gates open; site and member limits still apply from the stored plan.
+The MCP dispatcher applies the same catalog to every registered tool before
+calling its handler, including SAM's in-process tool runner. New MCP tools
+must be classified explicitly; unknown tools fail closed when billing is on.
+Local SEO research routes use the Keywords gate as well.
 
 **Staff workspaces.** `STAFF_EMAILS` lists people whose own workspaces are
 never limited: a workspace whose **owner** has one of those **verified**
@@ -66,8 +71,10 @@ top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
 tracked keywords, checked weekly at its deepest depth, under 90% of its
 monthly credits.
 
-Credits are shown in the app (Billing, and next to paid actions) but not on
-the public pricing page; `internal/site` tests keep them off it.
+Monthly credits are shown on the public pricing page beside each plan's
+included tools and limits. The app shows the balance in Billing and estimated
+costs next to paid actions. `internal/site` reads the grant from the plan
+catalog, so pricing cannot drift from the amount awarded after payment.
 
 ## The spend guard
 
@@ -128,8 +135,9 @@ Never include a provider error body or a credential in a client response.
 
 The server still serves subscription status and credit balance from Postgres.
 Responses include `paymentsConfigured: false` so the client can hide payment
-actions. Checkout, cancellation and webhooks return 503. Paid-feature gates
-retain their existing self-hosted behavior until payments are configured.
+actions. Checkout, cancellation and webhooks return 503. Live deployments
+keep plan gates active from stored subscription status; local development
+retains the self-hosted open-gate behavior.
 If an existing subscriber needs to cancel while Razorpay is unavailable,
 support must arrange cancellation in Razorpay; restore credentials promptly.
 

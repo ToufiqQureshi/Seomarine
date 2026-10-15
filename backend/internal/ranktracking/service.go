@@ -21,7 +21,7 @@ type Repository interface {
 	InsertConfig(ctx context.Context, c Config) error
 	UpdateConfig(ctx context.Context, projectID, id string, u ConfigUpdate) error
 	Keywords(ctx context.Context, configID string) ([]Keyword, error)
-	AddKeywords(ctx context.Context, configID string, keywords []NewKeyword, maxKeywords int) ([]string, error)
+	AddKeywords(ctx context.Context, configID string, keywords []NewKeyword, maxKeywords, organizationLimit int) ([]string, error)
 	RemoveKeywords(ctx context.Context, configID string, ids []string) ([]string, error)
 	UpdateKeywordMetrics(ctx context.Context, configID string, updates []KeywordMetricUpdate) (int, error)
 }
@@ -423,13 +423,13 @@ func (s *Service) AddKeywords(ctx context.Context, projectID, configID string, r
 	if len(rows) == 0 {
 		return result, nil
 	}
-	room, err := s.planRoom(ctx, projectID)
+	room, organizationLimit, err := s.planRoom(ctx, projectID)
 	if err != nil {
 		return AddResult{}, err
 	}
 	// As with the per-domain cap, what fits is added and the rest is left.
 	rows = rows[:min(len(rows), room)]
-	added, err := s.Repo.AddKeywords(ctx, configID, rows, MaxKeywordsPerConfig)
+	added, err := s.Repo.AddKeywords(ctx, configID, rows, MaxKeywordsPerConfig, organizationLimit)
 	if err != nil {
 		return AddResult{}, err
 	}
@@ -457,28 +457,28 @@ func (s *Service) checkPlanDepth(ctx context.Context, projectID string, depth in
 	return nil
 }
 
-// planRoom returns how many more keywords the project's workspace may track
-// under its plan. It is read before the insert, not locked with it: two
-// requests at once can pass the plan's number by what one of them adds.
-func (s *Service) planRoom(ctx context.Context, projectID string) (int, error) {
+// planRoom returns the plan cap and an early estimate of the room left. The
+// repository repeats the organization count under a transaction lock before
+// insert, so concurrent requests cannot exceed the cap.
+func (s *Service) planRoom(ctx context.Context, projectID string) (room, planLimit int, err error) {
 	if s.Limits == nil || s.Usage == nil {
-		return MaxKeywordsPerConfig, nil
+		return MaxKeywordsPerConfig, 0, nil
 	}
 	organizationID, tracked, err := s.Usage.OrganizationKeywords(ctx, projectID)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	limit, err := s.Limits.KeywordLimit(ctx, organizationID)
 	if err != nil {
-		return 0, fmt.Errorf("check tracked keyword limit: %w", err)
+		return 0, 0, fmt.Errorf("check tracked keyword limit: %w", err)
 	}
 	if limit == 0 {
-		return MaxKeywordsPerConfig, nil
+		return MaxKeywordsPerConfig, 0, nil
 	}
 	if tracked >= limit {
-		return 0, fmt.Errorf("%w: your plan tracks up to %d keywords and you track %d. Remove some, or upgrade the plan", ErrLimit, limit, tracked)
+		return 0, limit, fmt.Errorf("%w: your plan tracks up to %d keywords and you track %d. Remove some, or upgrade the plan", ErrLimit, limit, tracked)
 	}
-	return limit - tracked, nil
+	return limit - tracked, limit, nil
 }
 
 // RemoveKeywords deletes keywords from a config and reports the ids removed.

@@ -109,13 +109,21 @@ section.band{border-top:1px solid var(--border);padding:clamp(3.5rem,8vw,6rem) 0
 .tile .num small{font-family:var(--mono);font-size:.8125rem;color:var(--lime)}
 .tile .say{font-family:var(--serif);font-size:1.625rem;line-height:1.1}
 .plan{flex:1 1 17rem;max-width:28rem}
+.plan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.plan-grid .plan{max-width:none}
 .plan.featured{border-color:var(--lime);box-shadow:8px 8px 0 var(--lime)}
 .plan-top{display:flex;justify-content:space-between;align-items:center}
 .plan h3{font-family:var(--sans);font-size:1rem;font-weight:600;letter-spacing:0}
 .price{display:flex;align-items:baseline;gap:.5rem;font-family:var(--serif);font-size:3.75rem;line-height:1;color:var(--fg)}
 .price span{font-family:var(--sans);font-size:.875rem;color:var(--muted)}
-.plan ul{margin:0;padding:0 0 0 1.25rem;display:flex;flex-direction:column;gap:.5rem;font-size:.9375rem;line-height:1.45;color:var(--muted);flex:1}
+.plan ul{margin:0;padding:0 0 0 1.25rem;display:flex;flex-direction:column;gap:.5rem;font-size:.9375rem;line-height:1.45;color:var(--muted)}
 .plan.featured ul{color:var(--soft)}
+.plan>a.btn{margin-top:auto}
+.plan-credit{padding:1rem;border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.plan-credit strong{display:block;font-size:1.25rem;line-height:1.3;color:var(--fg)}
+.plan-credit span{display:block;margin-top:.25rem;font-size:.8125rem;color:var(--muted)}
+.plan-detail-title{font-family:var(--mono);font-size:.75rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.plan ul.plan-detail-list{gap:.375rem}
 table{width:100%;border-collapse:collapse;background:var(--card)}
 th,td{padding:.9rem 1rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
 tr:last-child th,tr:last-child td{border-bottom:0}
@@ -164,6 +172,7 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 .posts h2{font-size:clamp(1.5rem,3.5vw,2rem);line-height:1.1}
 .posts p{color:var(--muted);margin-top:.5rem}
 .meta{font-family:var(--mono);font-size:.75rem;color:var(--faint);margin-top:1rem}
+@media (max-width:50rem){.plan-grid{grid-template-columns:1fr}}
 @media (max-width:30rem){.nav a.link.hide-sm{display:none}.window{box-shadow:6px 6px 0 var(--lime)}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
@@ -186,13 +195,21 @@ footer .legal{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--bord
 {{end}}
 
 {{define "plans"}}
-<div class="row">
+<div class="row{{if eq .Path "/pricing"}} plan-grid{{end}}">
 {{range .Plans}}
 <article class="card plan{{if .Featured}} featured{{end}}" aria-labelledby="plan-{{.Name}}">
 <div class="plan-top"><h3 id="plan-{{.Name}}">{{.Name}}</h3>{{if .Featured}}<span class="sticker sm">Most picked</span>{{end}}</div>
 <p class="price">{{inr .PriceINR}} <span>{{.Period}}</span></p>
 <p>{{.Summary}}</p>
-<ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
+{{if eq $.Path "/pricing"}}
+<div class="plan-credit"><strong>{{if .Credits}}{{.CreditLabel}} credits / month{{else}}No paid credits{{end}}</strong><span>{{if .Credits}}For paid tools included in this plan{{else}}Analytics and the starter audit need no credits{{end}}</span></div>
+<h4 class="plan-detail-title">Plan limits</h4>
+<ul class="plan-detail-list">{{range .Limits}}<li>{{.}}</li>{{end}}</ul>
+<h4 class="plan-detail-title">Tools included</h4>
+<ul class="plan-detail-list">{{range .IncludedTools}}<li>{{.}}</li>{{end}}</ul>
+{{else}}
+<ul>{{range .Highlights}}<li>{{.}}</li>{{end}}</ul>
+{{end}}
 <a class="btn btn-md{{if not .Featured}} btn-ghost{{end}}" href="{{$.SignUp}}">{{.CTA}}</a>
 </article>
 {{end}}
