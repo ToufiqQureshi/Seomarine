@@ -20,21 +20,21 @@ import (
 
 const (
 	// Brand lookup data refreshes daily; the provider updates it monthly.
-	brandLookupTTL        = 24 * time.Hour
-	visibilityHistoryTTL  = 400 * 24 * time.Hour
+	brandLookupTTL       = 24 * time.Hour
+	visibilityHistoryTTL = 400 * 24 * time.Hour
 	// An LLM answer is stable enough for a week.
-	promptResponseTTL     = 7 * 24 * time.Hour
+	promptResponseTTL = 7 * 24 * time.Hour
 
 	// Prompt rows give cited pages their example prompts. The ranked source
 	// rows come from top_pages, so the table is not limited to this sample.
-	mentionsPerPlatform   = 100
+	mentionsPerPlatform = 100
 
 	// Reasoning models spend hidden chain-of-thought tokens from this budget,
 	// so anything lower regularly returns a near-empty visible answer. It is
 	// the provider's per-call maximum.
 	promptMaxOutputTokens = 4096
 
-	cacheWriteTimeout     = 2 * time.Second
+	cacheWriteTimeout = 2 * time.Second
 )
 
 // Service runs brand lookups and prompt explorations for an organization's
