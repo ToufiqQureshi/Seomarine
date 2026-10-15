@@ -1,10 +1,10 @@
-import { Eye, ImagePlus, Pencil } from "lucide-react";
-import { useRef, useState } from "react";
+import type { Editor } from "@tiptap/react";
+import { Monitor } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
-import { ArticlePreview } from "./ArticlePreview";
 import { Field } from "./EditorPanels";
 import { ImageFields } from "./ImageFields";
 import { uploadContentImage } from "./contentEditorApi";
@@ -13,11 +13,9 @@ import {
   countArticleImages,
   MAX_ARTICLE_IMAGES,
 } from "./image-processing";
-import {
-  formatArticleContent,
-  insertImageContent,
-  type ArticleFormat,
-} from "./formatting";
+import { ArticleEditor } from "./visual-editor/ArticleEditor";
+import { validateImage } from "./visual-editor/image-input";
+import { PreviewDialog } from "./visual-editor/PreviewDialog";
 
 type ArticleComposerProps = {
   draft: ContentDraftInput;
@@ -111,6 +109,7 @@ export function ArticleComposer({
       </Field>
       <ArticleBody
         projectId={projectId}
+        title={draft.title}
         content={draft.content}
         disabled={disabled}
         onUploadStateChange={onImageUploadStateChange}
@@ -122,20 +121,22 @@ export function ArticleComposer({
 
 function ArticleBody({
   projectId,
+  title,
   content,
   disabled,
   onUploadStateChange,
   onChange,
 }: {
   projectId: string;
+  title: string;
   content: string;
   disabled: boolean;
   onUploadStateChange: (uploading: boolean) => void;
   onChange: (content: string) => void;
 }) {
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [imageFieldsOpen, setImageFieldsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
@@ -143,47 +144,34 @@ function ArticleBody({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState("");
 
-  const formatArticle = (format: ArticleFormat) => {
-    const editor = editorRef.current;
-    const start = editor?.selectionStart ?? content.length;
-    const end = editor?.selectionEnd ?? start;
-    const result = formatArticleContent(content, start, end, format);
-    onChange(result.content);
-    requestAnimationFrame(() => {
-      editor?.focus();
-      editor?.setSelectionRange(result.selectionStart, result.selectionEnd);
-    });
-  };
+  // A pasted or dropped image opens the panel with the file already chosen,
+  // so the writer only has to describe it: alt text is required to upload.
+  const openImagePanel = useCallback((file?: File) => {
+    setImageFieldsOpen(true);
+    setImageError("");
+    if (file) setImageFile(file);
+  }, []);
 
   const insertImage = (url: string) => {
+    if (!editor) return;
     if (countArticleImages(content) >= MAX_ARTICLE_IMAGES) {
       setImageError(
         `An article can include up to ${MAX_ARTICLE_IMAGES} images.`,
       );
-      return false;
+      return;
     }
-    const editor = editorRef.current;
-    const start = editor?.selectionStart ?? content.length;
-    const end = editor?.selectionEnd ?? start;
     try {
-      const result = insertImageContent(content, start, end, url, imageAlt);
-      onChange(result.content);
+      editor.chain().focus().setImage(validateImage(url, imageAlt)).run();
       setImageError("");
       setImageUrl("");
       setImageAlt("");
       setImageFile(undefined);
       if (imageInputRef.current) imageInputRef.current.value = "";
       setImageFieldsOpen(false);
-      requestAnimationFrame(() => {
-        editor?.focus();
-        editor?.setSelectionRange(result.selectionStart, result.selectionEnd);
-      });
-      return true;
     } catch (cause) {
       setImageError(
         cause instanceof Error ? cause.message : "Could not add this image.",
       );
-      return false;
     }
   };
 
@@ -216,130 +204,19 @@ function ArticleBody({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p id="article-editor-label" className="text-sm font-medium">
           Your article
         </p>
-        <span className="text-xs text-muted-foreground">
-          Markdown headings, lists, links, and images
-        </span>
-      </div>
-      <div
-        className="flex flex-wrap items-center gap-1"
-        role="toolbar"
-        aria-label="Article tools"
-      >
         <Button
           type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("heading")}
-        >
-          H2
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("heading3")}
-        >
-          H3
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("bold")}
-        >
-          <strong>B</strong>
-          <span className="sr-only">Bold</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("italic")}
-        >
-          <em>I</em>
-          <span className="sr-only">Italic</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("list")}
-        >
-          Bullet list
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("numbered-list")}
-        >
-          Numbered list
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("quote")}
-        >
-          Quote
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("table")}
-        >
-          Table
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          onClick={() => formatArticle("link")}
-        >
-          Link
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || previewMode}
-          aria-expanded={imageFieldsOpen}
-          onClick={() => {
-            setImageFieldsOpen((open) => !open);
-            setImageError("");
-          }}
-        >
-          <ImagePlus aria-hidden />
-          Image
-        </Button>
-        <span className="flex-1" />
-        <Button
-          type="button"
-          variant={previewMode ? "default" : "outline"}
+          variant="outline"
           size="sm"
           disabled={disabled}
-          aria-pressed={previewMode}
-          onClick={() => {
-            setPreviewMode((preview) => !preview);
-            setImageFieldsOpen(false);
-          }}
+          onClick={() => setPreviewOpen(true)}
         >
-          {previewMode ? <Pencil aria-hidden /> : <Eye aria-hidden />}
-          {previewMode ? "Write" : "Preview"}
+          <Monitor aria-hidden />
+          Preview as on website
         </Button>
       </div>
       {imageFieldsOpen ? (
@@ -359,34 +236,29 @@ function ArticleBody({
           }}
           onInsert={() => insertImage(imageUrl)}
           onUpload={() => void uploadAndInsertImage()}
+          onClose={() => {
+            setImageFieldsOpen(false);
+            setImageError("");
+          }}
         />
       ) : null}
-      {previewMode ? (
-        <article
-          aria-labelledby="article-editor-label"
-          className="min-h-[440px] overflow-auto rounded-md border bg-background p-4 leading-7"
-        >
-          {content.trim() ? (
-            <ArticlePreview content={content} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Your article preview will appear here.
-            </p>
-          )}
-        </article>
-      ) : (
-        <Textarea
-          ref={editorRef}
-          id="content-draft-body"
-          aria-labelledby="article-editor-label"
-          disabled={disabled}
-          maxLength={150_000}
-          className="min-h-[440px] resize-y font-mono leading-7"
-          value={content}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={`Start with the answer your reader needs.\n\n## Add a clear section\n\nExplain the idea in your own words...`}
-        />
-      )}
+      <ArticleEditor
+        value={content}
+        disabled={disabled}
+        onChange={onChange}
+        onAddImage={openImagePanel}
+        onReady={setEditor}
+      />
+      <p className="text-xs text-muted-foreground">
+        Select text to make it bold or add a link. Type / on an empty line for
+        headings, lists, images and tables. Paste or drag an image to upload it.
+      </p>
+      <PreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title={title}
+        content={content}
+      />
     </div>
   );
 }

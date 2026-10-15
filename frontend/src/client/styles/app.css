@@ -380,3 +380,69 @@ html[data-theme="uplumo-dark"] {
   --trend-tooltip-border: oklch(40% 0.01 255 / 0.65);
   --trend-tooltip-shadow: oklch(0% 0 0 / 0.35);
 }
+
+/* The content editor's writing surface (TipTap). Tailwind's reset removes
+   heading, list and link styles, so the article is styled here to look like
+   the published page while it is being written. */
+.article-prose {
+  @apply text-base leading-7 text-foreground;
+}
+.article-prose > * + * {
+  @apply mt-4;
+}
+.article-prose h1 {
+  @apply mt-8 font-serif text-4xl leading-tight first:mt-0;
+}
+.article-prose h2 {
+  @apply mt-8 text-2xl leading-snug font-semibold first:mt-0;
+}
+.article-prose h3 {
+  @apply mt-6 text-xl leading-snug font-semibold first:mt-0;
+}
+.article-prose h4 {
+  @apply mt-5 text-lg font-semibold first:mt-0;
+}
+.article-prose ul {
+  @apply list-disc pl-6;
+}
+.article-prose ol {
+  @apply list-decimal pl-6;
+}
+.article-prose li > p {
+  @apply my-1;
+}
+.article-prose a {
+  @apply text-primary underline underline-offset-2;
+}
+.article-prose blockquote {
+  @apply border-l-2 border-border pl-4 text-muted-foreground italic;
+}
+.article-prose code {
+  @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+}
+.article-prose pre {
+  @apply overflow-x-auto rounded-lg bg-muted p-3 font-mono text-sm;
+}
+.article-prose img {
+  @apply my-6 max-w-full rounded-md;
+}
+.article-prose img.ProseMirror-selectednode {
+  @apply outline-2 outline-offset-2 outline-ring;
+}
+.article-prose table {
+  @apply w-full border-collapse text-sm;
+}
+.article-prose th,
+.article-prose td {
+  @apply border border-border px-3 py-2 align-top;
+}
+.article-prose th {
+  @apply bg-muted text-left font-semibold;
+}
+.article-prose .selectedCell {
+  @apply bg-primary/10;
+}
+.article-prose p.is-editor-empty:first-child::before {
+  @apply pointer-events-none float-left h-0 text-muted-foreground;
+  content: attr(data-placeholder);
+}
