@@ -21,6 +21,7 @@ import {
 import { WriterReminder, WritingModeToggle } from "./EditorPanels";
 import { ArticleComposer } from "./ArticleComposer";
 import { ContentEditorSidePanel } from "./ContentEditorSidePanel";
+import { isArticleContentWithinLimit } from "./content-limits";
 
 const blankDraft: ContentDraftInput = {
   title: "",
@@ -271,7 +272,9 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={
-              editorBusy || (!draft.title.trim() && !draft.content.trim())
+              editorBusy ||
+              !isArticleContentWithinLimit(draft.content) ||
+              (!draft.title.trim() && !draft.content.trim())
             }
           >
             <Save aria-hidden />
