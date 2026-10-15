@@ -66,8 +66,10 @@ top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
 tracked keywords, checked weekly at its deepest depth, under 90% of its
 monthly credits.
 
-Credits are shown in the app (Billing, and next to paid actions) but not on
-the public pricing page; `internal/site` tests keep them off it.
+Monthly credits are shown on the public pricing page beside each plan's
+included tools and limits. The app shows the balance in Billing and estimated
+costs next to paid actions. `internal/site` reads the grant from the plan
+catalog, so pricing cannot drift from the amount awarded after payment.
 
 ## The spend guard
 

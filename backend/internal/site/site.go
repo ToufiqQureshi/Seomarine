@@ -66,10 +66,14 @@ type Plan struct {
 	Name     string
 	PriceINR int
 	// Period follows the price, e.g. "/month".
-	Period   string
-	Summary  string
-	Features []string
-	CTA      string
+	Period        string
+	Summary       string
+	Highlights    []string
+	Limits        []string
+	IncludedTools []string
+	Credits       int64
+	CreditLabel   string
+	CTA           string
 	// Featured highlights the plan most visitors should pick.
 	Featured bool
 }
@@ -401,7 +405,11 @@ func contentHash(data []byte) string {
 // formatINR formats non-negative whole rupees with Indian digit grouping:
 // the last three digits, then groups of two (₹1,00,000).
 func formatINR(rupees int) string {
-	s := strconv.Itoa(rupees)
+	return "₹" + formatNumber(int64(rupees))
+}
+
+func formatNumber(number int64) string {
+	s := strconv.FormatInt(number, 10)
 	if len(s) > 3 {
 		head, tail := s[:len(s)-3], s[len(s)-3:]
 		for len(head) > 2 {
@@ -409,7 +417,7 @@ func formatINR(rupees int) string {
 		}
 		s = head + "," + tail
 	}
-	return "₹" + s
+	return s
 }
 
 // infoPages are the plain-text public pages. Each is one template file.
@@ -440,11 +448,65 @@ func plans() []Plan {
 		}
 		result = append(result, Plan{
 			ID: item.ID, Name: item.Name, PriceINR: item.PriceINR,
-			Period: period, Summary: item.Summary, Features: item.Highlights,
+			Period: period, Summary: item.Summary, Highlights: item.Highlights,
+			Limits: planLimits(item), IncludedTools: includedTools(item),
+			Credits: item.MonthlyCredits, CreditLabel: formatNumber(item.MonthlyCredits),
 			CTA: cta, Featured: item.ID == planCatalog.Pro,
 		})
 	}
 	return result
+}
+
+func planLimits(plan planCatalog.Definition) []string {
+	limits := []string{
+		fmt.Sprintf("%d %s", plan.Sites, plural(plan.Sites, "website", "websites")),
+		fmt.Sprintf("%d %s", plan.Members, plural(plan.Members, "team member", "team members")),
+	}
+	if plan.TrackedKeywords > 0 {
+		limits = append(limits, formatNumber(int64(plan.TrackedKeywords))+" tracked keywords")
+	}
+	if plan.MaxSerpDepth > 0 {
+		limits = append(limits, fmt.Sprintf("Rank checks cover the top %d results", plan.MaxSerpDepth))
+	}
+	return limits
+}
+
+func plural(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
+
+func includedTools(plan planCatalog.Definition) []string {
+	tools := []string{"Uplumo Analytics with AI traffic detection"}
+	if plan.Allows(planCatalog.FullAudit) {
+		tools = append(tools, "Full site audit")
+	} else {
+		tools = append(tools, "Starter site audit")
+	}
+	if plan.MonthlyCredits > 0 {
+		tools = append(tools, "SAM SEO assistant")
+	}
+	for _, item := range []struct {
+		feature planCatalog.Feature
+		label   string
+	}{
+		{planCatalog.GoogleData, "Google Search Console and Google Analytics"},
+		{planCatalog.Keywords, "Keyword research and SERP analysis"},
+		{planCatalog.RankTracking, "Rank tracking"},
+		{planCatalog.Publishing, "Publish articles to WordPress"},
+		{planCatalog.Backlinks, "Backlink research"},
+		{planCatalog.DomainResearch, "Competitor and domain research"},
+		{planCatalog.AIVisibility, "AI Visibility"},
+		{planCatalog.AIWriting, "AI writing assistant"},
+		{planCatalog.WhiteLabel, "White-label reports"},
+	} {
+		if plan.Allows(item.feature) {
+			tools = append(tools, item.label)
+		}
+	}
+	return tools
 }
 
 // price returns the monthly price of the plan with id.
@@ -482,7 +544,14 @@ func comparison() []CompareRow {
 	return []CompareRow{
 		row("Websites", func(plan planCatalog.Definition) string { return strconv.Itoa(plan.Sites) }),
 		row("Team members", func(plan planCatalog.Definition) string { return strconv.Itoa(plan.Members) }),
+		row("Monthly credits", func(plan planCatalog.Definition) string { return formatNumber(plan.MonthlyCredits) }),
 		row("Uplumo Analytics with AI traffic detection", func(planCatalog.Definition) string { return "Included" }),
+		row("SAM SEO assistant", func(plan planCatalog.Definition) string {
+			if plan.MonthlyCredits > 0 {
+				return "Included"
+			}
+			return "—"
+		}),
 		row("Site audit", func(plan planCatalog.Definition) string {
 			if plan.Allows(planCatalog.FullAudit) {
 				return "Full"
@@ -496,6 +565,12 @@ func comparison() []CompareRow {
 				return "—"
 			}
 			return strings.TrimPrefix(formatINR(plan.TrackedKeywords), "₹") + " keywords"
+		}),
+		row("Rank check depth", func(plan planCatalog.Definition) string {
+			if plan.MaxSerpDepth == 0 {
+				return "—"
+			}
+			return fmt.Sprintf("Top %d", plan.MaxSerpDepth)
 		}),
 		row("Backlink and competitor research", included(planCatalog.Backlinks)),
 		row("AI Visibility", included(planCatalog.AIVisibility)),

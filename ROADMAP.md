@@ -106,9 +106,10 @@ Secrets go into Railway variables only, never into the repo or chat.
 - Name: Uplumo. Domain: uplumo.com. Hosting: Railway. Redis: yes.
 - Launch market: India only, prices in INR. USD pricing comes later.
 - GST: not registered at launch, so prices carry no tax line.
-- Credits (owner, 13 October 2026). Every paid data lookup and AI call
-  spends credits; customers see them in the app (Billing, and "about N
-  credits" next to each paid action) but not on the public pricing page.
+- Credits (owner, 13 October 2026; public pricing clarified 15 October 2026).
+  Every paid data lookup and AI call spends credits; customers see each plan's
+  monthly grant on the pricing page and see their balance and estimated action
+  costs in the app.
   Monthly credits: Basic 4,000, Pro 10,000, Agency 25,000 (a credit is 1/1280
   of a dollar of provider cost). No credits means no request is sent. Each
   workspace may spend at most a third of its monthly credits in a day, so one
@@ -139,8 +140,6 @@ Secrets go into Railway variables only, never into the repo or chat.
 
 ## Open decisions for the owner
 
-- Credits on the public pricing page: today only in the app. Showing "10,000
-  credits a month" would set expectations; hiding it avoids explaining them.
 - The typical costs on Billing (`backend/internal/billing/costs.go`) are from
   published prices; check them against the first real DataForSEO and
   OpenRouter invoices.
