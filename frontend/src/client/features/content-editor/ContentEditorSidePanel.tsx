@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { DraftsPanel, ReadinessPanel, SearchPreview } from "./EditorPanels";
+import { DraftsPanel } from "./EditorPanels";
+import { ScorePanel } from "./ScorePanel";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { WriterAssistant } from "./WriterAssistant";
 import type { ContentDraftSummary } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
 
-type EditorTab = "score" | "brief" | "outline" | "ai" | "publish";
+export type EditorTab = "score" | "brief" | "outline" | "ai" | "publish";
 
 export function ContentEditorSidePanel({
   projectId,
@@ -13,6 +13,9 @@ export function ContentEditorSidePanel({
   draftId,
   dirty,
   mode,
+  onModeChange,
+  tab,
+  onTabChange,
   seo,
   aeo,
   activeScore,
@@ -30,6 +33,9 @@ export function ContentEditorSidePanel({
   draftId?: string;
   dirty: boolean;
   mode: EditorMode;
+  onModeChange: (mode: EditorMode) => void;
+  tab: EditorTab;
+  onTabChange: (tab: EditorTab) => void;
   seo: {
     score: number;
     checks: ScoreCheck[];
@@ -60,7 +66,6 @@ export function ContentEditorSidePanel({
   onDeleteDraft: (draft: ContentDraftSummary) => void;
   onUseSuggestion: (content: string) => void;
 }) {
-  const [tab, setTab] = useState<EditorTab>("score");
   const outline = draft.content.split("\n").flatMap((line) => {
     const match = line.trim().match(/^(#{1,3})\s+(.+)$/u);
     return match ? [{ level: match[1].length, text: match[2] }] : [];
@@ -88,7 +93,7 @@ export function ContentEditorSidePanel({
             role="tab"
             aria-selected={tab === item.id}
             aria-controls="editor-tab-panel"
-            onClick={() => setTab(item.id)}
+            onClick={() => onTabChange(item.id)}
             className={`min-h-10 rounded-md px-2 text-xs font-medium sm:text-sm ${tab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {item.label}
@@ -102,15 +107,11 @@ export function ContentEditorSidePanel({
         className="min-w-0 space-y-3"
       >
         {tab === "score" ? (
-          <ReadinessPanel
+          <ScorePanel
             mode={mode}
+            onModeChange={onModeChange}
             seo={seo}
             aeo={aeo}
-            activeScore={activeScore.score}
-            checks={activeScore.checks}
-            hasBrief={activeScore.hasBrief}
-            blocksPublish={activeScore.blocksPublish}
-            capReason={activeScore.capReason}
           />
         ) : null}
         {tab === "brief" ? (
@@ -180,14 +181,6 @@ export function ContentEditorSidePanel({
           />
         ) : null}
       </div>
-      <details className="group">
-        <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
-          How it looks on Google
-        </summary>
-        <div className="pt-3">
-          <SearchPreview draft={draft} />
-        </div>
-      </details>
       <details className="group">
         <summary className="cursor-pointer list-none rounded-lg border bg-card px-4 py-3 text-sm font-medium marker:hidden">
           Your drafts

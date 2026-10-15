@@ -1,11 +1,9 @@
 import type { Editor } from "@tiptap/react";
-import { Monitor } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
-import { Field } from "./EditorPanels";
+import { Field, SearchPreview } from "./EditorPanels";
 import { ImageFields } from "./ImageFields";
 import { uploadContentImage } from "./contentEditorApi";
 import {
@@ -24,6 +22,8 @@ type ArticleComposerProps = {
   disabled: boolean;
   onImageUploadStateChange: (uploading: boolean) => void;
   onChange: (field: keyof ContentDraftInput, value: string) => void;
+  previewOpen: boolean;
+  onPreviewOpenChange: (open: boolean) => void;
 };
 
 export function ArticleComposer({
@@ -33,84 +33,110 @@ export function ArticleComposer({
   disabled,
   onImageUploadStateChange,
   onChange,
+  previewOpen,
+  onPreviewOpenChange,
 }: ArticleComposerProps) {
   return (
-    <div className="space-y-5 rounded-xl border bg-card p-4 md:p-6">
-      <Field
-        id="content-draft-title"
-        label="Article title"
-        hint={`${draft.title.length}/180`}
-      >
-        <Input
+    <div className="space-y-5 rounded-xl border bg-card p-4 md:p-8">
+      <div>
+        <label
+          htmlFor="content-draft-title"
+          className="label-mono text-muted-foreground"
+        >
+          Article title · {draft.title.length}/180
+        </label>
+        <input
           id="content-draft-title"
           disabled={disabled}
           maxLength={180}
           value={draft.title}
           onChange={(event) => onChange("title", event.target.value)}
           placeholder="What should readers learn?"
+          className="mt-1 block w-full border-0 bg-transparent p-0 font-serif text-4xl leading-tight outline-none placeholder:text-muted-foreground/60 md:text-5xl"
         />
-      </Field>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Field
-            id="content-draft-keyword"
-            label="Target topic"
-            hint="Main search topic"
-          >
-            <Input
-              id="content-draft-keyword"
-              disabled={disabled}
-              maxLength={120}
-              value={draft.targetKeyword}
-              onChange={(event) =>
-                onChange("targetKeyword", event.target.value)
-              }
-              placeholder="e.g. technical SEO"
-            />
-          </Field>
-          {onTopicLink ? (
-            <a
-              className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
-              href={onTopicLink}
-            >
-              See keyword data →
-            </a>
-          ) : null}
-        </div>
-        <Field
-          id="content-draft-slug"
-          label="Page URL slug"
-          hint="Short and readable"
-        >
-          <Input
-            id="content-draft-slug"
-            disabled={disabled}
-            maxLength={300}
-            value={draft.slug}
-            onChange={(event) => onChange("slug", event.target.value)}
-            placeholder="technical-seo-guide"
-          />
-        </Field>
+        <p className="mt-1 text-xs text-muted-foreground">
+          This is the page&apos;s H1. Use H2 and H3 for sections inside the
+          article.
+        </p>
       </div>
-      <Field
-        id="content-draft-meta"
-        label="Search description"
-        hint={`${draft.metaDescription.length}/320`}
-      >
-        <Textarea
-          id="content-draft-meta"
+      <div className="flex flex-wrap items-center gap-2">
+        <label
+          htmlFor="content-draft-keyword"
+          className="label-mono text-muted-foreground"
+        >
+          Target topic
+        </label>
+        <Input
+          id="content-draft-keyword"
           disabled={disabled}
-          maxLength={320}
-          rows={3}
-          value={draft.metaDescription}
-          onChange={(event) => onChange("metaDescription", event.target.value)}
-          placeholder="Summarize the page clearly for searchers."
+          maxLength={120}
+          value={draft.targetKeyword}
+          onChange={(event) => onChange("targetKeyword", event.target.value)}
+          placeholder="e.g. technical SEO"
+          className="h-9 w-64 max-w-full rounded-full"
         />
-      </Field>
+        {onTopicLink ? (
+          <a
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+            href={onTopicLink}
+          >
+            See keyword data →
+          </a>
+        ) : null}
+      </div>
+      <details className="group border-t pt-3">
+        <summary className="cursor-pointer list-none text-sm font-medium marker:hidden">
+          <span className="mr-2 inline-block transition-transform group-open:rotate-90">
+            ›
+          </span>
+          How it looks on Google
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            URL and search description
+          </span>
+        </summary>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <div className="space-y-4">
+            <Field
+              id="content-draft-slug"
+              label="Page URL slug"
+              hint="Short and readable"
+            >
+              <Input
+                id="content-draft-slug"
+                disabled={disabled}
+                maxLength={300}
+                value={draft.slug}
+                onChange={(event) => onChange("slug", event.target.value)}
+                placeholder="technical-seo-guide"
+              />
+            </Field>
+            <Field
+              id="content-draft-meta"
+              label="Search description"
+              hint={`${draft.metaDescription.length}/320`}
+            >
+              <Textarea
+                id="content-draft-meta"
+                disabled={disabled}
+                maxLength={320}
+                rows={3}
+                value={draft.metaDescription}
+                onChange={(event) =>
+                  onChange("metaDescription", event.target.value)
+                }
+                placeholder="Summarize the page clearly for searchers."
+              />
+            </Field>
+          </div>
+          <SearchPreview draft={draft} />
+        </div>
+      </details>
       <ArticleBody
         projectId={projectId}
         title={draft.title}
         content={draft.content}
+        previewOpen={previewOpen}
+        onPreviewOpenChange={onPreviewOpenChange}
         disabled={disabled}
         onUploadStateChange={onImageUploadStateChange}
         onChange={(content) => onChange("content", content)}
@@ -126,9 +152,13 @@ function ArticleBody({
   disabled,
   onUploadStateChange,
   onChange,
+  previewOpen,
+  onPreviewOpenChange,
 }: {
   projectId: string;
   title: string;
+  previewOpen: boolean;
+  onPreviewOpenChange: (open: boolean) => void;
   content: string;
   disabled: boolean;
   onUploadStateChange: (uploading: boolean) => void;
@@ -136,7 +166,6 @@ function ArticleBody({
 }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [imageFieldsOpen, setImageFieldsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
@@ -204,21 +233,9 @@ function ArticleBody({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p id="article-editor-label" className="text-sm font-medium">
-          Your article
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={() => setPreviewOpen(true)}
-        >
-          <Monitor aria-hidden />
-          Preview as on website
-        </Button>
-      </div>
+      <p id="article-editor-label" className="text-sm font-medium">
+        Your article
+      </p>
       {imageFieldsOpen ? (
         <ImageFields
           disabled={disabled}
@@ -255,7 +272,7 @@ function ArticleBody({
       </p>
       <PreviewDialog
         open={previewOpen}
-        onOpenChange={setPreviewOpen}
+        onOpenChange={onPreviewOpenChange}
         title={title}
         content={content}
       />

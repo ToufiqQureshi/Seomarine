@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { Monitor, Save, Send } from "lucide-react";
 import { sortBy } from "remeda";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -18,9 +18,12 @@ import {
   type ContentDraftInput,
   type EditorMode,
 } from "./scoring";
-import { WriterReminder, WritingModeToggle } from "./EditorPanels";
+import { WriterReminder } from "./EditorPanels";
 import { ArticleComposer } from "./ArticleComposer";
-import { ContentEditorSidePanel } from "./ContentEditorSidePanel";
+import {
+  ContentEditorSidePanel,
+  type EditorTab,
+} from "./ContentEditorSidePanel";
 
 const blankDraft: ContentDraftInput = {
   title: "",
@@ -58,6 +61,8 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     queryFn: () => listContentDrafts({ data: { projectId } }),
   });
   const [mode, setMode] = useState<EditorMode>("seo");
+  const [tab, setTab] = useState<EditorTab>("score");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [draft, setDraft] = useState<ContentDraftInput>(blankDraft);
   const [draftId, setDraftId] = useState<string>();
   const [savedSnapshot, setSavedSnapshot] = useState(blankDraft);
@@ -241,78 +246,93 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   const readMinutes = Math.ceil(words / 200);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
-      <section className="min-w-0 space-y-5">
-        <WriterReminder key={projectId} projectId={projectId} />
-        <WritingModeToggle mode={mode} onChange={setMode} />
-        <ArticleComposer
-          draft={draft}
-          projectId={projectId}
-          onTopicLink={
-            draft.targetKeyword.trim()
-              ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`
-              : undefined
-          }
-          disabled={editorBusy}
-          onImageUploadStateChange={setImageUploadBusy}
-          onChange={update}
-        />
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
-          <div>
-            <p className="text-sm font-medium">
-              {draft.title || "Untitled draft"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {words.toLocaleString()} words ·{" "}
-              {words > 0 ? `about ${readMinutes} min read · ` : ""}
-              {dirty ? "Unsaved changes" : "All changes saved"}
-            </p>
-          </div>
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={
-              editorBusy || (!draft.title.trim() && !draft.content.trim())
-            }
-          >
-            <Save aria-hidden />
-            {saveMutation.isPending ? "Saving…" : "Save draft"}
-          </Button>
+    <div className="space-y-5">
+      <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">
+            {draft.title || "Untitled draft"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {words.toLocaleString()} words ·{" "}
+            {words > 0 ? `about ${readMinutes} min read · ` : ""}
+            {dirty ? "Unsaved changes" : "All changes saved"}
+          </p>
         </div>
-      </section>
-
-      <ContentEditorSidePanel
-        projectId={projectId}
-        draft={draft}
-        draftId={draftId}
-        dirty={dirty}
-        mode={mode}
-        seo={seo}
-        aeo={aeo}
-        activeScore={activeScore}
-        editorBusy={editorBusy}
-        drafts={draftsQuery.data ?? []}
-        draftsLoading={draftsQuery.isPending}
-        draftsError={draftsQuery.isError}
-        onNewDraft={startNewDraft}
-        onSelectDraft={selectDraft}
-        onDeleteDraft={(saved) => {
-          const unsaved =
-            saved.id === draftId && dirty
-              ? " Your unsaved edits will also be discarded."
-              : "";
-          if (
-            window.confirm(
-              `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
-            )
-          ) {
-            deleteMutation.mutate(saved.id);
+        <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+          <Monitor aria-hidden />
+          Preview as on website
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => saveMutation.mutate()}
+          disabled={
+            editorBusy || (!draft.title.trim() && !draft.content.trim())
           }
-        }}
-        onUseSuggestion={(content) =>
-          confirmSuggestionReplacement(draft.content) &&
-          update("content", content)
-        }
-      />
+        >
+          <Save aria-hidden />
+          {saveMutation.isPending ? "Saving…" : "Save draft"}
+        </Button>
+        <Button onClick={() => setTab("publish")}>
+          <Send aria-hidden />
+          Publish
+        </Button>
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="min-w-0 space-y-5">
+          <WriterReminder key={projectId} projectId={projectId} />
+          <ArticleComposer
+            draft={draft}
+            projectId={projectId}
+            onTopicLink={
+              draft.targetKeyword.trim()
+                ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`
+                : undefined
+            }
+            disabled={editorBusy}
+            onImageUploadStateChange={setImageUploadBusy}
+            onChange={update}
+            previewOpen={previewOpen}
+            onPreviewOpenChange={setPreviewOpen}
+          />
+        </section>
+
+        <ContentEditorSidePanel
+          projectId={projectId}
+          draft={draft}
+          draftId={draftId}
+          dirty={dirty}
+          mode={mode}
+          onModeChange={setMode}
+          tab={tab}
+          onTabChange={setTab}
+          seo={seo}
+          aeo={aeo}
+          activeScore={activeScore}
+          editorBusy={editorBusy}
+          drafts={draftsQuery.data ?? []}
+          draftsLoading={draftsQuery.isPending}
+          draftsError={draftsQuery.isError}
+          onNewDraft={startNewDraft}
+          onSelectDraft={selectDraft}
+          onDeleteDraft={(saved) => {
+            const unsaved =
+              saved.id === draftId && dirty
+                ? " Your unsaved edits will also be discarded."
+                : "";
+            if (
+              window.confirm(
+                `Delete "${saved.title || "Untitled draft"}"? This cannot be undone.${unsaved}`,
+              )
+            ) {
+              deleteMutation.mutate(saved.id);
+            }
+          }}
+          onUseSuggestion={(content) =>
+            confirmSuggestionReplacement(draft.content) &&
+            update("content", content)
+          }
+        />
+      </div>
     </div>
   );
 }
