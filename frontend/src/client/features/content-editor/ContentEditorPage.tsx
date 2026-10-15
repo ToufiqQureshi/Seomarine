@@ -24,6 +24,7 @@ import {
   ContentEditorSidePanel,
   type EditorTab,
 } from "./ContentEditorSidePanel";
+import { isArticleContentWithinLimit } from "./content-limits";
 
 const blankDraft: ContentDraftInput = {
   title: "",
@@ -266,7 +267,9 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           variant="outline"
           onClick={() => saveMutation.mutate()}
           disabled={
-            editorBusy || (!draft.title.trim() && !draft.content.trim())
+            editorBusy ||
+            !isArticleContentWithinLimit(draft.content) ||
+            (!draft.title.trim() && !draft.content.trim())
           }
         >
           <Save aria-hidden />
