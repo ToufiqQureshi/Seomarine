@@ -28,12 +28,14 @@ export function WriterAssistant({
   projectId,
   draft,
   mode,
+  brief,
   disabled,
   onUse,
 }: {
   projectId: string;
   draft: ContentDraftInput;
   mode: EditorMode;
+  brief: string;
   disabled: boolean;
   onUse: (content: string) => void;
 }) {
@@ -63,6 +65,7 @@ export function WriterAssistant({
           content: draft.content,
           language,
           instructions,
+          brief,
         },
       }),
     onSuccess: (suggestion) => {

@@ -60,7 +60,7 @@ func TestDoBudgetedUsesOneHoldAndReleasesOnAnyProviderFailure(t *testing.T) {
 	for _, failSecond := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "second call fails"}[failSecond], func(t *testing.T) {
 			calls := 0
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				calls++
 				if failSecond && calls == 2 {
 					http.Error(w, "provider down", http.StatusBadGateway)
@@ -107,8 +107,8 @@ func TestDoBudgetedCapsProviderOverageAtReservedCeiling(t *testing.T) {
 		_, err := request(http.MethodPost, "/v3/serp/google/organic/live/advanced", []byte(`[{}]`), false)
 		return err
 	})
-	if !errors.Is(err, ErrBudgetExceeded) {
-		t.Fatalf("DoBudgeted() error = %v, want ErrBudgetExceeded", err)
+	if err != nil {
+		t.Fatalf("DoBudgeted() error = %v, want the completed work returned", err)
 	}
 	if got := guard.Settled(); len(got) != 1 || got[0] != 0.007 {
 		t.Fatalf("settled = %v, want the approved ceiling", got)

@@ -48,14 +48,22 @@ const (
 	// WriterRewrite asks the assistant to rewrite existing content.
 	WriterRewrite WriterAction = "rewrite"
 	// WriterFAQ asks the assistant to create frequently asked questions.
-	WriterFAQ          WriterAction = "faq"
-	WriterSection      WriterAction = "write_section"
-	WriterFillGap      WriterAction = "fill_gap"
-	WriterAnswerFirst  WriterAction = "answer_first"
-	WriterFixTopIssue  WriterAction = "fix_top_issue"
-	WriterTitleMeta    WriterAction = "title_meta"
-	WriterDestuff      WriterAction = "destuff"
-	WriterFactCheck    WriterAction = "fact_check"
+	WriterFAQ WriterAction = "faq"
+	// WriterSection writes one section under a heading, from the brief.
+	WriterSection WriterAction = "write_section"
+	// WriterFillGap covers a term or question the article is missing.
+	WriterFillGap WriterAction = "fill_gap"
+	// WriterAnswerFirst rewrites the intro as a 40–80 word direct answer.
+	WriterAnswerFirst WriterAction = "answer_first"
+	// WriterFixTopIssue fixes the highest-impact failing check.
+	WriterFixTopIssue WriterAction = "fix_top_issue"
+	// WriterTitleMeta suggests title and search description pairs.
+	WriterTitleMeta WriterAction = "title_meta"
+	// WriterDestuff removes unnatural repetition of the topic.
+	WriterDestuff WriterAction = "destuff"
+	// WriterFactCheck flags unsupported claims, citing only brief URLs.
+	WriterFactCheck WriterAction = "fact_check"
+	// WriterToneLanguage rewrites in the requested tone and language.
 	WriterToneLanguage WriterAction = "tone_language"
 )
 
@@ -98,7 +106,6 @@ type WriterAgent struct {
 	LLM interface {
 		Stream(context.Context, openrouter.Request, openrouter.Handler) (openrouter.Result, error)
 	}
-	Model  string
 	Meter  WriterMeter
 	Plans  WriterPlanAccess
 	Logger *slog.Logger
@@ -121,13 +128,9 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 			return WriterOutput{}, ErrWriterPlanRequired
 		}
 	}
-	model := strings.TrimSpace(a.Model)
-	if model == "" {
-		model = writerModel
-	}
-	if model != writerModel {
-		return WriterOutput{}, ErrWriterUnavailable
-	}
+	// Pinned to the approved model so the per-action credit ceilings hold.
+	// OPENROUTER_MODEL configures SAM and must not change these prices.
+	model := writerModel
 	maxTokens := writerOutputLimit(input.Action)
 	req := openrouter.Request{
 		Model: model,
@@ -189,6 +192,8 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 		logger.ErrorContext(ctx, "content writing provider cost exceeded the approved per-action ceiling", "reported_usd", cost, "ceiling_usd", writerMaxChargeUSD)
 		cost = writerMaxChargeUSD
 	}
+	// Fail closed: if the charge cannot be recorded, the suggestion is not
+	// returned, so a billing outage cannot become free AI.
 	if err := a.settle(ctx, hold, cost); err != nil {
 		return WriterOutput{}, fmt.Errorf("settle writing assistant credits: %w", err)
 	}

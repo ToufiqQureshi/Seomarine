@@ -2,6 +2,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EditorSessionProvider } from "../editor-session";
 import { ArticleEditor } from "./ArticleEditor";
 
 // React only flushes effects inside act() when this flag is set.
@@ -17,13 +18,17 @@ describe("ArticleEditor", () => {
   const render = (value: string, disabled: boolean) =>
     act(() => {
       root.render(
-        createElement(ArticleEditor, {
-          value,
-          disabled,
-          onChange,
-          onAddImage: () => {},
-          onReady: () => {},
-        }),
+        createElement(
+          EditorSessionProvider,
+          null,
+          createElement(ArticleEditor, {
+            value,
+            disabled,
+            onChange,
+            onAddImage: () => {},
+            onReady: () => {},
+          }),
+        ),
       );
     });
 
@@ -57,15 +62,19 @@ describe("ArticleEditor", () => {
       null;
     act(() => {
       root.render(
-        createElement(ArticleEditor, {
-          value: savedArticle,
-          disabled: false,
-          onChange,
-          onAddImage: () => {},
-          onReady: (instance) => {
-            editor = instance;
-          },
-        }),
+        createElement(
+          EditorSessionProvider,
+          null,
+          createElement(ArticleEditor, {
+            value: savedArticle,
+            disabled: false,
+            onChange,
+            onAddImage: () => {},
+            onReady: (instance) => {
+              editor = instance;
+            },
+          }),
+        ),
       );
     });
     act(() => {

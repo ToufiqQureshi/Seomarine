@@ -62,7 +62,66 @@ type WriterRequest = Pick<
   mode: "seo" | "aeo";
   language: string;
   instructions: string;
+  /** Terms, questions and competitor headings from the search brief. */
+  brief: string;
 };
+
+const searchBriefSchema = z.object({
+  keyword: z.string(),
+  locationCode: z.number().int(),
+  languageCode: z.string(),
+  fetchedAt: z.string(),
+  questions: z
+    .array(z.string())
+    .nullable()
+    .transform((v) => v ?? []),
+  competitors: z
+    .array(
+      z.object({
+        url: z.string(),
+        title: z.string(),
+        headings: z
+          .array(z.string())
+          .nullable()
+          .transform((v) => v ?? []),
+        wordCount: z.number().int().nonnegative(),
+        text: z.string(),
+      }),
+    )
+    .nullable()
+    .transform((v) => v ?? []),
+  terms: z
+    .array(
+      z.object({
+        term: z.string(),
+        min: z.number().int().nonnegative(),
+        max: z.number().int().nonnegative(),
+        domains: z.number().int().nonnegative(),
+      }),
+    )
+    .nullable()
+    .transform((v) => v ?? []),
+  subtopics: z
+    .array(z.string())
+    .nullable()
+    .transform((v) => v ?? []),
+});
+
+export type SearchBrief = z.infer<typeof searchBriefSchema>;
+
+/** Builds or reads the shared search brief. A cache miss or refresh costs credits. */
+export function fetchSearchBrief({
+  data,
+}: {
+  data: { projectId: string; keyword: string; refresh: boolean };
+}) {
+  return apiRequest(
+    `/api/v1/projects/${encodeURIComponent(data.projectId)}/content/brief`,
+    searchBriefSchema,
+    "POST",
+    { keyword: data.keyword, refresh: data.refresh },
+  );
+}
 
 export function listContentDrafts({ data }: { data: { projectId: string } }) {
   return apiRequest(

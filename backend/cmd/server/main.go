@@ -317,6 +317,8 @@ func run(logger *slog.Logger) (err error) {
 			ContentEditor:           &contenteditor.Repository{DB: db},
 			SitePublish:             sitePublish,
 			ContentWriter:           buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
+			ContentBriefs:           buildContentBriefs(db, dfClient),
+			ProjectsRepo:            projects.Repository{DB: db},
 			ContentImages:           contentImages,
 			ContentImageLimiter:     contenteditor.RedisImageUploadLimiter{Client: rdb},
 			SAMSessions:             &sam.Service{Store: sam.Repository{DB: db}},
@@ -331,7 +333,7 @@ func run(logger *slog.Logger) (err error) {
 			PublicURL:               cfg.PublicURL,
 			DataForSEOConfigured:    strings.TrimSpace(cfg.DataForSEOAPIKey) != "",
 			OpenRouterConfigured:    strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
-			ContentWriterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "" && (strings.TrimSpace(cfg.OpenRouterModel) == "" || strings.TrimSpace(cfg.OpenRouterModel) == "openai/gpt-4.1-mini"),
+			ContentWriterConfigured: strings.TrimSpace(cfg.OpenRouterAPIKey) != "",
 			Credits:                 credits,
 			MCP:                     mcpDeps,
 			SavedKeywords:           savedKeywordsSvc,
@@ -404,10 +406,22 @@ func buildContentWriter(cfg config.Config, logger *slog.Logger, meter contentedi
 	}
 	return &contenteditor.WriterAgent{
 		LLM:    &openrouter.Client{APIKey: cfg.OpenRouterAPIKey},
-		Model:  cfg.OpenRouterModel,
 		Meter:  meter,
 		Plans:  plans,
 		Logger: logger,
+	}
+}
+
+// buildContentBriefs wires search briefs. Without DataForSEO there is no
+// brief service; the route then answers "not available yet". It returns a nil
+// interface, never a typed nil, so that check works.
+func buildContentBriefs(db *pgxpool.Pool, dfClient *dataforseo.Client) contenteditor.BriefGetter {
+	if dfClient == nil {
+		return nil
+	}
+	return contenteditor.BriefService{
+		Cache:    contenteditor.PostgresBriefCache{DB: db},
+		Provider: contenteditor.DataForSEOBriefProvider{Client: dfClient},
 	}
 }
 

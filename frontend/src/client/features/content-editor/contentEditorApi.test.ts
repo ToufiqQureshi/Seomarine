@@ -109,6 +109,7 @@ describe("content editor API contract", () => {
           content: "Existing facts",
           language: "English",
           instructions: "Be concise",
+          brief: "Terms: channel manager",
         },
       }),
     ).resolves.toEqual({ content: "## Draft outline" });
@@ -124,6 +125,7 @@ describe("content editor API contract", () => {
           content: "Existing facts",
           language: "English",
           instructions: "Be concise",
+          brief: "Terms: channel manager",
         }),
       },
     ]);

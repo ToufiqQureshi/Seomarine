@@ -12,7 +12,9 @@ import {
   saveContentDraft,
   type ContentDraft,
   type ContentDraftSummary,
+  type SearchBrief,
 } from "./contentEditorApi";
+import { briefMatchesTopic, toScoringBrief } from "./brief-view";
 import {
   scoreContent,
   type ContentDraftInput,
@@ -85,9 +87,22 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-  const seo = useMemo(() => scoreContent("seo", scoredDraft), [scoredDraft]);
-  const aeo = useMemo(() => scoreContent("aeo", scoredDraft), [scoredDraft]);
-  const activeScore = mode === "seo" ? seo : aeo;
+  const [brief, setBrief] = useState<SearchBrief | null>(null);
+  // A brief scores only the topic it was built for.
+  const activeBrief =
+    brief && briefMatchesTopic(brief, scoredDraft.targetKeyword) ? brief : null;
+  const scoringBrief = useMemo(
+    () => (activeBrief ? toScoringBrief(activeBrief) : undefined),
+    [activeBrief],
+  );
+  const seo = useMemo(
+    () => scoreContent("seo", scoredDraft, scoringBrief),
+    [scoredDraft, scoringBrief],
+  );
+  const aeo = useMemo(
+    () => scoreContent("aeo", scoredDraft, scoringBrief),
+    [scoredDraft, scoringBrief],
+  );
 
   useEffect(() => {
     if (draftsQuery.isPending || initialized || !draftsQuery.data) return;
@@ -306,11 +321,12 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           dirty={dirty}
           mode={mode}
           onModeChange={setMode}
+          brief={brief}
+          onBrief={setBrief}
           tab={tab}
           onTabChange={setTab}
           seo={seo}
           aeo={aeo}
-          activeScore={activeScore}
           editorBusy={editorBusy}
           drafts={draftsQuery.data ?? []}
           draftsLoading={draftsQuery.isPending}

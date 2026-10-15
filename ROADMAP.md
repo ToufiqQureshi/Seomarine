@@ -13,12 +13,16 @@ their email and use the free features. **Nobody pays real money yet**:
 Razorpay runs with test-mode keys in production, so checkout works only with
 test cards. DataForSEO and OpenRouter keys are not in production.
 
-## Content editor build sequence
+## Content editor
 
-PR 1 adds deterministic local SEO/AEO scoring, optional cached-brief scoring
-inputs, and editor guidance that works without a brief. Brief collection and
-AI actions remain separate follow-up PRs; this change does not add provider
-calls or change credit use.
+- Built: visual editor, local SEO/AEO scoring, search briefs (Brief tab,
+  `POST /api/v1/projects/{projectId}/content/brief`, shared 30-day cache),
+  13 AI writing actions with per-action credit ceilings, publish to
+  WordPress, and "Track this article" links to Rank Tracking and Prompt
+  Explorer after publishing.
+- Not built: scheduled tracking of a published URL's position and AI
+  mentions inside the editor (today the writer opens Rank Tracking and
+  Prompt Explorer from the publish card).
 
 ## Launch checklist
 
@@ -133,8 +137,9 @@ Secrets go into Railway variables only, never into the repo or chat.
 
   Sites and white-label are what separate Pro from Agency: a small agency
   with four client sites must not fit in Pro. Basic and Pro differ by
-  feature: Basic is keywords, rankings and Google data for one site; Pro
-  adds backlinks, competitor research, AI Visibility and AI writing.
+  feature: Basic is keywords, rankings, Google data, search briefs and AI
+  writing for one site; Pro adds backlinks, competitor research and AI
+  Visibility.
 - The owner's and the team's own workspaces are never limited by a plan
   (`STAFF_EMAILS`).
 

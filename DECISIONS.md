@@ -28,6 +28,10 @@ Last updated: 15 Oct 2026
 | 14 Oct | The keyword-stuffing block applies on the **server** too, not only on screen. "Send as draft" still works. | An API or agent cannot publish spam to a customer's site. |
 | 15 Oct | The PageSpeed API key has **API restrictions only** (PageSpeed and CrUX) and application restriction **None**. | The server sends no referrer, so a "Websites" restriction would block it. Railway has no fixed IP. |
 | 15 Oct | `GOOGLE_TOKEN_ENCRYPTION_KEY` and `AUDIT_BROWSER_RENDERING` are **not set for now**. | The first would break existing Google connections; the second needs Chrome on the server and a lot of memory. |
+| 15 Oct | A search brief reads 8 competitor pages (worst case $0.0072, about 9.2 credits) instead of 10, with one content-parsing call per page. | DataForSEO's live parsing endpoint takes one page per call. 8 pages keep the brief near the approved 9 credits. |
+| 15 Oct | The AI writer always uses `openai/gpt-4.1-mini`, whatever `OPENROUTER_MODEL` says. Free OpenRouter models are not used. | The per-action credit ceilings are priced for that model. Free models have tight rate limits and may train on customer content. |
+| 15 Oct | "Track this article" opens Rank Tracking and Prompt Explorer after publishing; no separate scheduled tracking yet. | Reuses the existing tools and their credit checks instead of a second scheduler. |
+| 15 Oct | Migration `00023` is the brief cache. The next migration (Buffy's author tables) must be `00024`. | Two PRs used `00023`; goose refuses a gap or a duplicate. |
 
 ## 2. Waiting for the owner
 

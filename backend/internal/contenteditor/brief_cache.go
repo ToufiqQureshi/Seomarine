@@ -18,7 +18,7 @@ type PostgresBriefCache struct{ DB *pgxpool.Pool }
 
 // GetOrBuild returns an unexpired value or runs build once for all callers
 // holding the same key. Failed builds are never persisted.
-func (c PostgresBriefCache) GetOrBuild(ctx context.Context, key string, build func() (ContentBrief, error)) (brief ContentBrief, retErr error) {
+func (c PostgresBriefCache) GetOrBuild(ctx context.Context, key string, refresh bool, build func() (ContentBrief, error)) (brief ContentBrief, retErr error) {
 	if c.DB == nil || len(key) != 64 || build == nil {
 		return ContentBrief{}, errors.New("content brief cache is unavailable")
 	}
@@ -51,7 +51,10 @@ func (c PostgresBriefCache) GetOrBuild(ctx context.Context, key string, build fu
 	}
 	locked = true
 	var cached []byte
-	err = conn.QueryRow(ctx, `SELECT brief FROM go_content_brief_cache WHERE cache_key=$1 AND expires_at > now()`, key).Scan(&cached)
+	err = pgx.ErrNoRows
+	if !refresh {
+		err = conn.QueryRow(ctx, `SELECT brief FROM go_content_brief_cache WHERE cache_key=$1 AND expires_at > now()`, key).Scan(&cached)
+	}
 	if err == nil {
 		if decodeErr := json.Unmarshal(cached, &brief); decodeErr == nil && validateBriefResult(brief) == nil {
 			return brief, nil
@@ -73,7 +76,7 @@ func (c PostgresBriefCache) GetOrBuild(ctx context.Context, key string, build fu
 		return ContentBrief{}, fmt.Errorf("encode content brief cache entry: %w", err)
 	}
 	_, err = conn.Exec(ctx, `INSERT INTO go_content_brief_cache (cache_key, brief, fetched_at, expires_at)
-		VALUES ($1, $2::jsonb, $3, $3 + interval '30 days')
+		VALUES ($1, $2::jsonb, $3::timestamptz, $3::timestamptz + interval '30 days')
 		ON CONFLICT (cache_key) DO UPDATE SET brief=EXCLUDED.brief, fetched_at=EXCLUDED.fetched_at, expires_at=EXCLUDED.expires_at`,
 		key, encoded, brief.FetchedAt)
 	if err != nil {

@@ -31,10 +31,6 @@ const (
 // ErrInvalidRequest marks a request the client refuses to send.
 var ErrInvalidRequest = errors.New("invalid DataForSEO request")
 
-// ErrBudgetExceeded means successful provider responses reported a total
-// above the one ceiling reserved for a bounded operation.
-var ErrBudgetExceeded = errors.New("DataForSEO operation exceeded its reserved budget")
-
 // Cost is the provider-reported price of one DataForSEO task.
 type Cost struct {
 	Path []string
@@ -211,10 +207,9 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 			mu.Unlock()
 			settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
-			if settleErr := hold.Settle(settleCtx, 0); settleErr != nil {
-				// Preserve the original panic; the unsettled reservation is
-				// reported by the normal billing reconciliation path.
-			}
+			// Preserve the original panic; an unsettled reservation is
+			// reported by the normal billing reconciliation path.
+			_ = hold.Settle(settleCtx, 0)
 			panic(recovered)
 		}
 	}()
@@ -226,8 +221,10 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 	if workErr != nil {
 		total = 0
 	} else if total > ceilingUSD {
+		// The customer was quoted the ceiling and the provider already did the
+		// work, so the result is returned and Uplumo absorbs the overage.
+		// Failing here would charge for nothing and repeat on every retry.
 		total = ceilingUSD
-		workErr = ErrBudgetExceeded
 	}
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()

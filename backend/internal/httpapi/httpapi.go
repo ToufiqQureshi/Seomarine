@@ -120,6 +120,8 @@ type Deps struct {
 	Projects            *projects.Service
 	ContentEditor       *contenteditor.Repository
 	ContentWriter       contenteditor.WriterService
+	ContentBriefs       contenteditor.BriefGetter
+	ProjectsRepo        contenteditor.ProjectMarket
 	ContentImages       contenteditor.ImageStore
 	ContentImageLimiter contenteditor.ImageUploadLimiter
 	// SitePublish connects a project's website and publishes drafts to it.
@@ -345,6 +347,15 @@ func NewHandler(d Deps) http.Handler {
 	if d.ContentEditor != nil {
 		contenteditor.Mount(mux, d.ContentEditor, d.ContentWriter, d.ContentImages, d.ContentImageLimiter, withSession, func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) })
 	}
+	var briefPlans contenteditor.BriefPlans
+	if d.Billing != nil {
+		briefPlans = d.Billing.Gate(planCatalog.Keywords)
+	}
+	contenteditor.MountBrief(mux, contenteditor.BriefDeps{
+		Logger: d.Logger, Briefs: d.ContentBriefs, Projects: d.ProjectsRepo, Plans: briefPlans,
+		WithSession:       withSession,
+		WithProjectAccess: func(next http.Handler) http.Handler { return requireProjectAccess(d.Logger, d.Auth, next) },
+	})
 	var publishPlans sitepublish.PaidPlans
 	if d.Billing != nil {
 		publishPlans = d.Billing.Gate(planCatalog.Publishing)
