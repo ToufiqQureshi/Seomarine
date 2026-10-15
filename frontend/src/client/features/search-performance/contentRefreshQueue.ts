@@ -40,8 +40,8 @@ export function buildContentRefreshQueue(rows: RefreshQuery[]) {
       averagePosition:
         page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
       queries: page.queries
-        .sort((a, b) => b.impressions - a.impressions)
+        .toSorted((a, b) => b.impressions - a.impressions)
         .slice(0, 3),
     }))
-    .sort((a, b) => b.impressions - a.impressions);
+    .toSorted((a, b) => b.impressions - a.impressions);
 }
