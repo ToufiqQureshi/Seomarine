@@ -30,3 +30,9 @@ sources appear in the same project list. Go also serves the member viewer at
 it frames at `/s/{token}/raw`, with a strict sandbox CSP. The share page's
 preview image is the static
 `/social-card.png`.
+
+The manual report composer also provides a structured client work log with a
+reporting month, completed work, outcomes, evidence links, and next steps.
+Evidence links accept only HTTP(S) URLs without embedded credentials and are
+escaped into the saved HTML. A public client review link is created only when
+the author explicitly opts in; the existing share controls can revoke it.
