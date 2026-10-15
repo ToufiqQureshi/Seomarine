@@ -51,7 +51,7 @@ export function getOrphanLinkCandidates(
       return { page, overlap };
     })
     .filter((candidate) => candidate.overlap > 0)
-    .sort(
+    .toSorted(
       (a, b) =>
         b.overlap - a.overlap ||
         b.page.internalLinkCount - a.page.internalLinkCount ||
