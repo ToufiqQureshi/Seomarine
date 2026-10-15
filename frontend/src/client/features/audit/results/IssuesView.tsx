@@ -243,63 +243,86 @@ function OrphanPageRescue({
           adding a link.
         </p>
       </div>
-      {orphanIssues.map((issue) => {
-        const candidates = getOrphanLinkCandidates(
-          issue.pageUrl,
-          pages,
-          allIssues,
-        );
-        return (
-          <div
-            key={issue.id}
-            className="space-y-1.5 border-t border-border pt-2 first:border-t-0 first:pt-0"
-          >
-            <p className="break-all text-xs font-medium">
-              Orphan: {issue.pageUrl}
-            </p>
-            {candidates.length ? (
-              <ul className="space-y-1.5">
-                {candidates.map((candidate) => (
-                  <li
-                    key={candidate.sourceUrl}
-                    className="flex flex-wrap items-center gap-2 text-xs"
-                  >
-                    <a
-                      href={candidate.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="min-w-0 flex-1 break-all underline underline-offset-4"
-                    >
-                      {candidate.sourceTitle}
-                    </a>
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      onClick={() =>
-                        void copyLinkSnippet(
-                          candidate.targetUrl,
-                          candidate.targetTitle,
-                        )
-                      }
-                    >
-                      Copy link snippet
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No closely related source page was found in this crawl.
-              </p>
-            )}
-          </div>
-        );
-      })}
+      {orphanIssues.map((issue) => (
+        <OrphanPageSuggestion
+          key={issue.id}
+          issue={issue}
+          pages={pages}
+          allIssues={allIssues}
+        />
+      ))}
       {issues.length > orphanIssues.length ? (
         <p className="text-xs text-muted-foreground">
           Suggestions shown for the first {orphanIssues.length} orphan pages.
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+function OrphanPageSuggestion({
+  issue,
+  pages,
+  allIssues,
+}: {
+  issue: AuditIssueRow;
+  pages: AuditResultsData["pages"];
+  allIssues: AuditIssueRow[];
+}) {
+  const [open, setOpen] = useState(false);
+  const candidates = open
+    ? getOrphanLinkCandidates(issue.pageUrl, pages, allIssues)
+    : [];
+
+  return (
+    <div className="space-y-1.5 border-t border-border pt-2 first:border-t-0 first:pt-0">
+      <p className="break-all text-xs font-medium">Orphan: {issue.pageUrl}</p>
+      <Button
+        type="button"
+        size="xs"
+        variant="ghost"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {open ? "Hide suggestions" : "Show suggested pages"}
+      </Button>
+      {open ? (
+        candidates.length ? (
+          <ul className="space-y-1.5">
+            {candidates.map((candidate) => (
+              <li
+                key={candidate.sourceUrl}
+                className="flex flex-wrap items-center gap-2 text-xs"
+              >
+                <a
+                  href={candidate.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex-1 break-all underline underline-offset-4"
+                >
+                  {candidate.sourceTitle}
+                </a>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void copyLinkSnippet(
+                      candidate.targetUrl,
+                      candidate.targetTitle,
+                    )
+                  }
+                >
+                  Copy link snippet
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            No closely related source page was found in this crawl.
+          </p>
+        )
       ) : null}
     </div>
   );
