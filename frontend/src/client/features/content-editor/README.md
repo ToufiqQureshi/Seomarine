@@ -48,9 +48,26 @@ Google or predict rankings.
 
 ## Writing flow
 
-- Write or edit Markdown in the article field, then switch to Preview to check
-  headings, links, lists and embedded images.
-- The Image action accepts a public HTTPS or HTTP image URL, or a PNG/JPEG file
+- The article body is a visual editor (TipTap 3, `visual-editor/`): toolbar,
+  a toolbar over selected text (bold, italic, link, H2, H3), a "+" button and
+  "/" menu on empty lines (headings, lists, image, table, quote, FAQ), and
+  pasting from Google Docs or Word keeps headings, lists and links. "Preview as
+  on website" opens the article at desktop or phone width. A "Markdown" toggle
+  shows the raw Markdown for writers who prefer it.
+- The draft is still stored as Markdown. `@tiptap/markdown` serializes every
+  change, so scoring, saving and WordPress publishing are unchanged. The editor
+  may only offer what Markdown can hold: no underline, colours or alignment.
+  `visual-editor/extensions.test.ts` round-trips every construct (H1–H4, marks,
+  links, lists, quote, image alt text, tables, Hindi text) and checks the score
+  is identical before and after; a schema change that drops one would delete it
+  from customers' articles.
+- Links: `normalizeLinkUrl` adds https:// to a bare domain, keeps internal
+  paths (`/services`, `#faq`) and `mailto:`, and refuses `javascript:`, `data:`
+  and `user:pass@` links, because the article is published to the customer's
+  site as written.
+- The Image action, "/" Image, or pasting or dropping a PNG/JPEG opens the
+  image panel; a pasted or dropped file is preselected and the writer only adds
+  the description. It accepts a public HTTPS or HTTP image URL, or a PNG/JPEG file
   from the device. File uploads are resized and compressed to WebP (2,400 px per
   side, 8 MP and 1 MB maximum) before they are stored in the public Supabase
   Storage bucket. An article can contain at most five Markdown images; a

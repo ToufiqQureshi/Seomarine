@@ -17,6 +17,7 @@ export function ImageFields({
   onImageFileChange,
   onInsert,
   onUpload,
+  onClose,
 }: {
   disabled: boolean;
   uploading: boolean;
@@ -30,6 +31,7 @@ export function ImageFields({
   onImageFileChange: (file?: File) => void;
   onInsert: () => void;
   onUpload: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
@@ -91,10 +93,25 @@ export function ImageFields({
       >
         {uploading ? "Uploading…" : "Upload & insert"}
       </Button>
+      {imageFile ? (
+        <p className="text-sm sm:col-span-3">
+          Selected: <span className="font-medium">{imageFile.name}</span>.
+          Describe it above, then upload.
+        </p>
+      ) : null}
       <p className="text-xs text-muted-foreground sm:col-span-3">
         Uploaded images are compressed to WebP (up to 1 MB). Articles allow up
         to {MAX_ARTICLE_IMAGES} images; add alt text for accessibility.
       </p>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="justify-self-start sm:col-span-3"
+        onClick={onClose}
+      >
+        Close
+      </Button>
       {imageError ? (
         <p role="alert" className="text-sm text-destructive sm:col-span-3">
           {imageError}
