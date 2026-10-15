@@ -44,7 +44,7 @@ importers:
         version: 1.8.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@better-auth/api-key':
         specifier: 1.6.22
-        version: 1.6.22(e6363e58437e8c6c3eb65461b4b22e82)
+        version: 1.6.22(4e0c2a03366d2f661319ee43d7f0f06f)
       '@fontsource-variable/geist':
         specifier: ^5.3.0
         version: 5.3.0
@@ -101,7 +101,7 @@ importers:
         version: 6.0.199(zod@4.3.6)
       better-auth:
         specifier: ^1.6.22
-        version: 1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))
+        version: 1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -181,6 +181,9 @@ importers:
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
+      happy-dom:
+        specifier: 20.14.5
+        version: 20.14.5
       knip:
         specifier: ^5.88.1
         version: 5.88.1(@types/node@22.19.11)(typescript@5.9.3)
@@ -207,7 +210,7 @@ importers:
         version: 5.1.4(typescript@5.9.3)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
 
 packages:
 
@@ -2313,6 +2316,9 @@ packages:
   '@types/webidl-conversions@7.0.3':
     resolution: {integrity: sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==}
 
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
   '@types/whatwg-url@13.0.0':
     resolution: {integrity: sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q==}
 
@@ -2552,6 +2558,10 @@ packages:
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
+
+  buffer-image-size@0.6.4:
+    resolution: {integrity: sha512-nEh+kZOPY1w+gcCMobZ6ETUp9WfibndnosbpwB1iJk/8Gt5ZF2bhS6+B6bPYz424KtwsR6Rflc3tCz1/ghX2dQ==}
+    engines: {node: '>=4.0'}
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
@@ -3267,6 +3277,10 @@ packages:
     peerDependenciesMeta:
       crossws:
         optional: true
+
+  happy-dom@20.14.5:
+    resolution: {integrity: sha512-x/RzkpWO40bTjIoT30iQtt64FLLmH/iRcUCN2X//bLx7H3ifkdfPXyqsro/OYtqzIAhiLMMA7mmiOR9C3NOKjQ==}
+    engines: {node: '>=20.0.0'}
 
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
@@ -5043,6 +5057,10 @@ packages:
     engines: {node: '>=18'}
     deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
+
   whatwg-mimetype@4.0.0:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
     engines: {node: '>=18'}
@@ -5597,11 +5615,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@better-auth/api-key@1.6.22(e6363e58437e8c6c3eb65461b4b22e82)':
+  '@better-auth/api-key@1.6.22(4e0c2a03366d2f661319ee43d7f0f06f)':
     dependencies:
       '@better-auth/core': 1.6.22(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.3.6))(jose@6.1.3)(kysely@0.29.2)(nanostores@1.1.1)
       '@better-auth/utils': 0.4.2
-      better-auth: 1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))
+      better-auth: 1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))
       better-call: 1.3.7(zod@4.3.6)
       zod: 4.6.5
 
@@ -7184,6 +7202,8 @@ snapshots:
   '@types/webidl-conversions@7.0.3':
     optional: true
 
+  '@types/whatwg-mimetype@3.0.2': {}
+
   '@types/whatwg-url@13.0.0':
     dependencies:
       '@types/webidl-conversions': 7.0.3
@@ -7192,7 +7212,6 @@ snapshots:
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 22.19.11
-    optional: true
 
   '@ungap/structured-clone@1.3.0': {}
 
@@ -7326,7 +7345,7 @@ snapshots:
 
   baseline-browser-mapping@2.11.21: {}
 
-  better-auth@1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))):
+  better-auth@1.6.22(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.60(esbuild@0.28.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.0.1)(rollup@4.59.0)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))(mongodb@7.2.0(@aws-sdk/credential-providers@3.1080.0)(@mongodb-js/zstd@7.0.0)(socks@2.8.10))(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.15)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))):
     dependencies:
       '@better-auth/core': 1.6.22(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.3.6))(jose@6.1.3)(kysely@0.29.2)(nanostores@1.1.1)
       '@better-auth/drizzle-adapter': 1.6.22(@better-auth/core@1.6.22(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.3.6))(jose@6.1.3)(kysely@0.29.2)(nanostores@1.1.1))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(kysely@0.29.2)(mysql2@3.24.4(@types/node@22.19.11))(pg@8.22.0)(postgres@3.4.9)(sql.js@1.14.1))
@@ -7355,7 +7374,7 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       solid-js: 1.9.15
-      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
+      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
       - '@opentelemetry/api'
@@ -7416,6 +7435,10 @@ snapshots:
 
   buffer-from@1.1.2:
     optional: true
+
+  buffer-image-size@0.6.4:
+    dependencies:
+      '@types/node': 22.19.11
 
   buffer@5.7.1:
     dependencies:
@@ -8080,6 +8103,19 @@ snapshots:
       rou3: 0.8.1
       srvx: 0.11.22
     optional: true
+
+  happy-dom@20.14.5:
+    dependencies:
+      '@types/node': 22.19.11
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.1
+      buffer-image-size: 0.6.4
+      entities: 7.0.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-symbols@1.1.0: {}
 
@@ -10050,7 +10086,7 @@ snapshots:
       vite: 7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)
     optional: true
 
-  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)):
+  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@7.3.6(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.1))
@@ -10075,6 +10111,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/node': 22.19.11
+      happy-dom: 20.14.5
     transitivePeerDependencies:
       - msw
 
@@ -10092,6 +10129,8 @@ snapshots:
   whatwg-encoding@3.1.1:
     dependencies:
       iconv-lite: 0.6.3
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-mimetype@4.0.0: {}
 
