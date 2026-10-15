@@ -187,140 +187,144 @@ export function ManualReportForm({
             className="m-0 min-w-0 space-y-5 border-0 p-0"
           >
             <legend className="sr-only">Report fields</legend>
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label="Report type"
-          >
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "report" ? "secondary" : "outline"}
-              aria-pressed={mode === "report"}
-              onClick={() => setMode("report")}
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Report type"
             >
-              Standard report
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "work-log" ? "secondary" : "outline"}
-              aria-pressed={mode === "work-log"}
-              onClick={() => setMode("work-log")}
-            >
-              Client work log
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="report-title" className="text-sm font-medium">
-              Report title
-            </label>
-            <Input
-              id="report-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={120}
-              placeholder={
-                mode === "work-log"
-                  ? "SEO work log — September"
-                  : "Monthly SEO update — September"
-              }
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="report-summary" className="text-sm font-medium">
-              Short summary
-            </label>
-            <Textarea
-              id="report-summary"
-              value={summary}
-              onChange={(event) => setSummary(event.target.value)}
-              maxLength={2_500}
-              rows={3}
-              placeholder="The main result and what the client should know."
-              required
-            />
-          </div>
-          {mode === "work-log" ? (
-            <>
-              <div className="space-y-2">
-                <label htmlFor="worklog-period" className="text-sm font-medium">
-                  Reporting month
-                </label>
-                <Input
-                  id="worklog-period"
-                  type="month"
-                  value={period}
-                  onChange={(event) => setPeriod(event.target.value)}
-                  required
-                />
-              </div>
-              <WorkLogField
-                id="worklog-done"
-                label="Work completed"
-                value={workCompleted}
-                onChange={setWorkCompleted}
-                placeholder="List the tasks completed and the problem each one addressed."
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "report" ? "secondary" : "outline"}
+                aria-pressed={mode === "report"}
+                onClick={() => setMode("report")}
+              >
+                Standard report
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "work-log" ? "secondary" : "outline"}
+                aria-pressed={mode === "work-log"}
+                onClick={() => setMode("work-log")}
+              >
+                Client work log
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="report-title" className="text-sm font-medium">
+                Report title
+              </label>
+              <Input
+                id="report-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                maxLength={120}
+                placeholder={
+                  mode === "work-log"
+                    ? "SEO work log — September"
+                    : "Monthly SEO update — September"
+                }
                 required
               />
-              <WorkLogField
-                id="worklog-outcomes"
-                label="Results and impact"
-                value={outcomes}
-                onChange={setOutcomes}
-                placeholder="Add measured results where available. Leave blank if not measured yet."
-              />
-              <WorkLogField
-                id="worklog-evidence"
-                label="Evidence links"
-                value={evidence}
-                onChange={setEvidence}
-                placeholder="One https:// URL per line — Search Console page, ticket, or published change."
-              />
-              <WorkLogField
-                id="worklog-next"
-                label="Next steps"
-                value={nextSteps}
-                onChange={setNextSteps}
-                placeholder="What happens next, who owns it, and when it is due."
-              />
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={shareWithClient}
-                  onChange={(event) => setShareWithClient(event.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  Create a public review link after saving. Anyone with the link
-                  can view this work log; you can revoke it later.
-                </span>
-              </label>
-            </>
-          ) : null}
-          {mode === "report" ? (
+            </div>
             <div className="space-y-2">
-              <label htmlFor="report-body" className="text-sm font-medium">
-                Report details
+              <label htmlFor="report-summary" className="text-sm font-medium">
+                Short summary
               </label>
               <Textarea
-                id="report-body"
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                maxLength={MAX_BODY_CHARACTERS}
-                rows={18}
-                placeholder={`What we worked on\n\nWhat changed and what it means\n\nNext steps`}
+                id="report-summary"
+                value={summary}
+                onChange={(event) => setSummary(event.target.value)}
+                maxLength={2_500}
+                rows={3}
+                placeholder="The main result and what the client should know."
                 required
-                className="min-h-80 leading-relaxed"
               />
-              <p className="text-xs text-muted-foreground">
-                Plain text is safe to paste from your notes. Separate paragraphs
-                with a blank line.
-              </p>
             </div>
-          ) : null}
-
+            {mode === "work-log" ? (
+              <>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="worklog-period"
+                    className="text-sm font-medium"
+                  >
+                    Reporting month
+                  </label>
+                  <Input
+                    id="worklog-period"
+                    type="month"
+                    value={period}
+                    onChange={(event) => setPeriod(event.target.value)}
+                    required
+                  />
+                </div>
+                <WorkLogField
+                  id="worklog-done"
+                  label="Work completed"
+                  value={workCompleted}
+                  onChange={setWorkCompleted}
+                  placeholder="List the tasks completed and the problem each one addressed."
+                  required
+                />
+                <WorkLogField
+                  id="worklog-outcomes"
+                  label="Results and impact"
+                  value={outcomes}
+                  onChange={setOutcomes}
+                  placeholder="Add measured results where available. Leave blank if not measured yet."
+                />
+                <WorkLogField
+                  id="worklog-evidence"
+                  label="Evidence links"
+                  value={evidence}
+                  onChange={setEvidence}
+                  placeholder="One https:// URL per line — Search Console page, ticket, or published change."
+                />
+                <WorkLogField
+                  id="worklog-next"
+                  label="Next steps"
+                  value={nextSteps}
+                  onChange={setNextSteps}
+                  placeholder="What happens next, who owns it, and when it is due."
+                />
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={shareWithClient}
+                    onChange={(event) =>
+                      setShareWithClient(event.target.checked)
+                    }
+                    className="mt-1"
+                  />
+                  <span>
+                    Create a public review link after saving. Anyone with the
+                    link can view this work log; you can revoke it later.
+                  </span>
+                </label>
+              </>
+            ) : null}
+            {mode === "report" ? (
+              <div className="space-y-2">
+                <label htmlFor="report-body" className="text-sm font-medium">
+                  Report details
+                </label>
+                <Textarea
+                  id="report-body"
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  maxLength={MAX_BODY_CHARACTERS}
+                  rows={18}
+                  placeholder={`What we worked on\n\nWhat changed and what it means\n\nNext steps`}
+                  required
+                  className="min-h-80 leading-relaxed"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Plain text is safe to paste from your notes. Separate
+                  paragraphs with a blank line.
+                </p>
+              </div>
+            ) : null}
           </fieldset>
 
           {formError ? (
