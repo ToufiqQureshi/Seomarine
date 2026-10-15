@@ -286,6 +286,7 @@ export function BrandLookupPage({
         <div className="space-y-4">
           <BrandLookupResults result={result} projectId={projectId} />
           <BrandVisibilityHistoryCard
+            projectId={projectId}
             snapshots={visibilityHistoryQuery.data}
             isLoading={visibilityHistoryQuery.isPending}
             isError={visibilityHistoryQuery.isError}
