@@ -78,8 +78,8 @@ func (d Definition) Allows(feature Feature) bool {
 }
 
 var (
-	basicFeatures  = []Feature{GoogleData, Keywords, RankTracking, FullAudit, Publishing}
-	proFeatures    = append(slices.Clone(basicFeatures), Backlinks, DomainResearch, AIVisibility, AIWriting)
+	basicFeatures  = []Feature{GoogleData, Keywords, RankTracking, FullAudit, Publishing, AIWriting}
+	proFeatures    = append(slices.Clone(basicFeatures), Backlinks, DomainResearch, AIVisibility)
 	agencyFeatures = append(slices.Clone(proFeatures), WhiteLabel)
 )
 
@@ -104,6 +104,7 @@ var catalog = []Definition{
 			"Google Search Console and Google Analytics",
 			"Full site audit",
 			"Publish articles straight to your WordPress site",
+			"AI writing assistant",
 		},
 		features: basicFeatures,
 	},
@@ -116,7 +117,6 @@ var catalog = []Definition{
 			"Rank tracking for 500 keywords",
 			"AI Visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude",
 			"Backlink and competitor research",
-			"AI writing assistant",
 			"3 team members",
 		},
 		features: proFeatures,

@@ -4,6 +4,7 @@ import { BubbleMenu, FloatingMenu } from "@tiptap/react/menus";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/client/components/ui/textarea";
 import { isArticleContentWithinLimit } from "../content-limits";
+import { useEditorSession } from "../editor-session";
 import { BlockMenu, BubbleBar, LinkPanel } from "./EditorMenus";
 import { EditorToolbar } from "./EditorToolbar";
 import { articleExtensions } from "./extensions";
@@ -31,6 +32,7 @@ export function ArticleEditor({
   onAddImage,
   onReady,
 }: ArticleEditorProps) {
+  const { setEditor: setSessionEditor } = useEditorSession();
   // The last Markdown this editor produced. A different value coming in means
   // another draft was opened or the AI changed it, so the editor reloads.
   const lastMarkdown = useRef(value);
@@ -92,8 +94,12 @@ export function ArticleEditor({
 
   useEffect(() => {
     onReady(editor);
-    return () => onReady(null);
-  }, [editor, onReady]);
+    setSessionEditor(editor);
+    return () => {
+      onReady(null);
+      setSessionEditor(null);
+    };
+  }, [editor, onReady, setSessionEditor]);
 
   useEffect(() => {
     editor?.setEditable(!disabled, false);

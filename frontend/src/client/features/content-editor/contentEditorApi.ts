@@ -29,9 +29,30 @@ export const contentEditorQueryKeys = {
   draft: (projectId: string, draftId: string) =>
     ["contentDraft", projectId, draftId] as const,
 };
+
+export function getContentWriterStatus() {
+  return apiRequest(
+    "/api/v1/config/content-writer-status",
+    z.object({ configured: z.boolean(), message: z.string() }),
+    "GET",
+  );
+}
 export type ContentDraftSummary = z.infer<typeof draftSummarySchema>;
 
-type WriterAction = "outline" | "draft" | "improve" | "rewrite" | "faq";
+type WriterAction =
+  | "outline"
+  | "draft"
+  | "improve"
+  | "rewrite"
+  | "faq"
+  | "write_section"
+  | "fill_gap"
+  | "answer_first"
+  | "fix_top_issue"
+  | "title_meta"
+  | "destuff"
+  | "fact_check"
+  | "tone_language";
 type WriterRequest = Pick<
   ContentDraftInput,
   "title" | "targetKeyword" | "content"

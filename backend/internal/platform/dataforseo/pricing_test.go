@@ -14,7 +14,7 @@ func TestEstimateUSDIsTheMostARequestCanCost(t *testing.T) {
 		{"free locations", "/v3/serp/google/locations/us", "", 0},
 		{"free ai models", "/v3/ai_optimization/chat_gpt/llm_responses/models", "", 0},
 		{"live serp top 10", "/v3/serp/google/organic/live/advanced", `[{"keyword":"shoes","depth":10}]`, 0.002},
-		{"live serp default depth is 100", "/v3/serp/google/organic/live/advanced", `[{"keyword":"shoes"}]`, 0.002 + 9*0.0015},
+		{"live serp default depth is 100", "/v3/serp/google/organic/live/advanced", `[{"keyword":"shoes"}]`, 0.002 + 9*0.002},
 		{"live serp with operator", "/v3/serp/google/organic/live/advanced", `[{"keyword":"site:example.com shoes","depth":10}]`, 0.01},
 		{"queued serp per task", "/v3/serp/google/organic/task_post", `[{"keyword":"a","depth":20},{"keyword":"b","depth":20}]`, 2 * (0.0006 + 0.00045)},
 		{"queued serp priority", "/v3/serp/google/organic/task_post", `[{"keyword":"a","depth":10,"priority":2}]`, 0.0012},
@@ -33,5 +33,13 @@ func TestEstimateUSDIsTheMostARequestCanCost(t *testing.T) {
 				t.Fatalf("EstimateUSD() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestEstimateUSDForApprovedBriefCalls(t *testing.T) {
+	serp := EstimateUSD("/v3/serp/google/organic/live/advanced", []byte(`[{"depth":30}]`))
+	parsing := EstimateUSD("/v3/on_page/content_parsing/live", []byte(`[{},{},{},{},{},{},{},{}]`))
+	if math.Abs(serp-0.006) > 1e-9 || math.Abs(parsing-0.001) > 1e-9 || math.Abs(serp+parsing-0.007) > 1e-9 {
+		t.Fatalf("brief ceilings SERP=%v parse=%v total=%v, want 0.006, 0.001, 0.007", serp, parsing, serp+parsing)
 	}
 }

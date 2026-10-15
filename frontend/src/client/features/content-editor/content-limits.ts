@@ -1,5 +1,5 @@
 /** The server limits article Markdown by its UTF-8 byte length. */
-export const MAX_ARTICLE_CONTENT_BYTES = 150_000;
+const MAX_ARTICLE_CONTENT_BYTES = 150_000;
 
 const encoder = new TextEncoder();
 
