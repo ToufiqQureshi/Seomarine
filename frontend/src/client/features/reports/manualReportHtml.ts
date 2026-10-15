@@ -1,4 +1,4 @@
-export type ManualReportFields = {
+type ManualReportFields = {
   title: string;
   summary: string;
   body: string;
