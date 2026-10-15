@@ -20,7 +20,8 @@ import (
 
 const (
 	// Brand lookup data refreshes daily; the provider updates it monthly.
-	brandLookupTTL = 24 * time.Hour
+	brandLookupTTL        = 24 * time.Hour
+	visibilityHistoryTTL  = 400 * 24 * time.Hour
 	// An LLM answer is stable enough for a week.
 	promptResponseTTL = 7 * 24 * time.Hour
 
@@ -149,8 +150,108 @@ func (s *Service) BrandLookup(ctx context.Context, organizationID, projectID str
 		slices.IndexFunc(cross, func(c crossOutcome) bool { return !c.ok }) < 0
 	if complete && result.HasData {
 		s.cacheSet(ctx, key, result, brandLookupTTL)
+		s.saveVisibilitySnapshot(ctx, key, result)
 	}
 	return result, nil
+}
+
+// BrandVisibilityHistory returns up to 13 monthly aggregate snapshots already
+// collected during normal lookups. It never calls the paid provider.
+func (s *Service) BrandVisibilityHistory(
+	ctx context.Context,
+	organizationID, projectID string,
+	in BrandLookupInput,
+) ([]VisibilitySnapshot, error) {
+	key, err := brandLookupKey(organizationID, projectID, in)
+	if err != nil {
+		return nil, err
+	}
+	historyKey := strings.Replace(key, "ai-search:brand-lookup:", "ai-search:brand-history:", 1)
+	values, err := s.redis.HGetAll(ctx, historyKey).Result()
+	if err != nil {
+		s.logger.WarnContext(ctx, "read ai visibility history", "err", err)
+		return []VisibilitySnapshot{}, nil
+	}
+	snapshots := make([]VisibilitySnapshot, 0, len(values))
+	for _, raw := range values {
+		var snapshot VisibilitySnapshot
+		if err := json.Unmarshal([]byte(raw), &snapshot); err != nil {
+			s.logger.WarnContext(ctx, "decode ai visibility history", "err", err)
+			continue
+		}
+		snapshots = append(snapshots, snapshot)
+	}
+	slices.SortFunc(snapshots, func(a, b VisibilitySnapshot) int { return strings.Compare(a.Period, b.Period) })
+	if len(snapshots) > 13 {
+		snapshots = snapshots[len(snapshots)-13:]
+	}
+	return snapshots, nil
+}
+
+func (s *Service) saveVisibilitySnapshot(ctx context.Context, cacheKey string, result BrandLookupResult) {
+	snapshot := VisibilitySnapshot{
+		Period:              s.now().UTC().Format("2006-01"),
+		FetchedAt:           result.FetchedAt,
+		TotalMentions:       intOrZero(result.TotalMentions),
+		TotalAISearchVolume: intOrZero(result.TotalAISearchVolume),
+		CitedPages:          len(result.TopPages),
+	}
+	raw, err := json.Marshal(snapshot)
+	if err != nil {
+		s.logger.Error("encode ai visibility snapshot", "err", err)
+		return
+	}
+	key := strings.Replace(cacheKey, "ai-search:brand-lookup:", "ai-search:brand-history:", 1)
+	cutoff := s.now().UTC().AddDate(0, -12, 0).Format("2006-01")
+	setCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cacheWriteTimeout)
+	defer cancel()
+	fields, err := s.redis.HKeys(setCtx, key).Result()
+	if err != nil {
+		s.logger.WarnContext(ctx, "list ai visibility history fields", "err", err)
+		return
+	}
+	pipe := s.redis.TxPipeline()
+	pipe.HSet(setCtx, key, snapshot.Period, raw)
+	for _, field := range fields {
+		if len(field) == 7 && field < cutoff {
+			pipe.HDel(setCtx, key, field)
+		}
+	}
+	pipe.Expire(setCtx, key, visibilityHistoryTTL)
+	if _, err := pipe.Exec(setCtx); err != nil {
+		s.logger.WarnContext(ctx, "write ai visibility history", "err", err)
+	}
+}
+
+func intOrZero(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func brandLookupKey(organizationID, projectID string, in BrandLookupInput) (string, error) {
+	detected := detectTarget(in.Query)
+	research, err := resolveResearchTarget(in, detected)
+	if err != nil {
+		return "", err
+	}
+	groups := resolveCompetitorGroups(detected.Value, in.Competitors)
+	competitorValues := make([]string, len(groups))
+	for i, group := range groups {
+		competitorValues[i] = strings.ToLower(group.detected.Value)
+	}
+	slices.Sort(competitorValues)
+	scope, path := "", ""
+	if research != nil {
+		scope = string(research.Scope)
+		if research.Scope.usesPath() {
+			path = research.Path
+		}
+	}
+	return cacheKey("brand-lookup", organizationID, projectID, string(detected.Type),
+		strings.ToLower(detected.Value), strings.Join(competitorValues, "|"),
+		strconv.Itoa(in.LocationCode), in.LanguageCode, scope, path), nil
 }
 
 // resolveResearchTarget scopes domain and URL queries; a brand keyword has no

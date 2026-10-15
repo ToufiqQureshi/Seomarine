@@ -2,10 +2,14 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { BarChart3, Quote, Sparkles, TrendingUp } from "lucide-react";
-import { lookupBrand } from "@/client/features/ai-search/aiSearchApi";
+import {
+  getBrandVisibilityHistory,
+  lookupBrand,
+} from "@/client/features/ai-search/aiSearchApi";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
 import { ResearchPageShell } from "@/client/features/ai-search/ResearchPageShell";
 import { BrandLookupResults } from "@/client/features/ai-search/components/BrandLookupResults";
+import { BrandVisibilityHistoryCard } from "@/client/features/ai-search/components/BrandVisibilityHistoryCard";
 import { BrandLookupSearchCard } from "@/client/features/ai-search/components/BrandLookupSearchCard";
 import { RecentSearches } from "@/client/components/RecentSearches";
 import { BackLink } from "@/client/components/PageHeader";
@@ -100,6 +104,17 @@ export function BrandLookupPage({
   const scopeDisabledReason =
     query.trim() !== "" && !scopeTarget ? KEYWORD_SCOPE_REASON : undefined;
 
+  const lookupInput = useMemo(
+    () => ({
+      projectId,
+      query: trimmedInitialQuery,
+      competitors: competitorKey ? competitorKey.split(",") : [],
+      scope: initialScope,
+      locationCode: 2840,
+      languageCode: "en",
+    }),
+    [projectId, trimmedInitialQuery, competitorKey, initialScope],
+  );
   const lookupQuery = useQuery({
     queryKey: [
       "brand-lookup",
@@ -108,21 +123,25 @@ export function BrandLookupPage({
       competitorKey,
       initialScope ?? "",
     ],
-    queryFn: () =>
-      lookupBrand({
-        projectId,
-        query: trimmedInitialQuery,
-        competitors: initialCompetitors,
-        scope: initialScope,
-        locationCode: 2840,
-        languageCode: "en",
-      }),
+    queryFn: () => lookupBrand(lookupInput),
     // Client-side gate is a UX optimization only; the paywall is enforced
     // server-side (the Go API's plan check) before any DataForSEO spend,
     // so a stale free-plan window here just yields a rejected request, not cost.
     enabled: hasActiveQuery && planStatus === "paid",
     staleTime: 5 * 60 * 1000,
     retry: false,
+  });
+  const visibilityHistoryQuery = useQuery({
+    queryKey: [
+      "brand-visibility-history",
+      projectId,
+      trimmedInitialQuery,
+      competitorKey,
+      initialScope ?? "",
+    ],
+    queryFn: () => getBrandVisibilityHistory(lookupInput),
+    enabled: lookupQuery.isSuccess && planStatus === "paid",
+    staleTime: 0,
   });
 
   const {
@@ -264,7 +283,14 @@ export function BrandLookupPage({
         </BackLink>
       }
       renderResults={(result) => (
-        <BrandLookupResults result={result} projectId={projectId} />
+        <div className="space-y-4">
+          <BrandLookupResults result={result} projectId={projectId} />
+          <BrandVisibilityHistoryCard
+            snapshots={visibilityHistoryQuery.data}
+            isLoading={visibilityHistoryQuery.isPending}
+            isError={visibilityHistoryQuery.isError}
+          />
+        </div>
       )}
       history={
         <RecentSearches

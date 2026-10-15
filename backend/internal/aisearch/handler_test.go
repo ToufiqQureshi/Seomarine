@@ -239,10 +239,43 @@ func TestNoPlanGateLetsEveryoneIn(t *testing.T) {
 
 func TestRoutesAnswer503WithoutAProviderKey(t *testing.T) {
 	h, _ := route(t, nil, nil)
-	for _, path := range []string{"brand-lookup", "prompt-explorer"} {
+	for _, path := range []string{"brand-lookup", "brand-lookup/history", "prompt-explorer"} {
 		if rec := post(h, path, `{}`); rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("%s status = %d, want 503", path, rec.Code)
 		}
+	}
+}
+
+func TestVisibilityHistoryRouteReadsExistingLookupSnapshots(t *testing.T) {
+	api := newFakeAPI(t)
+	h, _ := route(t, newTestService(t, api), nil)
+	if rec := post(h, "brand-lookup", `{"query":"acme.com"}`); rec.Code != http.StatusOK {
+		t.Fatalf("lookup status = %d, body %s", rec.Code, rec.Body)
+	}
+	providerCalls := api.total()
+	rec := post(h, "brand-lookup/history", `{"query":"acme.com"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("history status = %d, body %s", rec.Code, rec.Body)
+	}
+	var history []VisibilitySnapshot
+	if err := json.Unmarshal(rec.Body.Bytes(), &history); err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 1 || api.total() != providerCalls {
+		t.Fatalf("history = %#v, provider calls = %d, want one snapshot and no extra provider call", history, api.total())
+	}
+}
+
+func TestVisibilityHistoryUsesPaidPlanGateWithoutProviderSpend(t *testing.T) {
+	api := newFakeAPI(t)
+	plans := &fakePlans{}
+	h, org := route(t, newTestService(t, api), plans)
+	rec := post(h, "brand-lookup/history", `{"query":"acme.com"}`)
+	if rec.Code != http.StatusPaymentRequired || api.total() != 0 {
+		t.Fatalf("status=%d provider calls=%d, want 402 and no calls", rec.Code, api.total())
+	}
+	if len(plans.asks) != 1 || plans.asks[0] != org {
+		t.Fatalf("plan checked for %#v, want project organization %q", plans.asks, org)
 	}
 }
 

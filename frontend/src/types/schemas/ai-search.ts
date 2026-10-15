@@ -4,9 +4,9 @@ import { researchScopeSchema } from "@/shared/researchScope";
 
 /**
  * Input + output schemas for the AI Search feature (Brand Lookup + Prompt
- * Explorer). These two pages are fully stateless — the user types something,
- * we hit DataForSEO, and we render. Schemas live here so they can be reused
- * by server functions, services, R2 cache validation, and the client UI.
+ * Explorer). Brand Lookup stores monthly aggregate snapshots after a
+ * successful user-triggered lookup; prompt answers remain cached. Schemas
+ * keep server and client contracts aligned.
  */
 
 // ---------------------------------------------------------------------------
@@ -148,6 +148,20 @@ export const brandLookupResultSchema = z.object({
 });
 
 export type BrandLookupResult = z.infer<typeof brandLookupResultSchema>;
+
+export const brandVisibilitySnapshotSchema = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+  fetchedAt: z.string(),
+  totalMentions: z.number().int().nonnegative(),
+  totalAiSearchVolume: z.number().int().nonnegative(),
+  citedPages: z.number().int().nonnegative(),
+});
+export const brandVisibilityHistorySchema = z
+  .array(brandVisibilitySnapshotSchema)
+  .max(13);
+export type BrandVisibilitySnapshot = z.infer<
+  typeof brandVisibilitySnapshotSchema
+>;
 
 // ---------------------------------------------------------------------------
 // Prompt Explorer

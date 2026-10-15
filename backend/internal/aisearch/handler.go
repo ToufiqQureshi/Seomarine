@@ -46,6 +46,7 @@ type Deps struct {
 func Mount(mux *http.ServeMux, d Deps) {
 	protect := func(h http.Handler) http.Handler { return d.WithSession(d.WithProjectAccess(h)) }
 	mux.Handle("POST /api/v1/projects/{projectId}/ai-search/brand-lookup", protect(brandLookupHandler(d)))
+	mux.Handle("POST /api/v1/projects/{projectId}/ai-search/brand-lookup/history", protect(brandVisibilityHistoryHandler(d)))
 	mux.Handle("POST /api/v1/projects/{projectId}/ai-search/prompt-explorer", protect(promptExplorerHandler(d)))
 }
 
@@ -152,6 +153,20 @@ func brandLookupHandler(d Deps) http.HandlerFunc {
 			return nil, badRequest(msg)
 		}
 		return d.Service.BrandLookup(r.Context(), organizationID, projectID, in)
+	})
+}
+
+func brandVisibilityHistoryHandler(d Deps) http.HandlerFunc {
+	return handle(d, func(r *http.Request, organizationID, projectID string) (any, error) {
+		var req brandLookupRequest
+		if err := decode(r, &req); err != nil {
+			return nil, err
+		}
+		in, msg := req.validate()
+		if msg != "" {
+			return nil, badRequest(msg)
+		}
+		return d.Service.BrandVisibilityHistory(r.Context(), organizationID, projectID, in)
 	})
 }
 
