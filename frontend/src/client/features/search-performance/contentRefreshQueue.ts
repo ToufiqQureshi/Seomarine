@@ -1,3 +1,5 @@
+import { sortBy } from "remeda";
+
 export type RefreshQuery = {
   query: string;
   page: string;
@@ -34,14 +36,12 @@ export function buildContentRefreshQueue(rows: RefreshQuery[]) {
     byPage.set(row.page, page);
   }
 
-  return [...byPage.values()]
-    .map((page) => ({
-      ...page,
-      averagePosition:
-        page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
-      queries: page.queries
-        .toSorted((a, b) => b.impressions - a.impressions)
-        .slice(0, 3),
-    }))
-    .toSorted((a, b) => b.impressions - a.impressions);
+  const groupedPages = [...byPage.values()].map((page) => ({
+    ...page,
+    averagePosition:
+      page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
+    queries: sortBy(page.queries, (query) => -query.impressions).slice(0, 3),
+  }));
+
+  return sortBy(groupedPages, (page) => -page.impressions);
 }
