@@ -62,6 +62,28 @@ func (h *handler) listTools() ([]json.RawMessage, error) {
 func (h *handler) callTool(ctx context.Context, t *tool, params json.RawMessage, auth Auth) (*callResult, toolOutcome) {
 	started := time.Now()
 	outcome := toolOutcome{success: false}
+	planAccess := h.deps.Plans
+	if planAccess == nil && h.deps.Billing != nil {
+		planAccess = h.deps.Billing
+	}
+	if planAccess != nil {
+		feature, known := toolFeature(t.Name)
+		if !known {
+			outcome.errorCode = "PLAN_REQUIRED"
+			return errorResult("This tool is unavailable on your plan."), outcome
+		}
+		if feature != "" {
+			allowed, err := planAccess.Allows(ctx, auth.OrganizationID, feature)
+			if err != nil {
+				outcome.errorCode = "INTERNAL_ERROR"
+				return errorResult("Plan access could not be checked. Please try again."), outcome
+			}
+			if !allowed {
+				outcome.errorCode = "PLAN_REQUIRED"
+				return errorResult("This tool is not included in your plan."), outcome
+			}
+		}
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			h.deps.Logger.ErrorContext(ctx, "panic in tool",

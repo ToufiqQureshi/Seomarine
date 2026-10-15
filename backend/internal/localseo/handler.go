@@ -26,7 +26,12 @@ type Data interface {
 }
 
 // Service computes local ranking grids from provider results.
-type Service struct{ Data Data }
+type Service struct {
+	Data  Data
+	Plans interface {
+		HasPaidPlan(context.Context, string) (bool, error)
+	}
+}
 type localPoint struct {
 	Row          int      `json:"row"`
 	Col          int      `json:"col"`
@@ -55,7 +60,27 @@ type gridRequest struct {
 
 // Mount registers the local SEO grid endpoint.
 func Mount(mux *http.ServeMux, service *Service, withSession, withProjectAccess func(http.Handler) http.Handler) {
-	protect := func(h http.Handler) http.Handler { return withSession(withProjectAccess(h)) }
+	protect := func(h http.Handler) http.Handler {
+		return withSession(withProjectAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if service != nil && service.Plans != nil {
+				org, ok := auth.ProjectOrganizationFromContext(r.Context())
+				if !ok {
+					httpx.WriteError(w, http.StatusNotFound, "project_not_found", "Project not found.")
+					return
+				}
+				allowed, err := service.Plans.HasPaidPlan(r.Context(), org)
+				if err != nil {
+					httpx.WriteError(w, http.StatusServiceUnavailable, "plan_unavailable", "Plan access could not be checked.")
+					return
+				}
+				if !allowed {
+					httpx.WriteError(w, http.StatusPaymentRequired, "plan_required", "Local SEO research is available on Basic, Pro and Agency.")
+					return
+				}
+			}
+			h.ServeHTTP(w, r)
+		})))
+	}
 	mux.Handle("POST /api/v1/projects/{projectId}/local-seo/rank-grid", protect(http.HandlerFunc(service.rankGrid)))
 	mux.Handle("POST /api/v1/projects/{projectId}/local-seo/businesses", protect(http.HandlerFunc(service.businesses)))
 	mux.Handle("POST /api/v1/projects/{projectId}/local-seo/profile", protect(http.HandlerFunc(service.profile)))
