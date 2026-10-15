@@ -79,7 +79,12 @@ export function ArticleEditor({
         return true;
       },
     },
-    onUpdate: ({ editor: current }) => {
+    onUpdate: ({ editor: current, transaction }) => {
+      // TipTap also emits "update" without a document change (for example
+      // when the editor becomes editable after the draft loads). Treating
+      // that as an edit sent the still-empty editor back as the draft and
+      // wiped the article, so only real document changes count.
+      if (!transaction.docChanged) return;
       const markdown = current.getMarkdown();
       lastMarkdown.current = markdown;
       onChange(markdown);
@@ -92,7 +97,7 @@ export function ArticleEditor({
   }, [editor, onReady]);
 
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
 
   useEffect(() => {
