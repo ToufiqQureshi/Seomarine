@@ -1,9 +1,8 @@
-import { Check, CircleHelp, Plus, Trash2, X } from "lucide-react";
-import { sortBy } from "remeda";
+import { Plus, Trash2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/client/components/ui/button";
 import type { ContentDraftSummary } from "./contentEditorApi";
-import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
+import type { ContentDraftInput } from "./scoring";
 
 const reminderStorageKey = (projectId: string) =>
   `uplumo:content-editor:writer-reminder:${projectId}`;
@@ -55,176 +54,9 @@ export function WriterReminder({ projectId }: { projectId: string }) {
   );
 }
 
-export function WritingModeToggle({
-  mode,
-  onChange,
-}: {
-  mode: EditorMode;
-  onChange: (mode: EditorMode) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
-      <div>
-        <p className="label-mono text-muted-foreground">Writing mode</p>
-        <p className="text-sm text-muted-foreground">
-          Switch the checklist without changing your draft.
-        </p>
-      </div>
-      <div
-        className="inline-flex rounded-lg border bg-background p-1"
-        role="group"
-        aria-label="Choose writing score mode"
-      >
-        {(["seo", "aeo"] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={mode === option}
-            onClick={() => onChange(option)}
-            className={`rounded-md px-4 py-2 text-sm font-medium capitalize transition-colors ${mode === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            {option === "seo" ? "SEO score" : "AEO score"}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function ReadinessPanel({
-  mode,
-  seo,
-  aeo,
-  activeScore,
-  checks,
-  hasBrief,
-  blocksPublish,
-  capReason,
-}: {
-  mode: EditorMode;
-  seo: { score: number };
-  aeo: { score: number };
-  activeScore: number;
-  checks: ScoreCheck[];
-  hasBrief: boolean;
-  blocksPublish: boolean;
-  capReason?: string;
-}) {
-  const done = checks.filter((check) => check.passed);
-  const fixNext = sortBy(
-    checks.filter((check) => !check.passed && check.weight > 0),
-    [(check) => check.weight - check.earned, "desc"],
-  );
-  return (
-    <>
-      <section className="rounded-xl border bg-card p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="label-mono text-muted-foreground">
-              {mode.toUpperCase()} READINESS
-            </p>
-            <p
-              className="mt-1 font-serif text-6xl tabular-nums"
-              aria-live="polite"
-            >
-              <span className="inline-flex items-center gap-3">
-                <svg
-                  viewBox="0 0 42 42"
-                  className="size-12 -rotate-90"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="21"
-                    cy="21"
-                    r="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="21"
-                    cy="21"
-                    r="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeDasharray={`${activeScore} 100`}
-                    strokeLinecap="round"
-                    className="text-primary"
-                  />
-                </svg>
-                {activeScore}
-              </span>
-              <span className="text-2xl text-muted-foreground">/100</span>
-            </p>
-          </div>
-          <div className="rounded-lg bg-muted px-3 py-2 text-center">
-            <p className="text-xs text-muted-foreground">SEO</p>
-            <p className="font-mono text-lg">{seo.score}</p>
-          </div>
-          <div className="rounded-lg bg-muted px-3 py-2 text-center">
-            <p className="text-xs text-muted-foreground">AEO</p>
-            <p className="font-mono text-lg">{aeo.score}</p>
-          </div>
-        </div>
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">
-          Editorial guidance, not a Google ranking prediction. Scores update
-          locally as you write.
-        </p>
-        {!hasBrief ? (
-          <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
-            No search brief loaded. This score uses only checks that work
-            without competitor data.
-          </p>
-        ) : null}
-        {blocksPublish && capReason ? (
-          <p
-            role="alert"
-            className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"
-          >
-            {capReason} Publish now is blocked until this is fixed.
-          </p>
-        ) : capReason ? (
-          <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
-            {capReason}
-          </p>
-        ) : null}
-      </section>
-      <section className="rounded-xl border bg-card p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-medium">Fix next</h2>
-          <CircleHelp
-            className="size-4 text-muted-foreground"
-            aria-label="Each check contributes to the score based on its weight."
-          />
-        </div>
-        <ul className="space-y-3">
-          {fixNext.map((check) => (
-            <CheckItem key={check.id} check={check} />
-          ))}
-        </ul>
-        {done.length ? (
-          <details className="mt-4 border-t pt-3">
-            <summary className="cursor-pointer text-sm font-medium">
-              Done ({done.length})
-            </summary>
-            <ul className="mt-3 space-y-3">
-              {done.map((check) => (
-                <CheckItem key={check.id} check={check} />
-              ))}
-            </ul>
-          </details>
-        ) : null}
-      </section>
-    </>
-  );
-}
-
 export function SearchPreview({ draft }: { draft: ContentDraftInput }) {
   return (
-    <section className="rounded-xl border bg-card p-4">
-      <h2 className="mb-3 font-medium">Search preview</h2>
+    <div>
       <div className="rounded-lg border bg-background p-4">
         <p className="truncate text-xs text-muted-foreground">
           {draft.slug
@@ -242,7 +74,7 @@ export function SearchPreview({ draft }: { draft: ContentDraftInput }) {
       <p className="mt-2 text-xs text-muted-foreground">
         Search engines may choose a different title or snippet.
       </p>
-    </section>
+    </div>
   );
 }
 
@@ -317,34 +149,6 @@ export function DraftsPanel({
         ))}
       </ul>
     </section>
-  );
-}
-
-function CheckItem({ check }: { check: ScoreCheck }) {
-  const notApplicable = check.weight === 0;
-  const Icon = notApplicable ? CircleHelp : check.passed ? Check : X;
-  return (
-    <li className="flex gap-2.5">
-      <Icon
-        className={`mt-0.5 size-4 shrink-0 ${check.passed && !notApplicable ? "text-success" : "text-muted-foreground"}`}
-        aria-hidden
-      />
-      <div className="min-w-0">
-        <p className="text-sm font-medium">
-          {check.label}
-          <span className="ml-1.5 font-mono text-xs text-muted-foreground">
-            {notApplicable
-              ? "Not applicable"
-              : check.earned > 0
-                ? `${Math.round(check.earned)}/${check.weight}`
-                : `+${check.weight - check.earned}`}
-          </span>
-        </p>
-        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-          {check.detail}
-        </p>
-      </div>
-    </li>
   );
 }
 
