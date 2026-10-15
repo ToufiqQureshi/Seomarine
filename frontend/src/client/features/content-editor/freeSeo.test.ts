@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import { describe, expect, it, vi } from "vitest";
 import { freshWithinTwelveMonths, freshnessCheck } from "./scoring-rules";
 import { applySuggestion } from "./linkSuggestions";
@@ -79,7 +78,7 @@ describe("applySuggestion", () => {
         },
       },
       chain: () => chain,
-    } as unknown as Editor;
+    };
     return { editor, chain };
   };
 

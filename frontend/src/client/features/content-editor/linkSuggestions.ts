@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import { z } from "zod";
 import { apiRequest } from "@/client/lib/uplumoApi";
 import { normalizeLinkUrl } from "./visual-editor/link-url";
@@ -40,8 +39,29 @@ export async function fetchLinkSuggestions({
  * Link the first intact anchor in the visual editor. The link command keeps
  * the change in the editor's history as one undoable transaction.
  */
+type LinkChain = {
+  focus: () => LinkChain;
+  setTextSelection: (range: { from: number; to: number }) => LinkChain;
+  setLink: (attributes: { href: string }) => LinkChain;
+  run: () => boolean;
+};
+
+type LinkableEditor = {
+  state: {
+    doc: {
+      descendants: (
+        visit: (
+          node: { isText: boolean; text?: string | null },
+          position: number,
+        ) => boolean | void,
+      ) => void;
+    };
+  };
+  chain: () => LinkChain;
+};
+
 export function applySuggestion(
-  editor: Editor,
+  editor: LinkableEditor,
   anchor: string,
   url: string,
 ): boolean {
