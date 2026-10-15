@@ -181,7 +181,12 @@ export function ManualReportForm({
             available through your connected assistant.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-5">
+        <form onSubmit={submit}>
+          <fieldset
+            disabled={saveMutation.isPending}
+            className="m-0 min-w-0 space-y-5 border-0 p-0"
+          >
+            <legend className="sr-only">Report fields</legend>
           <div
             className="flex flex-wrap gap-2"
             role="group"
@@ -315,6 +320,8 @@ export function ManualReportForm({
               </p>
             </div>
           ) : null}
+
+          </fieldset>
 
           {formError ? (
             <p role="alert" className="text-sm text-destructive">
