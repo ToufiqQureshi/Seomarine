@@ -13,15 +13,16 @@ import (
 // released. A path this table does not know is held at unknownTaskUSD, so a
 // new endpoint costs a customer a large hold rather than costing Uplumo money.
 const (
-	serpLivePageUSD      = 0.002
-	serpLiveExtraUSD     = 0.002
-	contentParsePageUSD  = 0.000125
-	serpQueuedPageUSD    = 0.0006
-	serpQueuedExtraUSD   = 0.00045
-	serpPriorityFactor   = 2
-	serpOperatorFactor   = 5
-	labsTaskUSD          = 0.01
-	labsRowUSD           = 0.0001
+	serpLivePageUSD     = 0.002
+	serpLiveExtraUSD    = 0.002
+	contentParsePageUSD = 0.000125
+	serpQueuedPageUSD   = 0.0006
+	serpQueuedExtraUSD  = 0.00045
+	serpPriorityFactor  = 2
+	serpOperatorFactor  = 5
+	// DataForSEO Labs rates increased by 20% on July 1, 2026.
+	labsTaskUSD          = 0.012
+	labsRowUSD           = 0.00012
 	labsDefaultRows      = 1000
 	backlinksTaskUSD     = 0.02
 	backlinksRowUSD      = 0.00003
