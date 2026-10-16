@@ -15,5 +15,5 @@ Researches seed terms and SERP results for a project market, with location selec
 
 ## Verification pointers
 
-- `useKeywordResearchData.test.ts`
+- `hooks/useKeywordResearchData.test.ts`
 - `groupSharedVolumeRows.test.ts`
