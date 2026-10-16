@@ -16,6 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const (
@@ -106,51 +107,53 @@ func (s *Service) BrandLookup(ctx context.Context, organizationID, projectID str
 		return cached, nil
 	}
 
-	platforms := make([]platformOutcome, len(brandPlatforms))
-	for i, platform := range brandPlatforms {
-		bundle, err := s.fetchPlatform(ctx, organizationID, platform, detected, includeSubdomains, in)
-		if blocking(ctx, err) {
-			return BrandLookupResult{}, err
-		}
-		if err != nil {
-			s.logger.ErrorContext(ctx, "brand lookup platform failed", "platform", platform, "err", err)
-			platforms[i] = platformOutcome{platform: platform}
-			continue
-		}
-		platforms[i] = platformOutcome{platform: platform, ok: true, bundle: bundle}
-	}
-
-	var cross []crossOutcome
+	var result BrandLookupResult
+	callCount := len(brandPlatforms) * 3
 	if len(groups) > 0 {
-		cross, err = s.fetchCross(ctx, organizationID, detected, groups, includeSubdomains, in)
-		if err != nil {
-			return BrandLookupResult{}, err
+		callCount += len(brandPlatforms)
+	}
+	err = s.provider.client.DoBudgeted(ctx, organizationID, spend.AIVisibility, float64(callCount)*0.5, func(request dataforseo.DoBudgetedRequest) error {
+		budgetCtx := context.WithValue(ctx, budgetRequestContextKey{}, request)
+		platforms := make([]platformOutcome, len(brandPlatforms))
+		for i, platform := range brandPlatforms {
+			bundle, fetchErr := s.fetchPlatform(budgetCtx, organizationID, platform, detected, includeSubdomains, in)
+			if blocking(budgetCtx, fetchErr) {
+				return fetchErr
+			}
+			if fetchErr != nil {
+				s.logger.ErrorContext(budgetCtx, "brand lookup platform failed", "platform", platform, "err", fetchErr)
+				platforms[i] = platformOutcome{platform: platform}
+				continue
+			}
+			platforms[i] = platformOutcome{platform: platform, ok: true, bundle: bundle}
 		}
-	}
 
-	competitorKeys := make([]string, len(groups))
-	for i, g := range groups {
-		competitorKeys[i] = g.label
-	}
-	result := shapeResult(shapeArgs{
-		query:          in.Query,
-		detected:       detected,
-		research:       research,
-		platforms:      platforms,
-		cross:          cross,
-		competitorKeys: competitorKeys,
-		locationCode:   in.LocationCode,
-		languageCode:   in.LanguageCode,
-		now:            s.now(),
+		var cross []crossOutcome
+		if len(groups) > 0 {
+			cross, err = s.fetchCross(budgetCtx, organizationID, detected, groups, includeSubdomains, in)
+			if err != nil {
+				return err
+			}
+		}
+		competitorKeys := make([]string, len(groups))
+		for i, g := range groups {
+			competitorKeys[i] = g.label
+		}
+		result = shapeResult(shapeArgs{
+			query: in.Query, detected: detected, research: research, platforms: platforms,
+			cross: cross, competitorKeys: competitorKeys, locationCode: in.LocationCode,
+			languageCode: in.LanguageCode, now: s.now(),
+		})
+		complete := slices.IndexFunc(platforms, func(p platformOutcome) bool { return !p.ok || !p.bundle.complete }) < 0 &&
+			slices.IndexFunc(cross, func(c crossOutcome) bool { return !c.ok }) < 0
+		if complete && result.HasData {
+			s.cacheSet(budgetCtx, key, result, brandLookupTTL)
+			s.saveVisibilitySnapshot(budgetCtx, key, result)
+		}
+		return nil
 	})
-
-	// Cache only when every call succeeded: a platform that swallowed a failed
-	// sub-call into empty data renders fine but must not be frozen for a day.
-	complete := slices.IndexFunc(platforms, func(p platformOutcome) bool { return !p.ok || !p.bundle.complete }) < 0 &&
-		slices.IndexFunc(cross, func(c crossOutcome) bool { return !c.ok }) < 0
-	if complete && result.HasData {
-		s.cacheSet(ctx, key, result, brandLookupTTL)
-		s.saveVisibilitySnapshot(ctx, key, result)
+	if err != nil {
+		return BrandLookupResult{}, err
 	}
 	return result, nil
 }
@@ -350,6 +353,27 @@ func (s *Service) fetchCross(ctx context.Context, organizationID string, detecte
 // one provider outage does not hide the other answers; only an account-level
 // failure fails the request.
 func (s *Service) ExplorePrompt(ctx context.Context, organizationID, projectID string, in PromptExplorerInput) (PromptExplorerResult, error) {
+	callLimit := len(in.Models)
+	if in.WebSearch {
+		callLimit *= 2 // one bounded retry is made when the first answer did not search
+	}
+	var result PromptExplorerResult
+	err := s.provider.client.DoBudgeted(ctx, organizationID, spend.AIVisibility, float64(callLimit)*0.5, func(request dataforseo.DoBudgetedRequest) error {
+		var runErr error
+		result, runErr = s.explorePrompt(ctxWithBudget(ctx, request), organizationID, projectID, in)
+		return runErr
+	})
+	if err != nil {
+		return PromptExplorerResult{}, err
+	}
+	return result, nil
+}
+
+func ctxWithBudget(ctx context.Context, request dataforseo.DoBudgetedRequest) context.Context {
+	return context.WithValue(ctx, budgetRequestContextKey{}, request)
+}
+
+func (s *Service) explorePrompt(ctx context.Context, organizationID, projectID string, in PromptExplorerInput) (PromptExplorerResult, error) {
 	results := make([]ModelResult, len(in.Models))
 	errs := make([]error, len(in.Models))
 	var wg sync.WaitGroup
