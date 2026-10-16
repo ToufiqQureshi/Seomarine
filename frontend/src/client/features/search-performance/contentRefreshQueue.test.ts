@@ -46,4 +46,13 @@ describe("buildContentRefreshQueue", () => {
       "topic two",
     ]);
   });
+
+  it("applies the impression threshold to the grouped page total", () => {
+    const queue = buildContentRefreshQueue([
+      { query: "first", page: "/guide", clicks: 1, impressions: 30, position: 8 },
+      { query: "second", page: "/guide", clicks: 2, impressions: 25, position: 12 },
+    ]);
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({ page: "/guide", impressions: 55, clicks: 3 });
+  });
 });
