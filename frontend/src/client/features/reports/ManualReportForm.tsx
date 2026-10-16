@@ -16,7 +16,10 @@ import {
 import { captureClientEvent } from "@/client/lib/posthog";
 import { saveReport, shareReport } from "@/client/features/reports/reportApi";
 import { reportsQueryKey } from "@/client/features/reports/shared";
-import { isSafeEvidenceUrl, WorkLogFields } from "@/client/features/reports/ManualReportWorkLogFields";
+import {
+  isSafeEvidenceUrl,
+  WorkLogFields,
+} from "@/client/features/reports/ManualReportWorkLogFields";
 import {
   buildManualReportHtml,
   buildManualWorkLogHtml,
