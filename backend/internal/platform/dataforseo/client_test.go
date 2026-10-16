@@ -59,7 +59,7 @@ func guardedClient(t *testing.T, server *httptest.Server, recorder CostRecorder,
 	return client
 }
 
-func TestDoAuthenticatesRecordsPerOrganizationAndReturnsTaskFailures(t *testing.T) {
+func TestDoRefundsFailedTasksWhileRecordingProviderCost(t *testing.T) {
 	var authorization, body string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization = r.Header.Get("Authorization")
@@ -84,6 +84,10 @@ func TestDoAuthenticatesRecordsPerOrganizationAndReturnsTaskFailures(t *testing.
 	costs := recorder.snapshot()
 	if len(costs) != 1 || costs[0].organizationID != "org-a" || costs[0].cost.USD != 0.002 {
 		t.Fatalf("recorded costs = %#v", costs)
+	}
+	guard, ok := client.guard.(*spendtest.Guard)
+	if !ok || len(guard.Settled()) != 1 || guard.Settled()[0] != 0 {
+		t.Fatalf("customer settlement = %v, want failed task refunded", guard.Settled())
 	}
 }
 

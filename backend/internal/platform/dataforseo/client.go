@@ -164,6 +164,9 @@ func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Fe
 		return nil, fmt.Errorf("%w: %w", ErrBillingIssue, err)
 	}
 	payload, charged, err := c.do(ctx, organizationID, true, method, path, body, retrySafe)
+	if responseHasTaskFailure(payload) {
+		charged = 0
+	}
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	if settleErr := hold.Settle(settleCtx, charged); settleErr != nil && err == nil {
@@ -197,7 +200,9 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 			return nil, err
 		}
 		payload, cost, requestErr := c.do(ctx, organizationID, true, method, path, body, retrySafe)
-		charged += cost
+		if !responseHasTaskFailure(payload) {
+			charged += cost
+		}
 		return payload, requestErr
 	}
 	defer func() {
@@ -230,6 +235,23 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 		return errors.Join(workErr, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{USD: total}, Cause: settleErr})
 	}
 	return workErr
+}
+
+func responseHasTaskFailure(payload []byte) bool {
+	var envelope struct {
+		Tasks []struct {
+			StatusCode int `json:"status_code"`
+		} `json:"tasks"`
+	}
+	if json.Unmarshal(payload, &envelope) != nil {
+		return false
+	}
+	for _, task := range envelope.Tasks {
+		if task.StatusCode != 0 && task.StatusCode != statusOK {
+			return true
+		}
+	}
+	return false
 }
 
 // DoBudgetedRequest sends one request under its operation's existing hold.
