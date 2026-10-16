@@ -137,7 +137,7 @@ export function BrandVisibilityHistoryCard({
               One snapshot saved for{" "}
               {periodLabel(latest?.period ?? chartData[0].period)}:{" "}
               {formatCount(latest?.totalMentions ?? chartData[0].mentions)}{" "}
-              mentions and {formatCount(latest?.citedPages ?? 0)} cited pages. A
+              mentions and {formatCount(latest?.citedSources ?? 0)} cited source entries in the sample. A
               trend appears after another month is saved.
             </p>
           )}
@@ -156,9 +156,9 @@ export function BrandVisibilityHistoryCard({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Cited pages</p>
+                <p className="text-xs text-muted-foreground">Cited source entries (sample)</p>
                 <p className="font-semibold">
-                  {formatCount(latest.citedPages)}
+                  {formatCount(latest.citedSources)}
                 </p>
               </div>
             </div>
