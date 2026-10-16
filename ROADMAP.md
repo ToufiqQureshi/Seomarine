@@ -88,6 +88,17 @@ mean each one has been tried on production with real provider keys.
 | Plain-language and Hinglish copy pass across the app                                     | ⏳     |
 | USD pricing                                                                              | ⏳     |
 | Account deletion and data export from Settings                                           | ⏳     |
+| SEO Change Guard: snapshot crawl results, flag SEO-critical changes, show affected URLs and verify fixes after the next crawl | ⏳ proposed |
+
+## Competitive scan and product opportunity (16 October 2026)
+
+This is a shortlist for product discovery, not a claim that competitors lack these capabilities. Public feature pages are not exhaustive.
+
+- Ahrefs advertises always-on site audits, technical issue reporting and AI-assisted patches ([Site Audit](https://ahrefs.com/use-cases/seo), [product update](https://ahrefs.com/blog/new-features-apr-2025/)). Semrush also promotes technical audits and AI-crawler checks ([Site Audit](https://www.semrush.com/features/site-audit/)). So audits, internal links and AI-bot checks alone are not a defensible unique claim.
+- Ahrefs AI Content Helper offers content-gap recommendations and in-editor assistance ([product page](https://ahrefs.com/ai-content-helper)). Content scoring and AI writing are also competitive categories; Uplumo should differentiate through its India-first pricing and a simpler action workflow, not claim exclusivity.
+- **Proposed: SEO Change Guard.** Save crawl snapshots and diff titles, canonicals, indexability, robots directives, schema and internal links. Show the exact URLs and dates affected, then recrawl after the owner fixes the change. Use Uplumo's crawler and stored snapshots; this needs no paid SEO-data API.
+- **Potential extension:** connect the change timeline to Uplumo's first-party analytics to show whether a change coincided with visits or lead events moving. Treat this as correlation, not proof that the change caused the movement.
+
 
 ## Next up
 
