@@ -84,6 +84,38 @@ function runExport(table: ExportTable, target: ExportTarget): Promise<void> {
   });
 }
 
+export function exportContentRefreshQueue(
+  rows: Array<{
+    page: string;
+    clicks: number;
+    impressions: number;
+    averagePosition: number;
+    queries: Array<{ query: string }>;
+  }>,
+  range: Report["range"],
+  target: ExportTarget,
+): Promise<void> {
+  const stamp = `${range.startDate}-to-${range.endDate}`;
+  const table: ExportTable = {
+    filename: `search-performance-content-refresh-queue-${stamp}`,
+    headers: [
+      "Page",
+      "Impressions",
+      "Clicks",
+      "Average position",
+      "Query themes",
+    ],
+    rows: rows.map((row) => [
+      row.page,
+      row.impressions,
+      row.clicks,
+      row.averagePosition,
+      row.queries.map((query) => query.query).join(" · "),
+    ]),
+  };
+  return runExport(table, target);
+}
+
 export function exportStriking(
   report: Report,
   target: ExportTarget,

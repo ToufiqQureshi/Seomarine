@@ -31,7 +31,7 @@ export function ReportsList({
       <EmptyState
         icon={FileText}
         title="No reports yet"
-        description="Ask your connected AI agent to save its work as a report, for example: “Run an SEO audit of my site and save it as a report.” It will show up here."
+        description="Write a report yourself or ask your connected AI assistant to save its work here."
       />
     );
   }

@@ -276,6 +276,13 @@ func TestInfoPages(t *testing.T) {
 func TestPagesHaveNoDeadLinks(t *testing.T) {
 	s := newSite(t, &url.URL{Scheme: "https", Host: "uplumo.com"})
 	known := map[string]bool{"/": true, "/pricing": true, "/blog": true, "/sign-in": true, "/sign-up": true}
+	blogSourceHosts := map[string]bool{
+		"developers.google.com": true,
+		"developers.openai.com": true,
+		"support.google.com":    true,
+		"www.reddit.com":        true,
+		"www.w3.org":            true,
+	}
 	// The privacy policy must point at Google's own policy and at the page
 	// where a user removes our access. Any other outside link is a mistake.
 	known["https://developers.google.com/terms/api-services-user-data-policy"] = true
@@ -304,11 +311,17 @@ func TestPagesHaveNoDeadLinks(t *testing.T) {
 				}
 			case strings.HasPrefix(link, "mailto:"+SupportEmail), strings.HasPrefix(link, "#"),
 				strings.HasPrefix(link, "https://uplumo.com/"):
+			case strings.HasPrefix(path, "/blog/") && isAllowedBlogSource(link, blogSourceHosts):
 			case !known[link]:
 				t.Errorf("%s links to %q, which no page serves", path, link)
 			}
 		}
 	}
+}
+
+func isAllowedBlogSource(link string, allowedHosts map[string]bool) bool {
+	u, err := url.Parse(link)
+	return err == nil && u.Scheme == "https" && u.Host != "" && allowedHosts[u.Host]
 }
 
 func TestRobotsAndSitemap(t *testing.T) {

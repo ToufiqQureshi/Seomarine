@@ -4,6 +4,7 @@ import {
   deleteReport,
   getReport,
   listReports,
+  saveReport,
   saveReportTemplate,
   shareReport,
   unshareReport,
@@ -152,5 +153,40 @@ describe("reports API", () => {
         },
       }),
     ).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("saves a manually authored report through the project-scoped endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      Response.json({
+        reportId: "r2",
+        title: "Monthly update",
+        created: true,
+        htmlBytes: 240,
+      }),
+    );
+
+    await expect(
+      saveReport({
+        data: {
+          projectId: "p/1",
+          title: "Monthly update",
+          summary: "A concise update",
+          html: "<!doctype html><html></html>",
+        },
+      }),
+    ).resolves.toMatchObject({ reportId: "r2", created: true });
+
+    expect(fetchMock.mock.calls[0]).toMatchObject([
+      "/api/v1/projects/p%2F1/reports/save",
+      {
+        body: JSON.stringify({
+          reportId: undefined,
+          title: "Monthly update",
+          summary: "A concise update",
+          html: "<!doctype html><html></html>",
+          skill: "Manual",
+        }),
+      },
+    ]);
   });
 });

@@ -87,6 +87,34 @@ export async function getReport({ data }: ReportInput<{ reportId: string }>) {
   };
 }
 
+export async function saveReport({
+  data,
+}: ReportInput<{
+  reportId?: string;
+  title: string;
+  summary: string;
+  html: string;
+  skill?: string;
+}>) {
+  return apiRequest(
+    reportPath(data.projectId, "save"),
+    z.object({
+      reportId: z.string(),
+      title: z.string(),
+      created: z.boolean(),
+      htmlBytes: z.number(),
+    }),
+    "POST",
+    {
+      reportId: data.reportId,
+      title: data.title,
+      summary: data.summary,
+      html: data.html,
+      skill: data.skill ?? "Manual",
+    },
+  );
+}
+
 export async function shareReport({ data }: ReportInput<{ reportId: string }>) {
   return apiRequest(
     reportPath(data.projectId, "sharing"),
