@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 
@@ -44,6 +45,47 @@ func TestBrandLookupFetchesBothPlatformsAndShapesTheResult(t *testing.T) {
 	}
 	if len(result.TopPages) != 2 || len(result.TopQueries) != 2 {
 		t.Errorf("topPages = %d, topQueries = %d, want 2 and 2 (one per platform)", len(result.TopPages), len(result.TopQueries))
+	}
+}
+
+func TestBrandLookupRecordsMonthlyVisibilityHistoryWithoutExtraProviderCalls(t *testing.T) {
+	api := newFakeAPI(t)
+	svc := newTestService(t, api)
+	org := newOrg()
+	ctx := context.Background()
+	result, err := svc.BrandLookup(ctx, org, "project-1", lookupInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	providerCalls := api.total()
+
+	history, err := svc.BrandVisibilityHistory(ctx, org, "project-1", lookupInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.total() != providerCalls {
+		t.Fatalf("history read made provider calls: before %d, after %d", providerCalls, api.total())
+	}
+	if len(history) != 1 || history[0].TotalMentions != intOrZero(result.TotalMentions) || history[0].CitedSources != len(result.TopPages) {
+		t.Fatalf("history = %#v, want one snapshot from the lookup result", history)
+	}
+
+	key, err := brandLookupKey(org, "project-1", lookupInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.now = func() time.Time { return time.Now().UTC().AddDate(0, 1, 0) }
+	svc.saveVisibilitySnapshot(ctx, key, result)
+	history, err = svc.BrandVisibilityHistory(ctx, org, "project-1", lookupInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 2 || history[0].Period >= history[1].Period {
+		t.Fatalf("monthly history = %#v, want two ordered periods", history)
+	}
+	otherProject, err := svc.BrandVisibilityHistory(ctx, org, "other-project", lookupInput())
+	if err != nil || len(otherProject) != 0 {
+		t.Fatalf("other project history = %#v, err=%v, want empty", otherProject, err)
 	}
 }
 

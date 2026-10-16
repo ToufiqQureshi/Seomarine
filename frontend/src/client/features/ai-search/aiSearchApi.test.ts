@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/client/lib/uplumoApi";
-import { explorePrompt, lookupBrand } from "./aiSearchApi";
+import {
+  explorePrompt,
+  getBrandVisibilityHistory,
+  lookupBrand,
+} from "./aiSearchApi";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -93,6 +97,33 @@ describe("lookupBrand", () => {
       status: 402,
       message: "Upgrade to the paid plan to use AI Visibility.",
     });
+  });
+});
+
+describe("getBrandVisibilityHistory", () => {
+  it("reads scoped saved snapshots without a provider lookup route", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json([
+        {
+          period: "2026-10",
+          fetchedAt: "2026-10-08T09:00:00.000Z",
+          totalMentions: 5,
+          totalAiSearchVolume: 50,
+          citedSources: 2,
+        },
+      ]),
+    );
+    const history = await getBrandVisibilityHistory({
+      projectId: "p/1",
+      query: "acme.com",
+      competitors: [],
+      locationCode: 2840,
+      languageCode: "en",
+    });
+    expect(history).toHaveLength(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/v1/projects/p%2F1/ai-search/brand-lookup/history",
+    );
   });
 });
 

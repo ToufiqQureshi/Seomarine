@@ -5,12 +5,18 @@ AI Overviews mention a brand or domain, which pages they cite, how it compares
 with competitors) and **Prompt Explorer** (one prompt asked of ChatGPT, Claude,
 Gemini and Perplexity, answers side by side). Ported from the legacy
 `src/server/features/ai-search`. Both are stateless: no tables of their own,
-Redis cache only.
+Redis cache only. Successful, user-triggered Brand Lookups also save one
+aggregate visibility snapshot per month in Redis for a 13-month trend; history
+reads use saved snapshots and do not call DataForSEO.
+The Brand Lookup page can also show first-party AI referral totals from Uplumo
+Analytics. Those site-wide visits are kept separate from citation counts and
+are not matched to specific cited URLs.
 
 ## Flow
 
 ```
 POST /api/v1/projects/{projectId}/ai-search/brand-lookup
+POST /api/v1/projects/{projectId}/ai-search/brand-lookup/history
 POST /api/v1/projects/{projectId}/ai-search/prompt-explorer
   httpapi: requireSession -> requireProjectAccess (puts the project's organization in the context)
   handler.go   decode, validate, plan check, map errors to HTTP
@@ -73,8 +79,8 @@ namespace. Entries expire within 7 days. To erase sooner, `SCAN`/`UNLINK`
 
 ## Configuration
 
-| Variable             | Meaning                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Variable             | Meaning                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `DATAFORSEO_API_KEY` | Base64 `login:password` of the DataForSEO account. Unset: both endpoints answer 503 and the server still runs. |
 
 Provider spend is in `go_dataforseo_usage` (migration 00006), per organization.

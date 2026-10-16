@@ -197,6 +197,16 @@ type BrandLookupResult struct {
 	MonthlyVolume            []MonthlyVolume     `json:"monthlyVolume"`
 }
 
+// VisibilitySnapshot is one monthly, user-triggered Brand Lookup observation.
+// It intentionally stores only aggregate metrics, not prompts or citations.
+type VisibilitySnapshot struct {
+	Period              string `json:"period"`
+	FetchedAt           string `json:"fetchedAt"`
+	TotalMentions       int    `json:"totalMentions"`
+	TotalAISearchVolume int    `json:"totalAiSearchVolume"`
+	CitedSources        int    `json:"citedSources"`
+}
+
 // Prompt explorer API.
 
 // PromptExplorerInput is a validated prompt explorer request. The models are

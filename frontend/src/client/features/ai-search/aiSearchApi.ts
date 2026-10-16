@@ -1,6 +1,7 @@
 import { apiRequest } from "@/client/lib/uplumoApi";
 import {
   brandLookupResultSchema,
+  brandVisibilityHistorySchema,
   promptExplorerResultSchema,
   type BrandLookupInput,
   type BrandLookupResult,
@@ -20,6 +21,19 @@ export function lookupBrand({
   return apiRequest(
     projectPath(projectId, "brand-lookup"),
     brandLookupResultSchema,
+    "POST",
+    body,
+  );
+}
+
+/** Read monthly snapshots collected by user-triggered brand lookups. */
+export function getBrandVisibilityHistory({
+  projectId,
+  ...body
+}: BrandLookupInput) {
+  return apiRequest(
+    `${projectPath(projectId, "brand-lookup")}/history`,
+    brandVisibilityHistorySchema,
     "POST",
     body,
   );
