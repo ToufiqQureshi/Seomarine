@@ -39,6 +39,8 @@ indexability, HTTP status, page coverage, and issue count. It fetches saved
 results only after a user asks to compare; a URL missing from a later crawl is
 shown as missing from that crawl, not assumed to have been deleted from the site.
 
+## Orphan-link suggestions
+
 For orphan-page issues, the result view suggests up to three indexable source
 pages from the same crawl by matching meaningful title and URL terms. It
 excludes other detected orphan pages, makes no provider calls, and offers a
