@@ -15,4 +15,4 @@ Shows organic estimates, keyword/page tables and filtered domain research.
 ## Verification pointers
 
 - `domainRouteState.test.ts`
-- `domainResultLinks.test.ts`
+- `components/domainResultLinks.test.ts`
