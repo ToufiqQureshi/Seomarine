@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/client/components/ui/table";
 import { formatDate, StatusBadge } from "@/client/features/audit/shared";
+import { AuditChangeGuard } from "@/client/features/audit/launch/AuditChangeGuard";
 
 export function AuditHistorySection({
   projectId,
@@ -35,11 +36,14 @@ export function AuditHistorySection({
       errorFallback="Failed to load audit history"
     >
       {(history) => (
-        <AuditHistoryTable
-          projectId={projectId}
-          history={history}
-          onDelete={onDelete}
-        />
+        <div className="space-y-4">
+          <AuditHistoryTable
+            projectId={projectId}
+            history={history}
+            onDelete={onDelete}
+          />
+          <AuditChangeGuard projectId={projectId} history={history} />
+        </div>
       )}
     </QueryState>
   );
