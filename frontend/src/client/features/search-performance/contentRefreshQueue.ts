@@ -39,11 +39,11 @@ export function buildContentRefreshQueue(rows: RefreshQuery[]) {
   const groupedPages = [...byPage.values()]
     .filter((page) => page.impressions >= 50)
     .map((page) => ({
-    ...page,
-    averagePosition:
-      page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
-    queries: sortBy(page.queries, (query) => -query.impressions).slice(0, 3),
-  }));
+      ...page,
+      averagePosition:
+        page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
+      queries: sortBy(page.queries, (query) => -query.impressions).slice(0, 3),
+    }));
 
   return sortBy(groupedPages, (page) => -page.impressions);
 }
