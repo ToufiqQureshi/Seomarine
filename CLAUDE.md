@@ -95,8 +95,11 @@ to the source files and explain behavior, dependencies, failure paths and why.
    nothing for an imagined future. No unused parameters, options, layers,
    files or "just in case" branches. Under-engineering is a defect too: a
    missing timeout, limit, check or test is not "simple".
-2. **Does it already exist?** Look in this repo, then the standard library,
-   then `go.mod` and `package.json`. Read the current docs before you code:
+2. **Does it already exist?** Look in this repo, then language built-ins and
+   standard libraries, then `go.mod` and `package.json`. Keep those layers
+   distinct: Go predeclared functions/types such as `len`, `append` and `make`
+   need no import; `net/http` and `context` are standard-library packages;
+   `pgx` and TanStack are installed dependencies. Read current docs:
    Go release notes (`go.dev/doc/go1.27`, e.g. `errors.AsType`,
    `sync.WaitGroup.Go`, `testing.T.Context`, `slices`, `maps`,
    `strings.SplitSeq`, the `uuid` package) and `go doc`; for the frontend the
@@ -145,11 +148,11 @@ Then delete every line that does not earn its place.
 **Go is the backend.** There is no TypeScript backend: the React app is a
 static SPA that the Go server serves and that calls `/api/v1/`. No Next.js.
 
-- **Inbuilt first.** Use the standard library (`net/http`, `log/slog`,
-  `context`, `encoding/json`, `errors`, `slices`, `maps`, `strings`, `sync`,
-  `time`, `testing`, `net/http/httptest`) and what `go.mod` already has.
-  Hand-rolling something the standard library does is a defect. Check
-  `go doc` before writing a helper. A new dependency needs a reason in the PR.
+- **Go:** use language built-ins, then the standard library (`net/http`,
+  `log/slog`, `context`, `encoding/json`, `errors`, `slices`, `maps`,
+  `strings`, `sync`, `time`, `testing`, `net/http/httptest`), then dependencies
+  already in `go.mod`. Hand-rolling a standard-library feature is a defect.
+  Check `go doc` before writing a helper. A new module needs a reason in the PR.
 - **Layering:** handler -> service -> repository. Handlers validate every
   input and map errors to HTTP. Services hold the rules. Repositories hold
   plain SQL (pgx, no ORM). New tables are prefixed `go_`.
@@ -180,8 +183,11 @@ static SPA that the Go server serves and that calls `/api/v1/`. No Next.js.
 
 **Frontend** (`frontend/src/client` and `frontend/src/routes`): React with
 Vite, TanStack Query/Router/Form patterns, shadcn on Base UI (compose with the
-`render` prop, not `asChild`). Screens call the Go API under `/api/v1/`
-through `apiRequest` and validate responses with Zod.
+`render` prop, not `asChild`). React hooks are built-in React APIs; routing,
+server-state caching and forms come from the installed TanStack packages. Use
+TanStack Query for server state instead of hand-rolled `useEffect` fetch/cache
+logic. Screens call the Go API under `/api/v1/` through `apiRequest` and
+validate responses with Zod.
 
 ## 4. How to write tests
 
