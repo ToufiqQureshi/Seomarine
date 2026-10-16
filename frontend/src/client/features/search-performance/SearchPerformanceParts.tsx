@@ -96,7 +96,7 @@ export function exportContentRefreshQueue(
   target: ExportTarget,
 ): Promise<void> {
   const stamp = `${range.startDate}-to-${range.endDate}`;
-  return runExport({
+  const table: ExportTable = {
     filename: `search-performance-content-refresh-queue-${stamp}`,
     headers: [
       "Page",
@@ -112,7 +112,8 @@ export function exportContentRefreshQueue(
       row.averagePosition,
       row.queries.map((query) => query.query).join(" · "),
     ]),
-  }, target);
+  };
+  return runExport(table, target);
 }
 
 export function exportStriking(
