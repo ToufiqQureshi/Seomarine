@@ -112,6 +112,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check frontend quality gates
-        run: pnpm exec prettier --write src/client/features/reports/ManualReportForm.tsx && git diff -- src/client/features/reports/ManualReportForm.tsx && pnpm ci:check
+        run: pnpm ci:check
       - name: Run frontend tests
         run: pnpm test
