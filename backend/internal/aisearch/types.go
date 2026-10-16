@@ -204,7 +204,7 @@ type VisibilitySnapshot struct {
 	FetchedAt           string `json:"fetchedAt"`
 	TotalMentions       int    `json:"totalMentions"`
 	TotalAISearchVolume int    `json:"totalAiSearchVolume"`
-	CitedPages          int    `json:"citedPages"`
+	CitedSources        int    `json:"citedSources"`
 }
 
 // Prompt explorer API.
