@@ -29,6 +29,9 @@ func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
 		if g.Name == "" || g.Summary == "" || len(g.Highlights) == 0 {
 			t.Errorf("plan %s has no name, summary or highlights to show a customer", g.ID)
 		}
+		if g.TrackedKeywords > 0 && g.RankSchedule != RankScheduleWeekly {
+			t.Errorf("plan %s rank schedule = %q, want weekly", g.ID, g.RankSchedule)
+		}
 	}
 	if !slices.Equal(Paid(), []string{Basic, Pro, Agency}) {
 		t.Errorf("Paid() = %v", Paid())

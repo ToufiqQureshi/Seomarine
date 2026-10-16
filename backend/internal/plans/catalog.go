@@ -13,6 +13,10 @@ const (
 	Agency = "agency"
 )
 
+// RankScheduleWeekly is the default recurring promise on every paid plan.
+// Daily checks are an opt-in that must pass the rank-tracking credit preflight.
+const RankScheduleWeekly = "weekly"
+
 // Feature is something a plan either includes or does not.
 type Feature string
 
@@ -66,6 +70,8 @@ type Definition struct {
 	// Deeper checks cost more per keyword, so it keeps a plan's tracked
 	// keywords, checked weekly, inside its monthly credits.
 	MaxSerpDepth int
+	// RankSchedule is the recurring frequency advertised for the plan.
+	RankSchedule string
 	// Highlights is the plan in the customer's words. Never list here what
 	// Features and the limits do not enforce.
 	Highlights []string
@@ -94,13 +100,13 @@ var catalog = []Definition{
 		},
 	},
 	{
-		ID: Basic, Name: "Basic", PriceINR: 999, Sites: 1, TrackedKeywords: 100, Members: 1, MonthlyCredits: 4000, MaxSerpDepth: 30,
+		ID: Basic, Name: "Basic", PriceINR: 999, Sites: 1, TrackedKeywords: 100, Members: 1, MonthlyCredits: 4000, MaxSerpDepth: 30, RankSchedule: RankScheduleWeekly,
 		Summary: "For one site that wants to rank: keywords, rankings and Google data.",
 		Highlights: []string{
 			"1 website",
 			"Everything in Free",
 			"Keyword research",
-			"Rank tracking for 100 keywords",
+			"Rank tracking for 100 keywords, checked weekly",
 			"Google Search Console and Google Analytics",
 			"Full site audit",
 			"Publish articles straight to your WordPress site",
@@ -109,12 +115,12 @@ var catalog = []Definition{
 		features: basicFeatures,
 	},
 	{
-		ID: Pro, Name: "Pro", PriceINR: 2499, Sites: 2, TrackedKeywords: 500, Members: 3, MonthlyCredits: 10000, MaxSerpDepth: 40,
+		ID: Pro, Name: "Pro", PriceINR: 2499, Sites: 2, TrackedKeywords: 500, Members: 3, MonthlyCredits: 10000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
 		Summary: "For a growing business: competitors, backlinks and AI search.",
 		Highlights: []string{
 			"2 websites",
 			"Everything in Basic",
-			"Rank tracking for 500 keywords",
+			"Rank tracking for 500 keywords, checked weekly",
 			"AI Visibility across ChatGPT, Perplexity, Gemini, AI Overviews and Claude",
 			"Backlink and competitor research",
 			"3 team members",
@@ -122,12 +128,12 @@ var catalog = []Definition{
 		features: proFeatures,
 	},
 	{
-		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40,
+		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
 		Summary: "For agencies: client sites and reports under your own brand.",
 		Highlights: []string{
 			"10 websites",
 			"Everything in Pro",
-			"Rank tracking for 2,000 keywords",
+			"Rank tracking for 2,000 keywords, checked weekly",
 			"White-label reports with your name, logo and colour",
 			"10 team members",
 		},
