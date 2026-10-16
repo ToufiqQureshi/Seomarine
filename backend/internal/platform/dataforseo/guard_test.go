@@ -56,7 +56,7 @@ func TestDoHoldsTheCeilingAndSettlesTheRealCost(t *testing.T) {
 	}
 }
 
-func TestDoBudgetedUsesOneHoldAndReleasesOnAnyProviderFailure(t *testing.T) {
+func TestDoBudgetedSettlesSuccessfulPartialProviderWork(t *testing.T) {
 	for _, failSecond := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "second call fails"}[failSecond], func(t *testing.T) {
 			calls := 0
@@ -89,7 +89,7 @@ func TestDoBudgetedUsesOneHoldAndReleasesOnAnyProviderFailure(t *testing.T) {
 				t.Fatalf("holds = %+v", held)
 			}
 			settled := guard.Settled()
-			if len(settled) != 1 || (failSecond && settled[0] != 0) || (!failSecond && settled[0] != 0.007) {
+			if len(settled) != 1 || (failSecond && settled[0] != 0.006) || (!failSecond && settled[0] != 0.007) {
 				t.Fatalf("settled = %v", settled)
 			}
 		})

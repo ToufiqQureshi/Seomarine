@@ -174,7 +174,7 @@ func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Fe
 
 // DoBudgeted reserves one ceiling for a multi-request provider operation.
 // Provider task costs are still recorded individually; customer credits are
-// settled once after all requests succeed and fully released on any failure.
+// settled once after all requests, including successful partial work, finish.
 // Use only for bounded operations whose complete worst-case price is known.
 func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature spend.Feature, ceilingUSD float64, work func(DoBudgetedRequest) error) error {
 	if strings.TrimSpace(organizationID) == "" || len(organizationID) > 128 || strings.TrimSpace(string(feature)) == "" || math.IsNaN(ceilingUSD) || math.IsInf(ceilingUSD, 0) || ceilingUSD <= 0 || work == nil {
@@ -218,9 +218,7 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 	open = false
 	total := charged
 	mu.Unlock()
-	if workErr != nil {
-		total = 0
-	} else if total > ceilingUSD {
+	if total > ceilingUSD {
 		// The customer was quoted the ceiling and the provider already did the
 		// work, so the result is returned and Uplumo absorbs the overage.
 		// Failing here would charge for nothing and repeat on every retry.
