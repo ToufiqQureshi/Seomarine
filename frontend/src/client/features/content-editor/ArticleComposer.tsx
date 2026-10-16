@@ -19,6 +19,7 @@ import { PreviewDialog } from "./visual-editor/PreviewDialog";
 type ArticleComposerProps = {
   draft: ContentDraftInput;
   projectId: string;
+  projectDomain: string;
   onTopicLink?: string;
   disabled: boolean;
   onImageUploadStateChange: (uploading: boolean) => void;
@@ -30,6 +31,7 @@ type ArticleComposerProps = {
 export function ArticleComposer({
   draft,
   projectId,
+  projectDomain,
   onTopicLink,
   disabled,
   onImageUploadStateChange,
@@ -129,7 +131,7 @@ export function ArticleComposer({
               />
             </Field>
           </div>
-          <SearchPreview draft={draft} />
+          <SearchPreview draft={draft} domain={projectDomain} />
         </div>
       </details>
       <ArticleBody

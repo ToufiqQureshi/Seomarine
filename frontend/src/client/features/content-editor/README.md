@@ -134,3 +134,6 @@ Google or predict rankings.
   and restrict its allowed MIME type to `image/webp` with a 1 MB object-size
   limit in Supabase. The service-role key must never be exposed to the browser.
 - Do not persist drafts in browser storage; drafts may contain customer data.
+- Drafts autosave after three seconds of inactivity. The header and search
+  preview use the page title, then the first H1, and show the workspace's
+  connected domain in the preview URL.

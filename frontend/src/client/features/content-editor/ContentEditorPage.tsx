@@ -4,6 +4,7 @@ import { sortBy } from "remeda";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
+import { projectsQueryOptions } from "@/client/features/projects/projectQueries";
 import {
   contentEditorQueryKeys,
   deleteContentDraft,
@@ -28,6 +29,7 @@ import {
   type EditorTab,
 } from "./ContentEditorSidePanel";
 import { isArticleContentWithinLimit } from "./content-limits";
+import { titleForDraft } from "./editor-display";
 
 const blankDraft: ContentDraftInput = {
   title: "",
@@ -64,6 +66,9 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
     queryKey: contentEditorQueryKeys.drafts(projectId),
     queryFn: () => listContentDrafts({ data: { projectId } }),
   });
+  const projectsQuery = useQuery(projectsQueryOptions());
+  const projectDomain =
+    projectsQuery.data?.find((p) => p.id === projectId)?.domain ?? "";
   const [mode, setMode] = useState<EditorMode>("seo");
   const [tab, setTab] = useState<EditorTab>("score");
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -162,6 +167,17 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           : "Could not save this draft. Your writing is still here.",
       ),
   });
+
+  useEffect(() => {
+    if (!initialized || !dirty || saveMutation.isPending) return;
+    if (
+      (!draft.title.trim() && !draft.content.trim()) ||
+      !isArticleContentWithinLimit(draft.content)
+    )
+      return;
+    const timer = window.setTimeout(() => saveMutation.mutate(), 3000);
+    return () => window.clearTimeout(timer);
+  }, [draft, dirty, initialized, saveMutation.isPending]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
@@ -265,15 +281,19 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   return (
     <FreeSeoEditorProvider onDraftFieldChange={update}>
       <div className="space-y-5">
-        <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="sticky top-16 z-10 -mx-1 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 backdrop-blur">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {draft.title || "Untitled draft"}
+              {titleForDraft(draft)}
             </p>
             <p className="text-xs text-muted-foreground">
               {words.toLocaleString()} words ·{" "}
               {words > 0 ? `about ${readMinutes} min read · ` : ""}
-              {dirty ? "Unsaved changes" : "All changes saved"}
+              {saveMutation.isPending
+                ? "Saving…"
+                : dirty
+                  ? "Unsaved changes"
+                  : "Saved"}
             </p>
           </div>
           <Button variant="outline" onClick={() => setPreviewOpen(true)}>
@@ -303,6 +323,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
             <ArticleComposer
               draft={draft}
               projectId={projectId}
+              projectDomain={projectDomain}
               onTopicLink={
                 draft.targetKeyword.trim()
                   ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`

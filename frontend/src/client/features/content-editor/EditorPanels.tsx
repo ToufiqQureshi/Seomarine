@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/client/components/ui/button";
 import type { ContentDraftSummary } from "./contentEditorApi";
 import type { ContentDraftInput } from "./scoring";
+import { searchPreviewTitle, searchPreviewUrl } from "./editor-display";
 
 const reminderStorageKey = (projectId: string) =>
   `uplumo:content-editor:writer-reminder:${projectId}`;
@@ -54,17 +55,21 @@ export function WriterReminder({ projectId }: { projectId: string }) {
   );
 }
 
-export function SearchPreview({ draft }: { draft: ContentDraftInput }) {
+export function SearchPreview({
+  draft,
+  domain,
+}: {
+  draft: ContentDraftInput;
+  domain: string;
+}) {
+  const title = searchPreviewTitle(draft);
+  const url = searchPreviewUrl(domain, draft.slug);
   return (
     <div>
       <div className="rounded-lg border bg-background p-4">
-        <p className="truncate text-xs text-muted-foreground">
-          {draft.slug
-            ? `https://your-site.com/${draft.slug}`
-            : "https://your-site.com/your-page"}
-        </p>
+        <p className="truncate text-xs text-muted-foreground">{url}</p>
         <p className="mt-1 line-clamp-2 text-lg leading-6 text-sky-700 dark:text-sky-400">
-          {draft.title || "Your page title will appear here"}
+          {title || "Your page title will appear here"}
         </p>
         <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
           {draft.metaDescription ||
