@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareAuditResults } from "@/client/features/audit/compare";
+import { compareAuditResults, latestComparablePair } from "@/client/features/audit/compare";
 import type { AuditResultsData } from "@/client/features/audit/auditApi";
 
 function results(pages: AuditResultsData["pages"]): AuditResultsData {
@@ -103,4 +103,26 @@ describe("compareAuditResults", () => {
     expect(diff.removedPages).toBe(1);
     expect(diff.changes).toEqual([]);
   });
+  it("finds the latest matching pair when a newer crawl used another start URL", () => {
+    const item = (id: string, startUrl: string) => ({
+      id,
+      startUrl,
+      status: "completed" as const,
+      pagesCrawled: 1,
+      pagesTotal: 1,
+      ranLighthouse: false,
+      startedAt: "2026-01-01T00:00:00.000Z",
+      completedAt: "2026-01-01T00:01:00.000Z",
+    });
+    const pair = latestComparablePair([
+      item("latest-other", "https://other.example/"),
+      item("newer-example", "https://example.com/"),
+      item("older-example", "https://example.com"),
+    ]);
+    expect(pair.map((audit) => audit.id)).toEqual([
+      "newer-example",
+      "older-example",
+    ]);
+  });
+
 });
