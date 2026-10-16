@@ -21,7 +21,7 @@ export function buildContentRefreshQueue(rows: RefreshQuery[]) {
   >();
 
   for (const row of rows) {
-    if (row.position < 5 || row.position > 20 || row.impressions < 50) continue;
+    if (row.position < 5 || row.position > 20) continue;
     const page = byPage.get(row.page) ?? {
       page: row.page,
       clicks: 0,
@@ -36,7 +36,9 @@ export function buildContentRefreshQueue(rows: RefreshQuery[]) {
     byPage.set(row.page, page);
   }
 
-  const groupedPages = [...byPage.values()].map((page) => ({
+  const groupedPages = [...byPage.values()]
+    .filter((page) => page.impressions >= 50)
+    .map((page) => ({
     ...page,
     averagePosition:
       page.impressions > 0 ? page.weightedPosition / page.impressions : 0,
