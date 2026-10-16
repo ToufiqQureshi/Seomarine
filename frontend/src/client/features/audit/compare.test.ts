@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { compareAuditResults, latestComparablePair } from "@/client/features/audit/compare";
+import {
+  compareAuditResults,
+  latestComparablePair,
+} from "@/client/features/audit/compare";
 import type { AuditResultsData } from "@/client/features/audit/auditApi";
 
 function results(pages: AuditResultsData["pages"]): AuditResultsData {
@@ -124,5 +127,4 @@ describe("compareAuditResults", () => {
       "older-example",
     ]);
   });
-
 });
