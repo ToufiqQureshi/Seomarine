@@ -1,4 +1,7 @@
-import type { AuditHistory, AuditResultsData } from "@/client/features/audit/auditApi";
+import type {
+  AuditHistory,
+  AuditResultsData,
+} from "@/client/features/audit/auditApi";
 
 type AuditChange = {
   url: string;
