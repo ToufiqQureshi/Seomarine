@@ -140,7 +140,7 @@ export function getBacklinksRows(
 ): Promise<BacklinksRowsPageData> {
   const { projectId, ...body } = input;
   return apiRequest(
-    path(projectId, "rows"),
+    path(projectId, "backlinks"),
     backlinksRowsPageSchema,
     "POST",
     body,

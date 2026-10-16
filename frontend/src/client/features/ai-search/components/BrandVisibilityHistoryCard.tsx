@@ -60,8 +60,8 @@ export function BrandVisibilityHistoryCard({
   );
   const latest = snapshots?.at(-1);
   const previous = snapshots?.at(-2);
-  const latestPeriod = latest?.period ?? chartData[0].period;
-  const latestMentions = latest?.totalMentions ?? chartData[0].mentions;
+  const latestPeriod = latest?.period ?? chartData[0]?.period;
+  const latestMentions = latest?.totalMentions ?? chartData[0]?.mentions ?? 0;
   const latestCitedSources = latest?.citedSources ?? 0;
   const mentionsDrop =
     latest && previous && previous.totalMentions > 0
