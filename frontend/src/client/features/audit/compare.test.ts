@@ -3,7 +3,10 @@ import {
   compareAuditResults,
   latestComparablePair,
 } from "@/client/features/audit/compare";
-import type { AuditResultsData } from "@/client/features/audit/auditApi";
+import type {
+  AuditHistory,
+  AuditResultsData,
+} from "@/client/features/audit/auditApi";
 
 function results(pages: AuditResultsData["pages"]): AuditResultsData {
   return {
@@ -66,6 +69,19 @@ function page(url: string, title: string) {
   };
 }
 
+function auditItem(id: string, startUrl: string): AuditHistory[number] {
+  return {
+    id,
+    startUrl,
+    status: "completed",
+    pagesCrawled: 1,
+    pagesTotal: 1,
+    ranLighthouse: false,
+    startedAt: "2026-01-01T00:00:00.000Z",
+    completedAt: "2026-01-01T00:01:00.000Z",
+  };
+}
+
 describe("compareAuditResults", () => {
   it("matches trailing-slash URL variants and reports page and issue deltas", () => {
     const before = results([page("https://example.com/about/", "About")]);
@@ -107,20 +123,10 @@ describe("compareAuditResults", () => {
     expect(diff.changes).toEqual([]);
   });
   it("finds the latest matching pair when a newer crawl used another start URL", () => {
-    const item = (id: string, startUrl: string) => ({
-      id,
-      startUrl,
-      status: "completed" as const,
-      pagesCrawled: 1,
-      pagesTotal: 1,
-      ranLighthouse: false,
-      startedAt: "2026-01-01T00:00:00.000Z",
-      completedAt: "2026-01-01T00:01:00.000Z",
-    });
     const pair = latestComparablePair([
-      item("latest-other", "https://other.example/"),
-      item("newer-example", "https://example.com/"),
-      item("older-example", "https://example.com"),
+      auditItem("latest-other", "https://other.example/"),
+      auditItem("newer-example", "https://example.com/"),
+      auditItem("older-example", "https://example.com"),
     ]);
     expect(pair.map((audit) => audit.id)).toEqual([
       "newer-example",
