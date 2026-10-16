@@ -98,7 +98,13 @@ export function exportContentRefreshQueue(
   const stamp = `${range.startDate}-to-${range.endDate}`;
   return runExport({
     filename: `search-performance-content-refresh-queue-${stamp}`,
-    headers: ["Page", "Impressions", "Clicks", "Average position", "Query themes"],
+    headers: [
+      "Page",
+      "Impressions",
+      "Clicks",
+      "Average position",
+      "Query themes",
+    ],
     rows: rows.map((row) => [
       row.page,
       row.impressions,
