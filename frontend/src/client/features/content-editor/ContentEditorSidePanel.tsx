@@ -5,6 +5,7 @@ import { LinkSuggestionsCard, PublishTabPanel } from "./FreeSeoPublishCards";
 import { ScorePanel } from "./ScorePanel";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { WriterAssistant } from "./WriterAssistant";
+import { primaryTargetTopic } from "./target-topics";
 import type { ContentDraftSummary, SearchBrief } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
 
@@ -116,7 +117,7 @@ export function ContentEditorSidePanel({
         {tab === "brief" ? (
           <BriefPanel
             projectId={projectId}
-            keyword={draft.targetKeyword}
+            keyword={primaryTargetTopic(draft.targetKeyword)}
             content={draft.content}
             brief={brief}
             onBrief={onBrief}
@@ -177,7 +178,7 @@ export function ContentEditorSidePanel({
                 draftId={draftId}
                 hasUnsavedChanges={dirty}
                 blocksPublish={seo.blocksPublish}
-                targetKeyword={draft.targetKeyword}
+                targetKeyword={primaryTargetTopic(draft.targetKeyword)}
                 schema={schema}
               />
             )}

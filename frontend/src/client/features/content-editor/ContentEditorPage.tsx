@@ -30,6 +30,7 @@ import {
 } from "./ContentEditorSidePanel";
 import { isArticleContentWithinLimit } from "./content-limits";
 import { titleForDraft } from "./editor-display";
+import { primaryTargetTopic } from "./target-topics";
 
 const blankDraft: ContentDraftInput = {
   title: "",
@@ -325,8 +326,8 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
               projectId={projectId}
               projectDomain={projectDomain}
               onTopicLink={
-                draft.targetKeyword.trim()
-                  ? `/p/${projectId}/keywords?q=${encodeURIComponent(draft.targetKeyword.trim())}`
+                primaryTargetTopic(draft.targetKeyword)
+                  ? `/p/${projectId}/keywords?q=${encodeURIComponent(primaryTargetTopic(draft.targetKeyword))}`
                   : undefined
               }
               disabled={editorBusy}

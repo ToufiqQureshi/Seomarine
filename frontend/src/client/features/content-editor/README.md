@@ -137,3 +137,6 @@ Google or predict rankings.
 - Drafts autosave after three seconds of inactivity. The header and search
   preview use the page title, then the first H1, and show the workspace's
   connected domain in the preview URL.
+- Target topics are split on comma or Enter, deduplicated case-insensitively,
+  and capped at five. The first topic drives brief, keyword research and SEO
+  scoring; editing a topic does not start a paid request.
