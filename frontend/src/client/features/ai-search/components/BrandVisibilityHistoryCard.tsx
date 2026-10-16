@@ -137,11 +137,10 @@ export function BrandVisibilityHistoryCard({
             </ChartContainer>
           ) : (
             <p className="py-6 text-sm text-muted-foreground">
-              One snapshot saved for {periodLabel(latestPeriod)}:
-              {" "}
-              {formatCount(latestMentions)}
-              mentions and {formatCount(latestCitedSources)} cited
-              sources (sample). A trend appears after another month is saved.
+              One snapshot saved for {periodLabel(latestPeriod)}:{" "}
+              {formatCount(latestMentions)} mentions and{" "}
+              {formatCount(latestCitedSources)} cited sources (sample). A trend
+              appears after another month is saved.
             </p>
           )}
           {latest ? (
