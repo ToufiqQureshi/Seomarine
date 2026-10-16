@@ -382,12 +382,13 @@ function CostEstimate({
 }: Pick<ConfigFormValues, "devices" | "serpDepth" | "schedule">) {
   // Scheduled checks run through the cheaper task queue; manual configs only
   // ever pay the live price.
-  const { costUsd: costPerKeyword } = estimateRankCheckCredits(
-    ["plain keyword"],
-    devices,
-    serpDepth,
-    schedule === "manual" ? "live" : "queued",
-  );
+  const { costUsd: costPerKeyword, costCredits: creditsPerKeyword } =
+    estimateRankCheckCredits(
+      ["plain keyword"],
+      devices,
+      serpDepth,
+      schedule === "manual" ? "live" : "queued",
+    );
   const checksPerMonth =
     schedule === "daily" ? 30 : schedule === "weekly" ? 4 : 1;
   return (
@@ -400,11 +401,13 @@ function CostEstimate({
       </div>
       {schedule !== "manual" && (
         <div>
-          50 keywords would cost{" "}
+          At 50 keywords, this schedule uses{" "}
           <span className="font-mono font-semibold text-foreground">
-            ~${(costPerKeyword * 50 * checksPerMonth).toFixed(2)}
+            ~{(creditsPerKeyword * 50 * checksPerMonth).toLocaleString()}{" "}
+            credits
           </span>
-          /month
+          /month. Each keyword uses ~{creditsPerKeyword * checksPerMonth}
+          credits/month{devices === "both" ? " across both devices" : ""}.
         </div>
       )}
     </div>

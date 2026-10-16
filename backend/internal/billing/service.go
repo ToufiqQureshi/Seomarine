@@ -342,6 +342,13 @@ func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
 	return definition.TrackedKeywords, err
 }
 
+// MonthlyCreditLimit returns the recurring provider budget granted by the
+// active plan. Staff workspaces return 0, which means unlimited.
+func (s *Service) MonthlyCreditLimit(ctx context.Context, orgID string) (int64, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.MonthlyCredits, err
+}
+
 // WorkspaceDailyLimitUSD is the most orgID may spend at the providers in one
 // day: a third of its plan's monthly credits, so a busy day is fine but one
 // workspace cannot burn its month, or anyone else's share, in hours. 0 is no

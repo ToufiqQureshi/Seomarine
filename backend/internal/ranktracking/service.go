@@ -81,6 +81,8 @@ type KeywordLimits interface {
 	KeywordLimit(ctx context.Context, organizationID string) (int, error)
 	// SerpDepthLimit is the deepest check the plan allows; 0 is no limit.
 	SerpDepthLimit(ctx context.Context, organizationID string) (int, error)
+	// MonthlyCreditLimit is the recurring budget; 0 is unlimited.
+	MonthlyCreditLimit(ctx context.Context, organizationID string) (int64, error)
 }
 
 // KeywordUsage reports the organization that owns a project and how many
@@ -377,6 +379,26 @@ func (s *Service) UpdateConfig(ctx context.Context, projectID, configID string, 
 		}
 		u.ScheduleInterval, u.SetNextCheckAt, u.NextCheckAt = &interval, true, next
 	}
+	if interval == Daily {
+		keywords, err := s.Repo.Keywords(ctx, cfg.ID)
+		if err != nil {
+			return Config{}, err
+		}
+		devices, depth := cfg.Devices, cfg.SerpDepth
+		if in.Devices != nil {
+			devices = *in.Devices
+		}
+		if in.SerpDepth != nil {
+			depth = *in.SerpDepth
+		}
+		texts := make([]string, len(keywords))
+		for i, keyword := range keywords {
+			texts[i] = keyword.Keyword
+		}
+		if err := s.checkDailyBudget(ctx, in.OrganizationID, texts, devices, depth); err != nil {
+			return Config{}, err
+		}
+	}
 	if err := s.Repo.UpdateConfig(ctx, projectID, configID, u); err != nil {
 		return Config{}, err
 	}
@@ -393,7 +415,8 @@ type AddResult struct {
 // AddKeywords stores new keywords, skipping blanks and keywords already
 // tracked, and stopping at the per-config cap.
 func (s *Service) AddKeywords(ctx context.Context, projectID, configID string, raw []string, matchCase bool) (AddResult, error) {
-	if _, err := s.Repo.GetConfig(ctx, projectID, configID); err != nil {
+	cfg, err := s.Repo.GetConfig(ctx, projectID, configID)
+	if err != nil {
 		return AddResult{}, err
 	}
 	existing, err := s.Repo.Keywords(ctx, configID)
@@ -429,12 +452,37 @@ func (s *Service) AddKeywords(ctx context.Context, projectID, configID string, r
 	}
 	// As with the per-domain cap, what fits is added and the rest is left.
 	rows = rows[:min(len(rows), room)]
+	if cfg.ScheduleInterval == Daily {
+		all := append(slices.Clone(stored), fresh[:len(rows)]...)
+		organizationID, _, err := s.Usage.OrganizationKeywords(ctx, projectID)
+		if err != nil {
+			return AddResult{}, err
+		}
+		if err := s.checkDailyBudget(ctx, organizationID, all, cfg.Devices, cfg.SerpDepth); err != nil {
+			return AddResult{}, err
+		}
+	}
 	added, err := s.Repo.AddKeywords(ctx, configID, rows, MaxKeywordsPerConfig, organizationLimit)
 	if err != nil {
 		return AddResult{}, err
 	}
 	result.Added, result.AddedIDs = len(added), added
 	return result, nil
+}
+
+func (s *Service) checkDailyBudget(ctx context.Context, organizationID string, keywords []string, devices string, depth int) error {
+	if len(keywords) == 0 || s.Limits == nil {
+		return nil
+	}
+	limit, err := s.Limits.MonthlyCreditLimit(ctx, organizationID)
+	if err != nil {
+		return fmt.Errorf("check monthly credit limit: %w", err)
+	}
+	estimate := EstimateScheduled(keywords, devices, depth, Daily).MonthlyCostCredits
+	if limit > 0 && int64(estimate) > limit {
+		return fmt.Errorf("%w: daily checks need about %d credits a month, but your plan includes %d. Use weekly checks, fewer keywords, one device, or a shallower depth", ErrLimit, estimate, limit)
+	}
+	return nil
 }
 
 // checkPlanDepth refuses a SERP depth deeper than the workspace's plan
