@@ -66,7 +66,7 @@ func TestBrandLookupRecordsMonthlyVisibilityHistoryWithoutExtraProviderCalls(t *
 	if api.total() != providerCalls {
 		t.Fatalf("history read made provider calls: before %d, after %d", providerCalls, api.total())
 	}
-	if len(history) != 1 || history[0].TotalMentions != intOrZero(result.TotalMentions) || history[0].CitedPages != len(result.TopPages) {
+	if len(history) != 1 || history[0].TotalMentions != intOrZero(result.TotalMentions) || history[0].CitedSources != len(result.TopPages) {
 		t.Fatalf("history = %#v, want one snapshot from the lookup result", history)
 	}
 
