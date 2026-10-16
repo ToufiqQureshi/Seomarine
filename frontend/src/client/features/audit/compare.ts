@@ -1,4 +1,4 @@
-import type { AuditResultsData } from "@/client/features/audit/auditApi";
+import type { AuditHistory, AuditResultsData } from "@/client/features/audit/auditApi";
 
 type AuditChange = {
   url: string;
@@ -11,6 +11,18 @@ type AuditChange = {
   before: string;
   after: string;
 };
+
+export function latestComparablePair(history: AuditHistory) {
+  const latestByStartUrl = new Map<string, AuditHistory[number]>();
+  for (const audit of history) {
+    if (audit.status !== "completed") continue;
+    const key = normalizeUrl(audit.startUrl);
+    const latest = latestByStartUrl.get(key);
+    if (latest) return [latest, audit];
+    latestByStartUrl.set(key, audit);
+  }
+  return [];
+}
 
 export function compareAuditResults(
   older: AuditResultsData,
