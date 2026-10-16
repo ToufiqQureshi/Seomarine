@@ -23,11 +23,11 @@ Go package: `backend/internal/audit`; asynchronous execution uses the jobs queue
 
 ## SEO change guard
 
-On the audit history screen, the user explicitly starts a comparison. `AuditChangeGuard.tsx` chooses the two latest completed audits with the same start URL and then fetches their saved result payloads through `auditApi.ts`; no comparison request is made before the click. `compare.ts` compares title, meta description, canonical URL, indexability and HTTP status for URLs present in both crawls, and counts newly seen URLs, URLs missing from the latest crawl and issue-row delta. The view caps displayed field changes. A URL missing from a crawl is only “missing,” not proof the customer deleted it; the user should review crawl coverage.
+On the audit history screen, the user explicitly starts a comparison. `launch/AuditChangeGuard.tsx` chooses the two latest completed audits with the same start URL and then fetches their saved result payloads through `auditApi.ts`; no comparison request is made before the click. `compare.ts` compares title, meta description, canonical URL, indexability and HTTP status for URLs present in both crawls, and counts newly seen URLs, URLs missing from the latest crawl and issue-row delta. The view caps displayed field changes. A URL missing from a crawl is only “missing,” not proof the customer deleted it; the user should review crawl coverage.
 
 ## Orphan-page link suggestions
 
-For orphan-page issues, `IssuesView.tsx` displays up to 100 orphan rows. Suggestions are computed locally from the saved audit pages only after the user expands an orphan. `orphanLinkCandidates.ts` excludes the orphan itself, known orphans, non-indexable pages and pages whose fetch failed; it ranks remaining pages by shared title/path terms and internal-link count and returns at most three. The copy action escapes the target title and URL into an HTML link snippet. No provider call or customer-site change happens automatically.
+For orphan-page issues, `results/IssuesView.tsx` displays up to 100 orphan rows. Suggestions are computed locally from the saved audit pages only after the user expands an orphan. `orphanLinkCandidates.ts` excludes the orphan itself, known orphans, non-indexable pages and pages whose fetch failed; it ranks remaining pages by shared title/path terms and internal-link count and returns at most three. The copy action escapes the target title and URL into an HTML link snippet. No provider call or customer-site change happens automatically.
 
 ## Cost, security and failure boundaries
 
