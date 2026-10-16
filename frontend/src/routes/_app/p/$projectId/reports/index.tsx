@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/client/components/PageHeader";
 import { Button } from "@/client/components/ui/button";
+import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ReportsList } from "@/client/features/reports/ReportsList";
@@ -15,6 +16,7 @@ import {
   type ReportListItem,
 } from "@/client/features/reports/reportApi";
 import { REPORT_APP_LIST_LIMIT } from "@/types/schemas/reports";
+import { ManualReportForm } from "@/client/features/reports/ManualReportForm";
 
 export const Route = createFileRoute("/_app/p/$projectId/reports/")({
   component: ReportsPage,
@@ -25,6 +27,7 @@ function ReportsPage() {
   const [pendingDelete, setPendingDelete] = useState<ReportListItem | null>(
     null,
   );
+  const [manualReportOpen, setManualReportOpen] = useState(false);
 
   const reportsQuery = useQuery({
     queryKey: reportsQueryKey(projectId),
@@ -44,20 +47,26 @@ function ReportsPage() {
       <div className="mx-auto max-w-7xl space-y-4">
         <PageHeader
           title="Reports"
-          description="HTML reports your agents saved to this project."
+          description="Create reports yourself or review reports saved by your connected AI assistant."
           actions={
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              render={
-                <Link
-                  to="/p/$projectId/reports/templates"
-                  params={{ projectId }}
-                />
-              }
-            >
-              Templates
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="ghost"
+                nativeButton={false}
+                render={
+                  <Link
+                    to="/p/$projectId/reports/templates"
+                    params={{ projectId }}
+                  />
+                }
+              >
+                Templates
+              </Button>
+              <Button onClick={() => setManualReportOpen(true)}>
+                <Plus data-icon="inline-start" />
+                Write report
+              </Button>
+            </div>
           }
         />
 
@@ -78,6 +87,12 @@ function ReportsPage() {
           isPending={deleteMutation.isPending}
           onClose={() => setPendingDelete(null)}
           onConfirm={() => deleteMutation.mutate(pendingDelete.id)}
+        />
+      ) : null}
+      {manualReportOpen ? (
+        <ManualReportForm
+          projectId={projectId}
+          onClose={() => setManualReportOpen(false)}
         />
       ) : null}
     </div>
