@@ -33,6 +33,12 @@ are rejected): `start`, `status`, `results`, `history`, `progress`, `delete`,
 `go_audits`, `go_audit_pages`, `go_audit_issues`, `go_audit_lighthouse_results`
 (migration `00007_audit.sql`). Pages, issues and results cascade with the audit.
 
+The audit history view also compares the two latest completed crawls with the
+same start URL. It reports changes in title, meta description, canonical URL,
+indexability, HTTP status, page coverage, and issue count. It fetches saved
+results only after a user asks to compare; a URL missing from a later crawl is
+shown as missing from that crawl, not assumed to have been deleted from the site.
+
 For orphan-page issues, the result view suggests up to three indexable source
 pages from the same crawl by matching meaningful title and URL terms. It
 excludes other detected orphan pages, makes no provider calls, and offers a
