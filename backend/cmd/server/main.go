@@ -142,6 +142,28 @@ func run(logger *slog.Logger) (err error) {
 	}
 
 	credits := billing.NewCreditLedgerService(db)
+	go func() {
+		if expired, err := credits.ExpireCredits(ctx); err != nil {
+			logger.Error("expire billing credits", "err", err)
+		} else if expired > 0 {
+			logger.Info("expired billing credits", "credits", expired)
+		}
+		timer := time.NewTicker(time.Hour)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				expired, err := credits.ExpireCredits(ctx)
+				if err != nil {
+					logger.Error("expire billing credits", "err", err)
+				} else if expired > 0 {
+					logger.Info("expired billing credits", "credits", expired)
+				}
+			}
+		}
+	}()
 	var billingSvc *billing.Service
 	billingRoutes := billing.NewReadOnlyService(db)
 	if rzp := cfg.Razorpay; rzp != nil {

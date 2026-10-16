@@ -94,6 +94,9 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	if err := g.ledger.topUpStaff(ctx, req.OrganizationID, credits); err != nil {
 		return nil, err
 	}
+	if err := g.ledger.expireCreditsForOrganization(ctx, req.OrganizationID); err != nil {
+		return nil, fmt.Errorf("expire workspace credits: %w", err)
+	}
 	tx, err := g.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin spend hold: %w", err)

@@ -65,6 +65,9 @@ func generateID(prefix string) string {
 
 // GetBalance returns the organization's credit balance.
 func (s *CreditLedgerService) GetBalance(ctx context.Context, orgID string) (int64, error) {
+	if err := s.expireCreditsForOrganization(ctx, orgID); err != nil {
+		return 0, err
+	}
 	var balance int64
 	err := s.db.QueryRow(ctx, `
 		SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1
@@ -121,7 +124,107 @@ func grantCreditsTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, 
 	if err != nil {
 		return fmt.Errorf("insert ledger grant: %w", err)
 	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO go_billing_credit_grants (id, organization_id, granted_credits, remaining_credits, expires_at)
+		VALUES ($1, $2, $3, $3, now() + interval '2 months')
+	`, generateID("grt"), orgID, amount)
+	if err != nil {
+		return fmt.Errorf("insert expiring credit grant: %w", err)
+	}
 	return nil
+}
+
+// ExpireCredits removes expired unreserved grant balances. It is safe to run
+// from both the hourly worker and request paths.
+func (s *CreditLedgerService) ExpireCredits(ctx context.Context) (int64, error) {
+	rows, err := s.db.Query(ctx, `SELECT DISTINCT organization_id FROM go_billing_credit_grants WHERE expires_at <= now() AND remaining_credits > 0 ORDER BY organization_id`)
+	if err != nil {
+		return 0, fmt.Errorf("list expired credit workspaces: %w", err)
+	}
+	var organizations []string
+	for rows.Next() {
+		var org string
+		if err := rows.Scan(&org); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("read expired credit workspace: %w", err)
+		}
+		organizations = append(organizations, org)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, err
+	}
+	rows.Close()
+	var expired int64
+	for _, org := range organizations {
+		count, err := s.expireOrganizationCredits(ctx, org)
+		if err != nil {
+			return expired, err
+		}
+		expired += count
+	}
+	return expired, nil
+}
+
+func (s *CreditLedgerService) expireOrganizationCredits(ctx context.Context, org string) (int64, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin credit expiry: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var balance int64
+	if err := tx.QueryRow(ctx, `SELECT balance_credits FROM go_billing_credits WHERE organization_id = $1 FOR UPDATE`, org).Scan(&balance); err != nil {
+		return 0, fmt.Errorf("lock balance for credit expiry: %w", err)
+	}
+	rows, err := tx.Query(ctx, `SELECT id, remaining_credits FROM go_billing_credit_grants WHERE organization_id = $1 AND expires_at <= now() AND remaining_credits > 0 ORDER BY expires_at, created_at FOR UPDATE`, org)
+	if err != nil {
+		return 0, fmt.Errorf("lock expired credit grants: %w", err)
+	}
+	type expiredGrant struct {
+		id      string
+		credits int64
+	}
+	var grants []expiredGrant
+	var total int64
+	for rows.Next() {
+		var grant expiredGrant
+		if err := rows.Scan(&grant.id, &grant.credits); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		grants = append(grants, grant)
+		total += grant.credits
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, err
+	}
+	rows.Close()
+	if total > balance {
+		return 0, fmt.Errorf("expired credit grants (%d) exceed workspace balance (%d)", total, balance)
+	}
+	for _, grant := range grants {
+		if _, err := tx.Exec(ctx, `UPDATE go_billing_credit_grants SET remaining_credits = 0 WHERE id = $1`, grant.id); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO go_billing_credit_ledger (id, organization_id, amount_credits, type, reason) VALUES ($1, $2, $3, 'expire', 'credits expired after two months')`, generateID("led"), org, -grant.credits); err != nil {
+			return 0, err
+		}
+	}
+	if total > 0 {
+		if _, err := tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now() WHERE organization_id = $2`, total, org); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit credit expiry: %w", err)
+	}
+	return total, nil
+}
+
+func (s *CreditLedgerService) expireCreditsForOrganization(ctx context.Context, org string) error {
+	_, err := s.expireOrganizationCredits(ctx, org)
+	return err
 }
 
 // UsageEvent is one settled spend, shaped for the billing usage chart.
@@ -195,6 +298,9 @@ func (s *CreditLedgerService) ReserveFor(ctx context.Context, orgID string, amou
 	if amount <= 0 {
 		return CreditReservation{}, errors.New("amount must be positive")
 	}
+	if err := s.expireCreditsForOrganization(ctx, orgID); err != nil {
+		return CreditReservation{}, err
+	}
 	if err := s.topUpStaff(ctx, orgID, amount); err != nil {
 		return CreditReservation{}, err
 	}
@@ -227,10 +333,16 @@ func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idemp
 			WHERE idempotency_key = $1
 		`, idempotencyKey).Scan(&res.ID, &res.OrganizationID, &res.AmountCredits, &res.Status, &ik, &res.CreatedAt)
 		if err == nil {
+			if res.OrganizationID != orgID {
+				return CreditReservation{}, errors.New("idempotency key belongs to a different workspace")
+			}
 			if ik != nil {
 				res.IdempotencyKey = *ik
 			}
 			return res, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return CreditReservation{}, fmt.Errorf("read idempotent reservation: %w", err)
 		}
 	}
 
@@ -245,6 +357,10 @@ func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idemp
 		return CreditReservation{}, fmt.Errorf("lock balance: %w", err)
 	}
 
+	resID := generateID("res")
+	if err := consumeCreditBucketsTx(ctx, tx, orgID, amount, resID); err != nil {
+		return CreditReservation{}, err
+	}
 	_, err = tx.Exec(ctx, `
 		UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now()
 		WHERE organization_id = $2
@@ -252,8 +368,6 @@ func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idemp
 	if err != nil {
 		return CreditReservation{}, fmt.Errorf("deduct balance: %w", err)
 	}
-
-	resID := generateID("res")
 	var ik *string
 	if idempotencyKey != "" {
 		ik = &idempotencyKey
@@ -285,6 +399,102 @@ func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idemp
 		IdempotencyKey: idempotencyKey,
 		CreatedAt:      nowTime,
 	}, nil
+}
+
+func consumeCreditBucketsTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, reservationID string) error {
+	rows, err := tx.Query(ctx, `SELECT id, remaining_credits FROM go_billing_credit_grants WHERE organization_id = $1 AND remaining_credits > 0 AND expires_at > now() ORDER BY expires_at, created_at, id FOR UPDATE`, orgID)
+	if err != nil {
+		return fmt.Errorf("lock credit grants: %w", err)
+	}
+	type bucket struct {
+		id      string
+		credits int64
+	}
+	var buckets []bucket
+	for rows.Next() {
+		var b bucket
+		if err := rows.Scan(&b.id, &b.credits); err != nil {
+			rows.Close()
+			return err
+		}
+		buckets = append(buckets, b)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	remaining := amount
+	for _, b := range buckets {
+		used := min(remaining, b.credits)
+		if used <= 0 {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `UPDATE go_billing_credit_grants SET remaining_credits = remaining_credits - $1 WHERE id = $2`, used, b.id); err != nil {
+			return fmt.Errorf("consume credit grant: %w", err)
+		}
+		if reservationID != "" {
+			if _, err := tx.Exec(ctx, `INSERT INTO go_billing_credit_reservation_grants (reservation_id, grant_id, amount_credits) VALUES ($1, $2, $3)`, reservationID, b.id, used); err != nil {
+				return fmt.Errorf("allocate reserved credits: %w", err)
+			}
+		}
+		remaining -= used
+		if remaining == 0 {
+			return nil
+		}
+	}
+	return ErrInsufficientBalance
+}
+
+func restoreReservationCreditsTx(ctx context.Context, tx pgx.Tx, reservationID string, amount int64) (int64, error) {
+	rows, err := tx.Query(ctx, `SELECT a.grant_id, a.amount_credits, g.expires_at FROM go_billing_credit_reservation_grants a JOIN go_billing_credit_grants g ON g.id = a.grant_id WHERE a.reservation_id = $1 ORDER BY g.expires_at DESC, g.created_at DESC FOR UPDATE OF g`, reservationID)
+	if err != nil {
+		return 0, err
+	}
+	type allocation struct {
+		id      string
+		credits int64
+		expires time.Time
+	}
+	var allocations []allocation
+	for rows.Next() {
+		var a allocation
+		if err := rows.Scan(&a.id, &a.credits, &a.expires); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		allocations = append(allocations, a)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, err
+	}
+	rows.Close()
+	remaining, restored := amount, int64(0)
+	for _, a := range allocations {
+		if remaining == 0 {
+			break
+		}
+		give := min(remaining, a.credits)
+		if a.expires.After(time.Now().UTC()) {
+			if _, err := tx.Exec(ctx, `UPDATE go_billing_credit_grants SET remaining_credits = remaining_credits + $1 WHERE id = $2`, give, a.id); err != nil {
+				return 0, err
+			}
+		} else {
+			// Expired credits held by a long-running request stay expired.
+		}
+		remaining -= give
+		if a.expires.After(time.Now().UTC()) {
+			restored += give
+		}
+	}
+	if remaining != 0 {
+		return 0, errors.New("credit reservation allocation is incomplete")
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM go_billing_credit_reservation_grants WHERE reservation_id = $1`, reservationID); err != nil {
+		return 0, err
+	}
+	return restored, nil
 }
 
 // Settle settles a reservation with actual used credits, returning any unused
@@ -350,16 +560,28 @@ func (s *CreditLedgerService) settle(ctx context.Context, reservationID string, 
 			actualAmount = reservedAmount + currentBal
 		}
 		if extraNeeded > 0 {
+			if err := consumeCreditBucketsTx(ctx, tx, orgID, extraNeeded, ""); err != nil {
+				return 0, fmt.Errorf("consume extra credits: %w", err)
+			}
 			_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits - $1, updated_at = now() WHERE organization_id = $2`, extraNeeded, orgID)
 			if err != nil {
 				return 0, fmt.Errorf("deduct extra balance: %w", err)
 			}
 		}
 	} else if refundAmount > 0 {
-		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, refundAmount, orgID)
-		if err != nil {
-			return 0, fmt.Errorf("refund unused balance: %w", err)
+		restored, restoreErr := restoreReservationCreditsTx(ctx, tx, reservationID, refundAmount)
+		if restoreErr != nil {
+			return 0, fmt.Errorf("restore unused credit grants: %w", restoreErr)
 		}
+		if restored > 0 {
+			_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, restored, orgID)
+			if err != nil {
+				return 0, fmt.Errorf("refund unused balance: %w", err)
+			}
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM go_billing_credit_reservation_grants WHERE reservation_id = $1`, reservationID); err != nil {
+		return 0, fmt.Errorf("close credit grant allocations: %w", err)
 	}
 
 	_, err = tx.Exec(ctx, `UPDATE go_billing_credit_reservations SET status = 'settled', updated_at = now() WHERE id = $1`, reservationID)
@@ -411,9 +633,15 @@ func (s *CreditLedgerService) Refund(ctx context.Context, reservationID string, 
 		return ErrReservationAlreadyClosed
 	}
 
-	_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, reservedAmount, orgID)
+	restored, err := restoreReservationCreditsTx(ctx, tx, reservationID, reservedAmount)
 	if err != nil {
-		return fmt.Errorf("refund balance: %w", err)
+		return fmt.Errorf("restore refunded credit grants: %w", err)
+	}
+	if restored > 0 {
+		_, err = tx.Exec(ctx, `UPDATE go_billing_credits SET balance_credits = balance_credits + $1, updated_at = now() WHERE organization_id = $2`, restored, orgID)
+		if err != nil {
+			return fmt.Errorf("refund balance: %w", err)
+		}
 	}
 
 	_, err = tx.Exec(ctx, `UPDATE go_billing_credit_reservations SET status = 'refunded', updated_at = now() WHERE id = $1`, reservationID)
@@ -425,7 +653,7 @@ func (s *CreditLedgerService) Refund(ctx context.Context, reservationID string, 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO go_billing_credit_ledger (id, organization_id, reservation_id, amount_credits, type, reason, created_at)
 		VALUES ($1, $2, $3, $4, 'refund', $5, now())
-	`, ledgerID, orgID, reservationID, reservedAmount, reason)
+	`, ledgerID, orgID, reservationID, restored, reason)
 	if err != nil {
 		return fmt.Errorf("insert ledger refund: %w", err)
 	}

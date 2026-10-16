@@ -143,3 +143,51 @@ func TestCreditLedgerService_Integration(t *testing.T) {
 		}
 	})
 }
+
+func TestCreditGrantsAreConsumedFIFOAndExpireAfterTwoMonths(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := context.Background()
+	svc := NewCreditLedgerService(pool)
+	org := "org_credit_expiry_" + rand.Text()
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Test Org', $1, now())`, org); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM organization WHERE id = $1`, org) })
+	if err := svc.AddCredits(ctx, org, 100, "older grant"); err != nil {
+		t.Fatal(err)
+	}
+	var older string
+	if err := pool.QueryRow(ctx, `SELECT id FROM go_billing_credit_grants WHERE organization_id=$1`, org).Scan(&older); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE go_billing_credit_grants SET expires_at=now()+interval '1 day' WHERE id=$1`, older); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.AddCredits(ctx, org, 100, "newer grant"); err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.Reserve(ctx, org, 150, org+"-fifo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var remaining int64
+	if err := pool.QueryRow(ctx, `SELECT remaining_credits FROM go_billing_credit_grants WHERE id=$1`, older).Scan(&remaining); err != nil || remaining != 0 {
+		t.Fatalf("oldest grant remaining=%d err=%v", remaining, err)
+	}
+	if err := svc.Refund(ctx, res.ID, "test refund"); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT remaining_credits FROM go_billing_credit_grants WHERE id=$1`, older).Scan(&remaining); err != nil || remaining != 100 {
+		t.Fatalf("refunded oldest grant remaining=%d err=%v", remaining, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE go_billing_credit_grants SET expires_at=now()-interval '1 second' WHERE organization_id=$1`, org); err != nil {
+		t.Fatal(err)
+	}
+	expired, err := svc.ExpireCredits(ctx)
+	if err != nil || expired != 200 {
+		t.Fatalf("ExpireCredits()=%d err=%v, want 200", expired, err)
+	}
+	if balance, err := svc.GetBalance(ctx, org); err != nil || balance != 0 {
+		t.Fatalf("balance=%d err=%v, want zero", balance, err)
+	}
+}
