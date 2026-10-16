@@ -273,9 +273,7 @@ export function ManualReportForm({
                   onChange={(event) => setBody(event.target.value)}
                   maxLength={MAX_BODY_CHARACTERS}
                   rows={18}
-                  placeholder={
-                    "What we worked on\n\nWhat changed and what it means\n\nNext steps"
-                  }
+                  placeholder={"Work done\n\nResults\n\nNext steps"}
                   required
                   className="min-h-80 leading-relaxed"
                 />
