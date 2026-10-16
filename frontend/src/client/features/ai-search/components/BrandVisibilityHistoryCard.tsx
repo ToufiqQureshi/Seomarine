@@ -60,7 +60,9 @@ export function BrandVisibilityHistoryCard({
   );
   const latest = snapshots?.at(-1);
   const previous = snapshots?.at(-2);
-  const latestSummary = latest ?? chartData[0];
+  const latestPeriod = latest?.period ?? chartData[0].period;
+  const latestMentions = latest?.totalMentions ?? chartData[0].mentions;
+  const latestCitedSources = latest?.citedSources ?? 0;
   const mentionsDrop =
     latest && previous && previous.totalMentions > 0
       ? ((previous.totalMentions - latest.totalMentions) /
@@ -135,10 +137,10 @@ export function BrandVisibilityHistoryCard({
             </ChartContainer>
           ) : (
             <p className="py-6 text-sm text-muted-foreground">
-              One snapshot saved for {periodLabel(latestSummary.period)}:
+              One snapshot saved for {periodLabel(latestPeriod)}:
               {" "}
-              {formatCount(latestSummary.totalMentions ?? latestSummary.mentions)}
-              mentions and {formatCount(latestSummary.citedSources ?? 0)} cited
+              {formatCount(latestMentions)}
+              mentions and {formatCount(latestCitedSources)} cited
               sources (sample). A trend appears after another month is saved.
             </p>
           )}
