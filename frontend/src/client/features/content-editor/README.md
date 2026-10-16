@@ -140,3 +140,5 @@ Google or predict rankings.
 - Target topics are split on comma or Enter, deduplicated case-insensitively,
   and capped at five. The first topic drives brief, keyword research and SEO
   scoring; editing a topic does not start a paid request.
+- The article block menu is anchored to its insert button, flips above when
+  needed, shifts inside the viewport, and closes on Escape or outside click.
