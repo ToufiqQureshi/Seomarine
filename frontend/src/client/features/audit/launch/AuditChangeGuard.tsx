@@ -13,7 +13,7 @@ import {
   getAuditResults,
   type AuditHistory,
 } from "@/client/features/audit/auditApi";
-import { compareAuditResults } from "@/client/features/audit/compare";
+import { compareAuditResults, latestComparablePair } from "@/client/features/audit/compare";
 import { formatDate } from "@/client/features/audit/shared";
 
 export function AuditChangeGuard({
@@ -138,12 +138,3 @@ export function AuditChangeGuard({
   );
 }
 
-function latestComparablePair(history: AuditHistory) {
-  const completed = history.filter((item) => item.status === "completed");
-  const first = completed[0];
-  if (!first) return [];
-  const sameStartUrl = completed.filter(
-    (item) => item.startUrl === first.startUrl,
-  );
-  return sameStartUrl.slice(0, 2);
-}
