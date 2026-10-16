@@ -160,7 +160,7 @@ export function ManualReportForm({
           outcomes.length +
           nextSteps.length +
           evidence.length >
-        20_000
+            20_000
       ) {
         setFormError("Keep work log details under 20,000 characters in total.");
         return;
@@ -273,7 +273,7 @@ export function ManualReportForm({
                   onChange={(event) => setBody(event.target.value)}
                   maxLength={MAX_BODY_CHARACTERS}
                   rows={18}
-                  placeholder={"Work done\n\nResults\n\nNext steps"}
+                  placeholder={`What we worked on\n\nWhat changed and what it means\n\nNext steps`}
                   required
                   className="min-h-80 leading-relaxed"
                 />
