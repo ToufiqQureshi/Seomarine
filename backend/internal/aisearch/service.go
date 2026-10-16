@@ -194,7 +194,7 @@ func (s *Service) saveVisibilitySnapshot(ctx context.Context, cacheKey string, r
 		FetchedAt:           result.FetchedAt,
 		TotalMentions:       intOrZero(result.TotalMentions),
 		TotalAISearchVolume: intOrZero(result.TotalAISearchVolume),
-		CitedPages:          len(result.TopPages),
+		CitedSources:        len(result.TopPages),
 	}
 	raw, err := json.Marshal(snapshot)
 	if err != nil {
