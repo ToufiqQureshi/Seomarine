@@ -15,5 +15,5 @@ Shows subscription status, plan limits, credit balances and usage; starts checko
 
 ## Verification pointers
 
-- `CreditCostHint.test.ts`
-- `CreditsCard.test.ts`
+- `credits/CreditCostHint.test.ts`
+- `credits/CreditsCard.test.ts`
