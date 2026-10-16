@@ -13,7 +13,10 @@ import {
   getAuditResults,
   type AuditHistory,
 } from "@/client/features/audit/auditApi";
-import { compareAuditResults, latestComparablePair } from "@/client/features/audit/compare";
+import {
+  compareAuditResults,
+  latestComparablePair,
+} from "@/client/features/audit/compare";
 import { formatDate } from "@/client/features/audit/shared";
 
 export function AuditChangeGuard({
