@@ -99,7 +99,9 @@ to the source files and explain behavior, dependencies, failure paths and why.
    standard libraries, then `go.mod` and `package.json`. Keep those layers
    distinct: Go predeclared functions/types such as `len`, `append` and `make`
    need no import; `net/http` and `context` are standard-library packages;
-   `pgx` and TanStack are installed dependencies. Read current docs:
+   `pgx` and TanStack are installed dependencies. Match docs to the exact
+   versions in `go.mod` and `pnpm-lock.yaml`; live docs can describe newer APIs.
+   Read current docs:
    Go release notes (`go.dev/doc/go1.27`, e.g. `errors.AsType`,
    `sync.WaitGroup.Go`, `testing.T.Context`, `slices`, `maps`,
    `strings.SplitSeq`, the `uuid` package) and `go doc`; for the frontend the
