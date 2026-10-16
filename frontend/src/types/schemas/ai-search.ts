@@ -154,7 +154,7 @@ export const brandVisibilitySnapshotSchema = z.object({
   fetchedAt: z.string(),
   totalMentions: z.number().int().nonnegative(),
   totalAiSearchVolume: z.number().int().nonnegative(),
-  citedPages: z.number().int().nonnegative(),
+  citedSources: z.number().int().nonnegative(),
 });
 export const brandVisibilityHistorySchema = z
   .array(brandVisibilitySnapshotSchema)
