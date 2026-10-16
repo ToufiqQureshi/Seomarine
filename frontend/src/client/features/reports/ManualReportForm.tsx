@@ -243,66 +243,20 @@ export function ManualReportForm({
               />
             </div>
             {mode === "work-log" ? (
-              <>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="worklog-period"
-                    className="text-sm font-medium"
-                  >
-                    Reporting month
-                  </label>
-                  <Input
-                    id="worklog-period"
-                    type="month"
-                    value={period}
-                    onChange={(event) => setPeriod(event.target.value)}
-                    required
-                  />
-                </div>
-                <WorkLogField
-                  id="worklog-done"
-                  label="Work completed"
-                  value={workCompleted}
-                  onChange={setWorkCompleted}
-                  placeholder="List the tasks completed and the problem each one addressed."
-                  required
-                />
-                <WorkLogField
-                  id="worklog-outcomes"
-                  label="Results and impact"
-                  value={outcomes}
-                  onChange={setOutcomes}
-                  placeholder="Add measured results where available. Leave blank if not measured yet."
-                />
-                <WorkLogField
-                  id="worklog-evidence"
-                  label="Evidence links"
-                  value={evidence}
-                  onChange={setEvidence}
-                  placeholder="One https:// URL per line — Search Console page, ticket, or published change."
-                />
-                <WorkLogField
-                  id="worklog-next"
-                  label="Next steps"
-                  value={nextSteps}
-                  onChange={setNextSteps}
-                  placeholder="What happens next, who owns it, and when it is due."
-                />
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={shareWithClient}
-                    onChange={(event) =>
-                      setShareWithClient(event.target.checked)
-                    }
-                    className="mt-1"
-                  />
-                  <span>
-                    Create a public review link after saving. Anyone with the
-                    link can view this work log; you can revoke it later.
-                  </span>
-                </label>
-              </>
+              <WorkLogFields
+                period={period}
+                setPeriod={setPeriod}
+                workCompleted={workCompleted}
+                setWorkCompleted={setWorkCompleted}
+                outcomes={outcomes}
+                setOutcomes={setOutcomes}
+                evidence={evidence}
+                setEvidence={setEvidence}
+                nextSteps={nextSteps}
+                setNextSteps={setNextSteps}
+                shareWithClient={shareWithClient}
+                setShareWithClient={setShareWithClient}
+              />
             ) : null}
             {mode === "report" ? (
               <div className="space-y-2">
@@ -353,6 +307,92 @@ export function ManualReportForm({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WorkLogFields({
+  period,
+  setPeriod,
+  workCompleted,
+  setWorkCompleted,
+  outcomes,
+  setOutcomes,
+  evidence,
+  setEvidence,
+  nextSteps,
+  setNextSteps,
+  shareWithClient,
+  setShareWithClient,
+}: {
+  period: string;
+  setPeriod: (value: string) => void;
+  workCompleted: string;
+  setWorkCompleted: (value: string) => void;
+  outcomes: string;
+  setOutcomes: (value: string) => void;
+  evidence: string;
+  setEvidence: (value: string) => void;
+  nextSteps: string;
+  setNextSteps: (value: string) => void;
+  shareWithClient: boolean;
+  setShareWithClient: (value: boolean) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <label htmlFor="worklog-period" className="text-sm font-medium">
+          Reporting month
+        </label>
+        <Input
+          id="worklog-period"
+          type="month"
+          value={period}
+          onChange={(event) => setPeriod(event.target.value)}
+          required
+        />
+      </div>
+      <WorkLogField
+        id="worklog-done"
+        label="Work completed"
+        value={workCompleted}
+        onChange={setWorkCompleted}
+        placeholder="List the tasks completed and the problem each one addressed."
+        required
+      />
+      <WorkLogField
+        id="worklog-outcomes"
+        label="Results and impact"
+        value={outcomes}
+        onChange={setOutcomes}
+        placeholder="Add measured results where available. Leave blank if not measured yet."
+      />
+      <WorkLogField
+        id="worklog-evidence"
+        label="Evidence links"
+        value={evidence}
+        onChange={setEvidence}
+        placeholder="One https:// URL per line — Search Console page, ticket, or published change."
+      />
+      <WorkLogField
+        id="worklog-next"
+        label="Next steps"
+        value={nextSteps}
+        onChange={setNextSteps}
+        placeholder="What happens next, who owns it, and when it is due."
+      />
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={shareWithClient}
+          onChange={(event) => setShareWithClient(event.target.checked)}
+          className="mt-1"
+        />
+        <span>
+          Create a public review link after saving. Anyone with the link can
+          view this work log; you can revoke it later.
+        </span>
+      </label>
+    </>
   );
 }
 
