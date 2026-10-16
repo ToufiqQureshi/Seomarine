@@ -99,7 +99,7 @@ describe("CLAUDE.md docs map", () => {
           .filter(
             (name) =>
               !markdownFiles(dir).includes(
-                `${relative(repoRoot, dir)}/${name}`,
+                `${relative(repoRoot, dir).replaceAll("\\", "/")}/${name}`,
               ),
           )
           .map((name) => `${relative(repoRoot, dir)}/${name}`),
