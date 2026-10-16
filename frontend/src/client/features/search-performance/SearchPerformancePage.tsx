@@ -27,6 +27,7 @@ import {
   type TextFilters,
 } from "@/client/features/search-performance/SearchPerformanceTextFilters";
 import {
+  exportContentRefreshQueue,
   exportDimensionRows,
   exportStriking,
   StrikingDistanceTable,
@@ -35,6 +36,7 @@ import {
 } from "@/client/features/search-performance/SearchPerformanceParts";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ContentRefreshQueue } from "@/client/features/search-performance/ContentRefreshQueue";
+import { buildContentRefreshQueue } from "@/client/features/search-performance/contentRefreshQueue";
 import {
   exportSearchPerformanceTable,
   getSearchPerformanceReport,
@@ -162,6 +164,14 @@ export function SearchPerformancePage({
     try {
       if (tab === "striking") {
         await exportStriking(report, target);
+        return;
+      }
+      if (tab === "refresh") {
+        await exportContentRefreshQueue(
+          buildContentRefreshQueue(report.strikingDistance),
+          report.range,
+          target,
+        );
         return;
       }
       const data = await exportSearchPerformanceTable({
