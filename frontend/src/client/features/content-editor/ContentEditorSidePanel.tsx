@@ -79,7 +79,7 @@ export function ContentEditorSidePanel({
   ];
 
   return (
-    <aside className="min-w-0 space-y-3">
+    <aside className="min-w-0 space-y-3 xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:self-start xl:overflow-y-auto">
       <div
         role="tablist"
         aria-label="Editor tools"

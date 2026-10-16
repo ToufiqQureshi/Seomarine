@@ -142,3 +142,5 @@ Google or predict rankings.
   scoring; editing a topic does not start a paid request.
 - The article block menu is anchored to its insert button, flips above when
   needed, shifts inside the viewport, and closes on Escape or outside click.
+- The AI writer sends selected text or the current article section, not the
+  full article, and limits the brief summary sent with each action.

@@ -96,19 +96,24 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
   }, [dirty]);
   const [brief, setBrief] = useState<SearchBrief | null>(null);
   // A brief scores only the topic it was built for.
+  const scoredTopic = primaryTargetTopic(scoredDraft.targetKeyword);
   const activeBrief =
-    brief && briefMatchesTopic(brief, scoredDraft.targetKeyword) ? brief : null;
+    brief && briefMatchesTopic(brief, scoredTopic) ? brief : null;
+  const scoreDraft = useMemo(
+    () => ({ ...scoredDraft, targetKeyword: scoredTopic }),
+    [scoredDraft, scoredTopic],
+  );
   const scoringBrief = useMemo(
     () => (activeBrief ? toScoringBrief(activeBrief) : undefined),
     [activeBrief],
   );
   const seo = useMemo(
-    () => scoreContent("seo", scoredDraft, scoringBrief),
-    [scoredDraft, scoringBrief],
+    () => scoreContent("seo", scoreDraft, scoringBrief),
+    [scoreDraft, scoringBrief],
   );
   const aeo = useMemo(
-    () => scoreContent("aeo", scoredDraft, scoringBrief),
-    [scoredDraft, scoringBrief],
+    () => scoreContent("aeo", scoreDraft, scoringBrief),
+    [scoreDraft, scoringBrief],
   );
 
   useEffect(() => {

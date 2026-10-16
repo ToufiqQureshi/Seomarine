@@ -10,6 +10,7 @@ import {
 import type { ContentDraftInput, EditorMode } from "./scoring";
 import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 import { useEditorSession } from "./editor-session";
+import { writerContext } from "./writer-context";
 
 const actions = [
   ["outline", "Create outline"],
@@ -54,20 +55,31 @@ export function WriterAssistant({
     availability.isError ||
     !availability.data?.configured;
   const mutation = useMutation({
-    mutationFn: (action: (typeof actions)[number][0]) =>
-      generateWritingSuggestion({
+    mutationFn: (action: (typeof actions)[number][0]) => {
+      const selection =
+        editor && !editor.state.selection.empty
+          ? editor.state.doc.textBetween(
+              editor.state.selection.from,
+              editor.state.selection.to,
+              "\n",
+            )
+          : "";
+      const currentBlock =
+        editor?.state.selection.$from.parent.textContent ?? "";
+      return generateWritingSuggestion({
         data: {
           projectId,
           action,
           mode,
           title: draft.title,
           targetKeyword: draft.targetKeyword,
-          content: draft.content,
+          content: writerContext(draft.content, selection, currentBlock),
           language,
           instructions,
-          brief,
+          brief: brief.slice(0, 2_000),
         },
-      }),
+      });
+    },
     onSuccess: (suggestion) => {
       setResult(suggestion.content);
       setError("");
