@@ -9,6 +9,9 @@ import {
 import type { AuditResultsData } from "@/client/features/audit/results/types";
 import { SeverityBadge } from "@/client/features/audit/shared";
 import { EmptyState } from "@/client/components/EmptyState";
+import { Button } from "@/client/components/ui/button";
+import { toast } from "sonner";
+import { getOrphanLinkCandidates } from "@/client/features/audit/orphanLinkCandidates";
 
 type AuditIssueRow = AuditResultsData["issues"][number];
 
@@ -75,9 +78,11 @@ function groupIssues(issues: AuditIssueRow[]): IssueGroup[] {
 
 export function IssuesView({
   issues,
+  pages,
   tabs,
 }: {
   issues: AuditIssueRow[];
+  pages: AuditResultsData["pages"];
   tabs: ReactNode;
 }) {
   const groups = useMemo(() => groupIssues(issues), [issues]);
@@ -105,7 +110,12 @@ export function IssuesView({
       ) : (
         <div>
           {sections.map((section) => (
-            <IssueSection key={section.severity} section={section} />
+            <IssueSection
+              key={section.severity}
+              section={section}
+              pages={pages}
+              allIssues={issues}
+            />
           ))}
         </div>
       )}
@@ -115,8 +125,12 @@ export function IssuesView({
 
 function IssueSection({
   section,
+  pages,
+  allIssues,
 }: {
   section: { severity: IssueSeverity; groups: IssueGroup[] };
+  pages: AuditResultsData["pages"];
+  allIssues: AuditIssueRow[];
 }) {
   const issueCount = section.groups.reduce(
     (sum, group) => sum + group.issues.length,
@@ -133,14 +147,27 @@ function IssueSection({
       </div>
       <div className="divide-y divide-border">
         {section.groups.map((group) => (
-          <IssueRow key={group.issueType} group={group} />
+          <IssueRow
+            key={group.issueType}
+            group={group}
+            pages={pages}
+            allIssues={allIssues}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function IssueRow({ group }: { group: IssueGroup }) {
+function IssueRow({
+  group,
+  pages,
+  allIssues,
+}: {
+  group: IssueGroup;
+  pages: AuditResultsData["pages"];
+  allIssues: AuditIssueRow[];
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -183,11 +210,153 @@ function IssueRow({ group }: { group: IssueGroup }) {
               <span className="text-foreground/80">{group.howToFix}</span>
             </p>
           )}
+          {group.issueType === "orphan-page" ? (
+            <OrphanPageRescue
+              issues={group.issues}
+              pages={pages}
+              allIssues={allIssues}
+            />
+          ) : null}
           <AffectedUrlList issues={group.issues} />
         </div>
       )}
     </div>
   );
+}
+
+function OrphanPageRescue({
+  issues,
+  pages,
+  allIssues,
+}: {
+  issues: AuditIssueRow[];
+  pages: AuditResultsData["pages"];
+  allIssues: AuditIssueRow[];
+}) {
+  const orphanIssues = issues.slice(0, MAX_RENDERED_URLS);
+  return (
+    <div className="space-y-2 rounded-md border border-border bg-card p-3">
+      <div>
+        <p className="text-sm font-medium">Suggested pages to link from</p>
+        <p className="text-xs text-muted-foreground">
+          Matched from titles and URLs in this crawl. Review page context before
+          adding a link.
+        </p>
+      </div>
+      {orphanIssues.map((issue) => (
+        <OrphanPageSuggestion
+          key={issue.id}
+          issue={issue}
+          pages={pages}
+          allIssues={allIssues}
+        />
+      ))}
+      {issues.length > orphanIssues.length ? (
+        <p className="text-xs text-muted-foreground">
+          Suggestions shown for the first {orphanIssues.length} orphan pages.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function OrphanPageSuggestion({
+  issue,
+  pages,
+  allIssues,
+}: {
+  issue: AuditIssueRow;
+  pages: AuditResultsData["pages"];
+  allIssues: AuditIssueRow[];
+}) {
+  const [open, setOpen] = useState(false);
+  const candidates = open
+    ? getOrphanLinkCandidates(issue.pageUrl, pages, allIssues)
+    : [];
+
+  return (
+    <div className="space-y-1.5 border-t border-border pt-2 first:border-t-0 first:pt-0">
+      <p className="break-all text-xs font-medium">Orphan: {issue.pageUrl}</p>
+      <Button
+        type="button"
+        size="xs"
+        variant="ghost"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {open ? "Hide suggestions" : "Show suggested pages"}
+      </Button>
+      {open ? (
+        candidates.length ? (
+          <ul className="space-y-1.5">
+            {candidates.map((candidate) => (
+              <li
+                key={candidate.sourceUrl}
+                className="flex flex-wrap items-center gap-2 text-xs"
+              >
+                <a
+                  href={candidate.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex-1 break-all underline underline-offset-4"
+                >
+                  {candidate.sourceTitle}
+                </a>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void copyLinkSnippet(
+                      candidate.targetUrl,
+                      candidate.targetTitle,
+                    )
+                  }
+                >
+                  Copy link snippet
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            No closely related source page was found in this crawl.
+          </p>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+async function copyLinkSnippet(targetUrl: string, targetTitle: string) {
+  if (!navigator.clipboard?.writeText) {
+    toast.error("Clipboard access is not available in this browser");
+    return;
+  }
+  const snippet = `<a href="${escapeHtml(targetUrl)}">${escapeHtml(targetTitle)}</a>`;
+  try {
+    await navigator.clipboard.writeText(snippet);
+    toast.success("Link snippet copied");
+  } catch {
+    toast.error("Could not copy link snippet");
+  }
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
 }
 
 function AffectedUrlList({ issues }: { issues: AuditIssueRow[] }) {
