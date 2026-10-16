@@ -109,7 +109,7 @@ describe("getBrandVisibilityHistory", () => {
           fetchedAt: "2026-10-08T09:00:00.000Z",
           totalMentions: 5,
           totalAiSearchVolume: 50,
-          citedPages: 2,
+          citedSources: 2,
         },
       ]),
     );
