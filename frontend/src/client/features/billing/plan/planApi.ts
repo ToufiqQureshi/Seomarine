@@ -11,6 +11,23 @@ const statusSchema = z.object({
   unlimited: z.boolean(),
   paymentsConfigured: z.boolean(),
   availablePlans: z.array(z.enum(["basic", "pro", "agency"])),
+  usage: z.object({
+    sites: z.object({
+      used: z.number().int().nonnegative(),
+      limit: z.number().int().nonnegative(),
+      exceeded: z.boolean(),
+    }),
+    members: z.object({
+      used: z.number().int().nonnegative(),
+      limit: z.number().int().nonnegative(),
+      exceeded: z.boolean(),
+    }),
+    trackedKeywords: z.object({
+      used: z.number().int().nonnegative(),
+      limit: z.number().int().nonnegative(),
+      exceeded: z.boolean(),
+    }),
+  }),
 });
 export type BillingStatus = z.infer<typeof statusSchema>;
 

@@ -27,6 +27,7 @@ const errorBodySchema = z.object({
 const CUSTOMER_FACING_CODES = new Set([
   "usage_paused",
   "daily_credit_limit",
+  "plan_limits_exceeded",
   "site_unreachable",
   "site_error",
   // A fixed "<data> is temporarily unavailable" line from our own handlers,

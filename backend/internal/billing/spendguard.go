@@ -40,6 +40,8 @@ type SpendGuard struct {
 	// providers in a UTC day (0 is no limit), so one heavy workspace uses up
 	// only its own day and never pauses the others. Nil means no limit.
 	WorkspaceDailyLimitUSD func(ctx context.Context, orgID string) (float64, error)
+	// WithinPlanLimits pauses paid work after a downgrade without deleting data.
+	WithinPlanLimits func(ctx context.Context, orgID string) (bool, error)
 }
 
 // NewSpendGuard returns the guard. dailyLimitUSD must be positive.
@@ -69,6 +71,15 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 		return nil, fmt.Errorf("invalid spend estimate %v", req.EstimateUSD)
 	}
 	h := &creditHold{guard: g, org: req.OrganizationID, feature: req.Feature}
+	if g.chargeCredits && g.WithinPlanLimits != nil {
+		within, err := g.WithinPlanLimits(ctx, req.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("check workspace plan limits: %w", err)
+		}
+		if !within {
+			return nil, spend.ErrPlanLimits
+		}
+	}
 	credits := CreditsForUSD(req.EstimateUSD)
 	if !g.chargeCredits || credits == 0 {
 		// Nothing is reserved, so there is nothing to make atomic.

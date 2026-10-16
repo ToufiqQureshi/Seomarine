@@ -75,6 +75,18 @@ func TestNewSpendGuardRejectsANonPositiveDailyLimit(t *testing.T) {
 	}
 }
 
+func TestSpendGuardRefusesPaidWorkWhenDowngradeLimitsAreExceeded(t *testing.T) {
+	ctx := context.Background()
+	pool := setupTestDB(t)
+	guard := testGuard(t, pool, NewCreditLedgerService(pool), 100, true)
+	guard.WithinPlanLimits = func(context.Context, string) (bool, error) { return false, nil }
+
+	_, err := guard.Hold(ctx, spend.Request{OrganizationID: "org-over-limit", Feature: spend.KeywordResearch, EstimateUSD: 0.01})
+	if !errors.Is(err, spend.ErrPlanLimits) {
+		t.Fatalf("Hold() error = %v, want ErrPlanLimits", err)
+	}
+}
+
 func TestHoldRefusesAWorkspaceWithoutEnoughCredits(t *testing.T) {
 	pool := setupTestDB(t)
 	ctx := t.Context()

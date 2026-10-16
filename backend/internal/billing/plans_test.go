@@ -316,3 +316,31 @@ func TestWorkspaceDailyLimitIsAThirdOfTheMonth(t *testing.T) {
 		t.Fatalf("Pro daily limit = %v, %v; want %v", got, err, want)
 	}
 }
+
+func TestDowngradeKeepsDataAndMarksWorkspaceOverLimit(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(ctx, t)
+	f.sellTiers()
+	f.deliver(ctx, t, f.eventOnPlan(PlanPro, "subscription.activated", "sub_1", "active"))
+	if _, err := f.pool.Exec(ctx, `INSERT INTO projects (id, organization_id, name) VALUES ($1,$3,'One'),($2,$3,'Two')`, "project-a-"+rand.Text(), "project-b-"+rand.Text(), f.org); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE go_billing_subscriptions SET plan=$2 WHERE organization_id=$1`, f.org, PlanBasic); err != nil {
+		t.Fatal(err)
+	}
+
+	usage, err := f.svc.UsageAgainstPlan(ctx, f.org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Sites.Used != 2 || usage.Sites.Limit != 1 || !usage.Sites.Exceeded {
+		t.Fatalf("site usage = %+v, want 2 retained over a limit of 1", usage.Sites)
+	}
+	if within, err := f.svc.WithinPlanLimits(ctx, f.org); err != nil || within {
+		t.Fatalf("WithinPlanLimits() = %v, %v; want false", within, err)
+	}
+	var retained int
+	if err := f.pool.QueryRow(ctx, `SELECT count(*) FROM projects WHERE organization_id=$1`, f.org).Scan(&retained); err != nil || retained != 2 {
+		t.Fatalf("retained projects = %d, %v; want 2", retained, err)
+	}
+}

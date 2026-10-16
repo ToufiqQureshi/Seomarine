@@ -16,6 +16,30 @@ type repository struct {
 	db *pgxpool.Pool
 }
 
+type planUsage struct {
+	Sites, Members, TrackedKeywords int
+}
+
+// planUsage counts retained workspace data. Downgrades never delete it;
+// callers use these counts to pause new paid work until the workspace fits.
+func (r repository) planUsage(ctx context.Context, orgID string) (planUsage, error) {
+	var usage planUsage
+	err := r.db.QueryRow(ctx, `
+		SELECT
+			(SELECT count(*) FROM projects WHERE organization_id = $1 AND archived_at IS NULL),
+			(SELECT count(*) FROM member WHERE organization_id = $1)
+			  + (SELECT count(*) FROM invitation WHERE organization_id = $1 AND status = 'pending' AND expires_at > now()),
+			(SELECT count(*) FROM go_rank_tracking_keywords k
+			 JOIN go_rank_tracking_configs c ON c.id = k.config_id AND c.is_active
+			 JOIN projects p ON p.id = c.project_id AND p.archived_at IS NULL
+			 WHERE p.organization_id = $1)
+	`, orgID).Scan(&usage.Sites, &usage.Members, &usage.TrackedKeywords)
+	if err != nil {
+		return planUsage{}, fmt.Errorf("count plan usage for organization %s: %w", orgID, err)
+	}
+	return usage, nil
+}
+
 // querier is a pool, a connection or a transaction.
 type querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row

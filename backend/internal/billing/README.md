@@ -71,6 +71,12 @@ top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
 tracked keywords, checked weekly at its deepest depth, under 90% of its
 monthly credits.
 
+After a downgrade, existing sites, members and tracked keywords are retained.
+`Service.UsageAgainstPlan` reports the overage to Billing, and the shared
+`SpendGuard` refuses new paid provider work with `plan_limits_exceeded` until
+the workspace fits the current catalog limits. Reads, archiving and removal
+remain available so the customer can resolve the overage without data loss.
+
 Monthly credits are shown on the public pricing page beside each plan's
 included tools and limits. The app shows the balance in Billing and estimated
 costs next to paid actions. `internal/site` reads the grant from the plan

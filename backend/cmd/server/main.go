@@ -165,6 +165,7 @@ func run(logger *slog.Logger) (err error) {
 		return fmt.Errorf("create spend guard: %w", err)
 	}
 	spendGuard.WorkspaceDailyLimitUSD = billingRoutes.WorkspaceDailyLimitUSD
+	spendGuard.WithinPlanLimits = billingRoutes.WithinPlanLimits
 
 	var aiSearchSvc *aisearch.Service
 	var backlinksSvc *backlinks.Service

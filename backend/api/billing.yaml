@@ -9,7 +9,7 @@ info:
     described here; plan, checkout and webhook routes are in
     `internal/billing/README.md`.
 
-    Any route that makes a paid lookup can answer with the two refusals
+    Any route that makes a paid lookup can answer with the refusals
     below. Nothing is sent to the provider when they are returned.
 servers:
   - url: /api/v1
@@ -127,6 +127,12 @@ components:
             $ref: "#/components/schemas/Error"
     DailyCreditLimit:
       description: "429 `daily_credit_limit`: this workspace used a third of its monthly credits today. Other workspaces are not affected."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    PlanLimitsExceeded:
+      description: "402 `plan_limits_exceeded`: retained workspace data exceeds the active plan after a downgrade; data is preserved and paid calls are paused."
       content:
         application/json:
           schema:
