@@ -160,7 +160,7 @@ export function ManualReportForm({
           outcomes.length +
           nextSteps.length +
           evidence.length >
-            20_000
+        20_000
       ) {
         setFormError("Keep work log details under 20,000 characters in total.");
         return;
@@ -313,4 +313,3 @@ export function ManualReportForm({
     </Dialog>
   );
 }
-
