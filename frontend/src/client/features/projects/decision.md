@@ -15,4 +15,4 @@ Creates, switches, updates, archives/restores projects and manages shared projec
 ## Verification pointers
 
 - `projectApi.test.ts`
-- `EditableListSection.test.ts`
+- `project-context/EditableListSection.test.ts`
