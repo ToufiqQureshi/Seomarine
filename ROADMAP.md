@@ -76,7 +76,6 @@ mean each one has been tried on production with real provider keys.
 | ---------------------------------------------------------------------------------------- | ------ |
 | Changing from one paid plan to another without writing to support                        | ⏳     |
 | Agency: client access, and extra sites at ₹400 each                                      | ⏳     |
-| Live usage on the Billing page                                                           | ⏳     |
 | AI Visibility: sentiment, tracking over time, drop alerts                                | ⏳     |
 | "Seen in AI" next to "visitors from AI" (AI Visibility joined with Analytics)            | ⏳     |
 | Publishing to Shopify, Wix, Webflow, plain HTML (SFTP) and an Uplumo-hosted blog         | ⏳     |
