@@ -38,6 +38,7 @@ import (
 	"github.com/toufiqqureshi/uplumo/backend/internal/onboarding"
 	planCatalog "github.com/toufiqqureshi/uplumo/backend/internal/plans"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projectcontext"
 	"github.com/toufiqqureshi/uplumo/backend/internal/projects"
 	"github.com/toufiqqureshi/uplumo/backend/internal/ranktracking"
@@ -251,7 +252,11 @@ func NewHandler(d Deps) http.Handler {
 		if !configured {
 			message = "AI writing is temporarily unavailable because its approved provider model or API key is not configured."
 		}
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{"configured": configured, "message": message})
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{
+			"configured":          configured,
+			"message":             message,
+			"maxCreditsPerAction": contenteditor.MaxWriterCreditsPerAction,
+		})
 	})))
 	withSAMProjectAccess := func(next http.Handler) http.Handler {
 		return withSession(requireProjectAccess(d.Logger, d.Auth, next))
@@ -448,7 +453,9 @@ func requireSession(logger *slog.Logger, authn *auth.Service, next http.Handler)
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))
+		ctx := spend.WithIdempotencyKey(r.Context(), r.Header.Get("Idempotency-Key"))
+		ctx = spend.WithUserID(ctx, user.ID)
+		next.ServeHTTP(w, r.WithContext(auth.WithUser(ctx, user)))
 	})
 }
 

@@ -23,7 +23,8 @@ var (
 	ErrWorkspaceDailyLimit = errors.New("this workspace reached its daily credit limit")
 	// ErrPlanLimits means a downgrade left retained data over the active
 	// plan's limits. Reads and cleanup stay available, but paid calls stop.
-	ErrPlanLimits = errors.New("workspace data exceeds the active plan limits")
+	ErrPlanLimits       = errors.New("workspace data exceeds the active plan limits")
+	ErrIdempotentReplay = errors.New("request was already submitted")
 )
 
 // Feature names what the money is spent on. It labels the spend in the
@@ -56,9 +57,34 @@ func Features() []Feature {
 type Request struct {
 	OrganizationID string
 	Feature        Feature
+	Endpoint       string
+	IdempotencyKey string
 	// EstimateUSD is the most the request can cost at the provider. It is
 	// held before the request is sent, so it must not be an average.
 	EstimateUSD float64
+}
+
+type (
+	idempotencyKeyContextKey struct{}
+	userIDContextKey         struct{}
+)
+
+func WithIdempotencyKey(ctx context.Context, key string) context.Context {
+	return context.WithValue(ctx, idempotencyKeyContextKey{}, key)
+}
+
+func IdempotencyKeyFromContext(ctx context.Context) string {
+	key, _ := ctx.Value(idempotencyKeyContextKey{}).(string)
+	return key
+}
+
+func WithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDContextKey{}, userID)
+}
+
+func UserIDFromContext(ctx context.Context) string {
+	userID, _ := ctx.Value(userIDContextKey{}).(string)
+	return userID
 }
 
 // Hold is credit set aside for one request.
@@ -67,6 +93,19 @@ type Hold interface {
 	// exactly once, also when the request failed (with the cost the provider
 	// reported, often zero).
 	Settle(ctx context.Context, costUSD float64) error
+}
+
+// ProviderCostHold records the provider's actual cost separately from the
+// customer charge when a provider billed work that failed to return a result.
+type ProviderCostHold interface {
+	SettleProviderCost(ctx context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error
+}
+
+func SettleProviderCost(hold Hold, ctx context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error {
+	if providerHold, ok := hold.(ProviderCostHold); ok {
+		return providerHold.SettleProviderCost(ctx, providerCostUSD, customerCostUSD, endpoint)
+	}
+	return hold.Settle(ctx, customerCostUSD)
 }
 
 // Guard decides whether billed work may start.
@@ -80,7 +119,7 @@ type Guard interface {
 // Refused reports whether err is the guard refusing the work: no credits,
 // or paid work paused for the day.
 func Refused(err error) bool {
-	return errors.Is(err, ErrNoCredits) || errors.Is(err, ErrPaused) || errors.Is(err, ErrWorkspaceDailyLimit) || errors.Is(err, ErrPlanLimits)
+	return errors.Is(err, ErrIdempotentReplay) || errors.Is(err, ErrNoCredits) || errors.Is(err, ErrPaused) || errors.Is(err, ErrWorkspaceDailyLimit) || errors.Is(err, ErrPlanLimits)
 }
 
 const (
@@ -88,6 +127,7 @@ const (
 	pausedMessage     = "Live data is paused for a short while. Please try again in a few hours."
 	dailyMessage      = "You have used today's share of your credits. It resets at 5:30 AM IST, and your monthly credits are safe."
 	planLimitsMessage = "Your workspace is over its current plan limits. Your data is safe; archive sites or remove team members or tracked keywords, then try again."
+	duplicateMessage  = "This request was already submitted. Refresh the page before trying again."
 )
 
 // Message is what to tell the customer about a refusal, or "" when err is
@@ -102,6 +142,8 @@ func Message(err error) string {
 		return dailyMessage
 	case errors.Is(err, ErrPlanLimits):
 		return planLimitsMessage
+	case errors.Is(err, ErrIdempotentReplay):
+		return duplicateMessage
 	}
 	return ""
 }
@@ -110,6 +152,8 @@ func Message(err error) string {
 // 402 insufficient_credits, 429 daily_credit_limit, or 503 usage_paused.
 func WriteHTTPError(w http.ResponseWriter, err error) bool {
 	switch {
+	case errors.Is(err, ErrIdempotentReplay):
+		httpx.WriteError(w, http.StatusConflict, "duplicate_request", duplicateMessage)
 	case errors.Is(err, ErrNoCredits):
 		httpx.WriteError(w, http.StatusPaymentRequired, "insufficient_credits", noCreditsMessage)
 	case errors.Is(err, ErrPaused):

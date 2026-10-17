@@ -130,19 +130,19 @@ func TestDoReleasesTheHoldWhenTheProviderFails(t *testing.T) {
 	}
 }
 
-func TestDoStillChargesWhenRecordingFails(t *testing.T) {
+func TestDoRefundsCustomerWhenRecordingFailsButKeepsProviderCost(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp"],"cost":0.01}]}`)
 	}))
 	defer server.Close()
-	guard := &spendtest.Guard{}
+	guard := &costAwareGuard{}
 	client := guardedClient(t, server, &testRecorder{err: errors.New("db down")}, guard, 0)
 	_, err := client.Do(context.Background(), "org", spend.RankTracking, http.MethodPost, "/v3/serp/google/organic/live/advanced", []byte(`[{"keyword":"x","depth":10}]`), false)
 	if _, ok := errors.AsType[*CostRecordingError](err); !ok {
 		t.Fatalf("Do() error = %v, want CostRecordingError", err)
 	}
-	if settled := guard.Settled(); len(settled) != 1 || settled[0] != 0.01 {
-		t.Fatalf("settled = %v, want the provider's 0.01: the work was billed even though recording failed", settled)
+	if guard.providerCost != 0.01 || guard.customerCost != 0 {
+		t.Fatalf("provider/customer costs = $%v/$%v, want $0.01/$0", guard.providerCost, guard.customerCost)
 	}
 }
 

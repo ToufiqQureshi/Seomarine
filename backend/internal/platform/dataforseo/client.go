@@ -159,18 +159,20 @@ func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Fe
 	if _, err := c.endpoint(path); err != nil {
 		return nil, err
 	}
-	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, EstimateUSD: EstimateUSD(path, body)})
+	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, Endpoint: path, IdempotencyKey: spend.IdempotencyKeyFromContext(ctx), EstimateUSD: EstimateUSD(path, body)})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrBillingIssue, err)
 	}
-	payload, charged, err := c.do(ctx, organizationID, true, method, path, body, retrySafe)
-	if responseHasTaskFailure(payload) {
-		charged = 0
+	payload, providerCost, err := c.do(ctx, organizationID, true, method, path, body, retrySafe)
+	customerCost := 0.0
+	if err == nil {
+		customerCost = responseSuccessfulCost(payload)
 	}
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if settleErr := hold.Settle(settleCtx, charged); settleErr != nil && err == nil {
-		return nil, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: []string{path}, USD: charged}, Cause: settleErr}
+	if settleErr := spend.SettleProviderCost(hold, settleCtx, providerCost, customerCost, path); settleErr != nil {
+		costErr := &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: []string{path}, USD: providerCost}, Cause: settleErr}
+		return nil, errors.Join(err, costErr)
 	}
 	return payload, err
 }
@@ -183,12 +185,14 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 	if strings.TrimSpace(organizationID) == "" || len(organizationID) > 128 || strings.TrimSpace(string(feature)) == "" || math.IsNaN(ceilingUSD) || math.IsInf(ceilingUSD, 0) || ceilingUSD <= 0 || work == nil {
 		return fmt.Errorf("%w: invalid budgeted operation", ErrInvalidRequest)
 	}
-	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, EstimateUSD: ceilingUSD})
+	hold, err := c.guard.Hold(ctx, spend.Request{OrganizationID: organizationID, Feature: feature, Endpoint: "multi", IdempotencyKey: spend.IdempotencyKeyFromContext(ctx), EstimateUSD: ceilingUSD})
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrBillingIssue, err)
 	}
 	var mu sync.Mutex
-	var charged float64
+	var providerCost, customerCost float64
+	var endpoints []string
+	endpointSet := make(map[string]struct{})
 	open := true
 	request := func(method, path string, body []byte, retrySafe bool) (json.RawMessage, error) {
 		mu.Lock()
@@ -199,9 +203,14 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 		if _, err := c.endpoint(path); err != nil {
 			return nil, err
 		}
+		if _, exists := endpointSet[path]; !exists {
+			endpointSet[path] = struct{}{}
+			endpoints = append(endpoints, path)
+		}
 		payload, cost, requestErr := c.do(ctx, organizationID, true, method, path, body, retrySafe)
-		if !responseHasTaskFailure(payload) {
-			charged += cost
+		providerCost += cost
+		if requestErr == nil {
+			customerCost += responseSuccessfulCost(payload)
 		}
 		return payload, requestErr
 	}
@@ -209,49 +218,55 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 		if recovered := recover(); recovered != nil {
 			mu.Lock()
 			open = false
+			providerTotal, customerTotal := providerCost, customerCost
+			endpointPaths := append([]string(nil), endpoints...)
 			mu.Unlock()
 			settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
 			// Preserve the original panic; an unsettled reservation is
 			// reported by the normal billing reconciliation path.
-			_ = hold.Settle(settleCtx, 0)
+			_ = spend.SettleProviderCost(hold, settleCtx, providerTotal, customerTotal, strings.Join(endpointPaths, ","))
 			panic(recovered)
 		}
 	}()
 	workErr := work(request)
 	mu.Lock()
 	open = false
-	total := charged
+	providerTotal, customerTotal := providerCost, customerCost
+	endpointPaths := append([]string(nil), endpoints...)
 	mu.Unlock()
-	if total > ceilingUSD {
+	if customerTotal > ceilingUSD {
 		// The customer was quoted the ceiling and the provider already did the
 		// work, so the result is returned and Uplumo absorbs the overage.
 		// Failing here would charge for nothing and repeat on every retry.
-		total = ceilingUSD
+		customerTotal = ceilingUSD
 	}
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if settleErr := hold.Settle(settleCtx, total); settleErr != nil {
-		return errors.Join(workErr, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{USD: total}, Cause: settleErr})
+	endpoint := strings.Join(endpointPaths, ",")
+	if settleErr := spend.SettleProviderCost(hold, settleCtx, providerTotal, customerTotal, endpoint); settleErr != nil {
+		return errors.Join(workErr, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: endpointPaths, USD: providerTotal}, Cause: settleErr})
 	}
 	return workErr
 }
 
-func responseHasTaskFailure(payload []byte) bool {
+func responseSuccessfulCost(payload []byte) float64 {
 	var envelope struct {
 		Tasks []struct {
-			StatusCode int `json:"status_code"`
+			StatusCode int      `json:"status_code"`
+			Cost       *float64 `json:"cost"`
 		} `json:"tasks"`
 	}
 	if json.Unmarshal(payload, &envelope) != nil {
-		return false
+		return 0
 	}
+	var total float64
 	for _, task := range envelope.Tasks {
-		if task.StatusCode != 0 && task.StatusCode != statusOK {
-			return true
+		if (task.StatusCode == 0 || task.StatusCode >= 20000 && task.StatusCode < 30000) && task.Cost != nil && *task.Cost > 0 {
+			total += *task.Cost
 		}
 	}
-	return false
+	return total
 }
 
 // DoBudgetedRequest sends one request under its operation's existing hold.

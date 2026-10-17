@@ -44,6 +44,37 @@ func TestCreditLedgerService_Unit(t *testing.T) {
 	})
 }
 
+func TestWorkspaceIdempotencyKeyIsStableAndScoped(t *testing.T) {
+	first := workspaceIdempotencyKey("org-one", "same-request")
+	if first == "" || first != workspaceIdempotencyKey("org-one", "same-request") {
+		t.Fatalf("workspace idempotency key is not stable: %q", first)
+	}
+	if first == workspaceIdempotencyKey("org-two", "same-request") {
+		t.Fatal("the same request in a different workspace reused its idempotency key")
+	}
+	if workspaceIdempotencyKey("org-one", "") != "" {
+		t.Fatal("empty idempotency key should remain empty")
+	}
+}
+
+func TestReserveForWorkspaceWithoutBalanceReturnsInsufficientCredits(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	orgID := "org_empty_" + rand.Text()
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Empty Org', $1, now())`, orgID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.WithoutCancel(ctx), `DELETE FROM organization WHERE id = $1`, orgID); err != nil {
+			t.Errorf("delete integration test organization: %v", err)
+		}
+	})
+	_, err := NewCreditLedgerService(pool).Reserve(ctx, orgID, 1, "")
+	if !errors.Is(err, ErrInsufficientBalance) {
+		t.Fatalf("Reserve() error = %v, want ErrInsufficientBalance", err)
+	}
+}
+
 func TestCreditLedgerService_Integration(t *testing.T) {
 	pool := setupTestDB(t)
 	if pool == nil {
