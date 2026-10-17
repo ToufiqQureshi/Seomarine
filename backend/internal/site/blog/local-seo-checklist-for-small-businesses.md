@@ -2,6 +2,7 @@
 title: Local SEO checklist for small businesses
 description: A practical local SEO checklist for service businesses: make your profile accurate, build useful local pages and track calls from nearby customers.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** Local SEO helps nearby customers find and choose your business. Start with an eligible, complete Google Business Profile, accurate contact details, useful pages for your real services and locations, honest customer reviews, and a way to measure calls and enquiries.
@@ -66,6 +67,22 @@ If your business is in a regulated field, have a qualified person review claims 
 
 Ask new customers how they found the business and which service they needed. Compare those answers with calls, forms and profile actions for the same period. If many people ask about a service that is missing from the website, consider adding a page only when the company truly offers it. If the page already gets visits but few enquiries, check whether the phone number works, the service area is clear and the next step is easy. This basic feedback loop helps a small team spend time on problems customers actually have.
 
+## Choose the next local SEO task by customer impact
+
+A profile with missing hours and a broken call button needs attention before weekly social posts. A useful order is:
+
+1. **Can the customer reach you?** Test phone, directions, booking and contact forms on a phone.
+2. **Can Google identify the real business?** Check the business name, primary category, address or service area, phone and hours against reality.
+3. **Can the customer confirm the offer?** Make the matching service page explain who it helps, what is included and how to enquire.
+4. **Can you see whether it worked?** Record profile calls, website leads and booked jobs where possible.
+
+For example, a plumber working at customer homes should not publish a residential address as a storefront if customers are not served there. Google has specific rules for [service-area businesses](https://support.google.com/business/answer/9157481?hl=en). Use an accurate setup and do not create extra profiles or fake locations to appear in more towns.
+
+### A simple monthly scorecard
+
+Track a small set of real outcomes: qualified calls, quote requests, bookings, and the service or area each came from. Keep profile actions and website conversions separate; an action is not always a completed sale. Add a note when hours, staffing, budget or seasonality changes so a quiet month is not mistaken for a ranking failure.
+
+Use the [local keyword research guide](/blog/keyword-research-for-local-businesses) to choose one page based on customer intent, then follow the [30-day small-business SEO plan](/blog/seo-30-day-plan-small-business) to prioritize the work. Google's [local ranking explanation](https://support.google.com/business/answer/7091?hl=en) describes relevance, distance and prominence; businesses cannot control all three equally.
 ## FAQ
 
 **Does local SEO only mean Google Maps?**

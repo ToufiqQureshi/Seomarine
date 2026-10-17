@@ -2,6 +2,7 @@
 title: Traffic Dropped After a Google Core Update: A Calm Diagnosis Plan
 description: Compare affected queries, pages, countries and competitors after a core update, then improve usefulness without chasing quick fixes or update rumours.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** Confirm whether the drop lines up with a confirmed update, then compare affected pages and queries before editing. Check seasonality, tracking, technical changes, search demand, and competitors. Improve pages where evidence shows users are not getting a complete, reliable answer; do not rewrite the whole site or chase a promised recovery formula.
@@ -49,6 +50,26 @@ Do not buy “core update recovery” shortcuts, remove helpful pages solely bec
 
 Before changing a live site, save the current configuration and test the change on a small set of representative URLs. If you are unsure whether an action removes content, changes access, or affects checkout, get the developer or site owner to review it first. Fixing the visible symptom while breaking a related page can cost more than the original search issue.
 
+## Separate a core update from other causes
+
+Use a short timeline before editing. Write down the first day the decline appears in Search Console, the pages and queries affected, confirmed update dates, site releases, tracking changes and major market events. Compare the same weekdays and a similar period; a holiday or seasonal shift can look like an update.
+
+Then classify the pattern:
+
+| Pattern | Check first |
+| --- | --- |
+| Many pages and query types fall together | Tracking/property issue, technical release, security or broad demand change |
+| One topic or page type falls | Intent match, content completeness, competitors and internal links |
+| Clicks change but impressions and position do not | Search result layout, query mix, seasonality and CTR |
+| Only one country or device changes | Audience mix, localization, mobile usability and filters |
+
+Google advises waiting at least a full week after a confirmed core update finishes before comparing, and comparing the week after completion with the week before it began. See its [core update guidance](https://developers.google.com/search/docs/appearance/core-updates). That comparison helps diagnose; it does not promise recovery.
+
+### Make one evidence-based improvement
+
+Choose a page where the visible results show a real gap. Add missing first-hand detail, answer an important buyer question, correct stale information, or make the next step clearer. Keep a dated note of the change and why it should help. Avoid deleting pages, disavowing links or changing every title just because traffic fell; those actions can destroy useful information and make cause and effect impossible to judge.
+
+Use the [impressions-up, clicks-down worksheet](/blog/search-console-impressions-clicks-down) when the totals tell a confusing story. For a repeatable small-business process, use our [30-day SEO plan](/blog/seo-30-day-plan-small-business).
 ## FAQ
 
 **Does a core update mean my site was penalized?**

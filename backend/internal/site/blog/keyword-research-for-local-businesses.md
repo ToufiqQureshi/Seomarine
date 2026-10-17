@@ -2,6 +2,7 @@
 title: Local keyword research: find searches that bring customers
 description: Find useful local SEO keywords by combining the service, customer question and service area, then match each search to the right page.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** Start keyword research with the services you actually sell, the questions customers ask, and the areas you genuinely serve. Check how Google interprets each search, group similar questions by intent, and map each group to one helpful page.
@@ -68,6 +69,25 @@ Finally, ask the staff who answer enquiries which phrase the customer used. Sear
 
 Score each keyword group from one to three on three questions: can we deliver this service, does the search show a clear customer need, and can the page provide proof or a useful next step? A phrase with a modest estimate but strong fit may be more valuable than a broad, high-volume term. Keep the reasoning beside the keyword so the next person understands why the page exists. Review the map when the team changes its services, pricing or service area; old keyword lists can keep sending visitors to offers the business no longer provides.
 
+## A keyword map you can actually maintain
+
+Use one row per distinct customer need, not one row for every spelling variation:
+
+| Customer need | Example search | Intent | Best page | Proof or next step |
+| --- | --- | --- | --- | --- |
+| Find a nearby provider | “emergency plumber in Andheri” | Call now | Emergency plumbing page | Service hours, response area, phone |
+| Compare a service | “water heater repair cost Mumbai” | Evaluate | Repair page or pricing guide | What changes the quote |
+| Understand a problem | “water heater leaking what to do” | Learn, possibly urgent | Helpful safety guide | Safe first step and service link |
+
+The searches are examples, not volume claims. Validate them with Search Console, customer calls, sales conversations and the live results. Keep location wording honest: a page for a town you do not serve will frustrate visitors and can create doorway-style content.
+
+### Decide whether to create a page
+
+Create a separate page only when the search has a meaningfully different need and you can provide distinct, useful information. If two phrases lead to the same customer and same result page, improve one good page instead of splitting its authority. Add the target query naturally to a title or heading only where it helps people understand the page.
+
+For India, record language and city separately. “SEO agency in Pune” and “SEO कंपनी Pune” may reflect different language preferences; do not assume the same page serves both equally. Ask customers which language they use and check the actual result page before choosing.
+
+If the page exists but search visibility behaves strangely, use the [Search Console diagnosis guide](/blog/search-console-impressions-clicks-down). To turn research into a prioritized month of work, see the [30-day SEO plan](/blog/seo-30-day-plan-small-business). Google's [helpful content guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content) is a useful test: would the page still help a customer if search engines did not exist?
 ## FAQ
 
 **Do I need a separate page for every keyword?**

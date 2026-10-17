@@ -2,6 +2,7 @@
 title: How to get your business cited in AI search answers
 description: Make your business information clear and trustworthy so search systems can understand your pages, while measuring citations without false promises.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** No one can guarantee that ChatGPT, Google AI Overviews or another assistant will cite a business. You can make your site easier to discover and understand: answer a clear question, show first-hand proof, keep business facts consistent, earn legitimate mentions and measure what each platform exposes.
@@ -60,6 +61,23 @@ Avoid publishing dozens of near-identical pages for prompts such as “best agen
 
 If another company is cited, compare the source pages. It may have more specific information, clearer proof or a stronger match to the question. Improve the missing information rather than copying the competitor’s wording.
 
+## A practical page review for AI and regular search
+
+Pick one page that answers a real customer question and review it as a reader:
+
+- **Answer:** Is the main answer visible near the top, with the details and exceptions below?
+- **Evidence:** Does the page show first-hand experience, named expertise where relevant, original examples or verifiable business facts?
+- **Clarity:** Are prices, dates, locations, product details and limitations explicit and current?
+- **Access:** Can search crawlers reach the page? Are important facts in visible text rather than only in an image or blocked script?
+- **Original value:** Does the page add something useful beyond repeating the same generic advice found everywhere?
+
+Do not add special â€œAI schemaâ€ or create hundreds of thin question pages to chase citations. Google's current [AI features guidance](https://developers.google.com/search/docs/appearance/ai-features) says normal Search eligibility and people-first content principles still apply; there is no special markup that guarantees inclusion. Structured data must describe visible page content and does not guarantee a display.
+
+### Measure what you can actually observe
+
+Record the prompt, platform, date, country or language, answer and any cited URL. Repeat a small, stable set over time and label the results as samples: assistants can produce different answers for similar prompts. A mention is not a click, and an unlinked brand mention is not a referral visit. Compare this qualitative observation with Search Console clicks, site visits and qualified leads rather than presenting a citation count as revenue.
+
+Keep citations easy for a reader to verify. Our guide to [Search Console and click changes](/blog/search-console-impressions-clicks-down) helps establish the search baseline; the [SEO report template](/blog/seo-client-report-template-that-proves-progress) shows how to report uncertainty without overselling it. Google also warns against scaled pages made mainly to manipulate rankings in its [spam policies](https://developers.google.com/search/docs/essentials/spam-policies).
 ## FAQ
 
 **Does FAQ schema make ChatGPT cite my page?**
