@@ -489,6 +489,9 @@ func restoreReservationCreditsTx(ctx context.Context, tx pgx.Tx, reservationID s
 		return 0, err
 	}
 	rows.Close()
+	if len(allocations) == 0 {
+		return amount, nil
+	}
 	remaining, restored := amount, int64(0)
 	now := time.Now().UTC()
 	for _, a := range allocations {
