@@ -2,13 +2,17 @@ package ranktracking
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 // Polling and fan-out limits for queued tasks.
@@ -74,7 +78,8 @@ func (c *Checks) executeQueued(ctx context.Context, e *execution) error {
 		}
 	}
 	for chunk := range slices.Chunk(toPost, MaxTasksPerPost) {
-		posted, err := c.Queued.PostTasks(ctx, e.org, PostRequest{
+		postCtx := spend.WithIdempotencyKey(ctx, queuedPostIdempotencyKey(e.run.ID, chunk))
+		posted, err := c.Queued.PostTasks(postCtx, e.org, PostRequest{
 			Tasks: chunk, LocationCode: e.cfg.LocationCode, LanguageCode: e.cfg.LanguageCode,
 			LocationName: e.cfg.LocationName, Depth: e.cfg.SerpDepth, TargetDomain: e.cfg.Domain,
 		})
@@ -147,6 +152,16 @@ func (c *Checks) executeQueued(ctx context.Context, e *execution) error {
 		}
 	}
 	return c.finalize(ctx, e.run, e.firstError)
+}
+
+func queuedPostIdempotencyKey(runID string, tasks []TaskInput) string {
+	pairs := make([]string, len(tasks))
+	for i, task := range tasks {
+		pairs[i] = task.KeywordID + ":" + task.Device
+	}
+	slices.Sort(pairs)
+	digest := sha256.Sum256([]byte(runID + "\x00" + strings.Join(pairs, "\x00")))
+	return "rank-post-" + hex.EncodeToString(digest[:])
 }
 
 // collectRound reads up to taskGetsPerRound pending tasks. Completed ones are

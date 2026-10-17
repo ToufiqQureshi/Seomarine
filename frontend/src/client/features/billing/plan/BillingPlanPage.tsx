@@ -103,14 +103,15 @@ export function BillingPlanPage() {
 }
 
 function PlanLimitWarning({ status }: { status: BillingStatus }) {
-  const exceeded = [
-    ["active websites", status.usage.sites],
-    ["team seats", status.usage.members],
-    ["tracked keywords", status.usage.trackedKeywords],
-  ].filter(([, usage]) => usage.exceeded) as [
-    string,
-    BillingStatus["usage"]["sites"],
-  ][];
+  const limits: {
+    label: string;
+    usage: BillingStatus["usage"]["sites"];
+  }[] = [
+    { label: "active websites", usage: status.usage.sites },
+    { label: "team seats", usage: status.usage.members },
+    { label: "tracked keywords", usage: status.usage.trackedKeywords },
+  ];
+  const exceeded = limits.filter(({ usage }) => usage.exceeded);
   if (exceeded.length === 0) return null;
 
   return (
@@ -126,7 +127,7 @@ function PlanLimitWarning({ status }: { status: BillingStatus }) {
           counts fit your plan:
         </p>
         <ul className="mt-2 list-disc pl-5 text-sm">
-          {exceeded.map(([label, usage]) => (
+          {exceeded.map(({ label, usage }) => (
             <li key={label}>
               {usage.used.toLocaleString()} {label}; plan allows{" "}
               {usage.limit.toLocaleString()}

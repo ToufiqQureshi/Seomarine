@@ -313,7 +313,11 @@ func run(logger *slog.Logger) (err error) {
 		RankTracking: rankTrackingService, RankChecks: rankChecks,
 	}
 	emailAuthSvc := buildEmailAuth(cfg, logger, db, rdb, authService)
-	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps, spendGuard.AIMeter(spend.AIAssistant))
+	samModel := strings.TrimSpace(cfg.OpenRouterModel)
+	if samModel == "" {
+		samModel = openrouter.DefaultModel
+	}
+	samChat := buildSAMChat(cfg, logger, db, projectContextSvc, mcpDeps, spendGuard.AIMeter(spend.AIAssistant, "openrouter/"+samModel))
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewHandler(httpapi.Deps{
@@ -348,7 +352,7 @@ func run(logger *slog.Logger) (err error) {
 			ContentAuthors:          contentAuthors,
 			LinkSuggest:             linkSuggestSvc,
 			SitePublish:             sitePublish,
-			ContentWriter:           buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting), billingRoutes.Gate(planCatalog.AIWriting)),
+			ContentWriter:           buildContentWriter(cfg, logger, spendGuard.AIMeter(spend.AIWriting, "openrouter/"+contenteditor.WriterModel), billingRoutes.Gate(planCatalog.AIWriting)),
 			ContentBriefs:           buildContentBriefs(db, dfClient),
 			ProjectsRepo:            projects.Repository{DB: db},
 			ContentImages:           contentImages,
@@ -562,13 +566,15 @@ func buildRankChecks(ctx context.Context, logger *slog.Logger, db *pgxpool.Pool,
 	}
 	store := ranktracking.Store{DB: db}
 	var plans ranktracking.PaidPlans
+	var depthLimits ranktracking.SerpDepthLimits
 	if billingSvc != nil {
 		plans = billingSvc.Gate(planCatalog.RankTracking)
+		depthLimits = billingSvc
 	}
 	checks := &ranktracking.Checks{
 		Repo: store, Results: store, Runs: store, Serp: ranktracking.DataForSEOSerp{Client: dfClient},
 		Queued: ranktracking.DataForSEOSerp{Client: dfClient}, Tasks: store,
-		Scheduler: ranktracking.QueueScheduler{Queue: queue}, Plans: plans, Logger: logger, Now: time.Now,
+		Scheduler: ranktracking.QueueScheduler{Queue: queue}, Plans: plans, DepthLimits: depthLimits, Logger: logger, Now: time.Now,
 	}
 	worker := jobs.Worker{
 		Queue: queue, QueueName: ranktracking.QueueName, Handle: checks.JobHandler(),

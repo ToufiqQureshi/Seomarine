@@ -77,18 +77,23 @@ type PaidPlans interface {
 	HasPaidPlan(ctx context.Context, organizationID string) (bool, error)
 }
 
+type SerpDepthLimits interface {
+	SerpDepthLimit(ctx context.Context, organizationID string) (int, error)
+}
+
 // Checks starts rank checks and runs them.
 type Checks struct {
-	Repo      Repository
-	Results   ResultsRepository
-	Runs      RunStore
-	Serp      SerpProvider
-	Queued    QueuedSerp // nil refuses scheduled runs
-	Tasks     TaskStore
-	Scheduler RunScheduler
-	Plans     PaidPlans // nil runs ungated, like a self-hosted deployment
-	Logger    *slog.Logger
-	Now       func() time.Time
+	Repo        Repository
+	Results     ResultsRepository
+	Runs        RunStore
+	Serp        SerpProvider
+	Queued      QueuedSerp // nil refuses scheduled runs
+	Tasks       TaskStore
+	Scheduler   RunScheduler
+	Plans       PaidPlans // nil runs ungated, like a self-hosted deployment
+	DepthLimits SerpDepthLimits
+	Logger      *slog.Logger
+	Now         func() time.Time
 	// PollWaits and Sleep drive the queued path's polling; tests shorten them.
 	PollWaits []time.Duration
 	Sleep     func(ctx context.Context, d time.Duration) error
@@ -122,6 +127,9 @@ func (c *Checks) Start(ctx context.Context, in StartInput) (string, error) {
 			return "", ErrPaymentRequired
 		}
 	}
+	if err := c.checkDepth(ctx, in.OrganizationID, cfg.SerpDepth); err != nil {
+		return "", err
+	}
 	keywords, err := c.Repo.Keywords(ctx, cfg.ID)
 	if err != nil {
 		return "", err
@@ -144,6 +152,20 @@ func (c *Checks) Start(ctx context.Context, in StartInput) (string, error) {
 		OrganizationID: in.OrganizationID, ProjectID: in.ProjectID, ConfigID: cfg.ID,
 		KeywordsTotal: len(selected), KeywordIDs: in.KeywordIDs, Trigger: TriggerManual,
 	})
+}
+
+func (c *Checks) checkDepth(ctx context.Context, organizationID string, depth int) error {
+	if c.DepthLimits == nil {
+		return nil
+	}
+	limit, err := c.DepthLimits.SerpDepthLimit(ctx, organizationID)
+	if err != nil {
+		return fmt.Errorf("check rank tracking depth limit: %w", err)
+	}
+	if limit > 0 && depth > limit {
+		return fmt.Errorf("%w: your plan checks rankings up to the top %d results. Reduce this config to %d or upgrade the plan", ErrLimit, limit, limit)
+	}
+	return nil
 }
 
 // queueSpec describes a run to create and queue.
@@ -316,6 +338,12 @@ func (c *Checks) begin(ctx context.Context, job RunJob) (*execution, error) {
 		return nil, c.fail(ctx, *run, "The rank tracking config no longer exists")
 	}
 	if err != nil {
+		return nil, err
+	}
+	if err := c.checkDepth(ctx, job.OrganizationID, cfg.SerpDepth); err != nil {
+		if errors.Is(err, ErrLimit) {
+			return nil, c.fail(ctx, *run, err.Error())
+		}
 		return nil, err
 	}
 	all, err := c.Repo.Keywords(ctx, cfg.ID)
