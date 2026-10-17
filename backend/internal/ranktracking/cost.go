@@ -5,14 +5,8 @@ package ranktracking
 import (
 	"math"
 	"regexp"
-)
 
-// Provider prices in USD for one SERP request, per DataForSEO's published rates.
-const (
-	liveBasePageUSD    = 0.002
-	liveExtraPageUSD   = 0.0015
-	queuedBasePageUSD  = 0.0006
-	queuedExtraPageUSD = 0.00045
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 // Limits shared with the legacy app. They keep provider spend bounded.
@@ -71,11 +65,7 @@ func DevicesCount(devices string) int {
 
 // CostPerSerp is the provider cost of one request at the given depth (10-100).
 func CostPerSerp(depth int, method Method) float64 {
-	extraPages := float64(depth/10 - 1)
-	if method == Queued {
-		return queuedBasePageUSD + extraPages*queuedExtraPageUSD
-	}
-	return liveBasePageUSD + extraPages*liveExtraPageUSD
+	return dataforseo.SerpCostUSD(depth, method == Queued)
 }
 
 // EstimateCheck prices one full check of the keywords on the given devices.
@@ -112,7 +102,7 @@ func EstimateCheck(keywords []string, devices string, depth int, method Method) 
 type ScheduledEstimate struct {
 	Estimate
 	Interval           Interval
-	ChecksPerMonth     int
+	ChecksPerMonth     float64
 	MonthlyCostUSD     float64
 	MonthlyCostCredits int
 }
@@ -120,19 +110,19 @@ type ScheduledEstimate struct {
 // EstimateScheduled prices a scheduled check, which uses the queued method.
 func EstimateScheduled(keywords []string, devices string, depth int, interval Interval) ScheduledEstimate {
 	per := EstimateCheck(keywords, devices, depth, Queued)
-	checks := 1
+	checks := 1.0
 	switch interval {
 	case Daily:
 		checks = 30
 	case Weekly:
-		checks = 4
+		checks = 4.35
 	}
 	return ScheduledEstimate{
 		Estimate:           per,
 		Interval:           interval,
 		ChecksPerMonth:     checks,
 		MonthlyCostUSD:     per.CostUSD * float64(checks),
-		MonthlyCostCredits: per.CostCredits * checks,
+		MonthlyCostCredits: int(math.Ceil(float64(per.CostCredits) * checks)),
 	}
 }
 

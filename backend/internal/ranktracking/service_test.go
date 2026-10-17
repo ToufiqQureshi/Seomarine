@@ -451,8 +451,8 @@ func TestEstimateCost(t *testing.T) {
 	if _, err := s.UpdateConfig(ctx, project, cfg.ID, UpdateInput{ScheduleInterval: &weekly}); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ = s.EstimateCost(ctx, project, cfg.ID, nil); got.ScheduledEstimate == nil || got.ScheduledEstimate.ChecksPerMonth != 4 {
-		t.Errorf("scheduled estimate = %+v, want 4 checks a month", got.ScheduledEstimate)
+	if got, _ = s.EstimateCost(ctx, project, cfg.ID, nil); got.ScheduledEstimate == nil || got.ScheduledEstimate.ChecksPerMonth != 4.35 {
+		t.Errorf("scheduled estimate = %+v, want 4.35 average checks a month", got.ScheduledEstimate)
 	}
 }
 

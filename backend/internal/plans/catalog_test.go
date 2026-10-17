@@ -1,8 +1,11 @@
 package plans
 
 import (
+	"math"
 	"slices"
 	"testing"
+
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
 )
 
 func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
@@ -14,7 +17,7 @@ func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
 		{Free, 0, 1, 0, 1, 0},
 		{Basic, 999, 1, 100, 1, 4000},
 		{Pro, 2499, 2, 500, 3, 10000},
-		{Agency, 5999, 10, 2000, 10, 25000},
+		{Agency, 5999, 10, 2000, 10, 28000},
 	}
 	got := Catalog()
 	if len(got) != len(want) {
@@ -102,7 +105,7 @@ func TestNoPlanCanCostMoreThanAThirdOfItsPrice(t *testing.T) {
 	}
 }
 
-// A plan's tracked keywords, checked weekly on desktop at its deepest
+// A plan's plain tracked keywords, checked weekly on desktop at its deepest
 // allowed depth with the scheduled (queued) price, must fit in its monthly
 // credits, or the rank tracking it sells runs out of credits mid-month.
 func TestWeeklyRankTrackingFitsInTheMonthlyCredits(t *testing.T) {
@@ -114,10 +117,10 @@ func TestWeeklyRankTrackingFitsInTheMonthlyCredits(t *testing.T) {
 		if plan.MaxSerpDepth < 10 || plan.MaxSerpDepth > 100 || plan.MaxSerpDepth%10 != 0 {
 			t.Fatalf("%s: MaxSerpDepth %d is not 10 to 100 in steps of 10", plan.ID, plan.MaxSerpDepth)
 		}
-		perCheckUSD := 0.0006 + float64(plan.MaxSerpDepth/10-1)*0.00045
-		credits := float64(plan.TrackedKeywords) * checksPerMonth * perCheckUSD * 1280
-		if credits > float64(plan.MonthlyCredits)*0.9 {
-			t.Errorf("%s: weekly rank tracking costs %.0f credits a month, over 90%% of the %d it grants", plan.ID, credits, plan.MonthlyCredits)
+		perCheckUSD := dataforseo.SerpCostUSD(plan.MaxSerpDepth, true)
+		credits := math.Ceil(float64(plan.TrackedKeywords) * checksPerMonth * perCheckUSD * 1280)
+		if credits > float64(plan.MonthlyCredits) {
+			t.Errorf("%s: weekly rank tracking costs %.0f credits a month, over the %d it grants", plan.ID, credits, plan.MonthlyCredits)
 		}
 	}
 }

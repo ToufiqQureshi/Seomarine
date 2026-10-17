@@ -67,6 +67,16 @@ func EstimateUSD(path string, body []byte) float64 {
 	return math.Round(total*1e6) / 1e6
 }
 
+// SerpCostUSD returns the published cost of one Google Organic SERP task at
+// the requested depth, using Live or Standard queue pricing.
+func SerpCostUSD(depth int, queued bool) float64 {
+	path := "/v3/serp/google/organic/live/advanced"
+	if queued {
+		path = "/v3/serp/google/organic/task_post"
+	}
+	return serpCeiling(path, map[string]any{"depth": float64(depth)})
+}
+
 // taskBodies splits a request body into its tasks. DataForSEO takes a JSON
 // array of tasks; anything else is one task.
 func taskBodies(body []byte) []map[string]any {

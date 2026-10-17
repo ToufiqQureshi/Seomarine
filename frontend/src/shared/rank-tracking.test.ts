@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { computeNextCheckAt, estimateRankCheckCredits } from "./rank-tracking";
+import {
+  computeNextCheckAt,
+  estimateRankCheckCredits,
+  estimateScheduledRankTrackingCredits,
+} from "./rank-tracking";
 
 describe("rank tracking cost estimates", () => {
   it.each([
@@ -16,8 +20,8 @@ describe("rank tracking cost estimates", () => {
       keywordCount: 1000,
       devices: "both" as const,
       depth: 40,
-      costUsd: 16.64,
-      costCredits: 18_000,
+      costUsd: 20.48,
+      costCredits: 22_000,
     },
     {
       method: "queued" as const,
@@ -32,8 +36,8 @@ describe("rank tracking cost estimates", () => {
       keywordCount: 1000,
       devices: "both" as const,
       depth: 40,
-      costUsd: 4.992,
-      costCredits: 5_000,
+      costUsd: 6.144,
+      costCredits: 6_160,
     },
   ])(
     "matches per-call billing for $method checks",
@@ -48,6 +52,16 @@ describe("rank tracking cost estimates", () => {
       ).toEqual({ costUsd, costCredits });
     },
   );
+
+  it("prices the full 50-keyword weekly schedule and both devices", () => {
+    const keywords = Array<string>(50).fill("plain keyword");
+    expect(
+      estimateScheduledRankTrackingCredits(keywords, "desktop", 30, "weekly"),
+    ).toBe(505);
+    expect(
+      estimateScheduledRankTrackingCredits(keywords, "both", 30, "weekly"),
+    ).toBe(1005);
+  });
 });
 
 describe("rank tracking schedules", () => {

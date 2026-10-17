@@ -128,7 +128,7 @@ var catalog = []Definition{
 		features: proFeatures,
 	},
 	{
-		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
+		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 28000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
 		Summary: "For agencies: client sites and reports under your own brand.",
 		Highlights: []string{
 			"10 websites",

@@ -26,9 +26,11 @@ Rules that must never break:
   dollar per task (`unknownTaskUSD`), so a missing price costs the customer
   a large hold, never Uplumo money.
 - **Ceilings are maximums, not averages.** They come from DataForSEO's
-  published prices: SERP pages by depth (default depth 100), the queued and
-  priority rates, the 5x price for search operators, Labs and Backlinks rows
-  by `limit` (no limit is held as 1,000 rows). `pricing_test.go` pins them.
+  published prices: SERP pages by depth (default depth 10), queued and
+  priority rates, the 5x price for search operators, July 2026 Labs and
+  Backlinks rates, and endpoint-specific Business Data rates. Labs and
+  Backlinks requests without a `limit` are held as 1,000 rows.
+  `pricing_test.go` pins them.
 - Never send a request the provider would reject. If it still fails, refund
   that task's customer credits while retaining the actual provider cost.
 - Never return a provider error body or the API key to a client.
