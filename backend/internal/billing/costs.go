@@ -1,6 +1,9 @@
 package billing
 
-import "github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
+import (
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
+)
 
 // ActionCost is about what one action of a feature costs, for the Billing
 // screen and the hints next to each action. It is a typical figure from
@@ -20,7 +23,7 @@ var typicalUSD = []struct {
 	unit    string
 	usd     float64
 }{
-	{spend.RankTracking, "keyword check (top 30, scheduled)", 0.0015},
+	{spend.RankTracking, "keyword check (top 30, scheduled)", dataforseo.SerpCostUSD(30, true)},
 	{spend.KeywordResearch, "keyword search", 0.02},
 	{spend.LocalSEO, "local lookup", 0.01},
 	{spend.DomainResearch, "domain report tab", 0.02},

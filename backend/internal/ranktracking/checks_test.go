@@ -63,6 +63,10 @@ type fakePlans struct{ paid bool }
 
 func (f fakePlans) HasPaidPlan(context.Context, string) (bool, error) { return f.paid, nil }
 
+type fakeDepthLimits int
+
+func (f fakeDepthLimits) SerpDepthLimit(context.Context, string) (int, error) { return int(f), nil }
+
 type checkFixture struct {
 	fixture
 	checks *Checks
@@ -176,6 +180,48 @@ func TestStartCheckRules(t *testing.T) {
 	if _, err := unavailable.Start(ctx, StartInput{OrganizationID: "o", ProjectID: f.project, ConfigID: f.cfg.ID}); !errors.Is(err, ErrChecksUnavailable) {
 		t.Errorf("no provider error = %v, want ErrChecksUnavailable", err)
 	}
+}
+
+func TestChecksRejectDepthAboveCurrentPlanAndStopExistingRuns(t *testing.T) {
+	t.Run("manual start is refused before enqueue", func(t *testing.T) {
+		f := newCheckFixture(t, "one")
+		depth := 40
+		if _, err := f.s.UpdateConfig(context.Background(), f.project, f.cfg.ID, UpdateInput{SerpDepth: &depth}); err != nil {
+			t.Fatal(err)
+		}
+		f.checks.Plans = fakePlans{paid: true}
+		f.checks.DepthLimits = fakeDepthLimits(30)
+		if _, err := f.start(t, nil); !errors.Is(err, ErrLimit) {
+			t.Fatalf("Start() error = %v, want ErrLimit", err)
+		}
+		if len(f.sched.jobs) != 0 || f.serp.count() != 0 {
+			t.Fatal("over-depth check queued work or called the provider")
+		}
+	})
+
+	t.Run("a pending run is stopped after a downgrade", func(t *testing.T) {
+		f := newCheckFixture(t, "one")
+		depth := 40
+		if _, err := f.s.UpdateConfig(context.Background(), f.project, f.cfg.ID, UpdateInput{SerpDepth: &depth}); err != nil {
+			t.Fatal(err)
+		}
+		f.checks.Plans = fakePlans{paid: true}
+		f.checks.DepthLimits = fakeDepthLimits(40)
+		id, err := f.start(t, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.checks.DepthLimits = fakeDepthLimits(30)
+		if err := execute(t, f, f.sched.jobs[0]); err != nil {
+			t.Fatal(err)
+		}
+		if got := f.run(t, id); got.Status != "failed" || got.ErrorMessage == nil || !strings.Contains(*got.ErrorMessage, "top 30") {
+			t.Fatalf("run after plan downgrade = %+v, want a top-30 plan error", got)
+		}
+		if f.serp.count() != 0 {
+			t.Fatalf("provider calls = %d, want 0 for a config over the current plan depth", f.serp.count())
+		}
+	})
 }
 
 func newCheckFixtureWithoutKeywords(t *testing.T) checkFixture {

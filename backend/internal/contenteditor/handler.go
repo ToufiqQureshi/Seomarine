@@ -11,6 +11,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/auth"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/httpx"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 )
 
 const maxRequestBody = MaxContentLength + (16 << 10)
@@ -133,6 +134,9 @@ func (h Handler) generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	output, err := h.Writer.Generate(r.Context(), organizationID, input)
+	if spend.WriteHTTPError(w, err) {
+		return
+	}
 	var validationError *ValidationError
 	switch {
 	case err == nil:

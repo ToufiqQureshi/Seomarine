@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
@@ -26,17 +27,47 @@ type fakeQueued struct {
 	postFn    func(call int, req PostRequest) ([]PostedTask, error)
 	collectFn func(taskID string, calls int) (TaskOutcome, error)
 	perTask   map[string]int
+	postKeys  []string
 }
 
-func (f *fakeQueued) PostTasks(_ context.Context, _ string, req PostRequest) ([]PostedTask, error) {
+func (f *fakeQueued) PostTasks(ctx context.Context, _ string, req PostRequest) ([]PostedTask, error) {
 	f.mu.Lock()
 	f.posts = append(f.posts, req.Tasks)
+	f.postKeys = append(f.postKeys, spend.IdempotencyKeyFromContext(ctx))
 	call := len(f.posts)
 	f.mu.Unlock()
 	if f.postFn != nil {
 		return f.postFn(call, req)
 	}
 	return f.accept(req.Tasks), nil
+}
+
+func TestQueuedPostIdempotencyKeyIsStablePerRunAndTaskSet(t *testing.T) {
+	tasks := []TaskInput{{KeywordID: "two", Device: "mobile"}, {KeywordID: "one", Device: "desktop"}}
+	key := queuedPostIdempotencyKey("run-1", tasks)
+	reversed := []TaskInput{tasks[1], tasks[0]}
+	if got := queuedPostIdempotencyKey("run-1", reversed); got != key {
+		t.Fatalf("key for same task set = %q, want %q", got, key)
+	}
+	if got := queuedPostIdempotencyKey("run-2", tasks); got == key {
+		t.Fatal("different runs reused a provider task-post key")
+	}
+	if len(key) > 128 {
+		t.Fatalf("idempotency key length = %d, exceeds spend guard limit", len(key))
+	}
+}
+
+func TestQueuedRunSetsProviderTaskPostIdempotencyKey(t *testing.T) {
+	f := newQueuedFixture(t, "one")
+	_, job := f.startScheduled(t)
+	if err := execute(t, f.checkFixture, job); err != nil {
+		t.Fatal(err)
+	}
+	f.queued.mu.Lock()
+	defer f.queued.mu.Unlock()
+	if len(f.queued.postKeys) != 1 || f.queued.postKeys[0] != queuedPostIdempotencyKey(job.RunID, f.queued.posts[0]) {
+		t.Fatalf("provider task-post keys = %v, want stable key for run %s", f.queued.postKeys, job.RunID)
+	}
 }
 
 func (f *fakeQueued) accept(tasks []TaskInput) []PostedTask {

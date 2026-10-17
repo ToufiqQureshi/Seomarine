@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,6 +41,8 @@ type SpendGuard struct {
 	// providers in a UTC day (0 is no limit), so one heavy workspace uses up
 	// only its own day and never pauses the others. Nil means no limit.
 	WorkspaceDailyLimitUSD func(ctx context.Context, orgID string) (float64, error)
+	// WithinPlanLimits pauses paid work after a downgrade without deleting data.
+	WithinPlanLimits func(ctx context.Context, orgID string) (bool, error)
 }
 
 // NewSpendGuard returns the guard. dailyLimitUSD must be positive.
@@ -68,7 +71,19 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	if req.EstimateUSD < 0 || math.IsNaN(req.EstimateUSD) || math.IsInf(req.EstimateUSD, 0) {
 		return nil, fmt.Errorf("invalid spend estimate %v", req.EstimateUSD)
 	}
-	h := &creditHold{guard: g, org: req.OrganizationID, feature: req.Feature}
+	if len(req.IdempotencyKey) > 128 || strings.TrimSpace(req.IdempotencyKey) != req.IdempotencyKey {
+		return nil, errors.New("invalid spend idempotency key")
+	}
+	h := &creditHold{guard: g, org: req.OrganizationID, feature: req.Feature, endpoint: req.Endpoint}
+	if g.chargeCredits && g.WithinPlanLimits != nil {
+		within, err := g.WithinPlanLimits(ctx, req.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("check workspace plan limits: %w", err)
+		}
+		if !within {
+			return nil, spend.ErrPlanLimits
+		}
+	}
 	credits := CreditsForUSD(req.EstimateUSD)
 	if !g.chargeCredits || credits == 0 {
 		// Nothing is reserved, so there is nothing to make atomic.
@@ -82,6 +97,9 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	}
 	if err := g.ledger.topUpStaff(ctx, req.OrganizationID, credits); err != nil {
 		return nil, err
+	}
+	if err := g.ledger.expireCreditsForOrganization(ctx, req.OrganizationID); err != nil {
+		return nil, fmt.Errorf("expire workspace credits: %w", err)
 	}
 	tx, err := g.db.Begin(ctx)
 	if err != nil {
@@ -97,12 +115,15 @@ func (g *SpendGuard) Hold(ctx context.Context, req spend.Request) (spend.Hold, e
 	if err := g.checkWorkspaceDaily(ctx, tx, req.OrganizationID, req.EstimateUSD); err != nil {
 		return nil, err
 	}
-	reservation, err := reserveTx(ctx, tx, req.OrganizationID, credits, "", string(req.Feature))
+	reservation, err := reserveTx(ctx, tx, req.OrganizationID, credits, req.IdempotencyKey, spend.UserIDFromContext(ctx), string(req.Feature), req.Endpoint)
 	if errors.Is(err, ErrInsufficientBalance) {
 		return nil, spend.ErrNoCredits
 	}
 	if err != nil {
 		return nil, fmt.Errorf("hold %d credits for %s: %w", credits, req.Feature, err)
+	}
+	if reservation.Reused {
+		return nil, spend.ErrIdempotentReplay
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit spend hold: %w", err)
@@ -175,6 +196,7 @@ type creditHold struct {
 	guard         *SpendGuard
 	org           string
 	feature       spend.Feature
+	endpoint      string
 	reservationID string
 	reserved      int64
 
@@ -185,36 +207,43 @@ type creditHold struct {
 // Settle charges the real cost, releases the rest of the hold and logs the
 // spend for the daily limit. It may be called once.
 func (h *creditHold) Settle(ctx context.Context, costUSD float64) error {
+	return h.SettleProviderCost(ctx, costUSD, costUSD, "")
+}
+
+func (h *creditHold) SettleProviderCost(ctx context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.settled {
 		return errors.New("spend hold already settled")
 	}
 	h.settled = true
-	if costUSD < 0 || math.IsNaN(costUSD) || math.IsInf(costUSD, 0) {
+	if providerCostUSD < 0 || math.IsNaN(providerCostUSD) || math.IsInf(providerCostUSD, 0) || customerCostUSD < 0 || math.IsNaN(customerCostUSD) || math.IsInf(customerCostUSD, 0) {
 		// The cost is unknown, so keep the whole hold rather than give it back.
 		if h.reservationID != "" {
 			if _, err := h.guard.ledger.SettleUpTo(ctx, h.reservationID, h.reserved); err != nil {
 				return fmt.Errorf("settle hold at its ceiling: %w", err)
 			}
 		}
-		return fmt.Errorf("invalid provider cost %v for %s", costUSD, h.feature)
+		return fmt.Errorf("invalid provider/customer cost %v/%v for %s", providerCostUSD, customerCostUSD, h.feature)
 	}
-	return h.guard.settle(ctx, h.org, h.feature, h.reservationID, costUSD)
+	if endpoint == "" {
+		endpoint = h.endpoint
+	}
+	return h.guard.settle(ctx, h.org, h.feature, endpoint, h.reservationID, providerCostUSD, customerCostUSD)
 }
 
 // settle charges costUSD against reservationID, or against the balance when
 // there is no reservation, and logs it.
-func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Feature, reservationID string, costUSD float64) error {
-	if costUSD > 0 {
+func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Feature, endpoint, reservationID string, providerCostUSD, customerCostUSD float64) error {
+	if providerCostUSD > 0 {
 		if _, err := g.db.Exec(ctx, `INSERT INTO go_provider_spend (organization_id, feature, cost_usd) VALUES ($1, $2, $3)`,
-			org, string(feature), costUSD); err != nil {
+			org, string(feature), providerCostUSD); err != nil {
 			return fmt.Errorf("log provider spend: %w", err)
 		}
 	}
-	credits := CreditsForUSD(costUSD)
+	credits := CreditsForUSD(customerCostUSD)
 	if reservationID != "" {
-		charged, err := g.ledger.SettleUpTo(ctx, reservationID, credits)
+		charged, err := g.ledger.SettleProviderUpTo(ctx, reservationID, credits, providerCostUSD, endpoint)
 		if err != nil {
 			return fmt.Errorf("settle %s hold: %w", feature, err)
 		}
@@ -224,12 +253,12 @@ func (g *SpendGuard) settle(ctx context.Context, org string, feature spend.Featu
 	if !g.chargeCredits || credits == 0 {
 		return nil
 	}
-	return g.chargeDown(ctx, org, feature, credits)
+	return g.chargeDown(ctx, org, feature, endpoint, credits, providerCostUSD)
 }
 
 // chargeDown charges credits for work already paid for, down to a zero
 // balance.
-func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.Feature, credits int64) error {
+func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.Feature, endpoint string, credits int64, costUSD float64) error {
 	reservation, err := g.ledger.ReserveFor(ctx, org, credits, "", string(feature))
 	if errors.Is(err, ErrInsufficientBalance) {
 		balance, balanceErr := g.ledger.GetBalance(ctx, org)
@@ -245,7 +274,7 @@ func (g *SpendGuard) chargeDown(ctx context.Context, org string, feature spend.F
 	if err != nil {
 		return fmt.Errorf("charge %d credits for %s: %w", credits, feature, err)
 	}
-	if _, err := g.ledger.SettleUpTo(ctx, reservation.ID, reservation.AmountCredits); err != nil {
+	if _, err := g.ledger.SettleProviderUpTo(ctx, reservation.ID, credits, costUSD, endpoint); err != nil {
 		return fmt.Errorf("settle %s charge: %w", feature, err)
 	}
 	return nil
@@ -263,13 +292,18 @@ func (g *SpendGuard) warnShort(ctx context.Context, org string, feature spend.Fe
 // AIMeter meters one AI feature: it says whether a workspace may start AI
 // work and charges the model's cost afterwards.
 type AIMeter struct {
-	guard   *SpendGuard
-	feature spend.Feature
+	guard    *SpendGuard
+	feature  spend.Feature
+	endpoint string
 }
 
 // AIMeter returns the meter for feature.
-func (g *SpendGuard) AIMeter(feature spend.Feature) AIMeter {
-	return AIMeter{guard: g, feature: feature}
+func (g *SpendGuard) AIMeter(feature spend.Feature, endpoint ...string) AIMeter {
+	var provider string
+	if len(endpoint) > 0 {
+		provider = endpoint[0]
+	}
+	return AIMeter{guard: g, feature: feature, endpoint: provider}
 }
 
 // Hold reserves the most one AI model call can cost before it is sent; the
@@ -277,5 +311,10 @@ func (g *SpendGuard) AIMeter(feature spend.Feature) AIMeter {
 // known once it answers, so holding the ceiling is what keeps parallel AI
 // work from spending past the workspace's credits.
 func (m AIMeter) Hold(ctx context.Context, org string, ceilingUSD float64) (spend.Hold, error) {
-	return m.guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: m.feature, EstimateUSD: ceilingUSD})
+	return m.guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: m.feature, Endpoint: m.endpoint, IdempotencyKey: spend.IdempotencyKeyFromContext(ctx), EstimateUSD: ceilingUSD})
+}
+
+// HoldWithIdempotencyKey reserves one model call under a stable request key.
+func (m AIMeter) HoldWithIdempotencyKey(ctx context.Context, org string, ceilingUSD float64, key string) (spend.Hold, error) {
+	return m.Hold(spend.WithIdempotencyKey(ctx, key), org, ceilingUSD)
 }

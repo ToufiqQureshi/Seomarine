@@ -35,7 +35,7 @@ import {
   type ExportTarget,
 } from "@/client/features/search-performance/SearchPerformanceParts";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { ContentRefreshQueue } from "@/client/features/search-performance/ContentRefreshQueue";
+import { ContentRefreshQueue } from "@/client/features/search-performance/ContentRefreshQueuePanel";
 import { buildContentRefreshQueue } from "@/client/features/search-performance/contentRefreshQueue";
 import {
   exportSearchPerformanceTable,

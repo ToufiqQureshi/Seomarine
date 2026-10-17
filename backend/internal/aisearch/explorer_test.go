@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 const (
@@ -75,6 +77,39 @@ func TestExplorePromptRunsEachModelOnItsOwnEndpoint(t *testing.T) {
 	}
 	if field(chatGPTResponsePath, "max_output_tokens") != 4096.0 {
 		t.Errorf("max_output_tokens = %v, want 4096", field(chatGPTResponsePath, "max_output_tokens"))
+	}
+}
+
+func TestExplorePromptPreflightsAllModelsAndDoesNotHoldOnCacheHit(t *testing.T) {
+	api := newFakeAPI(t)
+	guard := &spendtest.Guard{}
+	svc := newTestService(t, api, guard)
+	org := newOrg()
+	in := promptInput(modelChatGPT, modelClaude)
+	if _, err := svc.ExplorePrompt(context.Background(), org, "p", in); err != nil {
+		t.Fatal(err)
+	}
+	held := guard.Held()
+	var paidHolds []spend.Request
+	for _, request := range held {
+		if request.EstimateUSD > 0 {
+			paidHolds = append(paidHolds, request)
+		}
+	}
+	if len(paidHolds) != 1 || paidHolds[0].EstimateUSD != 2 {
+		t.Fatalf("paid holds = %+v; want one $2 hold covering four possible calls", paidHolds)
+	}
+	calls := api.total()
+	settlements := len(guard.Settled())
+	svc.provider.models.mu.Lock()
+	svc.provider.models.cache = map[string]catalogEntry{}
+	svc.provider.models.mu.Unlock()
+	if _, err := svc.ExplorePrompt(context.Background(), org, "p", in); err != nil {
+		t.Fatal(err)
+	}
+	settled := guard.Settled()
+	if len(guard.Held()) != len(held) || api.total() != calls || len(settled) != settlements {
+		t.Fatalf("cache hit changed paid work: holds=%d settlements=%d calls=%d/%d", len(guard.Held()), len(settled), api.total(), calls)
 	}
 }
 

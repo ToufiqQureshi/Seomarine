@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
 func lookupInput() BrandLookupInput {
@@ -45,6 +46,27 @@ func TestBrandLookupFetchesBothPlatformsAndShapesTheResult(t *testing.T) {
 	}
 	if len(result.TopPages) != 2 || len(result.TopQueries) != 2 {
 		t.Errorf("topPages = %d, topQueries = %d, want 2 and 2 (one per platform)", len(result.TopPages), len(result.TopQueries))
+	}
+}
+
+func TestBrandLookupPreflightsWholeFanoutAndCacheHitHasNoHold(t *testing.T) {
+	api := newFakeAPI(t)
+	guard := &spendtest.Guard{}
+	svc := newTestService(t, api, guard)
+	org := newOrg()
+	if _, err := svc.BrandLookup(context.Background(), org, "p", lookupInput()); err != nil {
+		t.Fatal(err)
+	}
+	held := guard.Held()
+	if len(held) != 1 || held[0].EstimateUSD != 3 {
+		t.Fatalf("holds = %+v; want one $3 hold for six provider calls", held)
+	}
+	if _, err := svc.BrandLookup(context.Background(), org, "p", lookupInput()); err != nil {
+		t.Fatal(err)
+	}
+	settled := guard.Settled()
+	if len(guard.Held()) != 1 || api.total() != 6 || len(settled) != 1 {
+		t.Fatalf("cache hit changed paid work: holds=%d settlements=%d calls=%d", len(guard.Held()), len(settled), api.total())
 	}
 }
 

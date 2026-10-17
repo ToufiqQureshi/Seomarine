@@ -18,7 +18,7 @@
 
 `requireSession -> requireProjectAccess -> paid-plan check -> handler validation -> service/cache -> platform/dataforseo`
 
-Routes are `POST /api/v1/projects/{projectId}/backlinks/{overview,rows,referring-domains,top-pages}`. There is no repository or table: the feature is a read-only provider proxy and uses no tenant-owned data. Project authorization supplies the organization ID that is used for plan checks, DataForSEO usage recording and Redis key isolation.
+Routes are `POST /api/v1/projects/{projectId}/backlinks/{overview,backlinks,referring-domains,top-pages}`. There is no repository or table: the feature is a read-only provider proxy and uses no tenant-owned data. Project authorization supplies the organization ID that is used for plan checks, DataForSEO usage recording and Redis key isolation.
 
 ## Rules that must not break
 

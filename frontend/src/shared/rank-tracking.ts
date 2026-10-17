@@ -15,14 +15,14 @@ import type {
 /** DataForSEO Live API: cost of first page (10 results) */
 const LIVE_BASE_PAGE_COST_USD = 0.002;
 
-/** DataForSEO Live API: cost of each additional page (75% of base) */
-const LIVE_EXTRA_PAGE_COST_USD = 0.0015;
+/** DataForSEO Live API: cost of each additional 10-result page */
+const LIVE_EXTRA_PAGE_COST_USD = 0.002;
 
 /** DataForSEO task queue (standard priority): cost of first page (10 results) */
 const QUEUED_BASE_PAGE_COST_USD = 0.0006;
 
-/** DataForSEO task queue (standard priority): cost of each additional page (75% of base) */
-const QUEUED_EXTRA_PAGE_COST_USD = 0.00045;
+/** DataForSEO task queue (standard priority): cost of each additional 10-result page */
+const QUEUED_EXTRA_PAGE_COST_USD = 0.0006;
 
 /**
  * How a rank check reaches DataForSEO: "live" is the instant endpoint used for
@@ -106,6 +106,18 @@ export function estimateRankCheckCredits(
   // timed-out tasks can later incur additional live-fallback spend.
   costUsd = roundUsdForBilling(costUsd);
   return { costUsd, costCredits };
+}
+
+export function estimateScheduledRankTrackingCredits(
+  keywords: readonly string[],
+  devices: RankTrackingConfig["devices"],
+  depth: number,
+  interval: Exclude<RankTrackingConfig["scheduleInterval"], "manual">,
+) {
+  const checksPerMonth =
+    interval === "daily" ? 30 : interval === "weekly" ? 4.35 : 1;
+  const perCheck = estimateRankCheckCredits(keywords, devices, depth, "queued");
+  return Math.ceil(perCheck.costCredits * checksPerMonth);
 }
 
 // ---------------------------------------------------------------------------

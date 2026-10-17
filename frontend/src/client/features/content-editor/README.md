@@ -134,3 +134,13 @@ Google or predict rankings.
   and restrict its allowed MIME type to `image/webp` with a 1 MB object-size
   limit in Supabase. The service-role key must never be exposed to the browser.
 - Do not persist drafts in browser storage; drafts may contain customer data.
+- Drafts autosave after three seconds of inactivity. The header and search
+  preview use the page title, then the first H1, and show the workspace's
+  connected domain in the preview URL.
+- Target topics are split on comma or Enter, deduplicated case-insensitively,
+  and capped at five. The first topic drives brief, keyword research and SEO
+  scoring; editing a topic does not start a paid request.
+- The article block menu is anchored to its insert button, flips above when
+  needed, shifts inside the viewport, and closes on Escape or outside click.
+- The AI writer sends selected text or the current article section, not the
+  full article, and limits the brief summary sent with each action.

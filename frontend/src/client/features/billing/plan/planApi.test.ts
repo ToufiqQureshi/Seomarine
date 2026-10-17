@@ -13,6 +13,12 @@ function respondWith(body: unknown) {
   return vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json(body));
 }
 
+const usage = {
+  sites: { used: 1, limit: 1, exceeded: false },
+  members: { used: 1, limit: 1, exceeded: false },
+  trackedKeywords: { used: 0, limit: 0, exceeded: false },
+};
+
 describe("billing status", () => {
   it.each([
     {
@@ -23,6 +29,7 @@ describe("billing status", () => {
       unlimited: false,
       paymentsConfigured: false,
       availablePlans: [],
+      usage,
     },
     // Go encodes time.Time as RFC 3339, with fractional seconds and an offset.
     {
@@ -33,6 +40,7 @@ describe("billing status", () => {
       unlimited: false,
       paymentsConfigured: true,
       availablePlans: ["pro"],
+      usage,
     },
   ])("accepts $plan / $status", async (body) => {
     respondWith(body);
@@ -72,6 +80,7 @@ describe("cancelSubscription", () => {
       unlimited: false,
       paymentsConfigured: true,
       availablePlans: ["pro"],
+      usage,
     };
     const fetchMock = respondWith(body);
     await expect(cancelSubscription()).resolves.toEqual(body);
@@ -146,6 +155,7 @@ function statusResponse(plan: string, state: string) {
     unlimited: false,
     paymentsConfigured: true,
     availablePlans: ["basic", "pro", "agency"],
+    usage,
   });
 }
 

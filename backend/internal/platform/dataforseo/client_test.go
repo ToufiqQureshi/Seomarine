@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,6 +27,29 @@ type testRecorder struct {
 	mu    sync.Mutex
 	costs []recordedCost
 	err   error
+}
+
+type costAwareGuard struct {
+	providerCost float64
+	customerCost float64
+	endpoint     string
+}
+
+func (g *costAwareGuard) Hold(context.Context, spend.Request) (spend.Hold, error) {
+	return costAwareHold{guard: g}, nil
+}
+
+type costAwareHold struct{ guard *costAwareGuard }
+
+func (h costAwareHold) Settle(_ context.Context, costUSD float64) error {
+	h.guard.providerCost, h.guard.customerCost = costUSD, costUSD
+	return nil
+}
+
+func (h costAwareHold) SettleProviderCost(_ context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error {
+	h.guard.providerCost, h.guard.customerCost = providerCostUSD, customerCostUSD
+	h.guard.endpoint = endpoint
+	return nil
 }
 
 func (r *testRecorder) RecordDataForSEO(_ context.Context, organizationID string, cost Cost) error {
@@ -59,7 +83,7 @@ func guardedClient(t *testing.T, server *httptest.Server, recorder CostRecorder,
 	return client
 }
 
-func TestDoAuthenticatesRecordsPerOrganizationAndReturnsTaskFailures(t *testing.T) {
+func TestDoRefundsFailedTasksWhileRecordingProviderCost(t *testing.T) {
 	var authorization, body string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization = r.Header.Get("Authorization")
@@ -84,6 +108,55 @@ func TestDoAuthenticatesRecordsPerOrganizationAndReturnsTaskFailures(t *testing.
 	costs := recorder.snapshot()
 	if len(costs) != 1 || costs[0].organizationID != "org-a" || costs[0].cost.USD != 0.002 {
 		t.Fatalf("recorded costs = %#v", costs)
+	}
+	guard, ok := client.guard.(*spendtest.Guard)
+	if !ok || len(guard.Settled()) != 1 || guard.Settled()[0] != 0 {
+		t.Fatalf("customer settlement = %v, want failed task refunded", guard.Settled())
+	}
+}
+
+func TestDoRecordsFailedTaskProviderCostAndRefundsCustomer(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp"],"cost":0.002,"status_code":40501}]}`)
+	}))
+	defer server.Close()
+	guard := &costAwareGuard{}
+	client := guardedClient(t, server, &testRecorder{}, guard, 0)
+	if _, err := client.Do(context.Background(), "org-a", spend.RankTracking, http.MethodPost, "/v3/serp/live", []byte(`[]`), false); err != nil {
+		t.Fatal(err)
+	}
+	if guard.providerCost != 0.002 || guard.customerCost != 0 || guard.endpoint != "/v3/serp/live" {
+		t.Fatalf("provider/customer cost/endpoint = $%v/$%v/%q", guard.providerCost, guard.customerCost, guard.endpoint)
+	}
+}
+
+func TestDoBudgetedSettlesActualEndpoints(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"tasks":[{"path":["v3","serp"],"cost":0.001}]}`)
+	}))
+	defer server.Close()
+	guard := &costAwareGuard{}
+	client := guardedClient(t, server, &testRecorder{}, guard, 0)
+	err := client.DoBudgeted(context.Background(), "org", spend.AIVisibility, 0.005, func(request DoBudgetedRequest) error {
+		for _, path := range []string{"/v3/serp/google/organic/live/advanced", "/v3/dataforseo_labs/google/related_keywords/live"} {
+			if _, err := request(http.MethodPost, path, []byte(`[{}]`), false); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if guard.endpoint != "/v3/serp/google/organic/live/advanced,/v3/dataforseo_labs/google/related_keywords/live" {
+		t.Fatalf("settled endpoint = %q", guard.endpoint)
+	}
+}
+
+func TestResponseSuccessfulCostSettlesOnlySuccessfulTasks(t *testing.T) {
+	payload := []byte(`{"tasks":[{"cost":0.002,"status_code":20000},{"cost":0.004,"status_code":20100},{"cost":0.01,"status_code":40501},{"cost":0.003,"status_code":0}]}`)
+	if got := math.Round(responseSuccessfulCost(payload)*1e6) / 1e6; got != 0.009 {
+		t.Fatalf("responseSuccessfulCost() = %v, want 0.009 including accepted queued task", got)
 	}
 }
 

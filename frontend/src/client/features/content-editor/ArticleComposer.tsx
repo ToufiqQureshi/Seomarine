@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/client/components/ui/input";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { ContentDraftInput } from "./scoring";
@@ -15,10 +15,12 @@ import {
 import { ArticleEditor } from "./visual-editor/ArticleEditor";
 import { validateImage } from "./visual-editor/image-input";
 import { PreviewDialog } from "./visual-editor/PreviewDialog";
+import { MAX_TARGET_TOPICS, parseTargetTopics } from "./target-topics";
 
 type ArticleComposerProps = {
   draft: ContentDraftInput;
   projectId: string;
+  projectDomain: string;
   onTopicLink?: string;
   disabled: boolean;
   onImageUploadStateChange: (uploading: boolean) => void;
@@ -30,6 +32,7 @@ type ArticleComposerProps = {
 export function ArticleComposer({
   draft,
   projectId,
+  projectDomain,
   onTopicLink,
   disabled,
   onImageUploadStateChange,
@@ -37,6 +40,14 @@ export function ArticleComposer({
   previewOpen,
   onPreviewOpenChange,
 }: ArticleComposerProps) {
+  const topics = parseTargetTopics(draft.targetKeyword);
+  const [topicInput, setTopicInput] = useState("");
+  useEffect(() => setTopicInput(""), [draft.targetKeyword]);
+  const commitTopic = () => {
+    const next = parseTargetTopics([...topics, topicInput].join(","));
+    if (next.length > topics.length) onChange("targetKeyword", next.join(", "));
+    setTopicInput("");
+  };
   return (
     <div className="space-y-5 rounded-xl border bg-card p-4 md:p-8">
       <div>
@@ -67,15 +78,67 @@ export function ArticleComposer({
         >
           Target topic
         </label>
-        <Input
-          id="content-draft-keyword"
-          disabled={disabled}
-          maxLength={120}
-          value={draft.targetKeyword}
-          onChange={(event) => onChange("targetKeyword", event.target.value)}
-          placeholder="e.g. technical SEO"
-          className="h-9 w-64 max-w-full rounded-full"
-        />
+        <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-xl border px-2 py-1">
+          {topics.map((topic) => (
+            <span
+              key={topic.toLocaleLowerCase()}
+              className="rounded-full bg-muted px-2 py-1 text-xs"
+            >
+              {topic}
+              <button
+                type="button"
+                className="ml-1"
+                aria-label={`Remove ${topic}`}
+                disabled={disabled}
+                onClick={() =>
+                  onChange(
+                    "targetKeyword",
+                    topics.filter((item) => item !== topic).join(", "),
+                  )
+                }
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <Input
+            id="content-draft-keyword"
+            disabled={disabled || topics.length >= MAX_TARGET_TOPICS}
+            maxLength={120}
+            value={topicInput}
+            onChange={(event) => {
+              if (
+                event.target.value.includes(",") ||
+                event.target.value.includes("\n")
+              ) {
+                const fragments = parseTargetTopics(event.target.value);
+                const additions = fragments.slice(
+                  0,
+                  Math.max(0, MAX_TARGET_TOPICS - topics.length),
+                );
+                onChange(
+                  "targetKeyword",
+                  parseTargetTopics([...topics, ...additions].join(",")).join(
+                    ", ",
+                  ),
+                );
+                setTopicInput("");
+              } else setTopicInput(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === ",") {
+                event.preventDefault();
+                commitTopic();
+              }
+            }}
+            onBlur={commitTopic}
+            placeholder={
+              topics.length ? "Add another topic" : "e.g. technical SEO"
+            }
+            aria-label="Target topics"
+            className="h-7 min-w-40 flex-1 border-0 px-1 shadow-none"
+          />
+        </div>
         {onTopicLink ? (
           <a
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -129,7 +192,7 @@ export function ArticleComposer({
               />
             </Field>
           </div>
-          <SearchPreview draft={draft} />
+          <SearchPreview draft={draft} domain={projectDomain} />
         </div>
       </details>
       <ArticleBody

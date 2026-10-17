@@ -5,6 +5,7 @@ import { LinkSuggestionsCard, PublishTabPanel } from "./FreeSeoPublishCards";
 import { ScorePanel } from "./ScorePanel";
 import { PublishToSite } from "@/client/features/site-publishing/PublishToSite";
 import { WriterAssistant } from "./WriterAssistant";
+import { primaryTargetTopic } from "./target-topics";
 import type { ContentDraftSummary, SearchBrief } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode, ScoreCheck } from "./scoring";
 
@@ -78,7 +79,7 @@ export function ContentEditorSidePanel({
   ];
 
   return (
-    <aside className="min-w-0 space-y-3">
+    <aside className="min-w-0 space-y-3 xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:self-start xl:overflow-y-auto">
       <div
         role="tablist"
         aria-label="Editor tools"
@@ -116,7 +117,7 @@ export function ContentEditorSidePanel({
         {tab === "brief" ? (
           <BriefPanel
             projectId={projectId}
-            keyword={draft.targetKeyword}
+            keyword={primaryTargetTopic(draft.targetKeyword)}
             content={draft.content}
             brief={brief}
             onBrief={onBrief}
@@ -177,7 +178,7 @@ export function ContentEditorSidePanel({
                 draftId={draftId}
                 hasUnsavedChanges={dirty}
                 blocksPublish={seo.blocksPublish}
-                targetKeyword={draft.targetKeyword}
+                targetKeyword={primaryTargetTopic(draft.targetKeyword)}
                 schema={schema}
               />
             )}

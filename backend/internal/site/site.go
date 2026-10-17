@@ -463,7 +463,7 @@ func planLimits(plan planCatalog.Definition) []string {
 		fmt.Sprintf("%d %s", plan.Members, plural(plan.Members, "team member", "team members")),
 	}
 	if plan.TrackedKeywords > 0 {
-		limits = append(limits, formatNumber(int64(plan.TrackedKeywords))+" tracked keywords")
+		limits = append(limits, fmt.Sprintf("%s tracked keywords, checked %s", formatNumber(int64(plan.TrackedKeywords)), plan.RankSchedule))
 	}
 	if plan.MaxSerpDepth > 0 {
 		limits = append(limits, fmt.Sprintf("Rank checks cover the top %d results", plan.MaxSerpDepth))
@@ -564,7 +564,7 @@ func comparison() []CompareRow {
 			if !plan.Allows(planCatalog.RankTracking) {
 				return "—"
 			}
-			return strings.TrimPrefix(formatINR(plan.TrackedKeywords), "₹") + " keywords"
+			return fmt.Sprintf("%s keywords, %s checks", strings.TrimPrefix(formatINR(plan.TrackedKeywords), "₹"), plan.RankSchedule)
 		}),
 		row("Rank check depth", func(plan planCatalog.Definition) string {
 			if plan.MaxSerpDepth == 0 {

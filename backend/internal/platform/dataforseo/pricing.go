@@ -13,26 +13,33 @@ import (
 // released. A path this table does not know is held at unknownTaskUSD, so a
 // new endpoint costs a customer a large hold rather than costing Uplumo money.
 const (
-	serpLivePageUSD      = 0.002
-	serpLiveExtraUSD     = 0.002
-	contentParsePageUSD  = 0.000125
-	serpQueuedPageUSD    = 0.0006
-	serpQueuedExtraUSD   = 0.00045
-	serpPriorityFactor   = 2
-	serpOperatorFactor   = 5
-	labsTaskUSD          = 0.01
-	labsRowUSD           = 0.0001
-	labsDefaultRows      = 1000
-	backlinksTaskUSD     = 0.02
-	backlinksRowUSD      = 0.00003
-	backlinksDefaultRows = 1000
-	googleAdsTaskUSD     = 0.1
-	aiOptimizationUSD    = 0.5
-	lighthouseTaskUSD    = 0.01
-	businessTaskUSD      = 0.05
-	businessPerTenUSD    = 0.0015
-	unknownTaskUSD       = 1.0
-	defaultSerpDepth     = 100
+	serpLivePageUSD     = 0.002
+	serpLiveExtraUSD    = 0.002
+	contentParsePageUSD = 0.00015
+	serpQueuedPageUSD   = 0.0006
+	serpQueuedExtraUSD  = 0.0006
+	serpPriorityFactor  = 2
+	serpOperatorFactor  = 5
+	// DataForSEO Labs and Backlinks rates reflect their July 1, 2026 updates.
+	labsTaskUSD                     = 0.012
+	labsRowUSD                      = 0.00012
+	labsDefaultRows                 = 1000
+	backlinksTaskUSD                = 0.024
+	backlinksRowUSD                 = 0.000036
+	backlinksDefaultRows            = 1000
+	googleAdsTaskUSD                = 0.09
+	aiOptimizationUSD               = 0.5
+	lighthouseTaskUSD               = 0.005
+	googleBusinessInfoUSD           = 0.0054
+	googleBusinessReviewPerTenUSD   = 0.0015
+	googleBusinessExtendedReviewUSD = 0.0045
+	googleBusinessQuestionPerTwenty = 0.0025
+	googleBusinessUpdatesTaskUSD    = 0.003
+	googleBusinessUpdatePerTenUSD   = 0.0015
+	businessListingsTaskUSD         = 0.012
+	businessListingsItemUSD         = 0.00036
+	unknownTaskUSD                  = 1.0
+	defaultSerpDepth                = 10
 )
 
 // serpOperator matches advanced search operators, which Google SERP endpoints
@@ -58,6 +65,16 @@ func EstimateUSD(path string, body []byte) float64 {
 		total += taskCeiling(path, task)
 	}
 	return math.Round(total*1e6) / 1e6
+}
+
+// SerpCostUSD returns the published cost of one Google Organic SERP task at
+// the requested depth, using Live or Standard queue pricing.
+func SerpCostUSD(depth int, queued bool) float64 {
+	path := "/v3/serp/google/organic/live/advanced"
+	if queued {
+		path = "/v3/serp/google/organic/task_post"
+	}
+	return serpCeiling(path, map[string]any{"depth": float64(depth)})
 }
 
 // taskBodies splits a request body into its tasks. DataForSEO takes a JSON
@@ -86,10 +103,28 @@ func taskCeiling(path string, task map[string]any) float64 {
 		return contentParsePageUSD
 	case strings.HasPrefix(path, "/v3/on_page/lighthouse"):
 		return lighthouseTaskUSD
-	case strings.HasPrefix(path, "/v3/business_data/"):
-		return businessTaskUSD + businessPerTenUSD*math.Ceil(number(task, "depth", 0)/10)
+	case strings.HasPrefix(path, "/v3/business_data/google/my_business_info/live"):
+		return googleBusinessInfoUSD
+	case strings.HasPrefix(path, "/v3/business_data/google/reviews/task_post"):
+		return businessReviewPrice(task)
+	case strings.HasPrefix(path, "/v3/business_data/google/extended_reviews/task_post"):
+		return googleBusinessExtendedReviewUSD * math.Ceil(number(task, "depth", 20)/20)
+	case strings.HasPrefix(path, "/v3/business_data/google/questions_and_answers/live"):
+		return googleBusinessQuestionPerTwenty * math.Ceil(number(task, "depth", 20)/20)
+	case strings.HasPrefix(path, "/v3/business_data/google/my_business_updates/task_post"):
+		return googleBusinessUpdatesTaskUSD + googleBusinessUpdatePerTenUSD*math.Ceil(number(task, "depth", 10)/10)
+	case strings.HasPrefix(path, "/v3/business_data/business_listings/search/live"), strings.HasPrefix(path, "/v3/business_data/business_listings/categories_aggregation/live"):
+		return businessListingsTaskUSD + businessListingsItemUSD*rows(task, 1000)
 	}
 	return unknownTaskUSD
+}
+
+func businessReviewPrice(task map[string]any) float64 {
+	perTen := googleBusinessReviewPerTenUSD
+	if number(task, "priority", 1) < 2 {
+		perTen /= 2
+	}
+	return perTen * math.Ceil(number(task, "depth", 10)/10)
 }
 
 func serpCeiling(path string, task map[string]any) float64 {

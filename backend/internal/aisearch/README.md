@@ -46,6 +46,11 @@ not change shape.
   against the provider's free catalog, `web_search_country_iso_code` is dropped
   when web search is off, `force_web_search` goes to Claude only, and domains
   must end in a real public suffix.
+- Brand Lookup reserves the complete six-call fan-out before calling a
+  provider (eight when competitor comparisons are requested). Prompt Explorer
+  reserves every selected model and its bounded web-search retry up front.
+  Successful paid results settle by the tasks' reported costs; failed tasks
+  return their credits, and cache reads settle at zero.
 - **No automatic retries of paid calls** (`retrySafe=false`). The one deliberate
   retry: a model that was allowed to search but answered from memory is asked
   once more; the retry replaces the answer only if it actually searched.

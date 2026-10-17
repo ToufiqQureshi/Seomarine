@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { AlertTriangle, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ErrorState } from "@/client/components/ErrorState";
@@ -72,6 +72,7 @@ export function BillingPlanPage() {
           />
         ) : (
           <>
+            <PlanLimitWarning status={statusQuery.data} />
             <CurrentPlanCard status={statusQuery.data} plans={paidPlans} />
             <section aria-labelledby="available-plans" className="space-y-4">
               <div>
@@ -98,6 +99,43 @@ export function BillingPlanPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function PlanLimitWarning({ status }: { status: BillingStatus }) {
+  const limits: {
+    label: string;
+    usage: BillingStatus["usage"]["sites"];
+  }[] = [
+    { label: "active websites", usage: status.usage.sites },
+    { label: "team seats", usage: status.usage.members },
+    { label: "tracked keywords", usage: status.usage.trackedKeywords },
+  ];
+  const exceeded = limits.filter(({ usage }) => usage.exceeded);
+  if (exceeded.length === 0) return null;
+
+  return (
+    <section
+      role="alert"
+      className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4"
+    >
+      <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+      <div>
+        <h2 className="font-semibold">Workspace is over its plan limits</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your data is safe. Paid data and AI actions are paused until these
+          counts fit your plan:
+        </p>
+        <ul className="mt-2 list-disc pl-5 text-sm">
+          {exceeded.map(({ label, usage }) => (
+            <li key={label}>
+              {usage.used.toLocaleString()} {label}; plan allows{" "}
+              {usage.limit.toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 

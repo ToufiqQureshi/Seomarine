@@ -1,6 +1,7 @@
 import { MutationCache, QueryClient } from "@tanstack/query-core";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { shouldRetryApiError } from "@/client/lib/uplumoApi";
 
 declare module "@tanstack/query-core" {
   interface Register {
@@ -26,6 +27,7 @@ export const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60,
       staleTime: 1000 * 60 * 5, // 5 minutes — show cached data instantly, refetch in background after
+      retry: shouldRetryApiError,
     },
   },
 });

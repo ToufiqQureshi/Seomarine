@@ -1,6 +1,7 @@
 package ranktracking
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -23,7 +24,7 @@ func TestEstimateCheck(t *testing.T) {
 		{"live bills each pair on its own call", []string{"a"}, "both", 10, Live, 6},
 		{"queued posts both pairs in one call", []string{"a"}, "both", 10, Queued, 2},
 		{"operator keyword costs five times", []string{"site:example.com"}, "desktop", 10, Live, 13},
-		{"deeper SERP adds pages", []string{"a"}, "desktop", 20, Live, 5},
+		{"deeper SERP charges each requested page", []string{"a"}, "desktop", 20, Live, 6},
 		{"queued splits at 100 pairs per call", many, "desktop", 10, Queued, 77 + 1},
 	}
 	for _, tt := range tests {
@@ -36,9 +37,9 @@ func TestEstimateCheck(t *testing.T) {
 }
 
 func TestEstimateScheduledMonthly(t *testing.T) {
-	for interval, checks := range map[Interval]int{Daily: 30, Weekly: 4, Monthly: 1} {
+	for interval, checks := range map[Interval]float64{Daily: 30, Weekly: 4.35, Monthly: 1} {
 		got := EstimateScheduled([]string{"a"}, "desktop", 10, interval)
-		if got.ChecksPerMonth != checks || got.MonthlyCostCredits != got.CostCredits*checks {
+		if got.ChecksPerMonth != checks || got.MonthlyCostCredits != int(math.Ceil(float64(got.CostCredits)*checks)) {
 			t.Fatalf("%s: %+v", interval, got)
 		}
 	}

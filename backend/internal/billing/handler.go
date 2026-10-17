@@ -17,8 +17,9 @@ const maxWebhookBody = 256 << 10
 
 type statusResponse struct {
 	Status
-	PaymentsConfigured bool     `json:"paymentsConfigured"`
-	AvailablePlans     []string `json:"availablePlans"`
+	PaymentsConfigured bool      `json:"paymentsConfigured"`
+	AvailablePlans     []string  `json:"availablePlans"`
+	Usage              PlanUsage `json:"usage"`
 }
 
 // Deps contains billing services and the root router's authentication middleware.
@@ -74,7 +75,13 @@ func statusHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans()})
+		usage, err := svc.UsageAgainstPlan(r.Context(), user.OrganizationID)
+		if err != nil {
+			logger.ErrorContext(r.Context(), "billing plan usage", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans(), Usage: usage})
 	}
 }
 
@@ -151,7 +158,13 @@ func cancelHandler(logger *slog.Logger, svc *Service) http.HandlerFunc {
 			}
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans()})
+		usage, err := svc.UsageAgainstPlan(r.Context(), user.OrganizationID)
+		if err != nil {
+			logger.ErrorContext(r.Context(), "billing plan usage after cancel", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Please try again.")
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, statusResponse{Status: status, PaymentsConfigured: svc.PaymentsConfigured(), AvailablePlans: svc.AvailablePlans(), Usage: usage})
 	}
 }
 

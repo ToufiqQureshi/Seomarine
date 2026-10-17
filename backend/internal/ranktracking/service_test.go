@@ -451,20 +451,36 @@ func TestEstimateCost(t *testing.T) {
 	if _, err := s.UpdateConfig(ctx, project, cfg.ID, UpdateInput{ScheduleInterval: &weekly}); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ = s.EstimateCost(ctx, project, cfg.ID, nil); got.ScheduledEstimate == nil || got.ScheduledEstimate.ChecksPerMonth != 4 {
-		t.Errorf("scheduled estimate = %+v, want 4 checks a month", got.ScheduledEstimate)
+	if got, _ = s.EstimateCost(ctx, project, cfg.ID, nil); got.ScheduledEstimate == nil || got.ScheduledEstimate.ChecksPerMonth != 4.35 {
+		t.Errorf("scheduled estimate = %+v, want 4.35 average checks a month", got.ScheduledEstimate)
 	}
 }
 
 type fakeKeywordLimits struct {
-	limit int
-	depth int
-	err   error
+	limit   int
+	depth   int
+	monthly int64
+	err     error
 }
 
 func (f fakeKeywordLimits) KeywordLimit(context.Context, string) (int, error) { return f.limit, f.err }
 func (f fakeKeywordLimits) SerpDepthLimit(context.Context, string) (int, error) {
 	return f.depth, f.err
+}
+func (f fakeKeywordLimits) MonthlyCreditLimit(context.Context, string) (int64, error) {
+	return f.monthly, f.err
+}
+
+func TestDailyScheduleMustFitTheMonthlyCreditGrant(t *testing.T) {
+	s := &Service{Limits: fakeKeywordLimits{monthly: 100}}
+	err := s.checkDailyBudget(context.Background(), "org", []string{"one"}, "both", 40)
+	if !errors.Is(err, ErrLimit) {
+		t.Fatalf("daily budget error = %v, want ErrLimit", err)
+	}
+	s.Limits = fakeKeywordLimits{monthly: 1000}
+	if err := s.checkDailyBudget(context.Background(), "org", []string{"one"}, "mobile", 10); err != nil {
+		t.Fatalf("affordable daily schedule error = %v", err)
+	}
 }
 
 type barrierKeywordUsage struct {

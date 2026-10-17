@@ -44,18 +44,56 @@ describe("apiRequest", () => {
     await expect(apiRequest("/api/v1/billing/status", schema)).resolves.toEqual(
       { plan: "pro" },
     );
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       credentials: "same-origin",
     });
   });
 
   it("sends JSON bodies with POST and omits them for GET", async () => {
     await apiRequest("/api/v1/test", schema, "POST", { enabled: true });
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: true }),
     });
+    expect(
+      new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key"),
+    ).toMatch(/.+/u);
+  });
+
+  it("reuses POST keys after failures and rotates them after success", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: { code: "internal", message: "Try again." } },
+          { status: 500 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            error: {
+              code: "duplicate_request",
+              message: "Already submitted.",
+            },
+          },
+          { status: 409 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ plan: "pro" }))
+      .mockResolvedValueOnce(Response.json({ plan: "pro" }));
+    const post = () => apiRequest("/api/v1/paid", schema, "POST", { q: "x" });
+
+    await expect(post()).rejects.toMatchObject({ status: 500 });
+    await expect(post()).rejects.toMatchObject({ status: 409 });
+    await post();
+    await post();
+
+    const keys = fetchMock.mock.calls.map(([, init]) =>
+      new Headers(init?.headers).get("Idempotency-Key"),
+    );
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[1]).toBe(keys[2]);
+    expect(keys[3]).not.toBe(keys[2]);
   });
 
   it("rejects a GET with a JSON body before fetching", async () => {

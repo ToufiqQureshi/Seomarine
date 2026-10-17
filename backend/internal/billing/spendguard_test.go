@@ -75,6 +75,18 @@ func TestNewSpendGuardRejectsANonPositiveDailyLimit(t *testing.T) {
 	}
 }
 
+func TestSpendGuardRefusesPaidWorkWhenDowngradeLimitsAreExceeded(t *testing.T) {
+	ctx := context.Background()
+	pool := setupTestDB(t)
+	guard := testGuard(t, pool, NewCreditLedgerService(pool), 100, true)
+	guard.WithinPlanLimits = func(context.Context, string) (bool, error) { return false, nil }
+
+	_, err := guard.Hold(ctx, spend.Request{OrganizationID: "org-over-limit", Feature: spend.KeywordResearch, EstimateUSD: 0.01})
+	if !errors.Is(err, spend.ErrPlanLimits) {
+		t.Fatalf("Hold() error = %v, want ErrPlanLimits", err)
+	}
+}
+
 func TestHoldRefusesAWorkspaceWithoutEnoughCredits(t *testing.T) {
 	pool := setupTestDB(t)
 	ctx := t.Context()
@@ -94,12 +106,12 @@ func TestHoldRefusesAWorkspaceWithoutEnoughCredits(t *testing.T) {
 
 func TestHoldReservesTheCeilingAndSettleChargesTheRealCost(t *testing.T) {
 	pool := setupTestDB(t)
-	ctx := t.Context()
+	ctx := spend.WithUserID(t.Context(), "user_spend_test")
 	ledger := NewCreditLedgerService(pool)
 	org := spendOrg(ctx, t, pool, 1000)
 	guard := testGuard(t, pool, ledger, noDailyLimit, true)
 
-	hold, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.Backlinks, EstimateUSD: 0.1})
+	hold, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.Backlinks, Endpoint: "/v3/backlinks/summary/live", IdempotencyKey: "spend-test-" + rand.Text(), EstimateUSD: 0.1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,6 +131,15 @@ func TestHoldReservesTheCeilingAndSettleChargesTheRealCost(t *testing.T) {
 	if reason != string(spend.Backlinks) {
 		t.Fatalf("settle reason = %q, want the feature", reason)
 	}
+	var userID, feature, endpoint, status string
+	var providerCost float64
+	var cached bool
+	if err := pool.QueryRow(ctx, `SELECT user_id, feature, endpoint, provider_cost_usd::float8, cached, status FROM go_billing_credit_ledger WHERE organization_id = $1 AND type = 'settle'`, org).Scan(&userID, &feature, &endpoint, &providerCost, &cached, &status); err != nil {
+		t.Fatal(err)
+	}
+	if userID != "user_spend_test" || feature != string(spend.Backlinks) || endpoint != "/v3/backlinks/summary/live" || providerCost != 0.02 || cached || status != "settled" {
+		t.Fatalf("settlement metadata = %q/%q/%q/$%v/cached=%v/status=%q", userID, feature, endpoint, providerCost, cached, status)
+	}
 	if total, features := providerSpend(t, pool, org); total != 0.02 || features != string(spend.Backlinks) {
 		t.Fatalf("provider spend = %v %q", total, features)
 	}
@@ -127,6 +148,79 @@ func TestHoldReservesTheCeilingAndSettleChargesTheRealCost(t *testing.T) {
 	}
 	if got := balanceOf(ctx, t, ledger, org); got != 1000-26 {
 		t.Fatalf("balance after a second settle = %d", got)
+	}
+}
+
+func TestProviderCostIsRecordedWhenFailedWorkRefundsCustomerCredits(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	org := spendOrg(ctx, t, pool, 1000)
+	guard := testGuard(t, pool, ledger, noDailyLimit, true)
+	hold, err := guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: spend.DomainResearch, Endpoint: "/v3/dataforseo_labs/google/domain_rank_overview/live", EstimateUSD: 0.1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	providerHold, ok := hold.(spend.ProviderCostHold)
+	if !ok {
+		t.Fatal("credit hold does not support separating provider cost from customer charge")
+	}
+	if err := providerHold.SettleProviderCost(ctx, 0.02, 0, "/v3/dataforseo_labs/google/domain_rank_overview/live"); err != nil {
+		t.Fatal(err)
+	}
+	if got := balanceOf(ctx, t, ledger, org); got != 1000 {
+		t.Fatalf("balance after refund = %d, want 1000", got)
+	}
+	if total, features := providerSpend(t, pool, org); total != 0.02 || features != string(spend.DomainResearch) {
+		t.Fatalf("provider spend = $%v %q, want $0.02 %q", total, features, spend.DomainResearch)
+	}
+	var credits int64
+	var providerCost float64
+	if err := pool.QueryRow(ctx, `SELECT amount_credits, provider_cost_usd::float8 FROM go_billing_credit_ledger WHERE organization_id = $1 AND type = 'settle'`, org).Scan(&credits, &providerCost); err != nil {
+		t.Fatal(err)
+	}
+	if credits != 0 || providerCost != 0.02 {
+		t.Fatalf("failed task ledger = %d credits / $%v, want 0 credits / $0.02 provider cost", credits, providerCost)
+	}
+}
+
+func TestConcurrentRequestsWithTheSameIdempotencyKeyReserveAndDispatchOnce(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	ledger := NewCreditLedgerService(pool)
+	org := spendOrg(ctx, t, pool, 1000)
+	guard := testGuard(t, pool, ledger, noDailyLimit, true)
+	request := spend.Request{OrganizationID: org, Feature: spend.KeywordResearch, Endpoint: "/v3/keywords_data/google_ads/search_volume/live", IdempotencyKey: "same-" + rand.Text(), EstimateUSD: 0.1}
+	type result struct {
+		hold spend.Hold
+		err  error
+	}
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			hold, err := guard.Hold(ctx, request)
+			results <- result{hold: hold, err: err}
+		}()
+	}
+	var holds int
+	var providerDispatches int
+	for range 2 {
+		got := <-results
+		if got.err == nil {
+			holds++
+			providerDispatches++
+			if err := got.hold.Settle(ctx, 0.02); err != nil {
+				t.Fatal(err)
+			}
+		} else if !errors.Is(got.err, spend.ErrIdempotentReplay) {
+			t.Fatalf("duplicate Hold() error = %v, want ErrIdempotentReplay", got.err)
+		}
+	}
+	if holds != 1 || providerDispatches != 1 {
+		t.Fatalf("accepted holds/provider dispatches = %d/%d, want one", holds, providerDispatches)
+	}
+	if got := balanceOf(ctx, t, ledger, org); got != 1000-CreditsForUSD(0.02) {
+		t.Fatalf("balance after duplicate request = %d, want %d", got, 1000-CreditsForUSD(0.02))
 	}
 }
 
@@ -316,7 +410,7 @@ func TestAIMeter(t *testing.T) {
 	ctx := t.Context()
 	ledger := NewCreditLedgerService(pool)
 	guard := testGuard(t, pool, ledger, noDailyLimit, true)
-	meter := guard.AIMeter(spend.AIWriting)
+	meter := guard.AIMeter(spend.AIWriting, "openrouter/test-model")
 
 	t.Run("needs the whole ceiling to start", func(t *testing.T) {
 		org := spendOrg(ctx, t, pool, CreditsForUSD(0.05)-1)
@@ -343,12 +437,15 @@ func TestAIMeter(t *testing.T) {
 		if err := hold.Settle(ctx, 0.05); err == nil {
 			t.Fatal("a hold settled twice must fail")
 		}
-		var reason string
-		if err := pool.QueryRow(ctx, `SELECT reason FROM go_billing_credit_ledger WHERE organization_id = $1 AND type = 'settle'`, org).Scan(&reason); err != nil {
+		var reason, endpoint string
+		if err := pool.QueryRow(ctx, `SELECT reason, endpoint FROM go_billing_credit_ledger WHERE organization_id = $1 AND type = 'settle'`, org).Scan(&reason, &endpoint); err != nil {
 			t.Fatal(err)
 		}
 		if reason != string(spend.AIWriting) {
 			t.Fatalf("reason = %q", reason)
+		}
+		if endpoint != "openrouter/test-model" {
+			t.Fatalf("AI provider endpoint = %q, want model identifier", endpoint)
 		}
 	})
 

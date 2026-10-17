@@ -30,6 +30,8 @@ type provider struct {
 	models *modelCatalog
 }
 
+type budgetRequestContextKey struct{}
+
 // llmTarget is the provider's target entry: a domain or a keyword.
 type llmTarget map[string]any
 
@@ -82,7 +84,12 @@ func (p *provider) post(ctx context.Context, organizationID, path string, body a
 	if err != nil {
 		return nil, fmt.Errorf("encode %s request: %w", path, err)
 	}
-	payload, err := p.client.Do(ctx, organizationID, spend.AIVisibility, http.MethodPost, path, raw, false)
+	var payload json.RawMessage
+	if request, ok := ctx.Value(budgetRequestContextKey{}).(dataforseo.DoBudgetedRequest); ok {
+		payload, err = request(http.MethodPost, path, raw, false)
+	} else {
+		payload, err = p.client.Do(ctx, organizationID, spend.AIVisibility, http.MethodPost, path, raw, false)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("call %s: %w", path, err)
 	}

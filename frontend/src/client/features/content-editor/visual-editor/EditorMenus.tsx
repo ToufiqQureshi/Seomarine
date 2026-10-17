@@ -13,11 +13,19 @@ import {
   Quote,
   Table,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { cn } from "cn";
 import { normalizeLinkUrl } from "./link-url";
+import { blockMenuPosition } from "./block-menu-position";
 
 /** The "+" on an empty line, and the list "/" opens. */
 export function BlockMenu({
@@ -31,6 +39,54 @@ export function BlockMenu({
   onOpenChange: (open: boolean) => void;
   onImage: () => void;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ left: 8, top: 8, maxHeight: 400 });
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current || !menuRef.current) return;
+    const update = () => {
+      const anchor = triggerRef.current?.getBoundingClientRect();
+      const menu = menuRef.current?.getBoundingClientRect();
+      if (anchor && menu)
+        setPosition(
+          blockMenuPosition(anchor, menu, {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          }),
+        );
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !rootRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
+      )
+        onOpenChange(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onOpenChange(false);
+        editor.commands.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open, onOpenChange, editor]);
   const run = (action: () => void) => {
     onOpenChange(false);
     action();
@@ -105,8 +161,9 @@ export function BlockMenu({
   ];
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-label="Add a block"
         aria-expanded={open}
@@ -115,41 +172,50 @@ export function BlockMenu({
       >
         <Plus aria-hidden className="size-4" />
       </button>
-      {open ? (
-        <div
-          role="menu"
-          aria-label="Add a block"
-          className="absolute top-9 left-0 z-30 w-72 rounded-xl border bg-popover p-1.5 shadow-xl"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              onOpenChange(false);
-              editor.commands.focus();
-            }
-          }}
-        >
-          {items.map((item, index) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              // The menu opens from the keyboard ("/"), so focus lands on it.
-              autoFocus={index === 0}
-              className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-              onClick={() => run(item.action)}
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="Add a block"
+              className="fixed z-50 w-72 overflow-y-auto rounded-xl border bg-popover p-1.5 shadow-xl"
+              style={{
+                left: position.left,
+                top: position.top,
+                maxHeight: position.maxHeight,
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  onOpenChange(false);
+                  editor.commands.focus();
+                }
+              }}
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted [&_svg]:size-4">
-                {item.icon}
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-medium">{item.label}</span>
-                <span className="text-xs text-muted-foreground">
-                  {item.hint}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
+              {items.map((item, index) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  // The menu opens from the keyboard ("/"), so focus lands on it.
+                  autoFocus={index === 0}
+                  className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                  onClick={() => run(item.action)}
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted [&_svg]:size-4">
+                    {item.icon}
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.hint}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

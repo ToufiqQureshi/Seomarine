@@ -16,7 +16,11 @@ import {
 import { Field, FieldLabel } from "@/client/components/ui/field";
 import type { RankTrackingConfig } from "@/types/schemas/rank-tracking";
 import { domainField, normalizeDomain } from "@/types/schemas/domain";
-import { pagesToDepth, estimateRankCheckCredits } from "@/shared/rank-tracking";
+import {
+  pagesToDepth,
+  estimateRankCheckCredits,
+  estimateScheduledRankTrackingCredits,
+} from "@/shared/rank-tracking";
 import { getLanguageCode } from "@/client/features/keywords/locations";
 import {
   SERP_LANGUAGE_OPTIONS,
@@ -382,29 +386,37 @@ function CostEstimate({
 }: Pick<ConfigFormValues, "devices" | "serpDepth" | "schedule">) {
   // Scheduled checks run through the cheaper task queue; manual configs only
   // ever pay the live price.
-  const { costUsd: costPerKeyword } = estimateRankCheckCredits(
-    ["plain keyword"],
+  const estimate = estimateRankCheckCredits(
+    Array<string>(50).fill("plain keyword"),
     devices,
     serpDepth,
     schedule === "manual" ? "live" : "queued",
   );
-  const checksPerMonth =
-    schedule === "daily" ? 30 : schedule === "weekly" ? 4 : 1;
+  const estimatedMonthlyCredits =
+    schedule === "manual"
+      ? 0
+      : estimateScheduledRankTrackingCredits(
+          Array<string>(50).fill("plain keyword"),
+          devices,
+          serpDepth,
+          schedule,
+        );
   return (
     <div className="space-y-0.5 rounded-lg bg-muted px-3 py-2.5 text-xs text-muted-foreground">
       <div>
         <span className="font-mono font-semibold text-foreground">
-          ~${costPerKeyword.toFixed(4)}
+          ~${(estimate.costUsd / 50).toFixed(4)}
         </span>{" "}
         per keyword per check
       </div>
       {schedule !== "manual" && (
         <div>
-          50 keywords would cost{" "}
+          At 50 keywords, this schedule uses{" "}
           <span className="font-mono font-semibold text-foreground">
-            ~${(costPerKeyword * 50 * checksPerMonth).toFixed(2)}
+            ~{estimatedMonthlyCredits.toLocaleString()} credits
           </span>
-          /month
+          /month on average over 50 plain keywords
+          {devices === "both" ? "; desktop and mobile are both included" : ""}.
         </div>
       )}
     </div>

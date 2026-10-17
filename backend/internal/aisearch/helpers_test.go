@@ -19,6 +19,7 @@ import (
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/kv"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
@@ -212,10 +213,14 @@ func testRedis(t *testing.T) *redis.Client {
 // newTestService returns a Service wired to api and a real Redis. Every call
 // should use a fresh organization id (see newOrg) so cache entries never leak
 // between tests.
-func newTestService(t *testing.T, api *fakeAPI) *Service {
+func newTestService(t *testing.T, api *fakeAPI, guards ...spend.Guard) *Service {
 	t.Helper()
+	guard := spend.Guard(&spendtest.Guard{})
+	if len(guards) > 0 {
+		guard = guards[0]
+	}
 	client, err := dataforseo.NewClient(dataforseo.Options{
-		Guard:    &spendtest.Guard{},
+		Guard:    guard,
 		BaseURL:  api.server.URL,
 		APIKey:   base64.StdEncoding.EncodeToString([]byte("login:password")),
 		Recorder: api.recorder,

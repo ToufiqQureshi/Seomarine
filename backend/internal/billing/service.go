@@ -97,6 +97,21 @@ type Status struct {
 	Unlimited bool `json:"unlimited"`
 }
 
+// LimitUsage compares retained workspace data with the active plan. Existing
+// data is never removed after a downgrade.
+type LimitUsage struct {
+	Used     int  `json:"used"`
+	Limit    int  `json:"limit"`
+	Exceeded bool `json:"exceeded"`
+}
+
+// PlanUsage is the customer-visible state of every count-based plan limit.
+type PlanUsage struct {
+	Sites           LimitUsage `json:"sites"`
+	Members         LimitUsage `json:"members"`
+	TrackedKeywords LimitUsage `json:"trackedKeywords"`
+}
+
 // Checkout is what Razorpay Checkout in the browser needs to start paying
 // for a subscription.
 type Checkout struct {
@@ -260,6 +275,41 @@ func (s *Service) Allows(ctx context.Context, orgID string, feature plans.Featur
 	return definition.Allows(feature), nil
 }
 
+// UsageAgainstPlan reports retained data against the current plan limits.
+func (s *Service) UsageAgainstPlan(ctx context.Context, orgID string) (PlanUsage, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	if err != nil {
+		return PlanUsage{}, err
+	}
+	usage, err := s.repo.planUsage(ctx, orgID)
+	if err != nil {
+		return PlanUsage{}, err
+	}
+	item := func(used, limit int) LimitUsage {
+		return LimitUsage{Used: used, Limit: limit, Exceeded: limit > 0 && used > limit}
+	}
+	return PlanUsage{
+		Sites:           item(usage.Sites, definition.Sites),
+		Members:         item(usage.Members, definition.Members),
+		TrackedKeywords: item(usage.TrackedKeywords, definition.TrackedKeywords),
+	}, nil
+}
+
+// WithinPlanLimits is false after a downgrade leaves retained data above any
+// current limit. Paid provider work stays paused until the user archives or
+// removes enough data, while reads and deletion remain available.
+func (s *Service) WithinPlanLimits(ctx context.Context, orgID string) (bool, error) {
+	status, err := s.Status(ctx, orgID)
+	if err != nil || status.Unlimited {
+		return status.Unlimited, err
+	}
+	usage, err := s.UsageAgainstPlan(ctx, orgID)
+	if err != nil {
+		return false, err
+	}
+	return !usage.Sites.Exceeded && !usage.Members.Exceeded && !usage.TrackedKeywords.Exceeded, nil
+}
+
 // FeatureGate answers one question for one feature: does this organization's
 // plan include it.
 type FeatureGate struct {
@@ -290,6 +340,13 @@ func (s *Service) SiteLimit(ctx context.Context, orgID string) (int, error) {
 func (s *Service) KeywordLimit(ctx context.Context, orgID string) (int, error) {
 	definition, err := s.entitlement(ctx, orgID)
 	return definition.TrackedKeywords, err
+}
+
+// MonthlyCreditLimit returns the recurring provider budget granted by the
+// active plan. Staff workspaces return 0, which means unlimited.
+func (s *Service) MonthlyCreditLimit(ctx context.Context, orgID string) (int64, error) {
+	definition, err := s.entitlement(ctx, orgID)
+	return definition.MonthlyCredits, err
 }
 
 // WorkspaceDailyLimitUSD is the most orgID may spend at the providers in one

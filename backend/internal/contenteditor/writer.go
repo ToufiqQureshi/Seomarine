@@ -14,13 +14,17 @@ import (
 )
 
 const (
-	maxWriterContext        = 20_000
-	writerTimeout           = 25 * time.Second
-	writerChargeWait        = 10 * time.Second
-	writerModel             = "openai/gpt-4.1-mini"
+	// MaxWriterCreditsPerAction is the editor writer's per-request credit ceiling.
+	MaxWriterCreditsPerAction int64 = 15
+	maxWriterContext                = 20_000
+	writerTimeout                   = 25 * time.Second
+	writerChargeWait                = 10 * time.Second
+	// WriterModel pins the editor to a cost-calibrated model.
+	WriterModel             = "openai/gpt-4.1-mini"
+	writerModel             = WriterModel
 	writerInputUSDPerToken  = 0.40 / 1_000_000
 	writerOutputUSDPerToken = 1.60 / 1_000_000
-	writerMaxChargeUSD      = 15.0 / 1280
+	writerMaxChargeUSD      = float64(MaxWriterCreditsPerAction) / 1280
 )
 
 // ErrWriterUnavailable indicates the writing assistant is not configured.
@@ -69,14 +73,15 @@ const (
 
 // WriterInput contains the context and request for a writing operation.
 type WriterInput struct {
-	Action        WriterAction `json:"action"`
-	Mode          string       `json:"mode"`
-	Title         string       `json:"title"`
-	TargetKeyword string       `json:"targetKeyword"`
-	Language      string       `json:"language"`
-	Instructions  string       `json:"instructions"`
-	Content       string       `json:"content"`
-	Brief         string       `json:"brief"`
+	Action         WriterAction `json:"action"`
+	Mode           string       `json:"mode"`
+	Title          string       `json:"title"`
+	TargetKeyword  string       `json:"targetKeyword"`
+	Language       string       `json:"language"`
+	Instructions   string       `json:"instructions"`
+	Content        string       `json:"content"`
+	Brief          string       `json:"brief"`
+	IdempotencyKey string       `json:"idempotencyKey"`
 }
 
 // WriterOutput contains the result of a writing operation.
@@ -94,6 +99,10 @@ type WriterService interface {
 // cost after.
 type WriterMeter interface {
 	Hold(ctx context.Context, organizationID string, ceilingUSD float64) (spend.Hold, error)
+}
+
+type idempotentWriterMeter interface {
+	HoldWithIdempotencyKey(ctx context.Context, organizationID string, ceilingUSD float64, key string) (spend.Hold, error)
 }
 
 // WriterPlanAccess checks whether the organization may use paid writing features.
@@ -147,7 +156,11 @@ func (a *WriterAgent) Generate(ctx context.Context, organizationID string, input
 	var hold spend.Hold
 	if a.Meter != nil {
 		var err error
-		hold, err = a.Meter.Hold(ctx, organizationID, ceiling)
+		if meter, ok := a.Meter.(idempotentWriterMeter); ok && input.IdempotencyKey != "" {
+			hold, err = meter.HoldWithIdempotencyKey(ctx, organizationID, ceiling, input.IdempotencyKey)
+		} else {
+			hold, err = a.Meter.Hold(ctx, organizationID, ceiling)
+		}
 		switch {
 		case errors.Is(err, spend.ErrNoCredits), errors.Is(err, spend.ErrWorkspaceDailyLimit), errors.Is(err, spend.ErrPaused):
 			return WriterOutput{}, ErrWriterNoCredits
@@ -220,6 +233,9 @@ func (a *WriterAgent) settle(ctx context.Context, hold spend.Hold, costUSD float
 }
 
 func validateWriterInput(input WriterInput) error {
+	if strings.TrimSpace(input.IdempotencyKey) == "" {
+		return &ValidationError{Message: "Refresh the editor and try this writing action again."}
+	}
 	switch input.Action {
 	case WriterOutline, WriterDraft, WriterImprove, WriterRewrite, WriterFAQ, WriterSection, WriterFillGap, WriterAnswerFirst, WriterFixTopIssue, WriterTitleMeta, WriterDestuff, WriterFactCheck, WriterToneLanguage:
 	default:
@@ -233,6 +249,9 @@ func validateWriterInput(input WriterInput) error {
 	}
 	if utf8.RuneCountInString(input.Language) > 80 || utf8.RuneCountInString(input.Instructions) > 2_000 {
 		return &ValidationError{Message: "Language or instructions exceed the allowed length."}
+	}
+	if len(input.IdempotencyKey) > 128 {
+		return &ValidationError{Message: "The request idempotency key is too long."}
 	}
 	if utf8.RuneCountInString(input.Content)+utf8.RuneCountInString(input.Brief) > maxWriterContext {
 		return &ValidationError{Message: "The writing context must be at most 20,000 characters."}

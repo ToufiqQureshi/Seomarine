@@ -58,7 +58,10 @@ US dollar of provider cost before the 1.28 markup, so a credit is 1/1280 of a
 dollar of provider cost. Each paid charge of a plan grants that plan's
 `MonthlyCredits` (`internal/plans`: Basic 4,000, Pro 10,000, Agency 25,000)
 once per webhook event; unused credits roll over up to two months of the
-plan (`grantUpToTx`). The test
+plan: each grant expires after two months and reservations consume the oldest
+unexpired grants first. The hourly expiry worker records `expire` ledger rows;
+balance reads and reservations also expire that workspace's overdue grants.
+The test
 `TestNoPlanCanCostMoreThanAThirdOfItsPrice` keeps every grant under a third
 of the plan's price. `GET /api/v1/billing/credits` returns the plan and
 balance, `GET /api/v1/billing/usage` this month's spend by feature and the
@@ -67,9 +70,20 @@ typical cost of each action (`costs.go`, `api/billing.yaml`), and `POST
 
 Plan-wise limits beside credits: sites, tracked keywords, members and the
 deepest rank-tracking check (`MaxSerpDepth`: Basic top 30, Pro and Agency
-top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps every plan's
-tracked keywords, checked weekly at its deepest depth, under 90% of its
-monthly credits.
+top 40). `TestWeeklyRankTrackingFitsInTheMonthlyCredits` keeps each plan's
+plain tracked keywords, checked weekly on desktop at its deepest depth, within
+its monthly credit grant. Choosing both devices doubles that estimate.
+
+After a downgrade, existing sites, members and tracked keywords are retained.
+`Service.UsageAgainstPlan` reports the overage to Billing, and the shared
+`SpendGuard` refuses new paid provider work with `plan_limits_exceeded` until
+the workspace fits the current catalog limits. Reads, archiving and removal
+remain available so the customer can resolve the overage without data loss.
+
+Each reserve, settle and refund ledger row records the workspace, initiating
+user, feature, provider endpoint, provider cost, cache flag and status. The
+request idempotency key is scoped to the workspace, so the same search from
+two customers cannot block or reuse the other's reservation.
 
 Monthly credits are shown on the public pricing page beside each plan's
 included tools and limits. The app shows the balance in Billing and estimated
@@ -89,8 +103,9 @@ assistant. Rules that must never break:
   workspace's credits. Not enough credits is `spend.ErrNoCredits`, answered
   `402 insufficient_credits`, and the provider is never called. Reservations
   lock the balance row, so parallel requests cannot overspend it.
-- **The real cost is charged afterwards**, also for failed tasks the
-  provider billed. If it is more than was held and the balance cannot cover
+- **The real successful-task cost is charged afterwards.** Failed DataForSEO
+  tasks stay in provider spend telemetry but refund the customer's task
+  credits. If successful work costs more than was held and the balance cannot cover
   it, the balance is charged down to zero and a warning is logged: the work
   is already paid for, so it is never refused after the fact.
 - **It fails closed.** A ledger or database error stops the request. SAM
