@@ -37,11 +37,8 @@ describe("queryClient", () => {
   it("does not retry 4xx API failures", () => {
     const retry = queryClient.getDefaultOptions().queries?.retry;
     expect(typeof retry).toBe("function");
-    expect(
-      (retry as (count: number, error: unknown) => boolean)(
-        0,
-        new ApiError(404, "not_found", "missing"),
-      ),
-    ).toBe(false);
+    if (typeof retry !== "function")
+      throw new Error("retry must be a function");
+    expect(retry(0, new ApiError(404, "not_found", "missing"))).toBe(false);
   });
 });
