@@ -29,10 +29,17 @@ export default defineConfig(({ mode }) => {
       : 3001;
   // In development the Go server owns every non-asset path.
   const goServer = env.GO_SERVER_URL || "http://localhost:8080";
+  // Segment boundaries keep `/s` from proxying Vite assets such as `/src/main.tsx`.
   const proxied = Object.fromEntries(
-    ["/api", "/s", "/r", "/mcp", "/webhooks", "/t.js", "/.well-known"].map(
-      (path) => [path, { target: goServer, changeOrigin: false }],
-    ),
+    [
+      "^/api(?:/|$)",
+      "^/s(?:/|$)",
+      "^/r(?:/|$)",
+      "^/mcp(?:/|$)",
+      "^/webhooks(?:/|$)",
+      "^/t\\.js(?:/|$)",
+      "^/\\.well-known(?:/|$)",
+    ].map((path) => [path, { target: goServer, changeOrigin: false }]),
   );
   const emitSourcemaps = env.POSTHOG_SOURCEMAPS === "true";
 
