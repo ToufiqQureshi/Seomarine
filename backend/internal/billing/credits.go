@@ -347,13 +347,23 @@ func reserveTx(ctx context.Context, tx pgx.Tx, orgID string, amount int64, idemp
 			if res.OrganizationID != orgID {
 				return CreditReservation{}, errors.New("idempotency key belongs to a different workspace")
 			}
-			if ik != nil {
-				res.IdempotencyKey = *ik
+			if res.Status == "reserved" || res.Status == "settled" {
+				if ik != nil {
+					res.IdempotencyKey = *ik
+				}
+				res.Reused = true
+				return res, nil
 			}
-			res.Reused = true
-			return res, nil
+			if res.Status != "refunded" {
+				return CreditReservation{}, fmt.Errorf("unsupported idempotent reservation status %q", res.Status)
+			}
+			// Keep the refunded reservation for audit, but free its unique key for
+			// a retry of work that was not paid for at the provider.
+			if _, err := tx.Exec(ctx, `UPDATE go_billing_credit_reservations SET idempotency_key = NULL WHERE id = $1 AND status = 'refunded'`, res.ID); err != nil {
+				return CreditReservation{}, fmt.Errorf("release refunded idempotency key: %w", err)
+			}
 		}
-		if !errors.Is(err, pgx.ErrNoRows) {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return CreditReservation{}, fmt.Errorf("read idempotent reservation: %w", err)
 		}
 	}
