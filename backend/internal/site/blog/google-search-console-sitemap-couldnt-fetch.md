@@ -2,6 +2,7 @@
 title: Google Search Console Says “Couldn’t Fetch” for Your Sitemap
 description: Check sitemap access, response headers, XML validity, robots rules and URL consistency to solve a Search Console fetch error.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** Open the exact submitted sitemap URL without a login, confirm it returns a stable 200 with valid XML, and check CDN, robots, redirects, and host consistency. Then inspect the reported error details in Search Console and resubmit after the actual cause is fixed. A valid XML file on your laptop does not prove Googlebot can fetch the public URL.
@@ -49,6 +50,23 @@ Do not keep re-submitting an unchanged file when Google cannot fetch it. Do not 
 
 Before changing a live site, save the current configuration and test the change on a small set of representative URLs. If you are unsure whether an action removes content, changes access, or affects checkout, get the developer or site owner to review it first. Fixing the visible symptom while breaking a related page can cost more than the original search issue.
 
+## A five-minute sitemap check
+
+Copy the exact URL shown in Search Console, including its protocol and path. Open it in a private browser window and check each step:
+
+1. The response is successful and stable, not a login page, challenge page, or HTML error that happens to return status 200.
+2. The response body is XML and lists canonical URLs that you want indexed. A sitemap is a discovery hint, not an indexing command.
+3. Every sitemap listed inside a sitemap index can also be fetched publicly.
+4. URLs use the correct HTTPS host and do not redirect to a different version of the site.
+5. The robots.txt file does not block the sitemap or the pages it lists.
+
+If the page works for you but Search Console still reports an error, compare the exact URL, user agent handling, CDN rules and response headers. A browser success does not prove that every crawler request gets the same response. Check server or CDN logs around Google's reported fetch time before changing DNS or disabling security.
+
+### What to send your developer
+
+Share the sitemap URL, Search Console error text, time of the last fetch, response status, response content type and one affected URL. This is much more actionable than “Google can't see my site.” Avoid repeatedly resubmitting an unchanged file; fix the response first, then let Google retry or submit once.
+
+If only a few pages are missing, inspect those URLs in the Pages report instead of rebuilding a working sitemap. Google's [crawling and indexing troubleshooting guide](https://developers.google.com/search/docs/crawling-indexing/troubleshoot-crawling-errors) explains how to investigate fetch failures. For a sudden site-wide visibility change, our [Search Console click diagnosis](/blog/search-console-impressions-clicks-down) helps separate crawl issues from ranking or demand changes.
 ## FAQ
 
 **Does “Couldn’t fetch” mean none of my pages are indexed?**

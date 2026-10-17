@@ -2,6 +2,7 @@
 title: Product Schema Is Valid but Price or Stars Do Not Show
 description: Separate schema validation from rich-result eligibility, then check visible product facts, review policies, feeds, variants and Search Console reports.
 date: 2026-10-15
+updated: 2026-10-17
 ---
 
 **Short answer:** A valid structured-data test means Google can parse markup; it does not guarantee a rich result. Compare the markup with what shoppers see, check product eligibility and review policies, inspect Search Console’s product reports, and confirm Merchant Center feeds if you use them. Fix mismatched or stale data, then give Google time to recrawl.
@@ -49,6 +50,24 @@ Do not add stars to a page without genuine eligible reviews. Do not change corre
 
 Before changing a live site, save the current configuration and test the change on a small set of representative URLs. If you are unsure whether an action removes content, changes access, or affects checkout, get the developer or site owner to review it first. Fixing the visible symptom while breaking a related page can cost more than the original search issue.
 
+## Trace one product from page to search report
+
+Choose one affected product URL and record its canonical URL, visible price, currency, availability, variant, review summary and structured data. Then compare those facts:
+
+| Fact | Product page | Structured data | Feed, if used |
+| --- | --- | --- | --- |
+| Canonical product URL | The page users see | The product described | The submitted landing page |
+| Price and currency | Current displayed offer | Same current offer | Same offer and currency |
+| Availability | Current stock status | Same status | Same status |
+| Reviews | Visible and policy-compliant | Only eligible visible reviews | Consistent where supported |
+
+A mismatch can come from stale cache, a different product variant, a sale ending, a feed pointing at another URL or markup generated before the page updates. Fix the source that is wrong; do not paste a second JSON-LD block on top of a theme-generated one without checking for conflicting product entities.
+
+### Stars have their own rules
+
+A validator can confirm that markup parses, but review snippets follow separate eligibility and policy rules. Do not mark up reviews copied from another site or reviews hidden from shoppers. If you mark up ratings for a local business or organisation, Google's self-serving review rules also apply: a business cannot earn review stars for its own LocalBusiness or Organization page by publishing its own customer reviews there. See Google's [review snippet policies](https://developers.google.com/search/docs/appearance/structured-data/review-snippet) and [product snippet requirements](https://developers.google.com/search/docs/appearance/structured-data/product-snippet).
+
+After fixing visible content and markup, validate the live URL, inspect the relevant Search Console enhancement report, and wait for recrawl. Track eligibility and impressions separately from guaranteed rich-result display: Google decides whether an eligible result is shown. For broader visibility or click changes, use our [Search Console diagnosis worksheet](/blog/search-console-impressions-clicks-down).
 ## FAQ
 
 **Does valid product schema guarantee stars in Google?**
