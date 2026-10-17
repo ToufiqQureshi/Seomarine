@@ -133,7 +133,7 @@ func TestWriterHandlerRequiresProjectOrganizationAndValidRequest(t *testing.T) {
 	if got := request(`{"action":"outline","extra":"no"}`); got.Code != http.StatusBadRequest {
 		t.Fatalf("unknown field status = %d, want 400", got.Code)
 	}
-	if got := request(`{"action":"outline"}`); got.Code != http.StatusOK || writer.organizationID != "org-42" || writer.input.Action != WriterOutline || !strings.Contains(got.Body.String(), "Generated outline") {
+	if got := request(`{"action":"outline","idempotencyKey":"request-1"}`); got.Code != http.StatusOK || writer.organizationID != "org-42" || writer.input.Action != WriterOutline || !strings.Contains(got.Body.String(), "Generated outline") {
 		t.Fatalf("generation response = %d %s; writer = %+v", got.Code, got.Body, writer)
 	}
 

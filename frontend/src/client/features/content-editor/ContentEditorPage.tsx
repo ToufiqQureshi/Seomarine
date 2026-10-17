@@ -173,6 +173,7 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
           : "Could not save this draft. Your writing is still here.",
       ),
   });
+  const saveDraft = saveMutation.mutate;
 
   useEffect(() => {
     if (!initialized || !dirty || saveMutation.isPending) return;
@@ -181,9 +182,9 @@ export function ContentEditorPage({ projectId }: { projectId: string }) {
       !isArticleContentWithinLimit(draft.content)
     )
       return;
-    const timer = window.setTimeout(() => saveMutation.mutate(), 3000);
+    const timer = window.setTimeout(() => saveDraft(), 3000);
     return () => window.clearTimeout(timer);
-  }, [draft, dirty, initialized, saveMutation.isPending]);
+  }, [draft, dirty, initialized, saveDraft, saveMutation.isPending]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>

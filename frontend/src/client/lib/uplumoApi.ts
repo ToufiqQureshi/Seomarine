@@ -20,6 +20,29 @@ const errorBodySchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
 
+const pendingPostKeys = new Map<string, { key: string; expiresAt: number }>();
+
+async function postIdempotencyKey(
+  path: string,
+  requestBody: string | undefined,
+) {
+  const request = new TextEncoder().encode(`${path}\n${requestBody ?? ""}`);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", request));
+  const scope = `${path}\n${Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  const now = Date.now();
+  for (const [key, value] of pendingPostKeys) {
+    if (value.expiresAt <= now) pendingPostKeys.delete(key);
+  }
+  const pending = pendingPostKeys.get(scope);
+  if (pending) {
+    pending.expiresAt = now + 60_000;
+    return { key: pending.key, scope };
+  }
+  const key = crypto.randomUUID();
+  pendingPostKeys.set(scope, { key, expiresAt: now + 60_000 });
+  return { key, scope };
+}
+
 // Errors whose server message is written for the customer and must not be
 // replaced by the generic wording for their status: paid data paused by the
 // daily safety limit, a workspace that used its credits for the day, and the
@@ -33,6 +56,7 @@ const CUSTOMER_FACING_CODES = new Set([
   // A fixed "<data> is temporarily unavailable" line from our own handlers,
   // never the provider's raw error.
   "provider_error",
+  "duplicate_request",
 ]);
 
 // Statuses whose server message is not meant for the user, or that need the
@@ -67,11 +91,14 @@ export async function apiRequest<T>(
     method === "POST" && jsonBody !== undefined
       ? JSON.stringify(jsonBody)
       : undefined;
+  const idempotency =
+    method === "POST" ? await postIdempotencyKey(path, requestBody) : undefined;
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
     headers: {
       Accept: "application/json",
+      ...(idempotency ? { "Idempotency-Key": idempotency.key } : {}),
       ...(requestBody === undefined
         ? {}
         : { "Content-Type": "application/json" }),
@@ -84,12 +111,17 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const parsed = errorBodySchema.safeParse(body);
     const code = parsed.success ? parsed.data.error.code : "unknown";
+    if (idempotency && response.status < 500 && code !== "duplicate_request") {
+      pendingPostKeys.delete(idempotency.scope);
+    }
     throw new ApiError(
       response.status,
       code,
       messageForStatus(response.status, code, parsed.data?.error.message),
     );
   }
+
+  if (idempotency) pendingPostKeys.delete(idempotency.scope);
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) {

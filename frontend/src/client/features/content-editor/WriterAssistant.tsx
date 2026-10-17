@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/client/components/ui/button";
 import { Textarea } from "@/client/components/ui/textarea";
 import {
@@ -8,7 +8,6 @@ import {
   getContentWriterStatus,
 } from "./contentEditorApi";
 import type { ContentDraftInput, EditorMode } from "./scoring";
-import { CreditCostHint } from "@/client/features/billing/credits/CreditCostHint";
 import { useEditorSession } from "./editor-session";
 import { writerContext } from "./writer-context";
 
@@ -45,6 +44,7 @@ export function WriterAssistant({
   const [language, setLanguage] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const requestPending = useRef(false);
   const availability = useQuery({
     queryKey: ["contentWriterStatus"],
     queryFn: getContentWriterStatus,
@@ -55,7 +55,13 @@ export function WriterAssistant({
     availability.isError ||
     !availability.data?.configured;
   const mutation = useMutation({
-    mutationFn: (action: (typeof actions)[number][0]) => {
+    mutationFn: ({
+      action,
+      idempotencyKey,
+    }: {
+      action: (typeof actions)[number][0];
+      idempotencyKey: string;
+    }) => {
       const selection =
         editor && !editor.state.selection.empty
           ? editor.state.doc.textBetween(
@@ -77,6 +83,7 @@ export function WriterAssistant({
           language,
           instructions,
           brief: brief.slice(0, 2_000),
+          idempotencyKey,
         },
       });
     },
@@ -91,6 +98,18 @@ export function WriterAssistant({
           : "Could not generate a suggestion.",
       ),
   });
+  const runAction = (action: (typeof actions)[number][0]) => {
+    if (requestPending.current) return;
+    requestPending.current = true;
+    mutation.mutate(
+      { action, idempotencyKey: crypto.randomUUID() },
+      {
+        onSettled: () => {
+          requestPending.current = false;
+        },
+      },
+    );
+  };
 
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
@@ -99,9 +118,10 @@ export function WriterAssistant({
         <h2 className="font-medium">AI writing assistant</h2>
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
-        Choose an action to send this brief and article to our AI provider.
-        Usage is charged to your organization’s AI credits. Review suggestions
-        before using them; generated facts may need verification.
+        Choose an action to send the selected text or current section, with a
+        short summary of the brief. Usage is charged to your organization’s AI
+        credits. Review suggestions before using them; generated facts may need
+        verification.
       </p>
       {writerDisabled ? (
         <p
@@ -151,22 +171,33 @@ export function WriterAssistant({
             type="button"
             size="sm"
             variant="outline"
+            className="h-auto min-h-12 justify-start py-2 text-left whitespace-normal"
             disabled={
               disabled ||
               writerDisabled ||
               mutation.isPending ||
               (action !== "outline" && !draft.content.trim())
             }
-            onClick={() => mutation.mutate(action)}
+            onClick={() => runAction(action)}
           >
-            {mutation.isPending && mutation.variables === action ? (
+            {mutation.isPending && mutation.variables?.action === action ? (
               <LoaderCircle aria-hidden className="animate-spin" />
             ) : null}
-            {label}
+            <span className="flex flex-col items-start gap-0.5">
+              <span>{label}</span>
+              {availability.data ? (
+                <span className="text-xs font-normal text-muted-foreground">
+                  Up to {availability.data.maxCreditsPerAction} credits
+                </span>
+              ) : null}
+            </span>
           </Button>
         ))}
       </div>
-      <CreditCostHint feature="ai_writing" />
+      <p className="text-xs text-muted-foreground">
+        The final charge uses the AI provider&apos;s actual tokens and never
+        exceeds the maximum shown on each action.
+      </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -223,7 +254,10 @@ export function WriterAssistant({
               size="sm"
               variant="outline"
               disabled={disabled || mutation.isPending}
-              onClick={() => mutation.mutate(mutation.variables)}
+              onClick={() => {
+                const action = mutation.variables?.action;
+                if (action) runAction(action);
+              }}
             >
               Try again
             </Button>

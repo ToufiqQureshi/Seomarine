@@ -37,7 +37,11 @@ export const contentEditorQueryKeys = {
 export function getContentWriterStatus() {
   return apiRequest(
     "/api/v1/config/content-writer-status",
-    z.object({ configured: z.boolean(), message: z.string() }),
+    z.object({
+      configured: z.boolean(),
+      message: z.string(),
+      maxCreditsPerAction: z.number().int().positive(),
+    }),
     "GET",
   );
 }
@@ -68,6 +72,7 @@ type WriterRequest = Pick<
   instructions: string;
   /** Terms, questions and competitor headings from the search brief. */
   brief: string;
+  idempotencyKey: string;
 };
 
 const searchBriefSchema = z.object({

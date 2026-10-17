@@ -3,6 +3,7 @@ import type { MockInstance } from "vitest";
 import {
   deleteContentDraft,
   getContentDraft,
+  getContentWriterStatus,
   generateWritingSuggestion,
   listContentDrafts,
   saveContentDraft,
@@ -30,6 +31,22 @@ beforeEach(() => {
 });
 
 describe("content editor API contract", () => {
+  it("reads the server-enforced AI writing credit ceiling", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({
+        configured: true,
+        message: "",
+        maxCreditsPerAction: 15,
+      }),
+    );
+
+    await expect(getContentWriterStatus()).resolves.toEqual({
+      configured: true,
+      message: "",
+      maxCreditsPerAction: 15,
+    });
+  });
+
   it("lists project-scoped drafts and rejects malformed responses", async () => {
     fetchMock.mockResolvedValue(Response.json([{ ...draft, id: 42 }]));
 
@@ -110,6 +127,7 @@ describe("content editor API contract", () => {
           language: "English",
           instructions: "Be concise",
           brief: "Terms: channel manager",
+          idempotencyKey: "request-1",
         },
       }),
     ).resolves.toEqual({ content: "## Draft outline" });
@@ -126,6 +144,7 @@ describe("content editor API contract", () => {
           language: "English",
           instructions: "Be concise",
           brief: "Terms: channel manager",
+          idempotencyKey: "request-1",
         }),
       },
     ]);

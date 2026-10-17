@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { cn } from "cn";
@@ -68,7 +69,8 @@ export function BlockMenu({
     const outside = (event: PointerEvent) => {
       if (
         event.target instanceof Node &&
-        !rootRef.current?.contains(event.target)
+        !rootRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
       )
         onOpenChange(false);
     };
@@ -170,47 +172,50 @@ export function BlockMenu({
       >
         <Plus aria-hidden className="size-4" />
       </button>
-      {open ? (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Add a block"
-          className="fixed z-50 w-72 overflow-y-auto rounded-xl border bg-popover p-1.5 shadow-xl"
-          style={{
-            left: position.left,
-            top: position.top,
-            maxHeight: position.maxHeight,
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              onOpenChange(false);
-              editor.commands.focus();
-            }
-          }}
-        >
-          {items.map((item, index) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              // The menu opens from the keyboard ("/"), so focus lands on it.
-              autoFocus={index === 0}
-              className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-              onClick={() => run(item.action)}
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label="Add a block"
+              className="fixed z-50 w-72 overflow-y-auto rounded-xl border bg-popover p-1.5 shadow-xl"
+              style={{
+                left: position.left,
+                top: position.top,
+                maxHeight: position.maxHeight,
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  onOpenChange(false);
+                  editor.commands.focus();
+                }
+              }}
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted [&_svg]:size-4">
-                {item.icon}
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-medium">{item.label}</span>
-                <span className="text-xs text-muted-foreground">
-                  {item.hint}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
+              {items.map((item, index) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  // The menu opens from the keyboard ("/"), so focus lands on it.
+                  autoFocus={index === 0}
+                  className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                  onClick={() => run(item.action)}
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted [&_svg]:size-4">
+                    {item.icon}
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.hint}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
