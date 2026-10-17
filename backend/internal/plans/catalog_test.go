@@ -17,7 +17,7 @@ func TestCatalogMatchesTheOwnersPlanTable(t *testing.T) {
 		{Free, 0, 1, 0, 1, 0},
 		{Basic, 999, 1, 100, 1, 4000},
 		{Pro, 2499, 2, 500, 3, 10000},
-		{Agency, 5999, 10, 2000, 10, 25000},
+		{Agency, 5999, 10, 1500, 10, 25000},
 	}
 	got := Catalog()
 	if len(got) != len(want) {
@@ -105,11 +105,11 @@ func TestNoPlanCanCostMoreThanAThirdOfItsPrice(t *testing.T) {
 	}
 }
 
-// Weekly rank tracking is paid from the monthly credit grant. Keep the known
-// Agency overage explicit until its credit grant or rank-tracking promise changes.
-func TestWeeklyRankTrackingMonthlyCreditRequirements(t *testing.T) {
+// A plan's tracked keywords, checked weekly at its deepest allowed depth with
+// the scheduled (queued) price, must fit in its monthly credits, or the rank
+// tracking it sells runs out of credits mid-month.
+func TestWeeklyRankTrackingFitsInTheMonthlyCredits(t *testing.T) {
 	const checksPerMonth = 4.35
-	wantFits := map[string]bool{Basic: true, Pro: true, Agency: false}
 	for _, plan := range Catalog() {
 		if plan.TrackedKeywords == 0 {
 			continue
@@ -119,9 +119,8 @@ func TestWeeklyRankTrackingMonthlyCreditRequirements(t *testing.T) {
 		}
 		perCheckUSD := dataforseo.SerpCostUSD(plan.MaxSerpDepth, true)
 		credits := math.Ceil(float64(plan.TrackedKeywords) * checksPerMonth * perCheckUSD * 1280)
-		fits := credits <= float64(plan.MonthlyCredits)
-		if fits != wantFits[plan.ID] {
-			t.Errorf("%s: weekly rank tracking costs %.0f credits/month with a %d-credit grant; fits = %v, want %v", plan.ID, credits, plan.MonthlyCredits, fits, wantFits[plan.ID])
+		if credits > float64(plan.MonthlyCredits) {
+			t.Errorf("%s: weekly rank tracking costs %.0f credits a month, over the %d it grants", plan.ID, credits, plan.MonthlyCredits)
 		}
 	}
 }

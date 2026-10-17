@@ -143,7 +143,7 @@ Secrets go into Railway variables only, never into the repo or chat.
   | ------------------- | ----- | ------ | ------------------ |
   | Price per month     | ₹999  | ₹2,499 | ₹5,999             |
   | Sites               | 1     | 2      | 10, then ₹400 each |
-  | Tracked keywords    | 100   | 500    | 2,000              |
+  | Tracked keywords    | 100   | 500    | 1,500              |
   | White-label reports | no    | no     | yes                |
   | Client access       | no    | no     | yes                |
   | Team members        | 1     | 3      | 10                 |

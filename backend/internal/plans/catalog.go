@@ -128,12 +128,12 @@ var catalog = []Definition{
 		features: proFeatures,
 	},
 	{
-		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 2000, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
+		ID: Agency, Name: "Agency", PriceINR: 5999, Sites: 10, TrackedKeywords: 1500, Members: 10, MonthlyCredits: 25000, MaxSerpDepth: 40, RankSchedule: RankScheduleWeekly,
 		Summary: "For agencies: client sites and reports under your own brand.",
 		Highlights: []string{
 			"10 websites",
 			"Everything in Pro",
-			"Rank tracking for 2,000 keywords, checked weekly",
+			"Rank tracking for 1,500 keywords, checked weekly",
 			"White-label reports with your name, logo and colour",
 			"10 team members",
 		},
