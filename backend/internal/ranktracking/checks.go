@@ -77,6 +77,7 @@ type PaidPlans interface {
 	HasPaidPlan(ctx context.Context, organizationID string) (bool, error)
 }
 
+// SerpDepthLimits returns the deepest result page a plan permits.
 type SerpDepthLimits interface {
 	SerpDepthLimit(ctx context.Context, organizationID string) (int, error)
 }

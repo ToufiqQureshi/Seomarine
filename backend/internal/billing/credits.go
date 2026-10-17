@@ -23,7 +23,8 @@ var (
 	ErrReservationNotFound = errors.New("credit reservation not found")
 	// ErrReservationAlreadyClosed means the reservation is already settled or refunded.
 	ErrReservationAlreadyClosed = errors.New("credit reservation already settled or refunded")
-	ErrIdempotentReplay         = errors.New("request with this idempotency key was already reserved")
+	// ErrIdempotentReplay means this idempotency key already has a reservation.
+	ErrIdempotentReplay = errors.New("request with this idempotency key was already reserved")
 )
 
 // staffTopUpCredits is the least a staff workspace is granted when it runs
@@ -489,22 +490,19 @@ func restoreReservationCreditsTx(ctx context.Context, tx pgx.Tx, reservationID s
 	}
 	rows.Close()
 	remaining, restored := amount, int64(0)
+	now := time.Now().UTC()
 	for _, a := range allocations {
 		if remaining == 0 {
 			break
 		}
 		give := min(remaining, a.credits)
-		if a.expires.After(time.Now().UTC()) {
+		if a.expires.After(now) {
 			if _, err := tx.Exec(ctx, `UPDATE go_billing_credit_grants SET remaining_credits = remaining_credits + $1 WHERE id = $2`, give, a.id); err != nil {
 				return 0, err
 			}
-		} else {
-			// Expired credits held by a long-running request stay expired.
-		}
-		remaining -= give
-		if a.expires.After(time.Now().UTC()) {
 			restored += give
 		}
+		remaining -= give
 	}
 	if remaining != 0 {
 		return 0, errors.New("credit reservation allocation is incomplete")
@@ -531,6 +529,7 @@ func (s *CreditLedgerService) SettleUpTo(ctx context.Context, reservationID stri
 	return s.settle(ctx, reservationID, actualAmount, true, 0, "")
 }
 
+// SettleProviderUpTo records provider cost while settling up to actualCredits.
 func (s *CreditLedgerService) SettleProviderUpTo(ctx context.Context, reservationID string, actualCredits int64, providerCostUSD float64, endpoint string) (int64, error) {
 	return s.settle(ctx, reservationID, actualCredits, true, providerCostUSD, endpoint)
 }

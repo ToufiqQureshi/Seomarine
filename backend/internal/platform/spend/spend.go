@@ -23,7 +23,8 @@ var (
 	ErrWorkspaceDailyLimit = errors.New("this workspace reached its daily credit limit")
 	// ErrPlanLimits means a downgrade left retained data over the active
 	// plan's limits. Reads and cleanup stay available, but paid calls stop.
-	ErrPlanLimits       = errors.New("workspace data exceeds the active plan limits")
+	ErrPlanLimits = errors.New("workspace data exceeds the active plan limits")
+	// ErrIdempotentReplay means a paid request with this idempotency key was already submitted.
 	ErrIdempotentReplay = errors.New("request was already submitted")
 )
 
@@ -69,19 +70,23 @@ type (
 	userIDContextKey         struct{}
 )
 
+// WithIdempotencyKey attaches a request key for the next provider spend hold.
 func WithIdempotencyKey(ctx context.Context, key string) context.Context {
 	return context.WithValue(ctx, idempotencyKeyContextKey{}, key)
 }
 
+// IdempotencyKeyFromContext reads a request key previously attached to ctx.
 func IdempotencyKeyFromContext(ctx context.Context) string {
 	key, _ := ctx.Value(idempotencyKeyContextKey{}).(string)
 	return key
 }
 
+// WithUserID attaches the authenticated user for credit ledger attribution.
 func WithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, userIDContextKey{}, userID)
 }
 
+// UserIDFromContext reads the authenticated user previously attached to ctx.
 func UserIDFromContext(ctx context.Context) string {
 	userID, _ := ctx.Value(userIDContextKey{}).(string)
 	return userID
@@ -101,7 +106,8 @@ type ProviderCostHold interface {
 	SettleProviderCost(ctx context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error
 }
 
-func SettleProviderCost(hold Hold, ctx context.Context, providerCostUSD, customerCostUSD float64, endpoint string) error {
+// SettleProviderCost records provider spend separately from the customer charge when supported.
+func SettleProviderCost(ctx context.Context, hold Hold, providerCostUSD, customerCostUSD float64, endpoint string) error {
 	if providerHold, ok := hold.(ProviderCostHold); ok {
 		return providerHold.SettleProviderCost(ctx, providerCostUSD, customerCostUSD, endpoint)
 	}

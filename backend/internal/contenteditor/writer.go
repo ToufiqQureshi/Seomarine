@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	// MaxWriterCreditsPerAction is the editor writer's per-request credit ceiling.
 	MaxWriterCreditsPerAction int64 = 15
 	maxWriterContext                = 20_000
 	writerTimeout                   = 25 * time.Second

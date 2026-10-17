@@ -170,7 +170,7 @@ func (c *Client) Do(ctx context.Context, organizationID string, feature spend.Fe
 	}
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if settleErr := spend.SettleProviderCost(hold, settleCtx, providerCost, customerCost, path); settleErr != nil {
+	if settleErr := spend.SettleProviderCost(settleCtx, hold, providerCost, customerCost, path); settleErr != nil {
 		costErr := &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: []string{path}, USD: providerCost}, Cause: settleErr}
 		return nil, errors.Join(err, costErr)
 	}
@@ -225,7 +225,7 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 			defer cancel()
 			// Preserve the original panic; an unsettled reservation is
 			// reported by the normal billing reconciliation path.
-			_ = spend.SettleProviderCost(hold, settleCtx, providerTotal, customerTotal, strings.Join(endpointPaths, ","))
+			_ = spend.SettleProviderCost(settleCtx, hold, providerTotal, customerTotal, strings.Join(endpointPaths, ","))
 			panic(recovered)
 		}
 	}()
@@ -244,7 +244,7 @@ func (c *Client) DoBudgeted(ctx context.Context, organizationID string, feature 
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	endpoint := strings.Join(endpointPaths, ",")
-	if settleErr := spend.SettleProviderCost(hold, settleCtx, providerTotal, customerTotal, endpoint); settleErr != nil {
+	if settleErr := spend.SettleProviderCost(settleCtx, hold, providerTotal, customerTotal, endpoint); settleErr != nil {
 		return errors.Join(workErr, &CostRecordingError{OrganizationID: organizationID, Cost: Cost{Path: endpointPaths, USD: providerTotal}, Cause: settleErr})
 	}
 	return workErr

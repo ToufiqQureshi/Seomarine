@@ -314,6 +314,7 @@ func (m AIMeter) Hold(ctx context.Context, org string, ceilingUSD float64) (spen
 	return m.guard.Hold(ctx, spend.Request{OrganizationID: org, Feature: m.feature, Endpoint: m.endpoint, IdempotencyKey: spend.IdempotencyKeyFromContext(ctx), EstimateUSD: ceilingUSD})
 }
 
+// HoldWithIdempotencyKey reserves one model call under a stable request key.
 func (m AIMeter) HoldWithIdempotencyKey(ctx context.Context, org string, ceilingUSD float64, key string) (spend.Hold, error) {
 	return m.Hold(spend.WithIdempotencyKey(ctx, key), org, ceilingUSD)
 }
