@@ -551,6 +551,15 @@ func (s *CreditLedgerService) settle(ctx context.Context, reservationID string, 
 	if actualAmount < 0 {
 		return 0, errors.New("actual amount cannot be negative")
 	}
+	var reservationOrg string
+	if err := s.db.QueryRow(ctx, `SELECT organization_id FROM go_billing_credit_reservations WHERE id = $1`, reservationID).Scan(&reservationOrg); errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrReservationNotFound
+	} else if err != nil {
+		return 0, fmt.Errorf("find reservation workspace: %w", err)
+	}
+	if err := s.expireCreditsForOrganization(ctx, reservationOrg); err != nil {
+		return 0, err
+	}
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {

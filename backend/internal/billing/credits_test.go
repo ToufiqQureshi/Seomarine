@@ -134,6 +134,33 @@ func TestRankQueuedRetryCanReserveAfterRefund(t *testing.T) {
 	}
 }
 
+func TestSettleExpiresWorkspaceCreditsBeforeCharging(t *testing.T) {
+	pool := setupTestDB(t)
+	ctx := t.Context()
+	svc := NewCreditLedgerService(pool)
+	orgID := "org_settle_expiry_" + rand.Text()
+	if _, err := pool.Exec(ctx, `INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Settle Expiry Org', $1, now())`, orgID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM organization WHERE id = $1`, orgID) })
+	if err := svc.AddCredits(ctx, orgID, 100, "expiring grant"); err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.Reserve(ctx, orgID, 40, "settle-expiry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE go_billing_credit_grants SET expires_at = now() - interval '1 second' WHERE organization_id = $1`, orgID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Settle(ctx, res.ID, 40); err != nil {
+		t.Fatalf("Settle() error = %v", err)
+	}
+	if balance, err := svc.GetBalance(ctx, orgID); err != nil || balance != 0 {
+		t.Fatalf("balance = %d, error = %v; want expired credits removed", balance, err)
+	}
+}
+
 func TestCreditLedgerService_Integration(t *testing.T) {
 	pool := setupTestDB(t)
 	if pool == nil {
