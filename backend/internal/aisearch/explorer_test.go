@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/dataforseo"
+	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend"
 	"github.com/toufiqqureshi/uplumo/backend/internal/platform/spend/spendtest"
 )
 
@@ -88,16 +89,27 @@ func TestExplorePromptPreflightsAllModelsAndDoesNotHoldOnCacheHit(t *testing.T) 
 	if _, err := svc.ExplorePrompt(context.Background(), org, "p", in); err != nil {
 		t.Fatal(err)
 	}
-	if held := guard.Held(); len(held) != 1 || held[0].EstimateUSD != 2 {
-		t.Fatalf("holds = %+v; want one $2 hold covering four possible calls", held)
+	held := guard.Held()
+	var paidHolds []spend.Request
+	for _, request := range held {
+		if request.EstimateUSD > 0 {
+			paidHolds = append(paidHolds, request)
+		}
+	}
+	if len(paidHolds) != 1 || paidHolds[0].EstimateUSD != 2 {
+		t.Fatalf("paid holds = %+v; want one $2 hold covering four possible calls", paidHolds)
 	}
 	calls := api.total()
+	settlements := len(guard.Settled())
+	svc.provider.models.mu.Lock()
+	svc.provider.models.cache = map[string]catalogEntry{}
+	svc.provider.models.mu.Unlock()
 	if _, err := svc.ExplorePrompt(context.Background(), org, "p", in); err != nil {
 		t.Fatal(err)
 	}
 	settled := guard.Settled()
-	if len(guard.Held()) != 2 || api.total() != calls || len(settled) != 2 || settled[1] != 0 {
-		t.Fatalf("cache hit sent provider work: holds=%d calls=%d/%d", len(guard.Held()), api.total(), calls)
+	if len(guard.Held()) != len(held) || api.total() != calls || len(settled) != settlements {
+		t.Fatalf("cache hit changed paid work: holds=%d settlements=%d calls=%d/%d", len(guard.Held()), len(settled), api.total(), calls)
 	}
 }
 

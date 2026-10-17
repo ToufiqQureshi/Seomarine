@@ -353,20 +353,66 @@ func (s *Service) fetchCross(ctx context.Context, organizationID string, detecte
 // one provider outage does not hide the other answers; only an account-level
 // failure fails the request.
 func (s *Service) ExplorePrompt(ctx context.Context, organizationID, projectID string, in PromptExplorerInput) (PromptExplorerResult, error) {
-	callLimit := len(in.Models)
+	result := PromptExplorerResult{
+		Prompt: in.Prompt, FetchedAt: formatTime(s.now()), Results: make([]ModelResult, len(in.Models)),
+	}
+	if in.HighlightBrand != "" {
+		result.HighlightBrand = &in.HighlightBrand
+	}
+	var uncachedModels []string
+	var uncachedIndices []int
+	for i, model := range in.Models {
+		country := ""
+		if in.WebSearch {
+			country = in.WebSearchCountryCode
+		}
+		if country != "" && !supportsWebSearchCountry(model, country) {
+			result.Results[i] = unsupportedCountryResult(model, country)
+			continue
+		}
+		var cached ModelSuccess
+		if s.cacheGet(ctx, promptResponseCacheKey(organizationID, projectID, model, in), &cached) && cached.Status == "success" {
+			result.Results[i] = cached.withHighlightBrand(in.HighlightBrand)
+			continue
+		}
+		uncachedModels = append(uncachedModels, model)
+		uncachedIndices = append(uncachedIndices, i)
+	}
+	if len(uncachedModels) == 0 {
+		return result, nil
+	}
+	callLimit := len(uncachedModels)
 	if in.WebSearch {
 		callLimit *= 2 // one bounded retry is made when the first answer did not search
 	}
-	var result PromptExplorerResult
+	uncachedInput := in
+	uncachedInput.Models = uncachedModels
 	err := s.provider.client.DoBudgeted(ctx, organizationID, spend.AIVisibility, float64(callLimit)*0.5, func(request dataforseo.DoBudgetedRequest) error {
 		var runErr error
-		result, runErr = s.explorePrompt(ctxWithBudget(ctx, request), organizationID, projectID, in)
-		return runErr
+		var fresh PromptExplorerResult
+		fresh, runErr = s.explorePrompt(ctxWithBudget(ctx, request), organizationID, projectID, uncachedInput)
+		if runErr != nil {
+			return runErr
+		}
+		for i, index := range uncachedIndices {
+			result.Results[index] = fresh.Results[i]
+		}
+		return nil
 	})
 	if err != nil {
 		return PromptExplorerResult{}, err
 	}
 	return result, nil
+}
+
+func promptResponseCacheKey(organizationID, projectID, model string, in PromptExplorerInput) string {
+	country := ""
+	if in.WebSearch {
+		country = in.WebSearchCountryCode
+	}
+	// The one-week cache intentionally survives provider model-name changes.
+	return cacheKey("prompt-response", organizationID, projectID, model,
+		strings.Join(strings.Fields(in.Prompt), " "), strconv.FormatBool(in.WebSearch), country)
 }
 
 func ctxWithBudget(ctx context.Context, request dataforseo.DoBudgetedRequest) context.Context {
@@ -414,19 +460,12 @@ func (s *Service) runModel(ctx context.Context, organizationID, projectID, model
 		return unsupportedCountryResult(model, country), nil
 	}
 
-	// Part of the cache key, so a model upgrade refetches instead of serving
-	// answers from the previous model.
-	modelName := s.provider.models.latest(ctx, organizationID, model)
-	key := cacheKey("prompt-response", organizationID, projectID, model, modelName,
-		// Only whitespace is collapsed. Case is kept: "Compare Go vs go" and
-		// case-sensitive code snippets must not collide with lowercase twins.
-		strings.Join(strings.Fields(in.Prompt), " "), strconv.FormatBool(in.WebSearch), country)
-
 	var cached ModelSuccess
-	if s.cacheGet(ctx, key, &cached) && cached.Status == "success" {
+	if s.cacheGet(ctx, promptResponseCacheKey(organizationID, projectID, model, in), &cached) && cached.Status == "success" {
 		// The brand is not in the key, so one cached answer serves any brand.
 		return cached.withHighlightBrand(in.HighlightBrand), nil
 	}
+	modelName := s.provider.models.latest(ctx, organizationID, model)
 
 	request := responseRequest{
 		organizationID: organizationID,
@@ -462,7 +501,7 @@ func (s *Service) runModel(ctx context.Context, organizationID, projectID, model
 	if country != "" {
 		shaped.WebSearchCountryCode = &country
 	}
-	s.cacheSet(ctx, key, shaped, promptResponseTTL)
+	s.cacheSet(ctx, promptResponseCacheKey(organizationID, projectID, model, in), shaped, promptResponseTTL)
 	return shaped.withHighlightBrand(in.HighlightBrand), nil
 }
 

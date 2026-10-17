@@ -65,8 +65,8 @@ func TestBrandLookupPreflightsWholeFanoutAndCacheHitHasNoHold(t *testing.T) {
 		t.Fatal(err)
 	}
 	settled := guard.Settled()
-	if len(guard.Held()) != 1 || api.total() != 6 || len(settled) != 2 || settled[1] != 0 {
-		t.Fatalf("cache hit started provider work: holds=%d calls=%d", len(guard.Held()), api.total())
+	if len(guard.Held()) != 1 || api.total() != 6 || len(settled) != 1 {
+		t.Fatalf("cache hit changed paid work: holds=%d settlements=%d calls=%d", len(guard.Held()), len(settled), api.total())
 	}
 }
 
