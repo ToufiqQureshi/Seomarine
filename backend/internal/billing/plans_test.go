@@ -137,7 +137,7 @@ func TestWebhookForAnUnknownPlanFailsAndChangesNothing(t *testing.T) {
 func TestEachPlanGrantsItsOwnCredits(t *testing.T) {
 	ctx := context.Background()
 	// Basic grants credits too: its keyword research and rank tracking spend them.
-	for plan, want := range map[string]int64{PlanBasic: 4000, PlanPro: 10000, PlanAgency: 28000} {
+	for plan, want := range map[string]int64{PlanBasic: 4000, PlanPro: 10000, PlanAgency: 25000} {
 		t.Run(plan, func(t *testing.T) {
 			f := newFixture(ctx, t)
 			f.sellTiers()

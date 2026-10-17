@@ -56,7 +56,7 @@ Being a member of someone else's workspace unlocks nothing there.
 it) is what one workspace may cost us at the providers. 1,000 credits are one
 US dollar of provider cost before the 1.28 markup, so a credit is 1/1280 of a
 dollar of provider cost. Each paid charge of a plan grants that plan's
-`MonthlyCredits` (`internal/plans`: Basic 4,000, Pro 10,000, Agency 28,000)
+`MonthlyCredits` (`internal/plans`: Basic 4,000, Pro 10,000, Agency 25,000)
 once per webhook event; unused credits roll over up to two months of the
 plan: each grant expires after two months and reservations consume the oldest
 unexpired grants first. The hourly expiry worker records `expire` ledger rows;
